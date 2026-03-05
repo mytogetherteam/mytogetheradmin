@@ -1,0 +1,9 @@
+{
+  "success" : false,
+  "message" : "Resource Not Found",
+  "details" : "No static resource v3/api-docs.",
+  "status" : 404,
+  "code" : "RESOURCE_NOT_FOUND",
+  "path" : "/v3/api-docs",
+  "timestamp" : "2026-03-03T18:56:38.870170526"
+}

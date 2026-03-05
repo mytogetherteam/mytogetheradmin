@@ -1,0 +1,584 @@
+{
+  "CreateShopRequest": {
+    "required": [
+      "address",
+      "category",
+      "districtId",
+      "latitude",
+      "longitude",
+      "name",
+      "nameMm"
+    ],
+    "type": "object",
+    "properties": {
+      "name": {
+        "maxLength": 100,
+        "minLength": 2,
+        "type": "string",
+        "example": "Burma Bistro"
+      },
+      "nameMm": {
+        "type": "string",
+        "example": "မြန်မာဘစ်စထရို"
+      },
+      "nameTh": {
+        "type": "string",
+        "example": "ร้านอาหาร"
+      },
+      "nameEn": {
+        "type": "string",
+        "example": "Burma Bistro"
+      },
+      "category": {
+        "type": "string",
+        "example": "Restaurant"
+      },
+      "categoryMm": {
+        "type": "string"
+      },
+      "categoryTh": {
+        "type": "string"
+      },
+      "categoryEn": {
+        "type": "string"
+      },
+      "subCategory": {
+        "type": "string",
+        "example": "Asian Fusion"
+      },
+      "subCategoryMm": {
+        "type": "string"
+      },
+      "subCategoryTh": {
+        "type": "string"
+      },
+      "subCategoryEn": {
+        "type": "string"
+      },
+      "latitude": {
+        "maximum": 90.0,
+        "exclusiveMaximum": false,
+        "minimum": -90.0,
+        "exclusiveMinimum": false,
+        "type": "number",
+        "example": 16.8409
+      },
+      "longitude": {
+        "maximum": 180.0,
+        "exclusiveMaximum": false,
+        "minimum": -180.0,
+        "exclusiveMinimum": false,
+        "type": "number",
+        "example": 96.1735
+      },
+      "address": {
+        "type": "string",
+        "example": "No. 123, Wayzayandar Rd, Bahan"
+      },
+      "addressMm": {
+        "type": "string",
+        "example": "အမှတ် ၁၂၃, ..."
+      },
+      "addressTh": {
+        "type": "string",
+        "example": "ที่อยู่ไทย"
+      },
+      "addressEn": {
+        "type": "string",
+        "example": "No. 123, ..."
+      },
+      "districtId": {
+        "type": "integer",
+        "description": "District ID",
+        "format": "int64",
+        "example": 1
+      },
+      "phone": {
+        "type": "string",
+        "example": "09450001122"
+      },
+      "email": {
+        "type": "string",
+        "example": "contact@burmabistro.com"
+      },
+      "description": {
+        "type": "string",
+        "example": "A modern take on traditional Burmese cuisine."
+      },
+      "descriptionMm": {
+        "type": "string",
+        "example": "ရိုးရာ..."
+      },
+      "descriptionTh": {
+        "type": "string"
+      },
+      "descriptionEn": {
+        "type": "string"
+      },
+      "hasDelivery": {
+        "type": "boolean"
+      },
+      "deliveryEnabled": {
+        "type": "boolean"
+      },
+      "hasParking": {
+        "type": "boolean"
+      },
+      "hasWifi": {
+        "type": "boolean"
+      },
+      "isHalal": {
+        "type": "boolean"
+      },
+      "isVegetarian": {
+        "type": "boolean"
+      },
+      "pricePreference": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "enableStockCheck": {
+        "type": "boolean",
+        "description": "Enable stock checking for this shop",
+        "example": true
+      },
+      "maxItemQuantityPerOrder": {
+        "type": "integer",
+        "description": "Maximum quantity of a single item allowed per order",
+        "format": "int32",
+        "example": 10
+      },
+      "minOrderAmount": {
+        "type": "number",
+        "description": "Minimum order amount",
+        "example": 5000
+      },
+      "baseDeliveryFee": {
+        "type": "number",
+        "description": "Base delivery fee",
+        "example": 1500
+      },
+      "operatingHours": {
+        "type": "array",
+        "description": "List of Operating Hours",
+        "items": {
+          "$ref": "#/components/schemas/OperatingHourRequest"
+        }
+      }
+    },
+    "description": "Request object for creating a new shop"
+  },
+  "UpdateShopRequest": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "maxLength": 100,
+        "minLength": 2,
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameTh": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "category": {
+        "type": "string"
+      },
+      "categoryMm": {
+        "type": "string"
+      },
+      "categoryTh": {
+        "type": "string"
+      },
+      "categoryEn": {
+        "type": "string"
+      },
+      "subCategory": {
+        "type": "string"
+      },
+      "subCategoryMm": {
+        "type": "string"
+      },
+      "subCategoryTh": {
+        "type": "string"
+      },
+      "subCategoryEn": {
+        "type": "string"
+      },
+      "latitude": {
+        "maximum": 90.0,
+        "exclusiveMaximum": false,
+        "minimum": -90.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "longitude": {
+        "maximum": 180.0,
+        "exclusiveMaximum": false,
+        "minimum": -180.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "address": {
+        "type": "string"
+      },
+      "addressMm": {
+        "type": "string"
+      },
+      "addressTh": {
+        "type": "string"
+      },
+      "addressEn": {
+        "type": "string"
+      },
+      "districtId": {
+        "type": "integer",
+        "description": "District ID",
+        "format": "int64"
+      },
+      "phone": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "descriptionMm": {
+        "type": "string"
+      },
+      "descriptionTh": {
+        "type": "string"
+      },
+      "descriptionEn": {
+        "type": "string"
+      },
+      "hasDelivery": {
+        "type": "boolean"
+      },
+      "deliveryEnabled": {
+        "type": "boolean"
+      },
+      "hasParking": {
+        "type": "boolean"
+      },
+      "hasWifi": {
+        "type": "boolean"
+      },
+      "isHalal": {
+        "type": "boolean"
+      },
+      "isVegetarian": {
+        "type": "boolean"
+      },
+      "pricePreference": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "isActive": {
+        "type": "boolean"
+      },
+      "isVerified": {
+        "type": "boolean"
+      },
+      "enableStockCheck": {
+        "type": "boolean"
+      },
+      "maxItemQuantityPerOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "minOrderAmount": {
+        "type": "number"
+      },
+      "baseDeliveryFee": {
+        "type": "number"
+      },
+      "operatingHours": {
+        "type": "array",
+        "description": "Update Operating Hours (Replaces existing)",
+        "items": {
+          "$ref": "#/components/schemas/OperatingHourRequest"
+        }
+      }
+    },
+    "description": "Request object for updating an existing shop"
+  },
+  "CreateMenuCategoryRequest": {
+    "required": [
+      "name"
+    ],
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameTh": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "isActive": {
+        "type": "boolean"
+      }
+    },
+    "description": "Request object for creating a menu category"
+  },
+  "UpdateMenuCategoryRequest": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameTh": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "isActive": {
+        "type": "boolean"
+      }
+    },
+    "description": "Request object for updating a menu category"
+  },
+  "CreateMenuSubCategoryRequest": {
+    "required": [
+      "name"
+    ],
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "isActive": {
+        "type": "boolean"
+      }
+    }
+  },
+  "UpdateMenuSubCategoryRequest": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "isActive": {
+        "type": "boolean"
+      }
+    }
+  },
+  "CreateMenuItemRequest": {
+    "required": [
+      "name",
+      "price"
+    ],
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameTh": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "price": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "smallPrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "mediumPrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "largePrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "currency": {
+        "type": "string"
+      },
+      "isAvailable": {
+        "type": "boolean"
+      },
+      "isPopular": {
+        "type": "boolean"
+      },
+      "isVegetarian": {
+        "type": "boolean"
+      },
+      "isSpicy": {
+        "type": "boolean"
+      },
+      "isCombo": {
+        "type": "boolean"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "subCategoryId": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "description": {
+        "type": "string"
+      },
+      "descriptionMm": {
+        "type": "string"
+      },
+      "descriptionTh": {
+        "type": "string"
+      },
+      "descriptionEn": {
+        "type": "string"
+      }
+    },
+    "description": "Request object for creating a menu item"
+  },
+  "UpdateMenuItemRequest": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "nameMm": {
+        "type": "string"
+      },
+      "nameTh": {
+        "type": "string"
+      },
+      "nameEn": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "price": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "smallPrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "mediumPrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "largePrice": {
+        "minimum": 0.0,
+        "exclusiveMinimum": false,
+        "type": "number"
+      },
+      "currency": {
+        "type": "string"
+      },
+      "isAvailable": {
+        "type": "boolean"
+      },
+      "isPopular": {
+        "type": "boolean"
+      },
+      "isVegetarian": {
+        "type": "boolean"
+      },
+      "isSpicy": {
+        "type": "boolean"
+      },
+      "isCombo": {
+        "type": "boolean"
+      },
+      "displayOrder": {
+        "type": "integer",
+        "format": "int32"
+      },
+      "subCategoryId": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "description": {
+        "type": "string"
+      },
+      "descriptionMm": {
+        "type": "string"
+      },
+      "descriptionTh": {
+        "type": "string"
+      },
+      "descriptionEn": {
+        "type": "string"
+      },
+      "categoryId": {
+        "type": "integer",
+        "format": "int64"
+      }
+    },
+    "description": "Request object for updating a menu item"
+  }
+}

@@ -1,0 +1,39 @@
+import { apiClient } from "./apiClient";
+
+export interface GlobalSearchResult {
+    users: SearchUserItem[];
+    shops: SearchShopItem[];
+    orders: SearchOrderItem[];
+}
+
+export interface SearchUserItem {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+}
+
+export interface SearchShopItem {
+    id: string;
+    name: string;
+    address?: string;
+    status: string;
+}
+
+export interface SearchOrderItem {
+    id: string;
+    orderNumber: string;
+    status: string;
+    totalAmount: number;
+}
+
+class SearchService {
+    async globalSearch(query: string): Promise<GlobalSearchResult> {
+        if (!query || query.trim().length === 0) {
+            return { users: [], shops: [], orders: [] };
+        }
+        return apiClient.get<GlobalSearchResult>(`/api/admin/search?query=${encodeURIComponent(query)}`);
+    }
+}
+
+export const searchService = new SearchService();
