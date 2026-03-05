@@ -130,7 +130,7 @@ class ApiClient {
 
         // If already refreshing, wait for it to finish
         return new Promise<T>((resolve) => {
-          this.addRefreshSubscriber((newToken) => {
+          this.addRefreshSubscriber((_newToken) => {
             resolve(this.request<T>(endpoint, options));
           });
         });
