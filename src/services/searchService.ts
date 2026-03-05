@@ -1,4 +1,5 @@
 import { apiClient } from "./apiClient";
+import { config } from "@/config/config";
 
 export interface GlobalSearchResult {
     users: SearchUserItem[];
@@ -32,7 +33,7 @@ class SearchService {
         if (!query || query.trim().length === 0) {
             return { users: [], shops: [], orders: [] };
         }
-        return apiClient.get<GlobalSearchResult>(`/api/admin/search?query=${encodeURIComponent(query)}`);
+        return apiClient.get<GlobalSearchResult>(`${config.endpoints.admin.search}?query=${encodeURIComponent(query)}`);
     }
 }
 

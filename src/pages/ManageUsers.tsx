@@ -31,8 +31,20 @@ import {
     FileSpreadsheet,
     Search,
     ArrowUpDown,
-    Loader2
+    Loader2,
+    MoreHorizontal,
+    UserCog,
+    Power
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as XLSX from "xlsx";
 import { userService } from "@/services/userService";
 import { toast } from "sonner";
@@ -47,6 +59,12 @@ export default function ManageUsers() {
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
+    // User Actions State
+    const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [newRole, setNewRole] = useState("USER");
+    const [actionLoading, setActionLoading] = useState(false);
 
     const loadUsers = async () => {
         setLoading(true);
@@ -110,6 +128,42 @@ export default function ManageUsers() {
         XLSX.writeFile(wb, "Users.xlsx");
     };
 
+    const handleToggleStatus = async (user: any) => {
+        setActionLoading(true);
+        try {
+            await userService.toggleUserStatus(user.id, !user.active);
+            toast.success(`User ${user.active ? 'deactivated' : 'activated'} successfully`);
+            loadUsers();
+        } catch (error) {
+            console.error("Failed to toggle status", error);
+            toast.error("Failed to toggle user status");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleOpenRoleDialog = (user: any) => {
+        setSelectedUser(user);
+        setNewRole(user.role || 'USER');
+        setRoleDialogOpen(true);
+    };
+
+    const handleUpdateRole = async () => {
+        if (!selectedUser) return;
+        setActionLoading(true);
+        try {
+            await userService.updateUserRole(selectedUser.id, newRole);
+            toast.success(`User role updated to ${newRole}`);
+            setRoleDialogOpen(false);
+            loadUsers();
+        } catch (error) {
+            console.error("Failed to update role", error);
+            toast.error("Failed to update user role");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     return (
         <div className="container mx-auto py-10 max-w-7xl">
             <Card className="flex flex-col h-full border-solid">
@@ -164,6 +218,7 @@ export default function ManageUsers() {
                                             </TableHead>
                                             <TableHead>Role</TableHead>
                                             <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -179,11 +234,33 @@ export default function ManageUsers() {
                                                             {user.active ? "Active" : "Inactive"}
                                                         </Badge>
                                                     </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0" disabled={actionLoading}>
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                                                    <Power className="mr-2 h-4 w-4" />
+                                                                    {user.active ? 'Deactivate' : 'Activate'}
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => handleOpenRoleDialog(user)}>
+                                                                    <UserCog className="mr-2 h-4 w-4" />
+                                                                    Change Role
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                                     No users found.
                                                 </TableCell>
                                             </TableRow>
@@ -275,6 +352,43 @@ export default function ManageUsers() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Role Update Dialog */}
+            <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Change User Role</DialogTitle>
+                        <DialogDescription>
+                            Select a new role for <span className="font-semibold">{selectedUser?.name || selectedUser?.fullName || 'this user'}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Select value={newRole} onValueChange={setNewRole}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="USER">USER</SelectItem>
+                                <SelectItem value="ADMIN">ADMIN</SelectItem>
+                                <SelectItem value="MODERATOR">MODERATOR</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRoleDialogOpen(false)} disabled={actionLoading}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdateRole} disabled={actionLoading}>
+                            {actionLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : "Save Changes"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Card,
     CardContent,
@@ -15,14 +16,16 @@ import {
     YAxis,
 } from "recharts";
 import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
-import { DollarSign, Users, ShoppingCart, Activity, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { orderService, OrderHealthData } from "@/services/orderService";
+import { ShopService } from "@/services/shopService";
+import { moderationService } from "@/services/moderationService";
+import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function StatCard({
     title,
     value,
-    change,
     prefix = "",
     icon: Icon,
     loading,
@@ -34,7 +37,6 @@ function StatCard({
     icon: React.ElementType;
     loading?: boolean;
 }) {
-    const isPositive = (change ?? 0) >= 0;
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -48,27 +50,34 @@ function StatCard({
                         <Skeleton className="h-4 w-36" />
                     </>
                 ) : (
-                    <>
-                        <div className="text-2xl font-bold">
-                            {prefix}{typeof value === "number" ? value.toLocaleString() : value}
-                        </div>
-                        {change !== undefined && (
-                            <p className={`text-xs flex items-center gap-1 mt-1 ${isPositive ? "text-green-500" : "text-red-500"}`}>
-                                {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                                {isPositive ? "+" : ""}{change}% from last month
-                            </p>
-                        )}
-                    </>
+                    <div className="text-2xl font-bold">
+                        {prefix}{typeof value === "number" ? value.toLocaleString() : (value ?? 0)}
+                    </div>
                 )}
             </CardContent>
         </Card>
     );
 }
 
+const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+    PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
+    CONFIRMED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
+    ACCEPTED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
+    PREPARING: { bg: "bg-orange-500/10", text: "text-orange-500", dot: "bg-orange-500" },
+    READY: { bg: "bg-purple-500/10", text: "text-purple-500", dot: "bg-purple-500" },
+    ON_THE_WAY: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
+    DELIVERING: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
+};
+
 export default function Dashboard() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
+    const [orderHealth, setOrderHealth] = useState<OrderHealthData>({});
+    const [pendingShopsCount, setPendingShopsCount] = useState(0);
+    const [openReportsCount, setOpenReportsCount] = useState(0);
+    const [systemHealth, setSystemHealth] = useState<{ dbLatency: number; status: string; performance?: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -76,14 +85,22 @@ export default function Dashboard() {
         async function load() {
             try {
                 setLoading(true);
-                const [statsData, revenueData, shopsData] = await Promise.all([
+                const [statsData, revenueData, shopsData, healthData, pendingData, reportsData, sysHealth] = await Promise.all([
                     analyticsService.getDashboardStats().catch(() => null),
                     analyticsService.getRevenueAnalytics().catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
+                    orderService.getOrdersHealth().catch(() => ({})),
+                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ totalElements: 0 })),
+                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ totalElements: 0 })),
+                    analyticsService.getSystemHealth().catch(() => null),
                 ]);
                 setStats(statsData);
                 setRevenue(revenueData);
                 setPopularShops(shopsData);
+                setOrderHealth(healthData);
+                setPendingShopsCount(pendingData?.totalElements ?? 0);
+                setOpenReportsCount(reportsData?.totalElements ?? 0);
+                setSystemHealth(sysHealth);
             } catch (err) {
                 setError("Failed to load dashboard data.");
             } finally {
@@ -109,8 +126,26 @@ export default function Dashboard() {
                 )}
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {/* Row 1: KPI Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                    title="Total Users"
+                    value={stats?.totalUsers ?? 0}
+                    icon={Users}
+                    loading={loading}
+                />
+                <StatCard
+                    title="Total Shops"
+                    value={stats?.totalShops ?? 0}
+                    icon={Store}
+                    loading={loading}
+                />
+                <StatCard
+                    title="Orders Today"
+                    value={stats?.totalOrdersToday ?? 0}
+                    icon={ShoppingCart}
+                    loading={loading}
+                />
                 <StatCard
                     title="Revenue Today"
                     value={stats?.totalRevenueToday ?? 0}
@@ -118,35 +153,108 @@ export default function Dashboard() {
                     icon={DollarSign}
                     loading={loading}
                 />
-                <StatCard
-                    title="Orders Today"
-                    value={stats?.totalOrdersToday ?? 0}
-                    prefix="+"
-                    icon={ShoppingCart}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Total Users"
-                    value={stats?.totalUsers ?? 0}
-                    prefix="+"
-                    icon={Users}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Total Shops"
-                    value={stats?.totalShops ?? 0}
-                    prefix="+"
-                    icon={Activity}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Total Reviews"
-                    value={stats?.totalReviews ?? 0}
-                    prefix="+"
-                    icon={TrendingUp}
-                    loading={loading}
-                />
             </div>
+
+            {/* Row 2: Alert Banners */}
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card
+                    className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-colors"
+                    onClick={() => navigate("/shops/manage?tab=pending")}
+                >
+                    <CardContent className="flex items-center gap-4 p-4">
+                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-yellow-500/10">
+                            <Building2 className="h-5 w-5 text-yellow-500" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-medium">Shops Pending Approval</p>
+                            <p className="text-xs text-muted-foreground">Requires your review</p>
+                        </div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-12" />
+                        ) : (
+                            <span className="text-2xl font-bold text-yellow-500">{pendingShopsCount}</span>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card
+                    className="cursor-pointer border-red-500/30 hover:border-red-500/60 transition-colors"
+                    onClick={() => navigate("/moderation/user-shop")}
+                >
+                    <CardContent className="flex items-center gap-4 p-4">
+                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-500/10">
+                            <Flag className="h-5 w-5 text-red-500" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-medium">Open Reports</p>
+                            <p className="text-xs text-muted-foreground">Needs attention</p>
+                        </div>
+                        {loading ? (
+                            <Skeleton className="h-8 w-12" />
+                        ) : (
+                            <span className="text-2xl font-bold text-red-500">{openReportsCount}</span>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Row 3: Order Health */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Order Health</CardTitle>
+                    <CardDescription>Live order counts by status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex gap-3">
+                            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-9 w-32" />)}
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-3">
+                            {Object.entries(orderHealth).map(([status, count]) => {
+                                const colors = ORDER_HEALTH_COLORS[status] ?? { bg: "bg-gray-500/10", text: "text-gray-500", dot: "bg-gray-500" };
+                                return (
+                                    <div
+                                        key={status}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${colors.bg} ${colors.text}`}
+                                        style={{ borderColor: 'currentColor', borderWidth: '1px', opacity: 0.9 }}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                                        {status}: {count}
+                                    </div>
+                                );
+                            })}
+                            {Object.keys(orderHealth).length === 0 && (
+                                <p className="text-sm text-muted-foreground">No active order data</p>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Row 4: System Status */}
+            <Card>
+                <CardContent className="flex items-center gap-3 p-4">
+                    <Database className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Database</span>
+                    {loading ? (
+                        <Skeleton className="h-4 w-40" />
+                    ) : systemHealth ? (
+                        <>
+                            <span className={`inline-block w-2.5 h-2.5 rounded-full ${systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                            <span className="text-xs text-muted-foreground">
+                                {systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'Connected' : 'Issue'} · {systemHealth.dbLatency}ms
+                                {systemHealth.performance && ` · ${systemHealth.performance}`}
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" />
+                            <span className="text-xs text-muted-foreground">Unable to fetch status</span>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -196,18 +304,23 @@ export default function Dashboard() {
                             </div>
                         ) : popularShops.length > 0 ? (
                             <div className="space-y-4">
-                                {popularShops.slice(0, 5).map((shop, i) => (
-                                    <div key={shop.id} className="flex items-center gap-3">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                                            {i + 1}
+                                {popularShops.slice(0, 5).map((shop, i) => {
+                                    const shopId = shop.id || shop.shopId || `shop_${i}`;
+                                    const shopName = shop.name || shop.shopName || "Unknown Shop";
+                                    const shopRevenue = shop.revenue ?? shop.totalRevenue ?? 0;
+                                    return (
+                                        <div key={shopId} className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
+                                                {i + 1}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{shopName}</p>
+                                                <p className="text-xs text-muted-foreground">{shop.orderCount || 0} orders</p>
+                                            </div>
+                                            <div className="font-medium text-sm">${shopRevenue.toLocaleString() ?? '0'}</div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">{shop.name}</p>
-                                            <p className="text-xs text-muted-foreground">{shop.orderCount} orders</p>
-                                        </div>
-                                        <div className="font-medium text-sm">${shop.revenue.toLocaleString()}</div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         ) : (
                             <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">

@@ -256,9 +256,9 @@ export function AppSidebar() {
                     </SidebarMenu>
                 </SidebarGroup>
 
-                {/* Moderation & Safety */}
+                {/* Moderation & Review */}
                 <SidebarGroup>
-                    <SidebarGroupLabel>Safety & Moderation</SidebarGroupLabel>
+                    <SidebarGroupLabel>Review & Moderation</SidebarGroupLabel>
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton asChild tooltip="Content Moderation">
@@ -278,7 +278,7 @@ export function AppSidebar() {
                         </SidebarMenuItem>
                         <SidebarMenuItem>
                             <SidebarMenuButton asChild tooltip="Reviews">
-                                <Link to="/safety/reviews">
+                                <Link to="/review/reviews">
                                     <ClipboardList />
                                     <span>Review Moderation</span>
                                 </Link>
@@ -312,7 +312,7 @@ export function AppSidebar() {
                                         </SidebarMenuSubItem>
                                         <SidebarMenuSubItem>
                                             <SidebarMenuSubButton asChild>
-                                                <Link to="/community/lost-found">
+                                                <Link to="/lostfound">
                                                     <Package />
                                                     <span>Lost & Found</span>
                                                 </Link>
@@ -380,6 +380,14 @@ export function AppSidebar() {
                                 <Link to="/admin/profile">
                                     <User />
                                     <span>Admin Profile</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild tooltip="Payment Methods">
+                                <Link to="/payment/methods">
+                                    <Settings2 />
+                                    <span>Payment Methods</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

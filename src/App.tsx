@@ -19,6 +19,8 @@ import CreateSubCategory from "@/pages/sub-categories/CreateSubCategory";
 import ManageSubCategories from "@/pages/sub-categories/ManageSubCategories";
 import AdminProfile from "@/pages/AdminProfile";
 import { ExcelImportProvider } from "@/context/ExcelImportContext";
+import PaymentMethods from "@/pages/payment/PaymentMethods";
+import PaymentMethodForm from "@/pages/payment/PaymentMethodForm";
 
 // New pages
 import AnalyticalDashboard from "@/pages/analytics/AnalyticalDashboard";
@@ -29,11 +31,13 @@ import UserShopReports from "@/pages/moderation/UserShopReports";
 import BannerManagement from "@/pages/marketing/BannerManagement";
 
 // Phase 5 & 6 pages
-import Reviews from "@/pages/safety/Reviews";
+import Reviews from "@/pages/review/Reviews";
 import CommunityMgt from "@/pages/community/CommunityMgt";
-import LostFound from "@/pages/community/LostFound";
+import LostFound from "@/pages/lostfound/LostFound";
 import Broadcast from "@/pages/marketing/Broadcast";
 import AuditLogs from "@/pages/system/AuditLogs";
+import VettingQueue from "@/pages/shops/VettingQueue";
+import CommentBoard from "@/pages/community/CommentBoard";
 
 function PublicOnlyRoute() {
   if (authService.isAuthenticated()) {
@@ -95,14 +99,18 @@ function App() {
           <Route path="/orders/board" element={<OrderBoard />} />
           <Route path="/orders/history" element={<OrderHistory />} />
 
-          {/* Moderation & Safety */}
+          {/* Moderation & Review */}
           <Route path="/moderation/content" element={<ContentReports />} />
           <Route path="/moderation/user-shop" element={<UserShopReports />} />
-          <Route path="/safety/reviews" element={<Reviews />} />
+          <Route path="/review/reviews" element={<Reviews />} />
+
+          {/* Shops - Vetting */}
+          <Route path="/shops/vetting" element={<VettingQueue />} />
 
           {/* Community */}
           <Route path="/community/posts" element={<CommunityMgt />} />
-          <Route path="/community/lost-found" element={<LostFound />} />
+          <Route path="/community/comments" element={<CommentBoard />} />
+          <Route path="/lostfound" element={<LostFound />} />
 
           {/* Marketing */}
           <Route path="/marketing/banners" element={<BannerManagement />} />
@@ -110,6 +118,11 @@ function App() {
 
           {/* System */}
           <Route path="/system/audit-logs" element={<AuditLogs />} />
+
+          {/* Payment */}
+          <Route path="/payment/methods" element={<PaymentMethods />} />
+          <Route path="/payment/methods/create" element={<PaymentMethodForm />} />
+          <Route path="/payment/methods/edit/:id" element={<PaymentMethodForm />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

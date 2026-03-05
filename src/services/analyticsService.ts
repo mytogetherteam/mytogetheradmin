@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -10,7 +11,9 @@ export interface DashboardStats {
 
 export interface RevenueData {
   date: string;
-  revenue: number;
+  count: number;
+  amount: number;
+  revenue?: number; // Keep for backward compatibility if used elsewhere
 }
 
 export interface SessionData {
@@ -19,16 +22,30 @@ export interface SessionData {
   avgSessionLength: number;
 }
 
+export interface SessionSummary {
+  totalSessions: number;
+  averageDurationSeconds: number;
+  averageActivitiesPerSession: number;
+  averageShopsViewed: number;
+  averageSearches: number;
+  activeSessions: number;
+  topEntryPoints: Record<string, number>;
+  topExitPoints: Record<string, number>;
+}
+
 export interface LocationData {
   district: string;
   count: number;
 }
 
 export interface PopularShop {
-  id: string;
-  name: string;
-  revenue: number;
-  orderCount: number;
+  id?: string;
+  shopId?: number;
+  name?: string;
+  shopName?: string;
+  revenue?: number;
+  totalRevenue?: number;
+  orderCount?: number;
 }
 
 export interface CategoryStats {
@@ -36,10 +53,25 @@ export interface CategoryStats {
   viewCount: number;
 }
 
+export interface FeedSectionStats {
+  sectionType?: string;
+  type?: string;
+  totalViews?: number;
+  impressions?: number;
+  totalClicks?: number;
+  clicks?: number;
+  clickThroughRate?: number;
+  ctr?: number;
+}
+
+export interface DeviceStats {
+  platform: string;
+  count: number;
+}
+
 class AnalyticsService {
   async getDashboardStats(): Promise<DashboardStats> {
-    const response = await apiClient.get<ApiResponseData<DashboardStats>>('/api/admin/dashboard/stats');
-    return response.data;
+    return apiClient.get<DashboardStats>(config.endpoints.admin.analytics.dashboard);
   }
 
   async getRevenueAnalytics(start?: string, end?: string): Promise<RevenueData[]> {
@@ -47,33 +79,39 @@ class AnalyticsService {
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const response = await apiClient.get<ApiResponseData<RevenueData[]>>(`/api/admin/analytics/revenue${query}`);
-    return response.data;
+    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.revenue}${query}`);
   }
 
-  async getSessionAnalytics(): Promise<SessionData[]> {
-    const response = await apiClient.get<ApiResponseData<SessionData[]>>('/api/admin/analytics/sessions');
-    return response.data;
+  async getSessionAnalytics(): Promise<SessionSummary | SessionData[]> {
+    return apiClient.get<SessionSummary | SessionData[]>(config.endpoints.admin.analytics.sessions);
   }
 
   async getLocationAnalytics(): Promise<LocationData[]> {
-    const response = await apiClient.get<ApiResponseData<LocationData[]>>('/api/admin/analytics/locations');
-    return response.data;
+    return apiClient.get<LocationData[]>(config.endpoints.admin.analytics.locations);
   }
 
   async getPopularShops(): Promise<PopularShop[]> {
-    const response = await apiClient.get<ApiResponseData<PopularShop[]>>('/api/admin/analytics/shops/popular');
-    return response.data;
+    return apiClient.get<PopularShop[]>(config.endpoints.admin.analytics.popularShops);
   }
 
   async getCategoryStats(): Promise<CategoryStats[]> {
-    const response = await apiClient.get<ApiResponseData<CategoryStats[]>>('/api/admin/analytics/categories');
-    return response.data;
+    return apiClient.get<CategoryStats[]>(config.endpoints.admin.analytics.categories);
   }
 
   async getSystemHealth(): Promise<{ dbLatency: number; status: string }> {
-    const response = await apiClient.get<ApiResponseData<{ dbLatency: number; status: string }>>('/api/admin/system/db-latency');
-    return response.data;
+    return apiClient.get<{ dbLatency: number; status: string }>(config.endpoints.admin.system.dbLatency);
+  }
+
+  async getFeedPerformance(): Promise<{ overallCtr: number }> {
+    return apiClient.get<{ overallCtr: number }>(config.endpoints.admin.analytics.feed);
+  }
+
+  async getFeedSectionStats(type: string): Promise<FeedSectionStats> {
+    return apiClient.get<FeedSectionStats>(config.endpoints.admin.analytics.feedSections(type));
+  }
+
+  async getDeviceStats(): Promise<DeviceStats[]> {
+    return apiClient.get<DeviceStats[]>(config.endpoints.admin.analytics.deviceStats);
   }
 }
 

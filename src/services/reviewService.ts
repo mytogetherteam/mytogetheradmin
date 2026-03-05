@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export type ReviewType = 'SHOPS' | 'ITEMS';
 
@@ -23,27 +24,33 @@ export interface ReviewPage {
 
 class ReviewService {
   async getReviews(type: ReviewType, page = 0, size = 10): Promise<ReviewPage> {
-    const endpoint = type === 'SHOPS' ? '/api/admin/reviews/shops' : '/api/admin/reviews/items';
+    const endpoint = type === 'SHOPS' 
+      ? config.endpoints.admin.reviews.shops 
+      : config.endpoints.admin.reviews.items;
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    const response = await apiClient.get<ApiResponseData<ReviewPage>>(`${endpoint}?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<ReviewPage>(`${endpoint}?${params.toString()}`);
+    return response;
   }
 
   async toggleVisibility(type: ReviewType, id: string, visible: boolean): Promise<Review> {
-    const endpoint = type === 'SHOPS' ? `/api/admin/reviews/shops/${id}/visibility` : `/api/admin/reviews/items/${id}/visibility`;
-    const response = await apiClient.put<ApiResponseData<Review>>(`${endpoint}?visible=${visible}`, {});
-    return response.data;
+    const endpoint = type === 'SHOPS' 
+      ? config.endpoints.admin.reviews.shopVisibility(id) 
+      : config.endpoints.admin.reviews.itemVisibility(id);
+    const response = await apiClient.put<Review>(`${endpoint}?visible=${visible}`, {});
+    return response;
   }
 
   async deleteReview(type: ReviewType, id: string): Promise<void> {
-    const endpoint = type === 'SHOPS' ? `/api/admin/reviews/shops/${id}` : `/api/admin/reviews/items/${id}`;
+    const endpoint = type === 'SHOPS' 
+      ? config.endpoints.admin.reviews.shopDetail(id) 
+      : config.endpoints.admin.reviews.itemDetail(id);
     return apiClient.delete<void>(endpoint);
   }
 
   async deleteReviewPhoto(type: ReviewType, photoId: string): Promise<void> {
     const endpoint = type === 'SHOPS' 
-      ? `/api/admin/reviews/photos/shops/${photoId}` 
-      : `/api/admin/reviews/photos/items/${photoId}`;
+      ? config.endpoints.admin.reviews.photos.shops(photoId) 
+      : config.endpoints.admin.reviews.photos.items(photoId);
     return apiClient.delete<void>(endpoint);
   }
 }

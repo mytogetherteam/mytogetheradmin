@@ -56,15 +56,8 @@ export interface Shop {
   district?: string;
   districtMm?: string;
   districtId?: number;
-  city: string;
+  city?: string;
   cityMm?: string;
-  latitude?: number;
-  longitude?: number;
-  ratingAvg?: number;
-  ratingCount?: number;
-  logoUrl?: string;
-  coverUrl?: string;
-  primaryPhotoUrl?: string;
   phone?: string;
   email?: string;
   description?: string;
@@ -87,12 +80,71 @@ export interface Shop {
   pricePreferenceMm?: string;
   pricePreferenceTh?: string;
   pricePreferenceEn?: string;
-  distance?: number;
-  minEta?: number;
-  maxEta?: number;
-  estimatedTime?: string;
-  viewCount?: number;
-  paymentMethodIds?: number[];
+  logoUrl?: string;
+  coverUrl?: string;
+  primaryPhotoUrl?: string;
+  ratingAvg?: number;
+  ratingCount?: number;
+}
+
+export interface DistrictDTO {
+  id: number;
+  cityId: number;
+  cityNameEn?: string;
+  nameEn: string;
+  nameMm: string;
+  nameTh?: string;
+  slug: string;
+  latitude?: number;
+  longitude?: number;
+  active: boolean;
+}
+
+export interface CityDTO {
+  id: number;
+  nameEn: string;
+  nameMm: string;
+  nameTh?: string;
+  slug: string;
+  active: boolean;
+  districts?: DistrictDTO[];
+}
+
+export interface CuisineTypeDTO {
+  id: number;
+  name: string;
+  nameMm?: string;
+  nameTh?: string;
+  nameEn?: string;
+  slug: string;
+  imageUrl?: string;
+}
+
+export interface EnumOptionDTO {
+  value: string;
+  label: string;
+  labelMm?: string;
+  labelTh?: string;
+}
+
+export interface PaymentMethodDTO {
+  id: number;
+  code: string;
+  name: string;
+  nameMm?: string;
+  nameTh?: string;
+  iconUrl?: string;
+  active: boolean;
+  displayOrder: number;
+}
+
+export interface ShopFormDataDTO {
+  cities: CityDTO[];
+  cuisineTypes: CuisineTypeDTO[];
+  paymentMethods: PaymentMethodDTO[];
+  pricePreferences: EnumOptionDTO[];
+  mealTypes: EnumOptionDTO[];
+  deliveryTypes: EnumOptionDTO[];
 }
 
 export interface Photo {
@@ -173,6 +225,8 @@ export interface OperatingHourRequest {
 }
 
 export interface ShopDetail extends Shop {
+  latitude: number;
+  longitude: number;
   photos?: Photo[];
   menuCategories?: MenuCategory[];
   recentReviews?: Review[];
@@ -180,12 +234,12 @@ export interface ShopDetail extends Shop {
   createdAt?: string;
   updatedAt?: string;
   paymentQrUrl?: string;
-  cuisineTypes?: any[];
+  cuisineTypes?: CuisineTypeDTO[];
   cuisineTypeIds?: number[];
   mealTypes?: string[];
   supportedDeliveryTypes?: string[];
   paymentMethodIds?: number[];
-  paymentMethods?: any[];
+  paymentMethods?: PaymentMethodDTO[];
   ratingDistribution?: {
     fiveStarCount: number;
     fourStarCount: number;
@@ -193,9 +247,6 @@ export interface ShopDetail extends Shop {
     twoStarCount: number;
     oneStarCount: number;
   };
-  recommendations?: any[];
-  popularDishes?: any[];
-  hotDeals?: any[];
 }
 
 // Redundant interface removed
@@ -217,8 +268,7 @@ export const ShopService = {
     if (active !== undefined) {
       endpoint += `&active=${active}`;
     }
-    const response = await apiClient.get<ApiResponseData<PageableResponse<Shop>>>(endpoint);
-    return response.data;
+    return apiClient.get<PageableResponse<Shop>>(endpoint);
   },
 
   /**
@@ -226,8 +276,7 @@ export const ShopService = {
    */
   getShopById: async (id: number): Promise<ShopDetail> => {
     const endpoint = config.endpoints.shops.detail(id);
-    const response = await apiClient.get<ApiResponseData<ShopDetail>>(endpoint);
-    return response.data;
+    return apiClient.get<ShopDetail>(endpoint);
   },
 
   /**
@@ -238,12 +287,12 @@ export const ShopService = {
     // For now, we'll keep returning a list of strings if the UI expects it,
     // but the actual categories might need a different source or be hardcoded if missing from setup.
     try {
-      const response = await apiClient.get<ApiResponseData<any>>(
-        config.endpoints.shops.categories
+      const response = await apiClient.get<any>(
+        config.endpoints.shops.categories.form
       );
       // If setup data, we might need to extract something. 
       // For now, let's assume it still works or fallback to common categories.
-      return response.data.categories || ["Restaurant", "Retail", "Service", "Other"];
+      return response.categories || ["Restaurant", "Retail", "Service", "Other"];
     } catch (e) {
       return ["Restaurant", "Retail", "Service", "Other"];
     }
@@ -253,25 +302,23 @@ export const ShopService = {
    * Create a new shop
    */
   createShop: async (shopData: FormData): Promise<ShopDetail> => {
-    const endpoint = '/api/admin/shops'; 
-    const response = await apiClient.post<ApiResponseData<ShopDetail>>(endpoint, shopData);
-    return response.data;
+    const endpoint = config.endpoints.shops.list; 
+    return apiClient.post<ShopDetail>(endpoint, shopData);
   },
 
   /**
    * Update an existing shop
    */
   updateShop: async (id: number, updates: FormData): Promise<ShopDetail> => {
-    const endpoint = `/api/admin/shops/${id}`;
-    const response = await apiClient.put<ApiResponseData<ShopDetail>>(endpoint, updates);
-    return response.data;
+    const endpoint = config.endpoints.shops.detail(id);
+    return apiClient.put<ShopDetail>(endpoint, updates);
   },
 
   /**
    * Delete a shop
    */
   deleteShop: async (id: number): Promise<void> => {
-    const endpoint = `/api/admin/shops/${id}`;
+    const endpoint = config.endpoints.shops.detail(id);
     await apiClient.delete(endpoint);
   },
 
@@ -279,34 +326,31 @@ export const ShopService = {
    * Create a category
    */
   createCategory: async (shopId: number, categoryData: FormData): Promise<any> => {
-    const endpoint = `/api/admin/categories/shop/${shopId}`;
-    const response = await apiClient.post<ApiResponse<any>>(endpoint, categoryData);
-    return response.data;
+    const endpoint = config.endpoints.shops.categories.shopCategories(shopId);
+    return apiClient.post<any>(endpoint, categoryData);
   },
 
   /**
    * Update a category
    */
   updateCategory: async (id: number, categoryData: FormData): Promise<any> => {
-    const endpoint = `/api/admin/categories/${id}`;
-    const response = await apiClient.put<ApiResponse<any>>(endpoint, categoryData);
-    return response.data;
+    const endpoint = config.endpoints.shops.categories.detail(id);
+    return apiClient.put<any>(endpoint, categoryData);
   },
 
   /**
    * Get category by ID
    */
   getCategoryById: async (id: number): Promise<any> => {
-    const endpoint = `/api/admin/categories/${id}`;
-    const response = await apiClient.get<ApiResponse<any>>(endpoint);
-    return response.data;
+    const endpoint = config.endpoints.shops.categories.detail(id);
+    return apiClient.get<any>(endpoint);
   },
   
   /**
    * Delete a category
    */
   deleteCategory: async (id: number): Promise<void> => {
-      const endpoint = `/api/admin/categories/${id}`;
+      const endpoint = config.endpoints.shops.categories.detail(id);
       await apiClient.delete(endpoint);
   },
 
@@ -317,29 +361,28 @@ export const ShopService = {
     let endpoint = `/api/admin/categories?page=${page}&size=${size}`;
     if (search) endpoint += `&search=${encodeURIComponent(search)}`;
     if (shopId !== undefined) endpoint += `&shopId=${shopId}`;
-    const response = await apiClient.get<any>(endpoint);
-    return response.data;
+    return apiClient.get<any>(endpoint);
   },
 
   /**
    * Toggle shop active/inactive status
    */
   toggleShopStatus: async (id: number, active: boolean): Promise<void> => {
-    await apiClient.put(`/api/admin/shops/${id}/status?active=${active}`);
+    await apiClient.put(`${config.endpoints.shops.status(id)}?active=${active}`);
   },
 
   /**
    * Verify a shop
    */
   verifyShop: async (id: number): Promise<void> => {
-    await apiClient.post(`/api/admin/shops/${id}/verify`);
+    await apiClient.post(config.endpoints.shops.verify(id));
   },
 
   /**
    * Reject a shop with optional reason
    */
   rejectShop: async (id: number, reason?: string): Promise<void> => {
-    let endpoint = `/api/admin/shops/${id}/reject`;
+    let endpoint = config.endpoints.shops.reject(id);
     if (reason) endpoint += `?reason=${encodeURIComponent(reason)}`;
     await apiClient.post(endpoint);
   },
@@ -348,7 +391,6 @@ export const ShopService = {
    * Get shops pending vetting (unverified shops)
    */
   getPendingVettingShops: async (page = 0, size = 20): Promise<any> => {
-    const response = await apiClient.get<any>(`/api/admin/shops/pending-vetting?page=${page}&size=${size}`);
-    return response.data;
+    return apiClient.get<any>(`${config.endpoints.shops.pending}?page=${page}&size=${size}`);
   },
 };

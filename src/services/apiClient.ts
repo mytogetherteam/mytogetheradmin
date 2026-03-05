@@ -24,6 +24,8 @@ export interface ApiResponseData<T> {
 
 class ApiClient {
   private baseUrl: string;
+  private isRefreshing = false;
+  private refreshSubscribers: ((token: string) => void)[] = [];
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -31,6 +33,19 @@ class ApiClient {
 
   private getAuthToken(): string | null {
     return localStorage.getItem(config.storage.tokenKey);
+  }
+
+  private getRefreshToken(): string | null {
+    return localStorage.getItem(config.storage.refreshTokenKey);
+  }
+
+  private onRefreshed(token: string) {
+    this.refreshSubscribers.map((cb) => cb(token));
+    this.refreshSubscribers = [];
+  }
+
+  private addRefreshSubscriber(cb: (token: string) => void) {
+    this.refreshSubscribers.push(cb);
   }
 
   private async request<T>(
@@ -65,6 +80,62 @@ class ApiClient {
         headers,
       });
 
+      if (response.status === 401 && !endpoint.includes('/refresh')) {
+        if (!this.isRefreshing) {
+          this.isRefreshing = true;
+          const refreshToken = this.getRefreshToken();
+
+          if (!refreshToken) {
+            this.isRefreshing = false;
+            this.handleLogout();
+            throw new ApiError('Session expired', 401);
+          }
+
+          try {
+            const refreshUrl = `${this.baseUrl}${config.endpoints.auth.refresh}`;
+            const refreshResponse = await fetch(refreshUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken }),
+            });
+
+            if (!refreshResponse.ok) {
+              throw new Error('Refresh failed');
+            }
+
+            const data = await refreshResponse.json();
+            const newToken = data.data?.token || data.token;
+            const newRefreshToken = data.data?.refreshToken || data.refreshToken;
+
+            if (newToken) {
+              localStorage.setItem(config.storage.tokenKey, newToken);
+              if (newRefreshToken) {
+                localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
+              }
+              
+              this.isRefreshing = false;
+              this.onRefreshed(newToken);
+              
+              // Retry the original request
+              return this.request<T>(endpoint, options);
+            } else {
+              throw new Error('Invalid refresh response');
+            }
+          } catch (error) {
+            this.isRefreshing = false;
+            this.handleLogout();
+            throw new ApiError('Session expired', 401);
+          }
+        }
+
+        // If already refreshing, wait for it to finish
+        return new Promise<T>((resolve) => {
+          this.addRefreshSubscriber((newToken) => {
+            resolve(this.request<T>(endpoint, options));
+          });
+        });
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError(
@@ -74,7 +145,14 @@ class ApiClient {
         );
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Automatically unwrap if it's a standard ApiResponseData
+      if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+          return data.data;
+      }
+
+      return data;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -82,6 +160,16 @@ class ApiClient {
       throw new ApiError(
         error instanceof Error ? error.message : 'Network request failed'
       );
+    }
+  }
+
+  private handleLogout() {
+    localStorage.removeItem(config.storage.tokenKey);
+    localStorage.removeItem(config.storage.refreshTokenKey);
+    localStorage.removeItem(config.storage.userKey);
+    // Use window.location as a fallback to force redirect if not in a react context
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
     }
   }
 

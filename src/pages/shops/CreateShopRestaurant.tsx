@@ -26,11 +26,10 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO } from "@/services/shopService"
+import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
-import { apiClient } from "@/services/apiClient"
-import { config } from "@/config/config"
 import {
     Dialog,
     DialogContent,
@@ -140,9 +139,10 @@ export default function CreateShopRestaurant() {
     const [submitting, setSubmitting] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
-    const [categories, setCategories] = useState<string[]>([])
-    const [setupData, setSetupData] = useState<any>(null)
+    const [setupData, setSetupData] = useState<ShopFormDataDTO | null>(null)
     const [setupLoading, setSetupLoading] = useState(true)
+    const [selectedCityId, setSelectedCityId] = useState<number | null>(null)
+    const [availableDistricts, setAvailableDistricts] = useState<DistrictDTO[]>([])
 
     const form = useForm<ShopFormValues>({
         resolver: zodResolver(shopFormSchema) as Resolver<ShopFormValues>,
@@ -203,6 +203,20 @@ export default function CreateShopRestaurant() {
     useEffect(() => {
         loadSetupData()
     }, [])
+
+    // Auto-generate slug from English Name
+    const nameEn = form.watch("nameEn")
+    useEffect(() => {
+        if (!isEditMode) {
+            const slug = (nameEn || "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+            form.setValue("slug", slug)
+        }
+    }, [nameEn, isEditMode, form])
 
     useEffect(() => {
         if (isEditMode && shopId) {
@@ -284,22 +298,39 @@ export default function CreateShopRestaurant() {
     const loadSetupData = async () => {
         setSetupLoading(true)
         try {
-            // This now calls the updated categories endpoint which points to setup data
-            const response = await apiClient.get<any>(config.endpoints.shops.categories)
-            const data = response.data
+            const data = await PaymentService.getShopFormData()
             setSetupData(data)
-
-            // Extract categories if available, else use fallback
-            if (data.categories) {
-                setCategories(data.categories)
-            } else {
-                setCategories(["Restaurant", "Retail", "Service", "Other"])
-            }
         } catch (error) {
             console.error("Failed to load setup data:", error)
-            setCategories(["Restaurant", "Retail", "Service", "Other"])
         } finally {
             setSetupLoading(false)
+        }
+    }
+
+    // Handle City Change
+    const handleCityChange = (cityId: number) => {
+        setSelectedCityId(cityId)
+        const city = setupData?.cities.find(c => c.id === cityId)
+        if (city) {
+            setAvailableDistricts(city.districts || [])
+            form.setValue("city", city.nameEn)
+            form.setValue("cityMm", city.nameMm)
+            // Reset district when city changes
+            form.setValue("districtId", 0)
+            form.setValue("district", "")
+            form.setValue("districtMm", "")
+        }
+    }
+
+    // Handle District Change
+    const handleDistrictChange = (districtId: number) => {
+        const district = availableDistricts.find(d => d.id === districtId)
+        if (district) {
+            form.setValue("districtId", district.id)
+            form.setValue("district", district.nameEn)
+            form.setValue("districtMm", district.nameMm)
+            if (district.latitude) form.setValue("latitude", district.latitude)
+            if (district.longitude) form.setValue("longitude", district.longitude)
         }
     }
 
@@ -689,7 +720,7 @@ export default function CreateShopRestaurant() {
                                                     <FormItem>
                                                         <FormLabel>Slug</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="my-together-cafe" {...field} />
+                                                            <Input placeholder="my-together-cafe" {...field} readOnly className="bg-muted" />
                                                         </FormControl>
                                                         <FormDescription>URL friendly name.</FormDescription>
                                                         <FormMessage />
@@ -704,7 +735,7 @@ export default function CreateShopRestaurant() {
                                                         <FormLabel>Category</FormLabel>
                                                         <FormControl>
                                                             <SearchableSelect
-                                                                data={categories.map(cat => ({ label: cat, value: cat }))}
+                                                                data={(setupData?.cuisineTypes || []).map(cat => ({ label: cat.name, value: cat.name }))}
                                                                 value="value"
                                                                 labelKey="label"
                                                                 selectedValue={field.value ? { label: field.value, value: field.value } : undefined}
@@ -712,6 +743,35 @@ export default function CreateShopRestaurant() {
                                                                 placeholder={setupLoading ? "Loading categories..." : "Select a category"}
                                                                 disabled={setupLoading}
                                                             />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="categoryMm"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Category (Myanmar)</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="အမျိုးအစား (မြန်မာ)" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="categoryEn"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Category (English)</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Category in English" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -995,41 +1055,44 @@ export default function CreateShopRestaurant() {
                                             )}
                                         />
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="city" // Use a relevant name, even if it's derived or handled differently, to satisfy FormField
+                                                render={() => (
+                                                    <FormItem>
+                                                        <FormLabel>City</FormLabel>
+                                                        <FormControl>
+                                                            <SearchableSelect
+                                                                data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
+                                                                value="value"
+                                                                labelKey="label"
+                                                                selectedValue={selectedCityId ? { label: setupData?.cities.find(c => c.id === selectedCityId)?.nameEn || "", value: selectedCityId } : undefined}
+                                                                onChange={(item) => item && handleCityChange(item.value)}
+                                                                placeholder="Select City"
+                                                                disabled={setupLoading}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+
                                             <FormField
                                                 control={form.control}
                                                 name="districtId"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>District ID</FormLabel>
+                                                        <FormLabel>District</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" placeholder="District ID" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="district"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>District (English)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. Dagon" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="districtMm"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>District (Myanmar)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. ဒဂုံ" {...field} />
+                                                            <SearchableSelect
+                                                                data={availableDistricts.map(d => ({ label: d.nameEn, value: d.id }))}
+                                                                value="value"
+                                                                labelKey="label"
+                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || "", value: field.value } : undefined}
+                                                                onChange={(item) => item && handleDistrictChange(item.value)}
+                                                                placeholder="Select District"
+                                                                disabled={!selectedCityId}
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1043,24 +1106,22 @@ export default function CreateShopRestaurant() {
                                                 name="city"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>City (English)</FormLabel>
+                                                        <FormLabel>City Name (Auto)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. Yangon" {...field} />
+                                                            <Input {...field} readOnly className="bg-muted" />
                                                         </FormControl>
-                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                             <FormField
                                                 control={form.control}
-                                                name="cityMm"
+                                                name="district"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>City (Myanmar)</FormLabel>
+                                                        <FormLabel>District Name (Auto)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. ရန်ကုန်" {...field} />
+                                                            <Input {...field} readOnly className="bg-muted" />
                                                         </FormControl>
-                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
@@ -1074,28 +1135,26 @@ export default function CreateShopRestaurant() {
                                                     <FormItem>
                                                         <FormLabel>Phone</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Phone number" {...field} />
+                                                            <Input placeholder="Use commas to add multi phone numbers" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="email"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Email</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="email" placeholder="contact@shop.com" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
-
-                                        {/* Email - Full Width */}
-                                        <FormField
-                                            control={form.control}
-                                            name="email"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Email</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="email" placeholder="contact@shop.com" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
