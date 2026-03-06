@@ -39,28 +39,26 @@ export default function CreateMenuItem() {
     const [deleting, setDeleting] = useState(false);
 
     // Form Data
-    const [name, setName] = useState("");
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
+    const [slug, setSlug] = useState("");
     const [description, setDescription] = useState("");
     const [descriptionMm, setDescriptionMm] = useState("");
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
     const [price, setPrice] = useState("");
-    const [smallPrice, setSmallPrice] = useState("");
-    const [mediumPrice, setMediumPrice] = useState("");
-    const [largePrice, setLargePrice] = useState("");
+    const [originalPrice, setOriginalPrice] = useState("");
+    const [discountAmount, setDiscountAmount] = useState("");
+    const [discountPercentage, setDiscountPercentage] = useState("");
     const [currency, setCurrency] = useState("MMK");
     const [shopId, setShopId] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [subCategoryId, setSubCategoryId] = useState("");
     const [isVegetarian, setIsVegetarian] = useState(false);
     const [isSpicy, setIsSpicy] = useState(false);
-    const [isPopular, setIsPopular] = useState(false);
+
     const [isAvailable, setIsAvailable] = useState(true);
-    const [isRecommended, setIsRecommended] = useState(false);
-    const [isHotDeal, setIsHotDeal] = useState(false);
     const [isCombo, setIsCombo] = useState(false);
     const [displayOrder, setDisplayOrder] = useState(0);
 
@@ -80,34 +78,44 @@ export default function CreateMenuItem() {
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
 
     useEffect(() => {
+        if (!isEditMode) {
+            const generatedSlug = (nameEn || "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-');
+            setSlug(generatedSlug);
+        }
+    }, [nameEn, isEditMode]);
+
+    useEffect(() => {
         loadShops();
         loadCategories();
         if (isEditMode && id) {
             loadItem(parseInt(id));
         } else {
             // Reset form for create mode
-            setName("");
             setNameMm("");
             setNameTh("");
             setNameEn("");
+            setSlug("");
             setDescription("");
             setDescriptionMm("");
             setDescriptionTh("");
             setDescriptionEn("");
             setPrice("");
-            setSmallPrice("");
-            setMediumPrice("");
-            setLargePrice("");
+            setOriginalPrice("");
+            setDiscountAmount("");
+            setDiscountPercentage("");
             setCurrency("MMK");
             setShopId("");
             setCategoryId("");
             setSubCategoryId("");
             setIsVegetarian(false);
             setIsSpicy(false);
-            setIsPopular(false);
+
             setIsAvailable(true);
-            setIsRecommended(false);
-            setIsHotDeal(false);
             setIsCombo(false);
             setDisplayOrder(0);
             setImageFile(null);
@@ -159,29 +167,27 @@ export default function CreateMenuItem() {
         setLoading(true);
         try {
             const item = await menuService.getMenuItem(itemId);
-            setName(item.name);
             setNameMm(item.nameMm || "");
             setNameTh(item.nameTh || "");
             setNameEn(item.nameEn || "");
+            setSlug(item.slug || "");
             setDescription(item.description || "");
             setDescriptionMm(item.descriptionMm || "");
             setDescriptionTh(item.descriptionTh || "");
             setDescriptionEn(item.descriptionEn || "");
             // Format price with commas
             setPrice(item.price ? item.price.toLocaleString() : "0");
-            setSmallPrice(item.smallPrice ? item.smallPrice.toLocaleString() : "");
-            setMediumPrice(item.mediumPrice ? item.mediumPrice.toLocaleString() : "");
-            setLargePrice(item.largePrice ? item.largePrice.toLocaleString() : "");
+            setOriginalPrice(item.originalPrice ? item.originalPrice.toLocaleString() : "");
+            setDiscountAmount(item.discountAmount ? item.discountAmount.toLocaleString() : "");
+            setDiscountPercentage(item.discountPercentage ? item.discountPercentage.toLocaleString() : "");
             setCurrency(item.currency || "MMK");
             setShopId(item.shopId?.toString() || "");
             setCategoryId(item.categoryId?.toString() || "");
             setSubCategoryId(item.subCategoryId?.toString() || "");
             setIsVegetarian(item.isVegetarian || false);
             setIsSpicy(item.isSpicy || false);
-            setIsPopular(item.isPopular || false);
+
             setIsAvailable(item.isAvailable !== false);
-            setIsRecommended(item.isRecommended || false);
-            setIsHotDeal(item.isHotDeal || false);
             setIsCombo(item.isCombo || false);
             setDisplayOrder(item.displayOrder || 0);
 
@@ -268,28 +274,26 @@ export default function CreateMenuItem() {
             const formData = new FormData();
 
             const payload = {
-                name,
                 nameMm,
                 nameTh,
                 nameEn,
+                slug,
                 description,
                 descriptionMm,
                 descriptionTh,
                 descriptionEn,
                 price: Number(price.replace(/,/g, "")) || 0,
-                smallPrice: smallPrice ? Number(smallPrice.replace(/,/g, "")) : 0,
-                mediumPrice: mediumPrice ? Number(mediumPrice.replace(/,/g, "")) : 0,
-                largePrice: largePrice ? Number(largePrice.replace(/,/g, "")) : 0,
+                originalPrice: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
+                discountAmount: discountAmount ? Number(discountAmount.replace(/,/g, "")) : 0,
+                discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
                 currency,
                 shopId: Number(shopId),
                 categoryId: Number(categoryId),
                 subCategoryId: subCategoryId ? Number(subCategoryId) : 0,
                 isVegetarian,
                 isSpicy,
-                isPopular,
+
                 isAvailable,
-                isRecommended,
-                isHotDeal,
                 isCombo,
                 displayOrder: Number(displayOrder) || 0
             };
@@ -297,7 +301,7 @@ export default function CreateMenuItem() {
             formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
 
             if (imageFile) {
-                formData.append("image", imageFile);
+                formData.append("photo", imageFile);
             }
 
             galleryFiles.forEach((file) => {
@@ -364,10 +368,10 @@ export default function CreateMenuItem() {
                             <div className="space-y-2">
                                 <Label>Shop</Label>
                                 <SearchableSelect
-                                    data={shops.map(shop => ({ label: shop.name, value: String(shop.id) }))}
+                                    data={shops.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) }))}
                                     value="value"
                                     labelKey="label"
-                                    selectedValue={shopId ? { label: shops.find(s => String(s.id) === shopId)?.name || "", value: shopId } : undefined}
+                                    selectedValue={shopId ? { label: shops.find(s => String(s.id) === shopId)?.nameEn || shops.find(s => String(s.id) === shopId)?.name || "", value: shopId } : undefined}
                                     onChange={(item) => setShopId(item?.value || "")}
                                     placeholder="Select Shop"
                                 />
@@ -389,10 +393,7 @@ export default function CreateMenuItem() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Names & Descriptions</h3>
-                                <div className="space-y-2">
-                                    <Label>Name (Default)*</Label>
-                                    <Input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Cheese Burger" />
-                                </div>
+
                                 <div className="space-y-2">
                                     <Label>Name (Myanmar)</Label>
                                     <Input value={nameMm} onChange={e => setNameMm(e.target.value)} placeholder="e.g. ချိစ်ဘာဂါ" />
@@ -402,8 +403,12 @@ export default function CreateMenuItem() {
                                     <Input value={nameTh} onChange={e => setNameTh(e.target.value)} placeholder="e.g. ชีสเบอร์เกอร์" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Name (English)</Label>
-                                    <Input value={nameEn} onChange={e => setNameEn(e.target.value)} placeholder="e.g. Cheese Burger" />
+                                    <Label>Name (English) / Default*</Label>
+                                    <Input value={nameEn} onChange={e => setNameEn(e.target.value)} required placeholder="e.g. Cheese Burger" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Slug</Label>
+                                    <Input value={slug} onChange={e => setSlug(e.target.value)} readOnly className="bg-muted" />
                                 </div>
 
                                 <div className="space-y-2 mt-4">
@@ -474,29 +479,29 @@ export default function CreateMenuItem() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Small Price</Label>
+                                        <Label>Original Price</Label>
                                         <Input
                                             type="text"
-                                            value={smallPrice}
-                                            onChange={(e) => handlePriceChange(e, setSmallPrice)}
+                                            value={originalPrice}
+                                            onChange={(e) => handlePriceChange(e, setOriginalPrice)}
                                             placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Medium Price</Label>
+                                        <Label>Discount Amount</Label>
                                         <Input
                                             type="text"
-                                            value={mediumPrice}
-                                            onChange={(e) => handlePriceChange(e, setMediumPrice)}
+                                            value={discountAmount}
+                                            onChange={(e) => handlePriceChange(e, setDiscountAmount)}
                                             placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Large Price</Label>
+                                        <Label>Discount (%)</Label>
                                         <Input
                                             type="text"
-                                            value={largePrice}
-                                            onChange={(e) => handlePriceChange(e, setLargePrice)}
+                                            value={discountPercentage}
+                                            onChange={(e) => handlePriceChange(e, setDiscountPercentage)}
                                             placeholder="0"
                                         />
                                     </div>
@@ -520,18 +525,8 @@ export default function CreateMenuItem() {
                                         <Switch checked={isCombo} onCheckedChange={setIsCombo} id="combo" />
                                         <Label htmlFor="combo" className="font-medium cursor-pointer">Combo Meal</Label>
                                     </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isPopular} onCheckedChange={setIsPopular} id="popular" />
-                                        <Label htmlFor="popular" className="font-medium cursor-pointer">Popular</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isRecommended} onCheckedChange={setIsRecommended} id="recommended" />
-                                        <Label htmlFor="recommended" className="font-medium cursor-pointer">Recommended</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isHotDeal} onCheckedChange={setIsHotDeal} id="hotdeal" />
-                                        <Label htmlFor="hotdeal" className="font-medium cursor-pointer">Hot Deal</Label>
-                                    </div>
+
+
                                 </div>
                             </div>
                         </div>
@@ -656,8 +651,8 @@ export default function CreateMenuItem() {
                                 <Button
                                     type="submit"
                                     size="lg"
-                                    disabled={!name || !price || !shopId || !categoryId || submitting}
-                                    className={(!name || !price || !shopId || !categoryId || submitting) ? "bg-gray-400 cursor-not-allowed" : ""}
+                                    disabled={!nameEn || !price || !shopId || !categoryId || submitting}
+                                    className={(!nameEn || !price || !shopId || !categoryId || submitting) ? "bg-gray-400 cursor-not-allowed" : ""}
                                 >
                                     {submitting ? "Saving..." : isEditMode ? "Update Item" : "Create Item"}
                                 </Button>
@@ -672,7 +667,7 @@ export default function CreateMenuItem() {
                     <DialogHeader>
                         <DialogTitle>Delete Menu Item</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <strong>{name}</strong>? This action cannot be undone.
+                            Are you sure you want to delete <strong>{nameEn}</strong>? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

@@ -83,6 +83,18 @@ class MarketingService {
     return apiClient.post<void>(config.endpoints.admin.announcements.broadcastShops, { title, body: message, data });
   }
 
+  async notifySingleUser(userId: string | number, title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.notifyUser(userId), { title, body: message, data });
+  }
+
+  async notifySingleShop(shopId: string | number, title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.notifyShop(shopId), { title, body: message, data });
+  }
+
+  async createAnnouncement(title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.create, { title, body: message, data });
+  }
+
   async getBroadcastHistory(page = 0, size = 10): Promise<any> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     return apiClient.get<any>(`${config.endpoints.admin.announcements.history}?${params.toString()}`);

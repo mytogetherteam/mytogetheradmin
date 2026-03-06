@@ -12,6 +12,8 @@ import { History, Search } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { exportService } from "@/services/exportService";
+import { FileSpreadsheet } from "lucide-react";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800",
@@ -152,6 +154,18 @@ export default function OrderHistory() {
             <div className="flex items-center gap-3">
                 <History className="h-6 w-6 text-primary" />
                 <h1 className="text-lg font-semibold md:text-2xl">Order History</h1>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto gap-2"
+                    onClick={() => {
+                        exportService.exportOrders(startDate, endDate, statusFilter);
+                        toast.info("Exporting orders...");
+                    }}
+                >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Export to Excel
+                </Button>
             </div>
 
             {/* Filters */}
@@ -270,7 +284,7 @@ export default function OrderHistory() {
                                     </TableRow>
                                 ) : sortedOrders.map((order) => (
                                     <TableRow key={order.id}>
-                                        <TableCell className="font-mono text-xs">#{order.id.slice(-8).toUpperCase()}</TableCell>
+                                        <TableCell className="font-mono text-xs">#{String(order.id || '').slice(-8).toUpperCase()}</TableCell>
                                         <TableCell>{order.shopName}</TableCell>
                                         <TableCell>{order.customerName}</TableCell>
                                         <TableCell>

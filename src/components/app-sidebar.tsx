@@ -37,6 +37,11 @@ import {
     ImageIcon,
     Megaphone,
     Package,
+    Wallet,
+    QrCode,
+    Building2,
+    MapPin,
+    Clock,
 } from "lucide-react"
 
 import { Link } from "react-router-dom"
@@ -138,9 +143,165 @@ export function AppSidebar() {
                                         </SidebarMenuSubItem>
                                         <SidebarMenuSubItem>
                                             <SidebarMenuSubButton asChild>
+                                                <Link to="/shops/operating-hours">
+                                                    <Clock />
+                                                    <span>Shop Operating Hours</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shops/riders/manage">
+                                                    <Users />
+                                                    <span>Shop Riders</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shops/profile/settings">
+                                                    <Settings />
+                                                    <span>Shop Profile Mgt</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
                                                 <Link to="/import/shops-excel">
                                                     <FileSpreadsheet />
                                                     <span>Import Shops (Excel)</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
+                        {/* Shop Categories */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Shop Category">
+                                        <Tags />
+                                        <span>Shop Category</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-categories/create">
+                                                    <Plus />
+                                                    <span>Create Shop Category</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-categories/manage">
+                                                    <Settings2 />
+                                                    <span>Manage Shop Categories</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
+                        {/* Shop Sub Categories */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Shop Sub-Category">
+                                        <Tags />
+                                        <span>Shop Sub-Category</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-sub-categories/create">
+                                                    <Plus />
+                                                    <span>Create Shop Sub-Category</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-sub-categories/manage">
+                                                    <List />
+                                                    <span>Manage Shop Sub-Categories</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
+                        {/* Payment Method */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Payment Method">
+                                        <Wallet />
+                                        <span>Payment Method</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/payment/methods/create">
+                                                    <Plus />
+                                                    <span>Create Payment Method</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/payment/methods">
+                                                    <Settings2 />
+                                                    <span>Manage Payment Methods</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
+                        {/* Shop Payment Type */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Shop Payment Type">
+                                        <QrCode />
+                                        <span>Shop Payment Type</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-payment-types/create">
+                                                    <Plus />
+                                                    <span>Create Shop Payment Type</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/shop-payment-types/manage">
+                                                    <Settings2 />
+                                                    <span>Manage Shop Payment Types</span>
                                                 </Link>
                                             </SidebarMenuSubButton>
                                         </SidebarMenuSubItem>
@@ -363,6 +524,76 @@ export function AppSidebar() {
                     </SidebarMenu>
                 </SidebarGroup>
 
+                {/* Location Management */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Location</SidebarGroupLabel>
+                    <SidebarMenu>
+                        <Collapsible className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="City">
+                                        <Building2 />
+                                        <span>City</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/cities/create">
+                                                    <Plus />
+                                                    <span>Create City</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/cities/manage">
+                                                    <List />
+                                                    <span>Manage Cities</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
+                        <Collapsible className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="District">
+                                        <MapPin />
+                                        <span>District</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/districts/create">
+                                                    <Plus />
+                                                    <span>Create District</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild>
+                                                <Link to="/districts/manage">
+                                                    <List />
+                                                    <span>Manage Districts</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+                    </SidebarMenu>
+                </SidebarGroup>
+
                 {/* System / Administration */}
                 <SidebarGroup>
                     <SidebarGroupLabel>Administration</SidebarGroupLabel>
@@ -380,14 +611,6 @@ export function AppSidebar() {
                                 <Link to="/admin/profile">
                                     <User />
                                     <span>Admin Profile</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Payment Methods">
-                                <Link to="/payment/methods">
-                                    <Settings2 />
-                                    <span>Payment Methods</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

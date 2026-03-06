@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE_URL || 'https://mytogether-mytogether.up.railway.app',
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
           changeOrigin: true,
           secure: true,
         },

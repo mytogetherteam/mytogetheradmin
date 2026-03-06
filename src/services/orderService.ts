@@ -61,6 +61,10 @@ class OrderService {
     return apiClient.get<OrderHealthData>(config.endpoints.admin.orders.health);
   }
 
+  async getOrderDetail(orderId: string): Promise<Order> {
+    return apiClient.get<Order>(config.endpoints.admin.orders.detail(orderId));
+  }
+
   async getOrders(filters: OrderFilters = {}): Promise<OrdersPage> {
     const params = new URLSearchParams();
     if (filters.startDate) params.append('startDate', filters.startDate);

@@ -43,6 +43,33 @@ export const adminImportService = {
 
     return await parseJsonSafe(response);
   },
+
+  importActivityExcel: async (file: File): Promise<unknown> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const url = `${config.apiBaseUrl}${config.endpoints.admin.import.activityExcel}`;
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+      headers,
+    });
+
+    if (!response.ok) {
+      const data = await parseJsonSafe(response);
+      const message =
+        typeof data === "object" && data && "message" in (data as any)
+          ? String((data as any).message)
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new ApiError(message, response.status, data);
+    }
+
+    return await parseJsonSafe(response);
+  },
 };
 
 

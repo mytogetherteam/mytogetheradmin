@@ -120,7 +120,7 @@ export default function ManageShopRestaurant() {
         setActionLoading(shop.id)
         try {
             await ShopService.verifyShop(shop.id)
-            toast.success(`${shop.name} has been verified`)
+            toast.success(`${shop.nameEn || shop.name} has been verified`)
             loadShops()
             loadPendingShops()
         } catch (err) {
@@ -134,7 +134,7 @@ export default function ManageShopRestaurant() {
     const openRejectDialog = (e: React.MouseEvent, shop: any) => {
         e.stopPropagation()
         setRejectReason("")
-        setRejectDialog({ open: true, id: shop.id, name: shop.name })
+        setRejectDialog({ open: true, id: shop.id, name: shop.nameEn || shop.name })
     }
 
     const handleRejectConfirm = async () => {
@@ -155,11 +155,11 @@ export default function ManageShopRestaurant() {
 
     const filteredShops = shops.filter(
         (shop) =>
-            shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (shop.nameMm && shop.nameMm.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.category && shop.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.city && shop.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.district && shop.district.toLowerCase().includes(searchTerm.toLowerCase()))
+            (shop.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.nameMm?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.category?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.city?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.district?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
 
     const sortedShops = [...filteredShops].sort((a, b) => {
@@ -250,7 +250,7 @@ export default function ManageShopRestaurant() {
                                             {shop.logoUrl ? (
                                                 <img
                                                     src={shop.logoUrl}
-                                                    alt={shop.name}
+                                                    alt={shop.nameEn || shop.name}
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
@@ -260,7 +260,7 @@ export default function ManageShopRestaurant() {
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                     <TableCell className="font-medium">
-                                        <div>{shop.name}</div>
+                                        <div>{shop.nameEn || shop.name}</div>
                                         {shop.nameMm && <div className="text-xs text-muted-foreground">{shop.nameMm}</div>}
                                     </TableCell>
                                     <TableCell>
@@ -377,8 +377,9 @@ export default function ManageShopRestaurant() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="mb-4">
+                    {/* Vetting Tabs */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+                        <TabsList>
                             <TabsTrigger value="all">All Shops</TabsTrigger>
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
@@ -441,7 +442,6 @@ export default function ManageShopRestaurant() {
                                 </>
                             )}
                         </TabsContent>
-
                         <TabsContent value="pending">
                             <ShopTable shopList={pendingShops} isLoading={pendingLoading} />
                         </TabsContent>
@@ -473,6 +473,6 @@ export default function ManageShopRestaurant() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

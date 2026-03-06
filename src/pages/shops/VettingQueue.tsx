@@ -108,14 +108,15 @@ export default function VettingQueue() {
                                     ))
                                 ) : sortedShops.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                                             <Building2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
                                             No shops pending approval
                                         </TableCell>
                                     </TableRow>
                                 ) : sortedShops.map((shop: any) => (
                                     <TableRow key={shop.id}>
-                                        <TableCell className="font-medium">{shop.name}</TableCell>
+                                        <TableCell className="font-mono text-xs">{shop.id}</TableCell>
+                                        <TableCell className="font-medium">{shop.nameEn || shop.name}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{shop.ownerName ?? "—"}</TableCell>
                                         <TableCell className="text-sm">{shop.category}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">

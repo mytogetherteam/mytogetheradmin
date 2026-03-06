@@ -15,6 +15,7 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
+import { Input } from "@/components/ui/input";
 import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { ShopService } from "@/services/shopService";
@@ -59,6 +60,16 @@ function StatCard({
     );
 }
 
+function getDefaultDates() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30); // Default to 30 days ago
+    return {
+        start: start.toISOString().split("T")[0],
+        end: end.toISOString().split("T")[0],
+    };
+}
+
 const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
     PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
     CONFIRMED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
@@ -71,6 +82,10 @@ const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: strin
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const defaults = getDefaultDates();
+    const [startDate, setStartDate] = useState(defaults.start);
+    const [endDate, setEndDate] = useState(defaults.end);
+
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
@@ -87,7 +102,7 @@ export default function Dashboard() {
                 setLoading(true);
                 const [statsData, revenueData, shopsData, healthData, pendingData, reportsData, sysHealth] = await Promise.all([
                     analyticsService.getDashboardStats().catch(() => null),
-                    analyticsService.getRevenueAnalytics().catch(() => []),
+                    analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
                     ShopService.getPendingVettingShops(0, 1).catch(() => ({ totalElements: 0 })),
@@ -108,10 +123,10 @@ export default function Dashboard() {
             }
         }
         load();
-    }, []);
+    }, [startDate, endDate]);
 
     const chartData = revenue.length > 0
-        ? revenue.map((r) => ({ name: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }), total: r.revenue }))
+        ? revenue.map((r) => ({ name: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }), total: r.amount ?? 0 }))
         : [];
 
     return (
@@ -259,11 +274,28 @@ export default function Dashboard() {
             {/* Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">
-                    <CardHeader>
-                        <CardTitle>Revenue Overview</CardTitle>
-                        <CardDescription>Platform revenue over time.</CardDescription>
+                    <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-6">
+                        <div>
+                            <CardTitle className="text-base font-semibold">Revenue Overview</CardTitle>
+                            <CardDescription className="text-xs">Platform revenue trends and volume.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-md border">
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-36 h-7 text-[10px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                            />
+                            <span className="text-muted-foreground text-[10px] font-medium px-1">TO</span>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="w-36 h-7 text-[10px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                            />
+                        </div>
                     </CardHeader>
-                    <CardContent className="pl-2">
+                    <CardContent className="pl-2 pt-0">
                         {loading ? (
                             <Skeleton className="w-full h-[350px]" />
                         ) : chartData.length > 0 ? (
@@ -286,7 +318,7 @@ export default function Dashboard() {
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Popular Shops</CardTitle>
-                        <CardDescription>Top performing shops by revenue.</CardDescription>
+                        <CardDescription>Top performing shops by viewers.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -305,19 +337,29 @@ export default function Dashboard() {
                         ) : popularShops.length > 0 ? (
                             <div className="space-y-4">
                                 {popularShops.slice(0, 5).map((shop, i) => {
-                                    const shopId = shop.id || shop.shopId || `shop_${i}`;
-                                    const shopName = shop.name || shop.shopName || "Unknown Shop";
-                                    const shopRevenue = shop.revenue ?? shop.totalRevenue ?? 0;
+                                    const shopId = shop.shopId || `shop_${i}`;
+                                    const shopName = shop.shopName || "Unknown Shop";
+                                    const views = shop.viewCount || 0;
+                                    const unique = shop.uniqueViewers || 0;
                                     return (
-                                        <div key={shopId} className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                                                {i + 1}
+                                        <div key={shopId} className="flex items-baseline justify-between gap-4 p-2 rounded-lg hover:bg-muted/30 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">
+                                                    {i + 1}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold truncate text-foreground/90">{shopName}</p>
+                                                    <div className="flex items-center gap-1.5 ">
+                                                        <Users className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-[11px] text-muted-foreground font-medium">{unique.toLocaleString()} unique</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">{shopName}</p>
-                                                <p className="text-xs text-muted-foreground">{shop.orderCount || 0} orders</p>
+                                            <div className="shrink-0 text-right">
+                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">
+                                                    {views.toLocaleString()} views
+                                                </Badge>
                                             </div>
-                                            <div className="font-medium text-sm">${shopRevenue.toLocaleString() ?? '0'}</div>
                                         </div>
                                     )
                                 })}

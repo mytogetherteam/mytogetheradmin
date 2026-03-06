@@ -101,14 +101,11 @@ export default function ManageMenuItems() {
         setItems(sorted);
     };
 
-    const handleToggleFlag = async (item: any, flagType: 'recommended' | 'popular' | 'available' | 'hotdeal', value: boolean) => {
+    const handleToggleFlag = async (item: any, flagType: 'recommended' | 'available' | 'hotdeal', value: boolean) => {
         try {
             switch (flagType) {
                 case 'recommended':
                     await menuService.toggleRecommended(item.id, value);
-                    break;
-                case 'popular':
-                    await menuService.togglePopular(item.id, value);
                     break;
                 case 'available':
                     await menuService.toggleAvailable(item.id, value);
@@ -125,7 +122,6 @@ export default function ManageMenuItems() {
                         return {
                             ...i,
                             ...(flagType === 'recommended' && { isRecommended: value }),
-                            ...(flagType === 'popular' && { isPopular: value }),
                             ...(flagType === 'available' && { isAvailable: value }),
                             ...(flagType === 'hotdeal' && { isHotDeal: value })
                         };
@@ -260,10 +256,6 @@ export default function ManageMenuItems() {
                                                             <div className="flex items-center justify-between gap-2 max-w-[120px]">
                                                                 <Label className="text-[10px] cursor-pointer" htmlFor={`avail-${item.id}`}>Avail</Label>
                                                                 <Switch id={`avail-${item.id}`} className="scale-75 origin-right" checked={item.isAvailable} onCheckedChange={(val) => handleToggleFlag(item, 'available', val)} />
-                                                            </div>
-                                                            <div className="flex items-center justify-between gap-2 max-w-[120px]">
-                                                                <Label className="text-[10px] cursor-pointer" htmlFor={`pop-${item.id}`}>Pop</Label>
-                                                                <Switch id={`pop-${item.id}`} className="scale-75 origin-right" checked={item.isPopular} onCheckedChange={(val) => handleToggleFlag(item, 'popular', val)} />
                                                             </div>
                                                             <div className="flex items-center justify-between gap-2 max-w-[120px]">
                                                                 <Label className="text-[10px] cursor-pointer" htmlFor={`rec-${item.id}`}>Rec</Label>

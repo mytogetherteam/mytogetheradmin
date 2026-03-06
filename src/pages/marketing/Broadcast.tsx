@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { marketingService } from "@/services/marketingService";
+import { userService } from "@/services/userService";
+import { ShopService } from "@/services/shopService";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -9,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Megaphone, Send, History, ChevronLeft, ChevronRight, Users, Store } from "lucide-react";
+import { Megaphone, Send, History, ChevronLeft, ChevronRight, Users, Store, User } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Broadcast() {
@@ -21,8 +24,29 @@ export default function Broadcast() {
     // Form state
     const [title, setTitle] = useState("");
     const [message, setMessage] = useState("");
-    const [target, setTarget] = useState<"USERS" | "SHOPS">("USERS");
+    const [target, setTarget] = useState<"USERS" | "SHOPS" | "SINGLE_USER" | "SINGLE_SHOP">("USERS");
     const [sending, setSending] = useState(false);
+
+    const [shops, setShops] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [selectedShopId, setSelectedShopId] = useState<string>("");
+    const [selectedUserId, setSelectedUserId] = useState<string>("");
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [shopsRes, usersRes] = await Promise.all([
+                    ShopService.getAllShops(0, 1000),
+                    userService.getAllUsers(0, 1000)
+                ]);
+                setShops(shopsRes?.content || []);
+                setUsers(usersRes?.content || []);
+            } catch (error) {
+                console.error("Failed to load users/shops", error);
+            }
+        };
+        loadData();
+    }, []);
 
     const fetchHistory = useCallback(async () => {
         setLoading(true);
@@ -47,10 +71,16 @@ export default function Broadcast() {
         try {
             if (target === "USERS") {
                 await marketingService.broadcastToUsers(title, message);
-            } else {
+            } else if (target === "SHOPS") {
                 await marketingService.broadcastToShops(title, message);
+            } else if (target === "SINGLE_USER") {
+                if (!selectedUserId) return toast.error("Please select a user");
+                await marketingService.notifySingleUser(selectedUserId, title, message);
+            } else if (target === "SINGLE_SHOP") {
+                if (!selectedShopId) return toast.error("Please select a shop");
+                await marketingService.notifySingleShop(selectedShopId, title, message);
             }
-            toast.success(`Broadcast sent to all ${target.toLowerCase()}`);
+            toast.success(`Broadcast sent successfully`);
             setTitle("");
             setMessage("");
             setPage(0);
@@ -97,9 +127,47 @@ export default function Broadcast() {
                                                 <Store className="h-4 w-4" /> <span>All Shop Owners</span>
                                             </div>
                                         </SelectItem>
+                                        <SelectItem value="SINGLE_USER">
+                                            <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4" /> <span>Single User</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="SINGLE_SHOP">
+                                            <div className="flex items-center gap-2">
+                                                <Store className="h-4 w-4" /> <span>Single Shop</span>
+                                            </div>
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {target === "SINGLE_USER" && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select User</label>
+                                    <SearchableSelect
+                                        data={users.map(u => ({ label: u.name || u.phone || u.email || `User #${u.id}`, value: String(u.id) }))}
+                                        value="value"
+                                        labelKey="label"
+                                        selectedValue={selectedUserId ? { label: users.find(u => String(u.id) === selectedUserId)?.name || users.find(u => String(u.id) === selectedUserId)?.phone || users.find(u => String(u.id) === selectedUserId)?.email || `User #${selectedUserId}`, value: selectedUserId } : undefined}
+                                        onChange={(item) => setSelectedUserId(item?.value || "")}
+                                        placeholder="Search user..."
+                                    />
+                                </div>
+                            )}
+
+                            {target === "SINGLE_SHOP" && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select Shop</label>
+                                    <SearchableSelect
+                                        data={shops.map(s => ({ label: s.nameEn || s.name, value: String(s.id) }))}
+                                        value="value"
+                                        labelKey="label"
+                                        selectedValue={selectedShopId ? { label: shops.find(s => String(s.id) === selectedShopId)?.nameEn || shops.find(s => String(s.id) === selectedShopId)?.name || "", value: selectedShopId } : undefined}
+                                        onChange={(item) => setSelectedShopId(item?.value || "")}
+                                        placeholder="Search shop..."
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Notification Title</label>

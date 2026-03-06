@@ -22,6 +22,12 @@ export interface ApiResponseData<T> {
   timestamp?: string;
 }
 
+interface JwtPayload {
+  exp: number;
+  iat?: number;
+  [key: string]: unknown;
+}
+
 class ApiClient {
   private baseUrl: string;
   private isRefreshing = false;
@@ -48,10 +54,101 @@ class ApiClient {
     this.refreshSubscribers.push(cb);
   }
 
+  private decodeJwtExpiry(token: string): number | null {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload) as JwtPayload;
+      return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
+    } catch (error) {
+      console.error('Failed to decode JWT:', error);
+      return null;
+    }
+  }
+
+  private async checkAndRefreshToken(): Promise<void> {
+    const token = this.getAuthToken();
+    if (!token) return;
+
+    const expiry = this.decodeJwtExpiry(token);
+    if (!expiry) return;
+
+    // Refresh if expiring in less than 2 minutes
+    const bufferTime = 2 * 60 * 1000;
+    const now = Date.now();
+    
+    if (expiry - now < bufferTime) {
+      console.log(`Token expires soon (${new Date(expiry).toLocaleTimeString()}), proactively refreshing...`);
+      return this.performRefresh();
+    }
+  }
+
+  private async performRefresh(): Promise<void> {
+    if (this.isRefreshing) {
+      return new Promise((resolve) => {
+        this.addRefreshSubscriber(() => resolve());
+      });
+    }
+
+    this.isRefreshing = true;
+    const refreshToken = this.getRefreshToken();
+
+    if (!refreshToken) {
+      this.isRefreshing = false;
+      this.handleLogout();
+      return;
+    }
+
+    try {
+      const refreshUrl = `${this.baseUrl}${config.endpoints.auth.refresh}`;
+      const refreshResponse = await fetch(refreshUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Refresh failed');
+      }
+
+      const data = await refreshResponse.json();
+      const newToken = data.data?.token || data.token;
+      const newRefreshToken = data.data?.refreshToken || data.refreshToken;
+
+      if (newToken) {
+        localStorage.setItem(config.storage.tokenKey, newToken);
+        if (newRefreshToken) {
+          localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
+        }
+        
+        console.log('Token successfully refreshed');
+        this.isRefreshing = false;
+        this.onRefreshed(newToken);
+      } else {
+        throw new Error('Invalid refresh response');
+      }
+    } catch (error) {
+      this.isRefreshing = false;
+      this.handleLogout();
+      throw new ApiError('Session expired', 401);
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    // Skip proactive refresh for the refresh endpoint itself
+    if (!endpoint.includes('/refresh')) {
+      await this.checkAndRefreshToken();
+    }
+
     const token = this.getAuthToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -80,52 +177,11 @@ class ApiClient {
         headers,
       });
 
-      if (response.status === 401 && !endpoint.includes('/refresh')) {
+      if ((response.status === 401 || response.status === 403) && !endpoint.includes('/refresh')) {
         if (!this.isRefreshing) {
-          this.isRefreshing = true;
-          const refreshToken = this.getRefreshToken();
-
-          if (!refreshToken) {
-            this.isRefreshing = false;
-            this.handleLogout();
-            throw new ApiError('Session expired', 401);
-          }
-
-          try {
-            const refreshUrl = `${this.baseUrl}${config.endpoints.auth.refresh}`;
-            const refreshResponse = await fetch(refreshUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken }),
-            });
-
-            if (!refreshResponse.ok) {
-              throw new Error('Refresh failed');
-            }
-
-            const data = await refreshResponse.json();
-            const newToken = data.data?.token || data.token;
-            const newRefreshToken = data.data?.refreshToken || data.refreshToken;
-
-            if (newToken) {
-              localStorage.setItem(config.storage.tokenKey, newToken);
-              if (newRefreshToken) {
-                localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
-              }
-              
-              this.isRefreshing = false;
-              this.onRefreshed(newToken);
-              
-              // Retry the original request
-              return this.request<T>(endpoint, options);
-            } else {
-              throw new Error('Invalid refresh response');
-            }
-          } catch (error) {
-            this.isRefreshing = false;
-            this.handleLogout();
-            throw new ApiError('Session expired', 401);
-          }
+          await this.performRefresh();
+          // Retry the original request
+          return this.request<T>(endpoint, options);
         }
 
         // If already refreshing, wait for it to finish

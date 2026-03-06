@@ -55,8 +55,8 @@ class LostFoundService {
     return response;
   }
 
-  async forceResolve(id: string): Promise<void> {
-    return apiClient.put<void>(config.endpoints.admin.lostFound.resolve(id), {});
+  async forceResolve(postId: string): Promise<void> {
+    return apiClient.put<void>(config.endpoints.admin.lostFound.resolve(postId), {});
   }
 
   async deleteCase(id: string): Promise<void> {

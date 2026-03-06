@@ -21,6 +21,12 @@ import AdminProfile from "@/pages/AdminProfile";
 import { ExcelImportProvider } from "@/context/ExcelImportContext";
 import PaymentMethods from "@/pages/payment/PaymentMethods";
 import PaymentMethodForm from "@/pages/payment/PaymentMethodForm";
+import ManageShopCategories from "@/pages/shop-categories/ManageShopCategories";
+import CreateShopCategory from "@/pages/shop-categories/CreateShopCategory";
+import ManageShopSubCategories from "@/pages/shop-sub-categories/ManageShopSubCategories";
+import CreateShopSubCategory from "@/pages/shop-sub-categories/CreateShopSubCategory";
+import ManageShopPaymentTypes from "@/pages/shop-payment-types/ManageShopPaymentTypes";
+import CreateShopPaymentType from "@/pages/shop-payment-types/CreateShopPaymentType";
 
 // New pages
 import AnalyticalDashboard from "@/pages/analytics/AnalyticalDashboard";
@@ -38,6 +44,18 @@ import Broadcast from "@/pages/marketing/Broadcast";
 import AuditLogs from "@/pages/system/AuditLogs";
 import VettingQueue from "@/pages/shops/VettingQueue";
 import CommentBoard from "@/pages/community/CommentBoard";
+
+// New Rider & Profile pages
+import ManageRiders from "@/pages/shops/ManageRiders";
+import CreateRider from "@/pages/shops/CreateRider";
+import ShopProfileSettings from "@/pages/shops/ShopProfileSettings";
+import ShopOperatingHours from "@/pages/shops/ShopOperatingHours";
+
+// City & District Management
+import ManageCities from "@/pages/cities/ManageCities";
+import CreateCity from "@/pages/cities/CreateCity";
+import ManageDistricts from "@/pages/districts/ManageDistricts";
+import CreateDistrict from "@/pages/districts/CreateDistrict";
 
 function PublicOnlyRoute() {
   if (authService.isAuthenticated()) {
@@ -81,11 +99,29 @@ function App() {
           {/* Shops */}
           <Route path="/shops/manage" element={<ManageShopRestaurant />} />
           <Route path="/shops/create" element={<CreateShopRestaurant />} />
+          <Route path="/shops/riders/manage" element={<ManageRiders />} />
+          <Route path="/shops/riders/create" element={<CreateRider />} />
+          <Route path="/shops/profile/settings" element={<ShopProfileSettings />} />
+          <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
           <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
 
           {/* Categories */}
           <Route path="/categories/create" element={<CreateCategory />} />
           <Route path="/categories/manage" element={<ManageCategories />} />
+
+          {/* Shop Categories */}
+          <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
+          <Route path="/shop-categories/create" element={<CreateShopCategory />} />
+
+          {/* Shop Sub Categories */}
+          <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
+          <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
+          <Route path="/shop-sub-categories/edit/:subId" element={<CreateShopSubCategory />} />
+
+          {/* Shop Payment Types */}
+          <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
+          <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
+          <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
 
           {/* Menu Items */}
           <Route path="/menus/items/manage" element={<ManageMenuItems />} />
@@ -118,6 +154,16 @@ function App() {
 
           {/* System */}
           <Route path="/system/audit-logs" element={<AuditLogs />} />
+
+          {/* Cities */}
+          <Route path="/cities/manage" element={<ManageCities />} />
+          <Route path="/cities/create" element={<CreateCity />} />
+          <Route path="/cities/edit/:id" element={<CreateCity />} />
+
+          {/* Districts */}
+          <Route path="/districts/manage" element={<ManageDistricts />} />
+          <Route path="/districts/create" element={<CreateDistrict />} />
+          <Route path="/districts/edit/:id" element={<CreateDistrict />} />
 
           {/* Payment */}
           <Route path="/payment/methods" element={<PaymentMethods />} />

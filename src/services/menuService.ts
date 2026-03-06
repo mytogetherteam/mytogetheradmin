@@ -22,6 +22,9 @@ export interface MenuItem {
     descriptionTh?: string;
     descriptionEn?: string;
     price: number;
+    originalPrice?: number;
+    discountAmount?: number;
+    discountPercentage?: number;
     smallPrice?: number;
     mediumPrice?: number;
     largePrice?: number;
@@ -33,9 +36,9 @@ export interface MenuItem {
     imageUrls?: string[]; // Multiple images support
     isVegetarian?: boolean;
     isSpicy?: boolean;
-    isPopular?: boolean;
     isAvailable?: boolean;
     isRecommended?: boolean;
+    isPopular?: boolean;
     isHotDeal?: boolean;
     isCombo?: boolean;
     displayOrder?: number;
@@ -124,9 +127,6 @@ export const menuService = {
     // --- Status Toggles ---
     toggleRecommended: async (id: number, enabled: boolean): Promise<any> => {
         return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.recommended(id)}?enabled=${enabled}`);
-    },
-    togglePopular: async (id: number, isPopular: boolean): Promise<any> => {
-        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.popular(id)}?isPopular=${isPopular}`);
     },
     toggleAvailable: async (id: number, available: boolean): Promise<any> => {
         return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.availability(id)}?available=${available}`);

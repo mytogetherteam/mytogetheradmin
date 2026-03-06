@@ -261,7 +261,7 @@ export default function CreateCategory() {
                     <SelectContent>
                       {shops.map((shop) => (
                         <SelectItem key={shop.id} value={shop.id.toString()}>
-                          {shop.name}
+                          {shop.nameEn || shop.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

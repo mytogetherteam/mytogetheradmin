@@ -45,8 +45,8 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import * as XLSX from "xlsx";
 import { userService } from "@/services/userService";
+import { exportService } from "@/services/exportService";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -115,17 +115,8 @@ export default function ManageUsers() {
     };
 
     const exportToExcel = () => {
-        const data = users.map(u => ({
-            ID: u.id,
-            Name: u.name || u.fullName || "N/A",
-            Email: u.email,
-            Role: u.role || "User",
-            Status: u.active ? "Active" : "Inactive"
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Users");
-        XLSX.writeFile(wb, "Users.xlsx");
+        exportService.exportUsers();
+        toast.info("Exporting users...");
     };
 
     const handleToggleStatus = async (user: any) => {
@@ -370,7 +361,7 @@ export default function ManageUsers() {
                             <SelectContent>
                                 <SelectItem value="USER">USER</SelectItem>
                                 <SelectItem value="ADMIN">ADMIN</SelectItem>
-                                <SelectItem value="MODERATOR">MODERATOR</SelectItem>
+                                <SelectItem value="SHOP_OWNER">SHOP-OWNER</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

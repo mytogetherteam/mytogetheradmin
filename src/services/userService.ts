@@ -53,7 +53,7 @@ export const userService = {
    * Update User Role
    */
   updateUserRole: async (id: string, role: string): Promise<any> => {
-    return apiClient.put<any>(config.endpoints.admin.users.role(id), { role });
+    return apiClient.put<any>(`${config.endpoints.admin.users.role(id)}?role=${role}`, {});
   },
 
   /**
@@ -61,5 +61,38 @@ export const userService = {
    */
   updateAdminProfile: async (data: { username: string; fullName: string }): Promise<any> => {
     return apiClient.put<any>(config.endpoints.user.profile, data);
+  },
+
+  /**
+   * Get user by ID
+   */
+  getUserById: async (id: string | number): Promise<any> => {
+    return apiClient.get<any>(config.endpoints.admin.users.detail(id));
+  },
+
+  /**
+   * Get user order history
+   */
+  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<any> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return apiClient.get<any>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
+  },
+
+  /**
+   * Get user activity log
+   */
+  getUserActivity: async (id: string | number, page = 0, size = 10): Promise<any> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return apiClient.get<any>(`${config.endpoints.admin.users.activity(id)}?${params.toString()}`);
+  },
+
+  /**
+   * Lookup users (lightweight search for dropdowns)
+   */
+  lookupUsers: async (search = ''): Promise<any[]> => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any[]>(`${config.endpoints.admin.users.lookup}${query}`);
   },
 };

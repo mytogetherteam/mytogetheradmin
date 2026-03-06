@@ -90,7 +90,7 @@ class ModerationService {
   }
 
   async deleteComment(id: string): Promise<void> {
-    return apiClient.delete<void>(`${config.endpoints.admin.moderation.comments}/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.commentDetail(id));
   }
 
   async hidePost(id: string): Promise<Post> {
@@ -98,7 +98,7 @@ class ModerationService {
   }
 
   async deletePost(id: string): Promise<void> {
-    return apiClient.delete<void>(`${config.endpoints.admin.moderation.posts}/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.postDetail(id));
   }
 
   async banUser(userId: string, reason: string): Promise<void> {

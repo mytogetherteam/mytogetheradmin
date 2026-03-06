@@ -138,6 +138,26 @@ export interface PaymentMethodDTO {
   displayOrder: number;
 }
 
+export interface ShopCategoryDTO {
+  id: number;
+  nameEn: string;
+  nameMm: string;
+  nameTh?: string;
+  slug: string;
+  iconUrl?: string;
+  active: boolean;
+}
+
+export interface ShopSubCategoryDTO {
+  id: number;
+  categoryId: number;
+  nameEn: string;
+  nameMm: string;
+  nameTh?: string;
+  slug: string;
+  active: boolean;
+}
+
 export interface ShopFormDataDTO {
   cities: CityDTO[];
   cuisineTypes: CuisineTypeDTO[];
@@ -145,6 +165,7 @@ export interface ShopFormDataDTO {
   pricePreferences: EnumOptionDTO[];
   mealTypes: EnumOptionDTO[];
   deliveryTypes: EnumOptionDTO[];
+  shopCategories?: ShopCategoryDTO[];
 }
 
 export interface Photo {
@@ -165,13 +186,26 @@ export interface MenuItem {
   name: string;
   nameMm?: string;
   nameEn?: string;
+  slug?: string;
+  description?: string;
+  descriptionMm?: string;
+  descriptionTh?: string;
+  descriptionEn?: string;
   price?: number;
+  originalPrice?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
   currency?: string;
+  shopId?: number;
+  categoryId?: number;
+  subCategoryId?: number;
   imageUrl?: string;
+  imageUrls?: string[];
   isAvailable?: boolean;
   isPopular?: boolean;
   isVegetarian?: boolean;
   isSpicy?: boolean;
+  isCombo?: boolean;
   displayOrder?: number;
 }
 
@@ -227,6 +261,8 @@ export interface OperatingHourRequest {
 export interface ShopDetail extends Shop {
   latitude: number;
   longitude: number;
+  shopCategory?: ShopCategoryDTO;
+  shopSubCategory?: ShopSubCategoryDTO;
   photos?: Photo[];
   menuCategories?: MenuCategory[];
   recentReviews?: Review[];
@@ -282,19 +318,31 @@ export const ShopService = {
   /**
    * Get all shop categories
    */
-  getCategories: async (): Promise<string[]> => {
-    // Note: Admin spec setup/shop-form-data returns many types of data.
-    // For now, we'll keep returning a list of strings if the UI expects it,
-    // but the actual categories might need a different source or be hardcoded if missing from setup.
+  getCategories: async (): Promise<ShopCategoryDTO[]> => {
     try {
-      const response = await apiClient.get<any>(
-        config.endpoints.shops.categories.form
+      const response = await apiClient.get<ShopCategoryDTO[]>(
+        config.endpoints.admin.payment.shopCategories
       );
-      // If setup data, we might need to extract something. 
-      // For now, let's assume it still works or fallback to common categories.
-      return response.categories || ["Restaurant", "Retail", "Service", "Other"];
+      // We assume it returns an array of categories directly
+      // If it returns a paginated response, handle `.content`, though setup endpoints usually return raw arrays
+      return Array.isArray(response) ? response : (response as any).content || [];
     } catch (e) {
-      return ["Restaurant", "Retail", "Service", "Other"];
+      return [];
+    }
+  },
+
+  /**
+   * Get all sub-categories for a shop category
+   */
+  getSubCategories: async (categoryId: number): Promise<ShopSubCategoryDTO[]> => {
+    try {
+      if (!categoryId) return [];
+      const response = await apiClient.get<ShopSubCategoryDTO[]>(
+        config.endpoints.admin.payment.shopSubCategories(categoryId)
+      );
+      return Array.isArray(response) ? response : (response as any).content || [];
+    } catch (e) {
+      return [];
     }
   },
 
@@ -366,13 +414,16 @@ export const ShopService = {
 
   /**
    * Toggle shop active/inactive status
+   * PUT /api/admin/shops/{id}/status
    */
   toggleShopStatus: async (id: number, active: boolean): Promise<void> => {
+    // The endpoint expects ?active=true/false as a query parameter
     await apiClient.put(`${config.endpoints.shops.status(id)}?active=${active}`);
   },
 
   /**
    * Verify a shop
+   * POST /api/admin/shops/{id}/verify
    */
   verifyShop: async (id: number): Promise<void> => {
     await apiClient.post(config.endpoints.shops.verify(id));
@@ -380,6 +431,7 @@ export const ShopService = {
 
   /**
    * Reject a shop with optional reason
+   * POST /api/admin/shops/{id}/reject
    */
   rejectShop: async (id: number, reason?: string): Promise<void> => {
     let endpoint = config.endpoints.shops.reject(id);
@@ -389,8 +441,79 @@ export const ShopService = {
 
   /**
    * Get shops pending vetting (unverified shops)
+   * GET /api/admin/shops/pending-vetting
    */
   getPendingVettingShops: async (page = 0, size = 20): Promise<any> => {
     return apiClient.get<any>(`${config.endpoints.shops.pending}?page=${page}&size=${size}`);
+  },
+
+  /**
+   * Get Shop Profile
+   */
+  getShopProfile: async (): Promise<any> => {
+    return apiClient.get<any>(config.endpoints.shops.profile.base);
+  },
+
+  /**
+   * Update Shop Profile
+   */
+  updateShopProfile: async (profileData: FormData | any): Promise<any> => {
+    return apiClient.put<any>(config.endpoints.shops.profile.base, profileData);
+  },
+
+  /**
+   * Toggle Shop Open/Closed Status
+   */
+  toggleShopOpenStatus: async (isOpen: boolean, shopId?: number): Promise<any> => {
+    const baseUrl = shopId 
+        ? `/api/admin/shops/${shopId}/open-status` 
+        : config.endpoints.shops.profile.status;
+    return apiClient.put<any>(`${baseUrl}?isOpen=${isOpen}`);
+  },
+
+  /**
+   * Update Operating Hours
+   */
+  updateOperatingHours: async (hours: OperatingHourRequest[]): Promise<any> => {
+    return apiClient.put<any>(config.endpoints.shops.profile.operatingHours, hours);
+  },
+
+  /**
+   * Lookup shops (lightweight search for dropdowns)
+   */
+  lookupShops: async (search = ''): Promise<any[]> => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any[]>(`${config.endpoints.shops.lookup}${query}`);
+  },
+
+  /**
+   * Get shop photos
+   */
+  getShopPhotos: async (shopId: number): Promise<Photo[]> => {
+    return apiClient.get<Photo[]>(config.endpoints.shops.photos(shopId));
+  },
+
+  /**
+   * Upload a photo for a shop
+   */
+  uploadShopPhoto: async (shopId: number, formData: FormData): Promise<Photo> => {
+    return apiClient.post<Photo>(config.endpoints.shops.photos(shopId), formData);
+  },
+
+  /**
+   * Delete a shop photo
+   */
+  deleteShopPhoto: async (shopId: number, photoId: number): Promise<void> => {
+    await apiClient.delete(config.endpoints.shops.photoDetail(shopId, photoId));
+  },
+
+  /**
+   * Get operating hours for a specific shop (admin)
+   * GET /api/admin/shops/{id}/operating-hours
+   */
+  getShopOperatingHours: async (shopId: number): Promise<OperatingHour[]> => {
+    return apiClient.get<OperatingHour[]>(config.endpoints.shops.operatingHours(shopId));
   },
 };

@@ -242,7 +242,8 @@ export default function CommunityMgt() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <SortableTableHead label="Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Comment Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Post Author" sortKey="postAuthorName" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Comment</TableHead>
                                         <TableHead>Post Reference</TableHead>
                                         <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
@@ -253,20 +254,21 @@ export default function CommunityMgt() {
                                     {loading ? (
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                {[...Array(5)].map((__, j) => (
+                                                {[...Array(6)].map((__, j) => (
                                                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                                 ))}
                                             </TableRow>
                                         ))
                                     ) : sortedComments.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                            <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                 No comments found.
                                             </TableCell>
                                         </TableRow>
                                     ) : sortedComments.map((c) => (
                                         <TableRow key={c.id}>
-                                            <TableCell className="text-sm font-medium">{c.authorName}</TableCell>
+                                            <TableCell className="text-sm font-medium">{c.authorName || "Unknown"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{c.postAuthorName || "Unknown"}</TableCell>
                                             <TableCell className="max-w-sm">
                                                 <p className="text-sm truncate">{c.content}</p>
                                             </TableCell>
