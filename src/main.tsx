@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <TooltipProvider>
+    <TooltipProvider delayDuration={200}>
       <App />
     </TooltipProvider>
   </BrowserRouter>,

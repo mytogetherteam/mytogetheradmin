@@ -138,8 +138,9 @@ export default function CommunityMgt() {
                             <SelectContent>
                                 <SelectItem value="ALL">All Types</SelectItem>
                                 <SelectItem value="GENERAL">General</SelectItem>
-                                <SelectItem value="LOST">Lost</SelectItem>
-                                <SelectItem value="FOUND">Found</SelectItem>
+                                <SelectItem value="NEWS">News</SelectItem>
+                                <SelectItem value="ALERT">Alert</SelectItem>
+                                <SelectItem value="EVENT">Event</SelectItem>
                             </SelectContent>
                         </Select>
                     )}

@@ -46,6 +46,8 @@ import { Badge } from "@/components/ui/badge"
 const shopFormSchema = z.object({
     // Basic Info
     nameEn: z.string().min(2, "Name (English) is required."),
+    nameMm: z.string().optional(),
+    nameTh: z.string().optional(),
 
     // Category
     shopCategoryId: z.number().min(1, "Please select a category."),
@@ -53,6 +55,8 @@ const shopFormSchema = z.object({
 
     // Location
     addressEn: z.string().min(5, "Address must be at least 5 characters."),
+    addressMm: z.string().optional(),
+    addressTh: z.string().optional(),
     districtId: z.coerce.number().min(1, "District is required."),
     latitude: z.coerce.number().min(-90).max(90, "Invalid latitude"),
     longitude: z.coerce.number().min(-180).max(180, "Invalid longitude"),
@@ -63,6 +67,8 @@ const shopFormSchema = z.object({
 
     // Description
     descriptionEn: z.string().optional(),
+    descriptionMm: z.string().optional(),
+    descriptionTh: z.string().optional(),
 
     // Features
     hasDelivery: z.boolean().optional(),
@@ -130,15 +136,21 @@ export default function CreateShopRestaurant() {
         resolver: zodResolver(shopFormSchema) as Resolver<ShopFormValues>,
         defaultValues: {
             nameEn: "",
+            nameMm: "",
+            nameTh: "",
             shopCategoryId: 0,
             shopSubCategoryId: undefined,
             addressEn: "",
+            addressMm: "",
+            addressTh: "",
             districtId: 0,
             latitude: 0,
             longitude: 0,
             phone: "",
             email: "",
             descriptionEn: "",
+            descriptionMm: "",
+            descriptionTh: "",
             hasDelivery: false,
             deliveryEnabled: false,
             hasParking: false,
@@ -181,15 +193,21 @@ export default function CreateShopRestaurant() {
             // Reset form for create mode
             form.reset({
                 nameEn: "",
+                nameMm: "",
+                nameTh: "",
                 shopCategoryId: 0,
                 shopSubCategoryId: undefined,
                 addressEn: "",
+                addressMm: "",
+                addressTh: "",
                 districtId: 0,
                 latitude: 0,
                 longitude: 0,
                 phone: "",
                 email: "",
                 descriptionEn: "",
+                descriptionMm: "",
+                descriptionTh: "",
                 hasDelivery: false,
                 deliveryEnabled: false,
                 hasParking: false,
@@ -302,15 +320,21 @@ export default function CreateShopRestaurant() {
             // Map API response to form structure
             form.reset({
                 nameEn: shop.nameEn || "",
+                nameMm: shop.nameMm || "",
+                nameTh: shop.nameTh || "",
                 shopCategoryId: shop.shopCategory?.id || 0,
                 shopSubCategoryId: shop.shopSubCategory?.id || undefined,
                 addressEn: shop.addressEn || "",
+                addressMm: shop.addressMm || "",
+                addressTh: shop.addressTh || "",
                 districtId: shop.districtId || 0,
                 latitude: shop.latitude || 0,
                 longitude: shop.longitude || 0,
                 phone: shop.phone || "",
                 email: shop.email || "",
                 descriptionEn: shop.descriptionEn || "",
+                descriptionMm: shop.descriptionMm || "",
+                descriptionTh: shop.descriptionTh || "",
                 hasDelivery: shop.hasDelivery || false,
                 deliveryEnabled: shop.deliveryEnabled || false,
                 hasParking: shop.hasParking || false,
@@ -373,12 +397,12 @@ export default function CreateShopRestaurant() {
 
             // Prepare the data object (excluding file fields we send separately)
             const {
-                nameEn,
+                nameEn, nameMm, nameTh,
                 shopCategoryId, shopSubCategoryId,
-                addressEn,
+                addressEn, addressMm, addressTh,
                 districtId, latitude, longitude,
                 phone, email,
-                descriptionEn,
+                descriptionEn, descriptionMm, descriptionTh,
                 hasDelivery, deliveryEnabled, hasParking, hasWifi,
                 isVerified, isActive, isHalal, isVegetarian,
                 pricePreference, enableStockCheck, maxItemQuantityPerOrder, minOrderAmount, baseDeliveryFee,
@@ -386,16 +410,16 @@ export default function CreateShopRestaurant() {
             } = data;
 
             const dataWithoutFiles = {
-                nameEn,
+                nameEn, nameMm, nameTh,
                 shopCategoryId,
                 shopSubCategoryId,
-                addressEn,
+                addressEn, addressMm, addressTh,
                 districtId,
                 latitude,
                 longitude,
                 phone,
                 email,
-                descriptionEn,
+                descriptionEn, descriptionMm, descriptionTh,
                 hasDelivery,
                 deliveryEnabled,
                 hasParking,
@@ -561,13 +585,13 @@ export default function CreateShopRestaurant() {
                                         <CardTitle>Basic Information</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-4">
                                             <FormField
                                                 control={form.control}
                                                 name="nameEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Shop Name</FormLabel>
+                                                        <FormLabel>Shop Name (English)</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="e.g. My Together Cafe" {...field} />
                                                         </FormControl>
@@ -575,51 +599,127 @@ export default function CreateShopRestaurant() {
                                                     </FormItem>
                                                 )}
                                             />
-                                        </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="shopCategoryId"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Category</FormLabel>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                data={shopCategories.map(cat => ({ label: cat.nameEn || `Category ${cat.id}`, value: cat.id }))}
-                                                                value="value"
-                                                                labelKey="label"
-                                                                selectedValue={field.value ? { label: shopCategories.find(c => c.id === field.value)?.nameEn || `Category ${field.value}`, value: field.value } : undefined}
-                                                                onChange={(item) => field.onChange(item?.value || 0)}
-                                                                placeholder={categoriesLoading ? "Loading categories..." : "Select a category"}
-                                                                disabled={categoriesLoading}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="shopSubCategoryId"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Subcategory (Optional)</FormLabel>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                data={shopSubCategories.map(subCat => ({ label: subCat.nameEn || `Subcategory ${subCat.id}`, value: subCat.id }))}
-                                                                value="value"
-                                                                labelKey="label"
-                                                                selectedValue={field.value ? { label: shopSubCategories.find(c => c.id === field.value)?.nameEn || `Subcategory ${field.value}`, value: field.value } : undefined}
-                                                                onChange={(item) => field.onChange(item?.value || undefined)}
-                                                                placeholder={!form.watch("shopCategoryId") ? "Select Category first" : "Select a subcategory"}
-                                                                disabled={!form.watch("shopCategoryId")}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="nameMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Shop Name (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Enter name in Myanmar" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="nameTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Shop Name (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Enter name in Thai" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="shopCategoryId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Category</FormLabel>
+                                                            <FormControl>
+                                                                <SearchableSelect
+                                                                    data={shopCategories.map(cat => ({ label: cat.nameEn || `Category ${cat.id}`, value: cat.id }))}
+                                                                    value="value"
+                                                                    labelKey="label"
+                                                                    selectedValue={field.value ? { label: shopCategories.find(c => c.id === field.value)?.nameEn || `Category ${field.value}`, value: field.value } : undefined}
+                                                                    onChange={(item) => field.onChange(item?.value || 0)}
+                                                                    placeholder={categoriesLoading ? "Loading categories..." : "Select a category"}
+                                                                    disabled={categoriesLoading}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="shopSubCategoryId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Subcategory (Optional)</FormLabel>
+                                                            <FormControl>
+                                                                <SearchableSelect
+                                                                    data={shopSubCategories.map(subCat => ({ label: subCat.nameEn || `Subcategory ${subCat.id}`, value: subCat.id }))}
+                                                                    value="value"
+                                                                    labelKey="label"
+                                                                    selectedValue={field.value ? { label: shopSubCategories.find(c => c.id === field.value)?.nameEn || `Subcategory ${field.value}`, value: field.value } : undefined}
+                                                                    onChange={(item) => field.onChange(item?.value || undefined)}
+                                                                    placeholder={!form.watch("shopCategoryId") ? "Select Category first" : "Select a subcategory"}
+                                                                    disabled={!form.watch("shopCategoryId")}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <Separator className="my-2" />
+
+                                            <div className="space-y-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="descriptionEn"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Description (English)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="descriptionMm"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Description (Myanmar)</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea rows={2} className="resize-none" placeholder="Description in Myanmar..." {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="descriptionTh"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Description (Thai)</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea rows={2} className="resize-none" placeholder="Description in Thai..." {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Advanced Types: Cuisine, Meal, Delivery */}
@@ -829,19 +929,50 @@ export default function CreateShopRestaurant() {
                                         <CardTitle>Location</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="addressEn"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Address</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="Full address" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <div className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="addressEn"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Address (English)</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Myanmar" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Thai" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">

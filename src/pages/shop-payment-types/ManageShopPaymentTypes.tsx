@@ -95,6 +95,8 @@ export default function ManageShopPaymentTypes() {
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
+    const [searchTerm, setSearchTerm] = useState("");
+
     const filteredItems = items.filter(item =>
         (item.paymentMethodName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
         (item.accountName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -160,8 +162,6 @@ export default function ManageShopPaymentTypes() {
         const shopName = shops.find(s => s.id.toString() === selectedShopId)?.name || 'Shop';
         XLSX.writeFile(wb, `PaymentTypes_${shopName}.xlsx`);
     };
-
-    const [searchTerm, setSearchTerm] = useState("");
 
     return (
         <div className="container mx-auto py-6 max-w-7xl space-y-6">

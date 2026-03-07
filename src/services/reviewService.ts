@@ -36,11 +36,22 @@ export interface ReviewPage {
 }
 
 class ReviewService {
-  async getReviews(type: ReviewType, page = 0, size = 10): Promise<ReviewPage> {
+  async getReviews(
+    type: ReviewType, 
+    page = 0, 
+    size = 10, 
+    filters?: { search?: string; rating?: number | string; startDate?: string; endDate?: string }
+  ): Promise<ReviewPage> {
     const endpoint = type === 'SHOPS' 
       ? config.endpoints.admin.reviews.shops 
       : config.endpoints.admin.reviews.items;
+    
     const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.rating && filters.rating !== 'ALL') params.append('rating', String(filters.rating));
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+
     const response = await apiClient.get<ReviewPage>(`${endpoint}?${params.toString()}`);
     
     // Map shopName/itemName to targetName for consistent UI rendering

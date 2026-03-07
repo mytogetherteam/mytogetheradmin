@@ -42,6 +42,36 @@ export interface MenuItem {
     isHotDeal?: boolean;
     isCombo?: boolean;
     displayOrder?: number;
+    optionGroups?: OptionGroup[];
+    variants?: Variant[];
+}
+
+export interface Option {
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    price: number;
+    isAvailable: boolean;
+}
+
+export interface OptionGroup {
+    id?: number;
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    isRequired: boolean;
+    minSelection: number;
+    maxSelection: number;
+    options: Option[];
+}
+
+export interface Variant {
+    id?: number;
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    price: number;
+    isAvailable: boolean;
 }
 
 export interface MenuSubCategory {

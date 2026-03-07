@@ -9,6 +9,9 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Calendar as CalendarIcon } from "lucide-react";
 import { reviewService, Review, ReviewType } from "@/services/reviewService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -39,10 +42,21 @@ export default function Reviews() {
     // Delete Confirmation
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
+    // Filters
+    const [search, setSearch] = useState("");
+    const [rating, setRating] = useState<string>("ALL");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
     const fetchReviews = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await reviewService.getReviews(type, currentPage - 1);
+            const data = await reviewService.getReviews(type, currentPage - 1, pageSize, {
+                search,
+                rating,
+                startDate,
+                endDate
+            });
             setReviews(data.content);
             setTotalPages(data.totalPages);
         } catch {
@@ -50,7 +64,7 @@ export default function Reviews() {
         } finally {
             setLoading(false);
         }
-    }, [type, currentPage]);
+    }, [type, currentPage, pageSize, search, rating, startDate, endDate]);
 
     useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
@@ -89,6 +103,51 @@ export default function Reviews() {
                     <TabsTrigger value="SHOPS">Shop Reviews</TabsTrigger>
                     <TabsTrigger value="ITEMS">Menu Item Reviews</TabsTrigger>
                 </TabsList>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search reviews..."
+                            className="pl-9"
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                        />
+                    </div>
+                    <Select value={rating} onValueChange={(val) => { setRating(val); setCurrentPage(1); }}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="All Ratings" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Ratings</SelectItem>
+                            <SelectItem value="5">5 Stars</SelectItem>
+                            <SelectItem value="4">4 Stars</SelectItem>
+                            <SelectItem value="3">3 Stars</SelectItem>
+                            <SelectItem value="2">2 Stars</SelectItem>
+                            <SelectItem value="1">1 Star</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="date"
+                            className="pl-9"
+                            value={startDate}
+                            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                        />
+                        <span className="absolute -top-5 left-1 text-[10px] text-muted-foreground uppercase font-bold">Start Date</span>
+                    </div>
+                    <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="date"
+                            className="pl-9"
+                            value={endDate}
+                            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                        />
+                        <span className="absolute -top-5 left-1 text-[10px] text-muted-foreground uppercase font-bold">End Date</span>
+                    </div>
+                </div>
 
                 <TabsContent value={type} className="mt-4 space-y-4">
                     <Card>

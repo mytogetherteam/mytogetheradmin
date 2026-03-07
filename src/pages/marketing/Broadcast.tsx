@@ -4,7 +4,7 @@ import { userService } from "@/services/userService";
 import { ShopService } from "@/services/shopService";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    Table, TableBody, TableCell, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -217,8 +217,10 @@ export default function Broadcast() {
                                 <TableRow>
                                     <SortableTableHead label="Target" sortKey="targetType" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Title" sortKey="title" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Message" sortKey="message" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Message" sortKey="body" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Recipients" sortKey="recipientCount" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="By" sortKey="sentByName" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Date" sortKey="sentAt" sortConfig={sortConfig} onSort={handleSort} />
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -233,7 +235,7 @@ export default function Broadcast() {
                                     ))
                                 ) : sortedHistory.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
+                                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">
                                             No broadcast history found.
                                         </TableCell>
                                     </TableRow>
@@ -246,10 +248,12 @@ export default function Broadcast() {
                                         </TableCell>
                                         <TableCell className="font-medium text-sm">{h.title}</TableCell>
                                         <TableCell className="max-w-xs">
-                                            <p className="text-xs truncate" title={h.message}>{h.message}</p>
+                                            <p className="text-xs truncate" title={h.body}>{h.body}</p>
                                         </TableCell>
+                                        <TableCell className="text-sm font-medium">{h.recipientCount ?? "—"}</TableCell>
+                                        <TableCell className="text-sm">{h.sentByName || "—"}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                            {new Date(h.createdAt).toLocaleString()}
+                                            {h.sentAt ? new Date(h.sentAt).toLocaleDateString() : "—"}
                                         </TableCell>
                                     </TableRow>
                                 ))}

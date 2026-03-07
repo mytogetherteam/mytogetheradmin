@@ -207,6 +207,8 @@ export interface MenuItem {
   isSpicy?: boolean;
   isCombo?: boolean;
   displayOrder?: number;
+  optionGroups?: any[];
+  variants?: any[];
 }
 
 export interface MenuCategory {

@@ -16,7 +16,8 @@ import {
     Truck,
     CreditCard,
     ExternalLink,
-    AlertCircle
+    AlertCircle,
+    Package
 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -106,6 +107,16 @@ export default function OrderDetail() {
         return "Invalid address format";
     };
 
+    // Helper to safely render currency/amounts
+    const renderCurrency = (val: any) => {
+        if (val === null || val === undefined) return "0";
+        if (typeof val === 'string' || typeof val === 'number') return val.toString();
+        if (typeof val === 'object') {
+            return val.displayValue || val.amount || JSON.stringify(val);
+        }
+        return "N/A";
+    };
+
     return (
         <div className="container mx-auto py-6 max-w-6xl space-y-6">
             <div className="flex items-center gap-4">
@@ -127,7 +138,7 @@ export default function OrderDetail() {
                 {/* Main Content */}
                 <div className="md:col-span-2 space-y-6">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-3">
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <Store className="h-5 w-5 text-primary" />
                                 Shop Information
@@ -142,12 +153,12 @@ export default function OrderDetail() {
                                         <div className="h-full w-full flex items-center justify-center bg-muted text-xs">No Img</div>
                                     )}
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-lg">{order.shopName}</h3>
-                                    <p className="text-muted-foreground">{order.shopNameMm}</p>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-lg truncate">{order.shopName}</h3>
+                                    {order.shopNameMm && <p className="text-muted-foreground truncate">{order.shopNameMm}</p>}
                                     <p className="text-xs text-muted-foreground mt-1">ID: {order.shopId}</p>
                                 </div>
-                                <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigate(`/shops/${order.shopId}`)}>
+                                <Button variant="outline" size="sm" onClick={() => navigate(`/shops/${order.shopId}`)}>
                                     View Shop
                                 </Button>
                             </div>
@@ -155,52 +166,77 @@ export default function OrderDetail() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-3">
                             <CardTitle className="text-lg">Order Items</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {order.items && order.items.length > 0 ? (
-                                <div className="divide-y">
+                                <div className="divide-y max-h-[400px] overflow-y-auto">
                                     {order.items.map((item, idx) => (
-                                        <div key={idx} className="p-4 flex justify-between items-center">
+                                        <div key={idx} className="p-4 flex justify-between items-center hover:bg-muted/50 transition-colors">
                                             <div className="flex gap-3 items-center">
-                                                <div className="h-8 w-8 rounded bg-muted flex items-center justify-center font-bold text-xs">
+                                                <div className="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
                                                     {item.quantity}x
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium">{item.name}</p>
-                                                    {item.nameMm && <p className="text-xs text-muted-foreground">{item.nameMm}</p>}
+                                                    <p className="font-medium text-sm">{item.name}</p>
+                                                    {item.nameMm && <p className="text-[10px] text-muted-foreground">{item.nameMm}</p>}
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-medium">{item.totalPrice || (item.price * item.quantity)}</p>
-                                                <p className="text-[10px] text-muted-foreground">{item.price} each</p>
+                                                <p className="font-bold text-sm">{renderCurrency(item.totalPrice || (item.price * item.quantity))}</p>
+                                                <p className="text-[10px] text-muted-foreground">{renderCurrency(item.price)} each</p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="p-10 text-center text-muted-foreground">
-                                    No item details available for this order.
+                                <div className="py-8 text-center text-muted-foreground">
+                                    <Package className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                    <p className="text-sm italic">No items found in this order</p>
                                 </div>
                             )}
                             <div className="bg-muted/30 p-4 space-y-2 border-t">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Subtotal</span>
-                                    <span>{(order.totalAmount || 0) - (order.deliveryFee || 0)}</span>
+                                    <span>{renderCurrency((order.totalAmount || 0) - (order.deliveryFee || 0))}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Delivery Fee</span>
-                                    <span>{order.deliveryFee || 0}</span>
+                                    <span>{renderCurrency(order.deliveryFee)}</span>
                                 </div>
                                 <Separator className="my-2" />
                                 <div className="flex justify-between font-bold text-lg">
                                     <span>Total Amount</span>
-                                    <span className="text-primary">{order.displayTotalAmount || order.totalAmount}</span>
+                                    <span className="text-primary">{renderCurrency(order.displayTotalAmount || order.totalAmount)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {order.paymentSlipUrl && (
+                        <Card>
+                            <CardHeader className="pb-3 px-4">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <CreditCard className="h-5 w-5 text-primary" />
+                                    Payment Slip
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                                <div className="max-w-md mx-auto aspect-[3/4] rounded-lg border overflow-hidden bg-muted relative group">
+                                    <img src={order.paymentSlipUrl} alt="Slip" className="h-full w-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Button size="sm" variant="secondary" asChild>
+                                            <a href={order.paymentSlipUrl} target="_blank" rel="noopener noreferrer">
+                                                <ExternalLink className="h-4 w-4 mr-2" />
+                                                Open Full
+                                            </a>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Sidebar */}
@@ -288,13 +324,13 @@ export default function OrderDetail() {
                                     <div>
                                         <p className="text-xs font-bold uppercase">Ordered On</p>
                                         <p className="text-sm font-medium">
-                                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}
+                                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold uppercase">Last Updated</p>
                                         <p className="text-sm font-medium">
-                                            {order.updatedAt ? new Date(order.updatedAt).toLocaleString() : "—"}
+                                            {order.updatedAt ? new Date(order.updatedAt).toLocaleDateString() : "—"}
                                         </p>
                                     </div>
                                 </div>
@@ -302,29 +338,6 @@ export default function OrderDetail() {
                         </CardContent>
                     </Card>
 
-                    {order.paymentSlipUrl && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4" />
-                                    Payment Slip
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="aspect-[3/4] rounded-lg border overflow-hidden bg-muted relative group">
-                                    <img src={order.paymentSlipUrl} alt="Slip" className="h-full w-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Button size="sm" variant="secondary" asChild>
-                                            <a href={order.paymentSlipUrl} target="_blank" rel="noopener noreferrer">
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                Open Full
-                                            </a>
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
                 </div>
             </div>
         </div>

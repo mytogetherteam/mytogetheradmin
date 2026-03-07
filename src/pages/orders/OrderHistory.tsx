@@ -310,7 +310,7 @@ export default function OrderHistory() {
                                             {order.deliveryFee > 0 && <div className="text-[10px] text-muted-foreground">Fee: {order.deliveryFee}</div>}
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
-                                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}
+                                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/orders/${order.id}`); }}>

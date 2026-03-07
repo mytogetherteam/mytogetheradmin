@@ -32,7 +32,7 @@ export default function LostFound() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<string>("ALL");
+    const [typeFilter, setTypeFilter] = useState<string>("LOST");
     const [pageSize, setPageSize] = useState(20);
     const [totalElements, setTotalElements] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -133,7 +133,6 @@ export default function LostFound() {
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">All Posts</SelectItem>
                                 <SelectItem value="LOST">Lost Items</SelectItem>
                                 <SelectItem value="FOUND">Found Items</SelectItem>
                             </SelectContent>
