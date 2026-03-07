@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { orderService, Order, OrderStatus, OrderFilters } from "@/services/orderService";
 import {
-    Table, TableBody, TableCell, TableHeader, TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,14 @@ import { exportService } from "@/services/exportService";
 import { FileSpreadsheet } from "lucide-react";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800",
-    ACCEPTED: "bg-blue-100 text-blue-800",
-    PREPARING: "bg-orange-100 text-orange-800",
-    READY: "bg-purple-100 text-purple-800",
-    DELIVERING: "bg-indigo-100 text-indigo-800",
-    DELIVERED: "bg-green-100 text-green-800",
-    CANCELLED: "bg-red-100 text-red-800",
+    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    CONFIRMED: "bg-blue-100 text-blue-800 border-blue-200",
+    ACCEPTED: "bg-cyan-100 text-cyan-800 border-cyan-200",
+    PREPARING: "bg-orange-100 text-orange-800 border-orange-200",
+    READY: "bg-purple-100 text-purple-800 border-purple-200",
+    DELIVERING: "bg-indigo-100 text-indigo-800 border-indigo-200",
+    DELIVERED: "bg-green-100 text-green-800 border-green-200",
+    CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
 type PeriodPreset = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
@@ -34,11 +36,6 @@ function formatDateLocal(date: Date): string {
     return `${y}-${m}-${d}`;
 }
 
-function formatDisplayDate(dateStr: string): string {
-    if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
-}
 
 function getPresetDates(preset: PeriodPreset): { start: string; end: string } {
     const today = new Date();
@@ -94,6 +91,7 @@ const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
 ];
 
 export default function OrderHistory() {
+    const navigate = useNavigate();
     const todayStr = formatDateLocal(new Date());
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
@@ -199,11 +197,6 @@ export default function OrderHistory() {
                                     disabled={!isCustom}
                                     className={!isCustom ? "opacity-50" : ""}
                                 />
-                                {startDate && (
-                                    <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                        {formatDisplayDate(startDate)}
-                                    </span>
-                                )}
                             </div>
                         </div>
                         <div>
@@ -216,11 +209,6 @@ export default function OrderHistory() {
                                     disabled={!isCustom}
                                     className={!isCustom ? "opacity-50" : ""}
                                 />
-                                {endDate && (
-                                    <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                        {formatDisplayDate(endDate)}
-                                    </span>
-                                )}
                             </div>
                         </div>
                         <div>
@@ -258,13 +246,15 @@ export default function OrderHistory() {
                     <div className="rounded-md border-t overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <SortableTableHead label="Order ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Shop" sortKey="shopName" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Customer" sortKey="customerName" sortConfig={sortConfig} onSort={handleSort} />
+                                <TableRow className="bg-muted/50">
+                                    <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                    <TableHead>Shop</TableHead>
+                                    <TableHead>Customer</TableHead>
                                     <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Delivery</TableHead>
                                     <SortableTableHead label="Total" sortKey="totalAmount" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -283,18 +273,49 @@ export default function OrderHistory() {
                                         </TableCell>
                                     </TableRow>
                                 ) : sortedOrders.map((order) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell className="font-mono text-xs">#{String(order.id || '').slice(-8).toUpperCase()}</TableCell>
-                                        <TableCell>{order.shopName}</TableCell>
-                                        <TableCell>{order.customerName}</TableCell>
+                                    <TableRow key={order.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => navigate(`/orders/${order.id}`)}>
+                                        <TableCell className="font-mono text-[10px] text-muted-foreground">#{order.id}</TableCell>
                                         <TableCell>
-                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[order.status]}`}>
-                                                {order.status}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded border overflow-hidden shrink-0 bg-white">
+                                                    {order.shopImageUrl ? (
+                                                        <img src={order.shopImageUrl} alt="" className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center bg-muted text-[10px]">No Img</div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-medium truncate text-sm">{order.shopName}</div>
+                                                    {order.shopNameMm && <div className="text-[10px] text-muted-foreground truncate">{order.shopNameMm}</div>}
+                                                </div>
+                                            </div>
                                         </TableCell>
-                                        <TableCell>${order.totalAmount?.toFixed(2)}</TableCell>
+                                        <TableCell>
+                                            <div className="text-sm font-medium">{order.userFullName || "Guest"}</div>
+                                            {order.userPhone && <div className="text-xs text-muted-foreground">{order.userPhone}</div>}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-800"}`}>
+                                                {order.statusLabel || order.status}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="text-xs">
+                                                <div className="font-medium">{order.deliveryType}</div>
+                                                {order.deliveryTier && <div className="text-muted-foreground">{order.deliveryTier}</div>}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{order.displayTotalAmount || (typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount || "—")}</div>
+                                            {order.deliveryFee > 0 && <div className="text-[10px] text-muted-foreground">Fee: {order.deliveryFee}</div>}
+                                        </TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
-                                            {formatDisplayDate(order.createdAt?.split("T")[0] ?? "")}
+                                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/orders/${order.id}`); }}>
+                                                View
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

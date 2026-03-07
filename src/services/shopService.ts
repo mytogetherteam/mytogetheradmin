@@ -112,7 +112,7 @@ export interface CityDTO {
 
 export interface CuisineTypeDTO {
   id: number;
-  name: string;
+  name?: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;

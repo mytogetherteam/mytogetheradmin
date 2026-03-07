@@ -196,7 +196,10 @@ export default function PaymentMethodForm() {
                                                 <Input
                                                     type="number"
                                                     {...field}
-                                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        field.onChange(val === "" ? "" : (parseInt(val) || 0));
+                                                    }}
                                                 />
                                             </FormControl>
                                             <FormMessage />

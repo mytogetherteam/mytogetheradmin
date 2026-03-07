@@ -6,13 +6,26 @@ export type ReviewType = 'SHOPS' | 'ITEMS';
 export interface Review {
   id: string;
   reviewerName: string;
-  targetName: string; // Shop or Item name
-  targetId: string;
+  reviewerEmail?: string;
   rating: number;
   comment: string;
+  commentMm?: string | null;
   isVisible: boolean;
+  isVerified: boolean;
+  helpfulCount: number;
+  photoCount: number;
+  ownerResponse?: string | null;
+  ownerResponseAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
   photoUrls?: string[];
+  shopId?: number;
+  shopName?: string;
+  itemName?: string;
+  targetName?: string; // Unified name
+  userId?: number | null;
+  userFullName?: string | null;
+  userPhone?: string | null;
 }
 
 export interface ReviewPage {
@@ -29,6 +42,15 @@ class ReviewService {
       : config.endpoints.admin.reviews.items;
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await apiClient.get<ReviewPage>(`${endpoint}?${params.toString()}`);
+    
+    // Map shopName/itemName to targetName for consistent UI rendering
+    if (response.content) {
+      response.content = response.content.map(r => ({
+        ...r,
+        targetName: r.targetName || r.shopName || r.itemName || 'N/A'
+      }));
+    }
+    
     return response;
   }
 
@@ -52,6 +74,20 @@ class ReviewService {
       ? config.endpoints.admin.reviews.photos.shops(photoId) 
       : config.endpoints.admin.reviews.photos.items(photoId);
     return apiClient.delete<void>(endpoint);
+  }
+
+  async getReviewDetail(type: ReviewType, id: string): Promise<Review> {
+    const endpoint = type === 'SHOPS' 
+      ? config.endpoints.admin.reviews.shopDetail(id) 
+      : config.endpoints.admin.reviews.itemDetail(id);
+    const response = await apiClient.get<Review>(endpoint);
+    
+    // Set targetName
+    if (response) {
+        response.targetName = response.targetName || response.shopName || response.itemName || 'N/A';
+    }
+    
+    return response;
   }
 }
 

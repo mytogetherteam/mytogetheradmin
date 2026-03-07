@@ -6,15 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    Loader2, Plus, Search, FileSpreadsheet, ArrowUpDown,
-    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2, Edit,
+    Loader2, Plus, Search, FileSpreadsheet, Trash2, Edit,
 } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { useNavigate } from "react-router-dom";
 import { cityService, CityDTO } from "@/services/cityService";
 import { toast } from "sonner";
@@ -27,7 +25,7 @@ export default function ManageCities() {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof CityDTO; direction: "asc" | "desc" } | null>(null);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
@@ -49,24 +47,9 @@ export default function ManageCities() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const handleSort = (key: keyof CityDTO) => {
-        let direction: "asc" | "desc" = "asc";
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
-        setSortConfig({ key, direction });
-    };
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-    const sortedCities = [...cities].sort((a, b) => {
-        if (!sortConfig) return 0;
-        const { key, direction } = sortConfig;
-        let aVal: any = a[key]; let bVal: any = b[key];
-        if (aVal === undefined || aVal === null) aVal = "";
-        if (bVal === undefined || bVal === null) bVal = "";
-        if (typeof aVal === "string") aVal = aVal.toLowerCase();
-        if (typeof bVal === "string") bVal = bVal.toLowerCase();
-        if (aVal < bVal) return direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return direction === "asc" ? 1 : -1;
-        return 0;
-    });
+    const sortedCities = sortData(cities, sortConfig);
 
     const totalItems = sortedCities.length;
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
@@ -139,12 +122,8 @@ export default function ManageCities() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
-                                                <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("nameEn")}>
-                                                <div className="flex items-center gap-2">Name (EN) <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
+                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                            <SortableTableHead label="Name (EN)" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
                                             <TableHead>Name (MM)</TableHead>
                                             <TableHead>Name (TH)</TableHead>
                                             <TableHead>Slug</TableHead>
@@ -187,31 +166,14 @@ export default function ManageCities() {
                                 </Table>
                             </div>
 
-                            <div className="flex flex-col items-center gap-4 py-4 md:flex-row md:justify-between px-2">
-                                <div className="text-sm text-muted-foreground">
-                                    Showing {totalItems ? startIndex + 1 : 0} to {endIndex} of {totalItems} entries
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}><ChevronsLeft className="h-4 w-4" /></Button>
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
-                                    <div className="flex items-center gap-1">
-                                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                            let pageNum = i + 1;
-                                            if (totalPages > 5 && currentPage > 3) pageNum = currentPage - 2 + i;
-                                            if (pageNum > totalPages) return null;
-                                            return <Button key={i} variant={currentPage === pageNum ? "default" : "outline"} className="h-8 w-8 p-0" onClick={() => setCurrentPage(pageNum)}>{pageNum}</Button>;
-                                        })}
-                                    </div>
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="h-4 w-4" /></Button>
-                                    <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}><ChevronsRight className="h-4 w-4" /></Button>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Select value={`${pageSize}`} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
-                                        <SelectTrigger className="h-8 w-[70px]"><SelectValue placeholder={pageSize} /></SelectTrigger>
-                                        <SelectContent side="top">{[10, 20, 30, 50].map((s) => <SelectItem key={s} value={`${s}`}>{s}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            <DataTablePagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                pageSize={pageSize}
+                                onPageChange={setCurrentPage}
+                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                            />
                         </>
                     )}
                 </CardContent>

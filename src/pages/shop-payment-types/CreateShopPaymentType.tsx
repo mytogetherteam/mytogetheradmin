@@ -44,7 +44,7 @@ export default function CreateShopPaymentType() {
     const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>("");
     const [accountName, setAccountName] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number>(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
     const [isActive, setIsActive] = useState(true);
     const [qrImage, setQrImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -278,7 +278,11 @@ export default function CreateShopPaymentType() {
                                             id="displayOrder"
                                             type="number"
                                             value={displayOrder}
-                                            onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "") setDisplayOrder("");
+                                                else setDisplayOrder(parseInt(val) || 0);
+                                            }}
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2 pt-8">

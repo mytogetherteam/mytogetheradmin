@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ChevronLeft, ChevronRight, ShieldAlert, User, Clock, FileText, Eye } from "lucide-react";
+import { Search, ShieldAlert, User, Clock, FileText, Eye } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -20,8 +21,9 @@ import {
 export default function AuditLogs() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(false);
-    const [page, setPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
     const [search, setSearch] = useState("");
 
     // Detail view
@@ -30,7 +32,7 @@ export default function AuditLogs() {
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await systemService.getAuditLogs(page, 20, search);
+            const data = await systemService.getAuditLogs(currentPage - 1, pageSize, search);
             setLogs(data.content);
             setTotalPages(data.totalPages);
         } catch {
@@ -38,7 +40,7 @@ export default function AuditLogs() {
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [currentPage, pageSize, search]);
 
     useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -121,17 +123,14 @@ export default function AuditLogs() {
                         </TableBody>
                     </Table>
                 </CardContent>
-                <div className="flex items-center justify-between p-4 border-t">
-                    <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage((p) => p + 1)}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+                <DataTablePagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={logs.length * totalPages} // Approximation
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                />
             </Card>
 
             {/* Log Detail Dialog */}

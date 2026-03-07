@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { orderService, Order, OrderStatus } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,16 +11,17 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-    Sheet, SheetContent, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
+    Skeleton
+} from "@/components/ui/skeleton";
 import { RefreshCw, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    ACCEPTED: "bg-blue-100 text-blue-800 border-blue-200",
+    CONFIRMED: "bg-blue-100 text-blue-800 border-blue-200",
+    ACCEPTED: "bg-cyan-100 text-cyan-800 border-cyan-200",
     PREPARING: "bg-orange-100 text-orange-800 border-orange-200",
     READY: "bg-purple-100 text-purple-800 border-purple-200",
     DELIVERING: "bg-indigo-100 text-indigo-800 border-indigo-200",
@@ -40,17 +42,19 @@ function getElapsedTime(dateStr: string): string {
 }
 
 function isPendingSLA(order: Order): boolean {
-    if (order.status !== 'PENDING') return false;
+    if (order.status !== 'PENDING' || !order.createdAt) return false;
     const elapsed = Date.now() - new Date(order.createdAt).getTime();
-    return elapsed > 15 * 60 * 1000; // 15 minutes
+    return !isNaN(elapsed) && elapsed > 15 * 60 * 1000; // 15 minutes
 }
 
 export default function OrderBoard() {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const fetchOrders = useCallback(async () => {
         try {
@@ -83,6 +87,11 @@ export default function OrderBoard() {
     const byStatus = (status: OrderStatus) => orders.filter((o) => o.status === status);
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
     const sortedOrders = sortData(orders, sortConfig);
+
+    // Pagination logic
+    const totalItems = sortedOrders.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const paginatedOrders = sortedOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     return (
         <div className="flex flex-col gap-6">
@@ -139,14 +148,14 @@ export default function OrderBoard() {
                                         ))}
                                     </TableRow>
                                 ))
-                            ) : sortedOrders.length === 0 ? (
+                            ) : paginatedOrders.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                                         <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
                                         No active orders
                                     </TableCell>
                                 </TableRow>
-                            ) : sortedOrders.map((order) => (
+                            ) : paginatedOrders.map((order) => (
                                 <TableRow
                                     key={order.id}
                                     className={isPendingSLA(order) ? "border-l-4 border-l-red-500 bg-red-500/5" : ""}
@@ -154,42 +163,57 @@ export default function OrderBoard() {
                                     <TableCell>
                                         <button
                                             className="text-primary underline-offset-4 hover:underline font-mono text-xs"
-                                            onClick={() => setSelectedOrder(order)}
+                                            onClick={() => navigate(`/orders/${order.id}`)}
                                         >
-                                            #{order.id.slice(-8).toUpperCase()}
+                                            #{String(order.id).slice(-8).toUpperCase()}
                                         </button>
                                     </TableCell>
                                     <TableCell className="text-sm">
-                                        {order.customerName} <span className="text-muted-foreground text-xs">(ID: {order.customerId.slice(-6)})</span>
+                                        <div className="font-medium text-sm">{order.userFullName || "Guest"}</div>
+                                        {order.userPhone && <div className="text-[10px] text-muted-foreground">{order.userPhone}</div>}
                                     </TableCell>
-                                    <TableCell className="text-sm">{order.shopName}</TableCell>
                                     <TableCell>
-                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status]}`}>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-6 w-6 rounded border overflow-hidden shrink-0 bg-white">
+                                                {order.shopImageUrl ? (
+                                                    <img src={order.shopImageUrl} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center bg-muted text-[8px]">?</div>
+                                                )}
+                                            </div>
+                                            <span className="text-xs font-medium truncate max-w-[120px]">{order.shopName}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || "bg-gray-100"}`}>
                                             {order.status}
                                         </span>
                                     </TableCell>
                                     <TableCell className={`text-xs ${isPendingSLA(order) ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>
-                                        {getElapsedTime(order.createdAt)}
+                                        {order.createdAt ? getElapsedTime(order.createdAt) : "—"}
                                     </TableCell>
-                                    <TableCell className="font-medium text-sm">${order.totalAmount?.toFixed(2)}</TableCell>
+                                    <TableCell className="font-medium text-sm">
+                                        {order.displayTotalAmount || (typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount || "—")}
+                                    </TableCell>
                                     <TableCell>
-                                        {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
+                                        <div className="flex items-center gap-2">
                                             <Select
                                                 value={order.status}
-                                                onValueChange={(val) => handleStatusChange(order.id, val as OrderStatus)}
+                                                onValueChange={(val) => handleStatusChange(String(order.id), val as OrderStatus)}
                                             >
-                                                <SelectTrigger className="w-full h-7 text-xs">
+                                                <SelectTrigger className="w-full h-8 text-xs font-bold">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {ACTIVE_STATUSES.map((s) => (
+                                                    {['PENDING', 'CONFIRMED', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map((s) => (
                                                         <SelectItem key={s} value={s}>{s}</SelectItem>
                                                     ))}
-                                                    <SelectItem value="DELIVERED">DELIVERED</SelectItem>
-                                                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                        )}
+                                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate(`/orders/${order.id}`)}>
+                                                <RefreshCw className="h-3 w-3" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -198,54 +222,15 @@ export default function OrderBoard() {
                 </CardContent>
             </Card>
 
-            {/* Order Detail Drawer */}
-            <Sheet open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-                <SheetContent>
-                    {selectedOrder && (
-                        <>
-                            <SheetHeader>
-                                <SheetTitle>Order #{selectedOrder.id.slice(-8).toUpperCase()}</SheetTitle>
-                            </SheetHeader>
-                            <div className="mt-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Customer</p>
-                                        <p className="font-medium">{selectedOrder.customerName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Shop</p>
-                                        <p className="font-medium">{selectedOrder.shopName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Status</p>
-                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[selectedOrder.status]}`}>
-                                            {selectedOrder.status}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Time</p>
-                                        <p className="font-medium">{getElapsedTime(selectedOrder.createdAt)}</p>
-                                    </div>
-                                </div>
+            <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
 
-                                <div className="border-t pt-4">
-                                    <p className="text-xs text-muted-foreground mb-2 font-medium">Items</p>
-                                    {selectedOrder.items?.map((item, i) => (
-                                        <div key={i} className="flex justify-between text-sm py-1">
-                                            <span>{item.name} × {item.quantity}</span>
-                                            <span>${item.price.toFixed(2)}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between font-semibold text-sm border-t pt-2 mt-2">
-                                        <span>Total</span>
-                                        <span>${selectedOrder.totalAmount?.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </SheetContent>
-            </Sheet>
         </div>
     );
 }

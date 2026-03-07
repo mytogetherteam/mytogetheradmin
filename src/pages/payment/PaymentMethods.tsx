@@ -7,6 +7,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
     Card,
     CardContent,
@@ -214,24 +215,36 @@ export default function PaymentMethods() {
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-destructive"
-                                                                onClick={(e) => handleDelete(e, item.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
+                                                        <TooltipProvider>
+                                                            <div className="flex justify-end gap-2">
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="h-8 w-8"
+                                                                            onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
+                                                                        >
+                                                                            <Edit className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>Edit Payment Method</TooltipContent>
+                                                                </Tooltip>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="h-8 w-8 text-destructive"
+                                                                            onClick={(e) => handleDelete(e, item.id)}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>Delete Payment Method</TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
+                                                        </TooltipProvider>
                                                     </TableCell>
                                                 </TableRow>
                                             ))

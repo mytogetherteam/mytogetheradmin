@@ -20,10 +20,11 @@ import {
     Loader2,
     Plus,
     FileSpreadsheet,
-    ArrowUpDown,
+    Trash2,
     Edit,
-    Trash2
 } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { useNavigate } from "react-router-dom";
 import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryDTO } from "@/services/shopCategoryService";
 import { toast } from "sonner";
@@ -39,7 +40,9 @@ export default function ManageShopSubCategories() {
     const [loading, setLoading] = useState(false);
     const [fetchingCategories, setFetchingCategories] = useState(false);
 
-    const [sortConfig, setSortConfig] = useState<{ key: keyof ShopSubCategoryDTO; direction: "asc" | "desc" } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Load Categories on Mount
     useEffect(() => {
@@ -90,30 +93,15 @@ export default function ManageShopSubCategories() {
         }
     };
 
-    const handleSort = (key: keyof ShopSubCategoryDTO) => {
-        let direction: "asc" | "desc" = "asc";
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
-        setSortConfig({ key, direction });
-    };
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-    const sortedSubCategories = [...subCategories].sort((a, b) => {
-        if (!sortConfig) return 0;
-        const { key, direction } = sortConfig;
-        let aVal = a[key];
-        let bVal = b[key];
+    const sortedSubCategories = sortData(subCategories, sortConfig);
 
-        if (aVal === undefined || aVal === null) aVal = "";
-        if (bVal === undefined || bVal === null) bVal = "";
-
-        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-
-        if (aVal < bVal) return direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return direction === "asc" ? 1 : -1;
-        return 0;
-    });
+    const totalItems = sortedSubCategories.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalItems);
+    const currentSubCategories = sortedSubCategories.slice(startIndex, endIndex);
 
     const exportToExcel = () => {
         if (subCategories.length === 0) {
@@ -204,31 +192,17 @@ export default function ManageShopSubCategories() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
-                                                <div className="flex items-center gap-2">
-                                                    ID <ArrowUpDown className="h-3 w-3" />
-                                                </div>
-                                            </TableHead>
+                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                                             <TableHead>Image</TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                                                <div className="flex items-center gap-2">
-                                                    Name <ArrowUpDown className="h-3 w-3" />
-                                                </div>
-                                            </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("displayOrder")}>
-                                                <div className="flex items-center gap-2">
-                                                    Order <ArrowUpDown className="h-3 w-3" />
-                                                </div>
-                                            </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("isActive")}>
-                                                Status
-                                            </TableHead>
+                                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sortedSubCategories.length > 0 ? (
-                                            sortedSubCategories.map((sub) => (
+                                        {currentSubCategories.length > 0 ? (
+                                            currentSubCategories.map((sub) => (
                                                 <TableRow
                                                     key={sub.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"

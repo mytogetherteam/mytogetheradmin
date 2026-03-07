@@ -84,3 +84,18 @@
     @apply bg-background text-foreground;
   }
 }
+@layer components {
+  /* Premium Sidebar Active State */
+  [data-active="true"] {
+    @apply relative bg-sidebar-accent/50 text-primary font-semibold transition-all duration-300;
+  }
+
+  [data-active="true"]::before {
+    content: "";
+    @apply absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(0,0,0,0.2)] transition-all animate-in slide-in-from-left-2 duration-500;
+  }
+
+  .sidebar-icon-active {
+    @apply text-primary scale-110 transition-transform duration-300;
+  }
+}

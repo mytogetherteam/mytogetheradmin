@@ -26,16 +26,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     Plus,
     Search,
     Loader2,
     FileSpreadsheet,
-    ArrowUpDown
 } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { useNavigate } from "react-router-dom";
 import { menuService } from "@/services/menuService";
 import { toast } from "sonner";
@@ -51,7 +48,7 @@ export default function ManageMenuItems() {
     const [pageSize, setPageSize] = useState(20);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     const loadItems = async () => {
         setLoading(true);
@@ -81,25 +78,9 @@ export default function ManageMenuItems() {
         return () => clearTimeout(timer);
     }, [currentPage, pageSize, searchTerm]);
 
-    const handleSort = (key: string) => {
-        let direction: "asc" | "desc" = "asc";
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
-        setSortConfig({ key, direction });
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-        const sorted = [...items].sort((a, b) => {
-            let aVal = a[key];
-            let bVal = b[key];
-            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-
-            if (aVal < bVal) return direction === "asc" ? -1 : 1;
-            if (aVal > bVal) return direction === "asc" ? 1 : -1;
-            return 0;
-        });
-        setItems(sorted);
-    };
+    const sortedItems = sortData(items, sortConfig);
 
     const handleToggleFlag = async (item: any, flagType: 'recommended' | 'available' | 'hotdeal', value: boolean) => {
         try {
@@ -198,24 +179,18 @@ export default function ManageMenuItems() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
-                                                <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
+                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                                             <TableHead>Image</TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                                                <div className="flex items-center gap-2">Name <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("price")}>
-                                                <div className="flex items-center gap-2">Price <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
+                                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                                            <SortableTableHead label="Price" sortKey="price" sortConfig={sortConfig} onSort={handleSort} />
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Category</TableHead>
                                             <TableHead>Flags</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {items.length > 0 ? (
-                                            items.map((item) => (
+                                        {sortedItems.length > 0 ? (
+                                            sortedItems.map((item) => (
                                                 <TableRow
                                                     key={item.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -280,85 +255,14 @@ export default function ManageMenuItems() {
                                 </Table>
                             </div>
 
-                            {/* Pagination Controls */}
-                            <div className="flex flex-col items-center gap-4 py-4 md:flex-row md:justify-between px-2">
-                                <div className="text-sm text-muted-foreground text-center md:text-left">
-                                    Showing {totalItems ? (currentPage - 1) * pageSize + 1 : 0} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems} entries
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Button
-                                        variant="outline"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => setCurrentPage(1)}
-                                        disabled={currentPage === 1}
-                                    >
-                                        <ChevronsLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <div className="flex items-center gap-1">
-                                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                            let pageNum = i + 1;
-                                            if (totalPages > 5) {
-                                                if (currentPage > 3) pageNum = currentPage - 2 + i;
-                                                if (pageNum > totalPages) return null;
-                                            }
-                                            return (
-                                                <Button
-                                                    key={i}
-                                                    variant={currentPage === pageNum ? "default" : "outline"}
-                                                    className="h-8 w-8 p-0"
-                                                    onClick={() => setCurrentPage(pageNum)}
-                                                >
-                                                    {pageNum}
-                                                </Button>
-                                            );
-                                        })}
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                                        disabled={currentPage === totalPages || totalPages === 0}
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => setCurrentPage(totalPages)}
-                                        disabled={currentPage === totalPages || totalPages === 0}
-                                    >
-                                        <ChevronsRight className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Select
-                                        value={`${pageSize}`}
-                                        onValueChange={(value) => {
-                                            setPageSize(Number(value));
-                                            setCurrentPage(1);
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 w-[70px]">
-                                            <SelectValue placeholder={pageSize} />
-                                        </SelectTrigger>
-                                        <SelectContent side="top">
-                                            {[10, 20, 30, 40, 50].map((size) => (
-                                                <SelectItem key={size} value={`${size}`}>
-                                                    {size}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            <DataTablePagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                pageSize={pageSize}
+                                onPageChange={setCurrentPage}
+                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                            />
                         </>
                     )}
                 </CardContent>

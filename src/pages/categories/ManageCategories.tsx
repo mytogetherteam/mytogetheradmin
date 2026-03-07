@@ -30,14 +30,11 @@ import {
   Plus,
   Search,
   FileSpreadsheet,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Trash2,
   Edit,
 } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { useNavigate } from "react-router-dom";
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
@@ -50,7 +47,7 @@ export default function ManageCategories() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
   // Delete confirmation dialog
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
@@ -77,25 +74,9 @@ export default function ManageCategories() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const handleSort = (key: string) => {
-    let direction: "asc" | "desc" = "asc";
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
+  const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-  const sortedCategories = [...categories].sort((a, b) => {
-    if (!sortConfig) return 0;
-    const { key, direction } = sortConfig;
-    let aVal = a[key];
-    let bVal = b[key];
-    if (typeof aVal === "string") aVal = aVal.toLowerCase();
-    if (typeof bVal === "string") bVal = bVal.toLowerCase();
-    if (aVal < bVal) return direction === "asc" ? -1 : 1;
-    if (aVal > bVal) return direction === "asc" ? 1 : -1;
-    return 0;
-  });
+  const sortedCategories = sortData(categories, sortConfig);
 
   const totalItems = sortedCategories.length;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
@@ -185,16 +166,10 @@ export default function ManageCategories() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
-                        <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
-                      </TableHead>
+                      <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                       <TableHead>Image</TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                        <div className="flex items-center gap-2">Name <ArrowUpDown className="h-3 w-3" /></div>
-                      </TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSort("displayOrder")}>
-                        <div className="flex items-center gap-2">Order <ArrowUpDown className="h-3 w-3" /></div>
-                      </TableHead>
+                      <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                      <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -264,49 +239,14 @@ export default function ManageCategories() {
               </div>
 
               {/* Pagination */}
-              <div className="flex flex-col items-center gap-4 py-4 md:flex-row md:justify-between px-2">
-                <div className="text-sm text-muted-foreground">
-                  Showing {totalItems ? startIndex + 1 : 0} to {endIndex} of {totalItems} entries
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      let pageNum = i + 1;
-                      if (totalPages > 5 && currentPage > 3) pageNum = currentPage - 2 + i;
-                      if (pageNum > totalPages) return null;
-                      return (
-                        <Button key={i} variant={currentPage === pageNum ? "default" : "outline"} className="h-8 w-8 p-0" onClick={() => setCurrentPage(pageNum)}>
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Select value={`${pageSize}`} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
-                    <SelectTrigger className="h-8 w-[70px]">
-                      <SelectValue placeholder={pageSize} />
-                    </SelectTrigger>
-                    <SelectContent side="top">
-                      {[10, 20, 30, 40, 50].map((size) => (
-                        <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+              />
             </>
           )}
         </CardContent>

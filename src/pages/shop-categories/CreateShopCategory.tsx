@@ -27,7 +27,7 @@ export default function CreateShopCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number>(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
     const [isActive, setIsActive] = useState<boolean>(true);
 
     const [loading, setLoading] = useState(false);
@@ -218,7 +218,11 @@ export default function CreateShopCategory() {
                                     id="displayOrder"
                                     type="number"
                                     value={displayOrder}
-                                    onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "") setDisplayOrder("");
+                                        else setDisplayOrder(parseInt(val) || 0);
+                                    }}
                                     placeholder="0"
                                 />
                             </div>

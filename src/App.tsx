@@ -32,12 +32,14 @@ import CreateShopPaymentType from "@/pages/shop-payment-types/CreateShopPaymentT
 import AnalyticalDashboard from "@/pages/analytics/AnalyticalDashboard";
 import OrderBoard from "@/pages/orders/OrderBoard";
 import OrderHistory from "@/pages/orders/OrderHistory";
+import OrderDetail from "@/pages/orders/OrderDetail"; // Added this import
 import ContentReports from "@/pages/moderation/ContentReports";
 import UserShopReports from "@/pages/moderation/UserShopReports";
 import BannerManagement from "@/pages/marketing/BannerManagement";
 
 // Phase 5 & 6 pages
 import Reviews from "@/pages/review/Reviews";
+import ReviewDetail from "@/pages/review/ReviewDetail";
 import CommunityMgt from "@/pages/community/CommunityMgt";
 import LostFound from "@/pages/lostfound/LostFound";
 import Broadcast from "@/pages/marketing/Broadcast";
@@ -132,13 +134,17 @@ function App() {
           <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
 
           {/* Orders */}
-          <Route path="/orders/board" element={<OrderBoard />} />
-          <Route path="/orders/history" element={<OrderHistory />} />
+          <Route path="/orders">
+            <Route path="board" element={<OrderBoard />} />
+            <Route path="history" element={<OrderHistory />} />
+            <Route path=":id" element={<OrderDetail />} />
+          </Route>
 
           {/* Moderation & Review */}
           <Route path="/moderation/content" element={<ContentReports />} />
           <Route path="/moderation/user-shop" element={<UserShopReports />} />
           <Route path="/review/reviews" element={<Reviews />} />
+          <Route path="/review/:type/:id" element={<ReviewDetail />} />
 
           {/* Shops - Vetting */}
           <Route path="/shops/vetting" element={<VettingQueue />} />

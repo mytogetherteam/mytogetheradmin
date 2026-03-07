@@ -12,14 +12,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Megaphone, Send, History, ChevronLeft, ChevronRight, Users, Store, User } from "lucide-react";
+import { Megaphone, Send, History, Users, Store, User } from "lucide-react";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import { toast } from "sonner";
 
 export default function Broadcast() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Form state
     const [title, setTitle] = useState("");
@@ -51,15 +56,16 @@ export default function Broadcast() {
     const fetchHistory = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await marketingService.getBroadcastHistory(page);
+            const data = await marketingService.getBroadcastHistory(page, pageSize);
             setHistory(data.content || []);
+            setTotalElements(data.totalElements || 0);
             setTotalPages(data.totalPages || 1);
         } catch {
             toast.error("Failed to load broadcast history");
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, pageSize]);
 
     useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -91,6 +97,9 @@ export default function Broadcast() {
             setSending(false);
         }
     };
+
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedHistory = sortData(history, sortConfig);
 
     return (
         <div className="flex flex-col gap-6">
@@ -206,10 +215,10 @@ export default function Broadcast() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Target</TableHead>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Message</TableHead>
-                                    <TableHead>Date</TableHead>
+                                    <SortableTableHead label="Target" sortKey="targetType" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Title" sortKey="title" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Message" sortKey="message" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -222,13 +231,13 @@ export default function Broadcast() {
                                             <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                         </TableRow>
                                     ))
-                                ) : history.length === 0 ? (
+                                ) : sortedHistory.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
                                             No broadcast history found.
                                         </TableCell>
                                     </TableRow>
-                                ) : history.map((h) => (
+                                ) : sortedHistory.map((h) => (
                                     <TableRow key={h.id}>
                                         <TableCell>
                                             <Badge variant="outline" className={h.targetType === "USERS" ? "text-blue-600 bg-blue-50" : "text-purple-600 bg-purple-50"}>
@@ -247,19 +256,14 @@ export default function Broadcast() {
                             </TableBody>
                         </Table>
                     </CardContent>
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between p-4 border-t">
-                            <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                    <DataTablePagination
+                        currentPage={page + 1}
+                        totalPages={totalPages}
+                        totalItems={totalElements}
+                        pageSize={pageSize}
+                        onPageChange={(p) => setPage(p - 1)}
+                        onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+                    />
                 </Card>
             </div>
         </div>

@@ -60,7 +60,7 @@ export default function CreateMenuItem() {
 
     const [isAvailable, setIsAvailable] = useState(true);
     const [isCombo, setIsCombo] = useState(false);
-    const [displayOrder, setDisplayOrder] = useState(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
 
     // Data for dropdowns
     const [shops, setShops] = useState<any[]>([]);
@@ -448,7 +448,11 @@ export default function CreateMenuItem() {
                                         <Input
                                             type="number"
                                             value={displayOrder}
-                                            onChange={e => setDisplayOrder(parseInt(e.target.value) || 0)}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === "") setDisplayOrder("");
+                                                else setDisplayOrder(parseInt(val) || 0);
+                                            }}
                                             placeholder="0"
                                         />
                                     </div>

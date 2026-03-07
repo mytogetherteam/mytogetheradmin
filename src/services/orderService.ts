@@ -1,26 +1,48 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'CONFIRMED';
 
 export interface OrderItem {
-  id: string;
+  id: string | number;
   name: string;
+  nameMm?: string;
   quantity: number;
   price: number;
+  totalPrice?: number;
 }
 
 export interface Order {
-  id: string;
+  id: number | string;
+  shopId: number;
   shopName: string;
-  shopId: string;
-  customerName: string;
-  customerId: string;
+  shopNameMm?: string;
+  shopImageUrl?: string;
+  userId?: number | null;
+  userFullName?: string | null;
+  userPhone?: string | null;
   status: OrderStatus;
-  items: OrderItem[];
+  statusLabel: string;
+  statusLabelMm: string;
+  deliveryType: string;
+  deliveryTier?: string | null;
+  estimatedDeliveryTime?: string | null;
+  isScheduled: boolean;
+  scheduledDeliveryTime?: string | null;
+  deliveryAddress?: string | any | null;
+  deliveryFee: number;
+  displayDeliveryFee?: string | null;
   totalAmount: number;
+  displayTotalAmount?: string | null;
+  itemCount?: number | null;
+  items: OrderItem[] | null;
+  paymentSlipUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  
+  // Backward compatibility fields if any
+  customerName?: string;
+  customerId?: string;
 }
 
 export interface OrdersPage {

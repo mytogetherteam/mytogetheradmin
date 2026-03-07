@@ -24,15 +24,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
+    Store,
+    QrCode,
     Plus,
     Search,
     Loader2,
-    ArrowUpDown,
     Edit,
-    Trash2,
-    Store,
-    QrCode
+    Trash2
 } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { useNavigate } from "react-router-dom";
 import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPaymentTypeService";
 import { ShopService, Shop } from "@/services/shopService";
@@ -46,8 +47,9 @@ export default function ManageShopPaymentTypes() {
     const [items, setItems] = useState<ShopPaymentTypeDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadingShops, setLoadingShops] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Initial load: Fetch shops
     useEffect(() => {
@@ -91,28 +93,22 @@ export default function ManageShopPaymentTypes() {
         }
     };
 
-    const handleSort = (key: keyof ShopPaymentTypeDTO) => {
-        let direction: "asc" | "desc" = "asc";
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
-        setSortConfig({ key: String(key), direction });
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-        const sorted = [...items].sort((a, b) => {
-            let aVal = a[key];
-            let bVal = b[key];
+    const filteredItems = items.filter(item =>
+        (item.paymentMethodName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.accountName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.accountNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.paymentMethodCode?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+    );
 
-            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+    const sortedItems = sortData(filteredItems, sortConfig);
 
-            if (aVal !== undefined && bVal !== undefined) {
-                if (aVal < bVal) return direction === "asc" ? -1 : 1;
-                if (aVal > bVal) return direction === "asc" ? 1 : -1;
-            }
-            return 0;
-        });
-        setItems(sorted);
-    };
+    const totalItems = sortedItems.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalItems);
+    const currentItems = sortedItems.slice(startIndex, endIndex);
 
     const handleToggleActive = async (item: ShopPaymentTypeDTO, value: boolean) => {
         try {
@@ -165,12 +161,7 @@ export default function ManageShopPaymentTypes() {
         XLSX.writeFile(wb, `PaymentTypes_${shopName}.xlsx`);
     };
 
-    const filteredItems = items.filter(item =>
-        (item.paymentMethodName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.accountName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.accountNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.paymentMethodCode?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
+    const [searchTerm, setSearchTerm] = useState("");
 
     return (
         <div className="container mx-auto py-6 max-w-7xl space-y-6">
@@ -240,81 +231,90 @@ export default function ManageShopPaymentTypes() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <div className="rounded-md border overflow-hidden">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="w-[80px]">ID</TableHead>
-                                        <TableHead>QR / Method</TableHead>
-                                        <TableHead className="cursor-pointer" onClick={() => handleSort("accountName")}>
-                                            Account Name <ArrowUpDown className="ml-2 h-3 w-3 inline" />
-                                        </TableHead>
-                                        <TableHead>Account Number</TableHead>
-                                        <TableHead className="w-[100px]">Order</TableHead>
-                                        <TableHead className="w-[100px]">Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredItems.length > 0 ? (
-                                        filteredItems.map((item) => (
-                                            <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
-                                                <TableCell className="font-mono text-xs">{item.id}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded border bg-white flex items-center justify-center overflow-hidden shrink-0">
-                                                            {item.qrImageUrl ? (
-                                                                <img src={item.qrImageUrl} alt="QR" className="h-full w-full object-contain" />
-                                                            ) : (
-                                                                <QrCode className="h-5 w-5 text-muted-foreground opacity-30" />
-                                                            )}
+                        <>
+                            <div className="rounded-md border overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                            <TableHead>QR / Method</TableHead>
+                                            <SortableTableHead label="Account Name" sortKey="accountName" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Account Number</TableHead>
+                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} className="w-[100px]" />
+                                            <TableHead className="w-[100px]">Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {currentItems.length > 0 ? (
+                                            currentItems.map((item) => (
+                                                <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                                                    <TableCell className="font-mono text-xs">{item.id}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded border bg-white flex items-center justify-center overflow-hidden shrink-0">
+                                                                {item.qrImageUrl ? (
+                                                                    <img src={item.qrImageUrl} alt="QR" className="h-full w-full object-contain" />
+                                                                ) : (
+                                                                    <QrCode className="h-5 w-5 text-muted-foreground opacity-30" />
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium">{item.paymentMethodName}</div>
+                                                                <Badge variant="outline" className="text-[10px] h-4">{item.paymentMethodCode}</Badge>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <div className="font-medium">{item.paymentMethodName}</div>
-                                                            <Badge variant="outline" className="text-[10px] h-4">{item.paymentMethodCode}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>{item.accountName || '-'}</TableCell>
+                                                    <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
+                                                    <TableCell>{item.displayOrder}</TableCell>
+                                                    <TableCell>
+                                                        <Switch
+                                                            checked={item.isActive}
+                                                            onCheckedChange={(val) => handleToggleActive(item, val)}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`)}
+                                                            >
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                onClick={() => handleDelete(item.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{item.accountName || '-'}</TableCell>
-                                                <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
-                                                <TableCell>{item.displayOrder}</TableCell>
-                                                <TableCell>
-                                                    <Switch
-                                                        checked={item.isActive}
-                                                        onCheckedChange={(val) => handleToggleActive(item, val)}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`)}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => handleDelete(item.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-medium">
+                                                    {searchTerm ? "No payment types match your search." : "This shop has no payment types configured yet."}
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-medium">
-                                                {searchTerm ? "No payment types match your search." : "This shop has no payment types configured yet."}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            <DataTablePagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                pageSize={pageSize}
+                                onPageChange={setCurrentPage}
+                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                            />
+                        </>
                     )}
                 </CardContent>
             </Card>

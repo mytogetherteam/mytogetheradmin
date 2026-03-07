@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Dialog,
     DialogContent,
@@ -12,20 +13,28 @@ import { reviewService, Review, ReviewType } from "@/services/reviewService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, Trash2, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Trash2, MessageSquare, CheckCircle2, XCircle } from "lucide-react";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { Badge } from "@/components/ui/badge";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import { toast } from "sonner";
 
 export default function Reviews() {
+    const navigate = useNavigate();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(false);
     const [type, setType] = useState<ReviewType>("SHOPS");
-    const [page, setPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'createdAt', direction: 'desc' });
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     // Delete Confirmation
     const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -33,7 +42,7 @@ export default function Reviews() {
     const fetchReviews = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await reviewService.getReviews(type, page);
+            const data = await reviewService.getReviews(type, currentPage - 1);
             setReviews(data.content);
             setTotalPages(data.totalPages);
         } catch {
@@ -41,7 +50,7 @@ export default function Reviews() {
         } finally {
             setLoading(false);
         }
-    }, [type, page]);
+    }, [type, currentPage]);
 
     useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
@@ -75,7 +84,7 @@ export default function Reviews() {
                 <h1 className="text-lg font-semibold md:text-2xl">Reviews Moderation</h1>
             </div>
 
-            <Tabs value={type} onValueChange={(v) => { setType(v as ReviewType); setPage(0); }}>
+            <Tabs value={type} onValueChange={(v) => { setType(v as ReviewType); setCurrentPage(1); }}>
                 <TabsList>
                     <TabsTrigger value="SHOPS">Shop Reviews</TabsTrigger>
                     <TabsTrigger value="ITEMS">Menu Item Reviews</TabsTrigger>
@@ -92,98 +101,102 @@ export default function Reviews() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Reviewer</TableHead>
-                                        <TableHead>Target</TableHead>
-                                        <TableHead>Rating</TableHead>
+                                        <SortableTableHead label="Reviewer" sortKey="reviewerName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Target" sortKey="targetName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Rating" sortKey="rating" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Comment</TableHead>
-                                        <TableHead>Photos</TableHead>
+                                        <TableHead>Verified</TableHead>
                                         <TableHead>Visible</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Actions</TableHead>
+                                        <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {loading ? (
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                {[...Array(8)].map((__, j) => (
+                                                {[...Array(7)].map((__, j) => (
                                                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                                 ))}
                                             </TableRow>
                                         ))
                                     ) : reviews.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                                            <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                                                 No reviews found.
                                             </TableCell>
                                         </TableRow>
-                                    ) : reviews.map((r) => (
-                                        <TableRow key={r.id}>
-                                            <TableCell className="font-medium text-sm">{r.reviewerName}</TableCell>
-                                            <TableCell className="text-sm">{r.targetName}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-0.5">
-                                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                                    <span className="text-sm">{r.rating}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="max-w-xs">
-                                                <p className="text-sm truncate" title={r.comment}>{r.comment}</p>
-                                            </TableCell>
-                                            <TableCell>
-                                                {r.photoUrls && r.photoUrls.length > 0 ? (
-                                                    <div className="flex -space-x-2">
-                                                        {r.photoUrls.slice(0, 3).map((url, i) => (
-                                                            <div key={i} className="h-6 w-6 rounded-full border border-background overflow-hidden bg-muted">
-                                                                <img src={url} alt="" className="h-full w-full object-cover" />
-                                                            </div>
-                                                        ))}
-                                                        {r.photoUrls.length > 3 && (
-                                                            <div className="h-6 w-6 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-bold">
-                                                                +{r.photoUrls.length - 3}
-                                                            </div>
-                                                        )}
+                                    ) : (
+                                        sortData(reviews, sortConfig).map((r) => (
+                                            <TableRow
+                                                key={r.id}
+                                                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                                onClick={() => navigate(`/review/${type.toLowerCase()}/${r.id}`)}
+                                            >
+                                                <TableCell className="font-medium text-sm">{r.reviewerName}</TableCell>
+                                                <TableCell className="text-sm">{r.targetName || "N/A"}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-0.5">
+                                                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                                        <span className="text-sm">{r.rating ?? 0}</span>
                                                     </div>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-xs">No photos</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Switch
-                                                    checked={r.isVisible}
-                                                    onCheckedChange={() => handleToggleVisibility(r.id, r.isVisible)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">
-                                                {new Date(r.createdAt).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button
-                                                    size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10"
-                                                    onClick={() => setDeleteId(r.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                                <TableCell className="max-w-xs text-sm truncate" title={r.comment}>
+                                                    {r.comment || "No comment"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {r.isVerified ? (
+                                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
+                                                            <CheckCircle2 className="h-3 w-3" />
+                                                            Yes
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 gap-1">
+                                                            <XCircle className="h-3 w-3" />
+                                                            No
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                                    <Switch
+                                                        checked={r.isVisible}
+                                                        onCheckedChange={() => handleToggleVisibility(r.id, r.isVisible)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">
+                                                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
+                                                </TableCell>
+                                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10"
+                                                                    onClick={() => setDeleteId(r.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Delete review permanently</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
                     </Card>
 
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage((p) => p + 1)}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
+                    <DataTablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={reviews.length * totalPages} // Approximation since we don't have totalItems from API
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                    />
                 </TabsContent>
             </Tabs>
 

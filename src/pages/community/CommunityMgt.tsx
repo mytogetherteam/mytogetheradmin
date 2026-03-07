@@ -3,6 +3,7 @@ import { moderationService, Post } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,17 +214,29 @@ export default function CommunityMgt() {
                                                 {new Date(p.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex gap-1">
-                                                    <Button size="sm" variant="ghost" onClick={() => handleHidePost(p.id)}>
-                                                        <EyeOff className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm" variant="ghost" className="text-destructive"
-                                                        onClick={() => { setDeleteId(p.id); setDeleteTarget("post"); }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                                <TooltipProvider>
+                                                    <div className="flex gap-1">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button size="sm" variant="ghost" onClick={() => handleHidePost(p.id)}>
+                                                                    <EyeOff className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Toggle post visibility</TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm" variant="ghost" className="text-destructive"
+                                                                    onClick={() => { setDeleteId(p.id); setDeleteTarget("post"); }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Delete post permanently</TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TooltipProvider>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -279,12 +292,19 @@ export default function CommunityMgt() {
                                                 {new Date(c.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
-                                                <Button
-                                                    size="sm" variant="ghost" className="text-destructive"
-                                                    onClick={() => { setDeleteId(c.id); setDeleteTarget("comment"); }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="ghost" className="text-destructive"
+                                                                onClick={() => { setDeleteId(c.id); setDeleteTarget("comment"); }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Delete comment</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </TableCell>
                                         </TableRow>
                                     ))}

@@ -634,9 +634,10 @@ export default function CreateShopRestaurant() {
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
                                                                     const cuisine = setupData?.cuisineTypes?.find((c: any) => c.id === id)
+                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name || cuisine.slug || `Cuisine ${id}`) : null
                                                                     return cuisine ? (
                                                                         <Badge key={id} variant="secondary" className="gap-1">
-                                                                            {cuisine.name}
+                                                                            {label}
                                                                             <X
                                                                                 className="h-3 w-3 cursor-pointer"
                                                                                 onClick={() => field.onChange(field.value.filter((val: number) => val !== id))}
@@ -647,7 +648,10 @@ export default function CreateShopRestaurant() {
                                                             </div>
                                                             <FormControl>
                                                                 <SearchableSelect
-                                                                    data={setupData?.cuisineTypes?.map((c: any) => ({ label: c.name, value: c.id })) || []}
+                                                                    data={setupData?.cuisineTypes?.map((c: any) => ({
+                                                                        label: c.nameEn || c.name || c.slug || `Cuisine ${c.id}`,
+                                                                        value: c.id
+                                                                    })) || []}
                                                                     value="value"
                                                                     labelKey="label"
                                                                     onChange={(item) => {

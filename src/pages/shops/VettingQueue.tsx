@@ -3,6 +3,7 @@ import { ShopService } from "@/services/shopService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,6 +90,7 @@ export default function VettingQueue() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                                     <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead>Owner</TableHead>
                                     <SortableTableHead label="Category" sortKey="category" sortConfig={sortConfig} onSort={handleSort} />
@@ -124,22 +126,34 @@ export default function VettingQueue() {
                                         </TableCell>
                                         <TableCell className="text-sm">{shop.phone ?? "—"}</TableCell>
                                         <TableCell>
-                                            <div className="flex gap-1">
-                                                <Button
-                                                    size="sm" variant="outline"
-                                                    className="text-green-600 border-green-200 hover:bg-green-50"
-                                                    onClick={() => handleApprove(shop.id)}
-                                                >
-                                                    <Check className="h-3 w-3 mr-1" /> Approve
-                                                </Button>
-                                                <Button
-                                                    size="sm" variant="outline"
-                                                    className="text-red-600 border-red-200 hover:bg-red-50"
-                                                    onClick={() => setRejectShop(shop)}
-                                                >
-                                                    <X className="h-3 w-3 mr-1" /> Reject
-                                                </Button>
-                                            </div>
+                                            <TooltipProvider>
+                                                <div className="flex gap-1">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="outline"
+                                                                className="text-green-600 border-green-200 hover:bg-green-50"
+                                                                onClick={() => handleApprove(shop.id)}
+                                                            >
+                                                                <Check className="h-3 w-3 mr-1" /> Approve
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Approve shop listing</TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="outline"
+                                                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                                                onClick={() => setRejectShop(shop)}
+                                                            >
+                                                                <X className="h-3 w-3 mr-1" /> Reject
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Reject shop listing</TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                            </TooltipProvider>
                                         </TableCell>
                                     </TableRow>
                                 ))}
