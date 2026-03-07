@@ -56,7 +56,7 @@ export default function Login() {
                     <form onSubmit={handleLogin}>
                         <div className="grid gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="usernameOrEmail">Username or Email</Label>
+                                <Label htmlFor="usernameOrEmail">Username or Email+</Label>
                                 <Input
                                     id="usernameOrEmail"
                                     type="text"
