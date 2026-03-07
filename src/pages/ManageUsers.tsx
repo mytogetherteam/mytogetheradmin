@@ -30,7 +30,9 @@ import {
     Loader2,
     MoreHorizontal,
     UserCog,
+    User,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import {
@@ -48,6 +50,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManageUsers() {
+    const navigate = useNavigate();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -192,7 +195,11 @@ export default function ManageUsers() {
                                     <TableBody>
                                         {sortedUsers.length > 0 ? (
                                             sortedUsers.map((user) => (
-                                                <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
+                                                <TableRow
+                                                    key={user.id}
+                                                    className="hover:bg-muted/50 transition-colors cursor-pointer group"
+                                                    onClick={() => navigate(`/users/${user.id}`)}
+                                                >
                                                     <TableCell className="font-mono text-xs">{user.id}</TableCell>
                                                     <TableCell className="font-medium">{user.name || user.fullName || "N/A"}</TableCell>
                                                     <TableCell className="text-sm">{user.email}</TableCell>
@@ -212,6 +219,11 @@ export default function ManageUsers() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={() => navigate(`/users/${user.id}`)}>
+                                                                    <User className="mr-2 h-4 w-4" />
+                                                                    View Details
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
                                                                 <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
                                                                     <Power className="mr-2 h-4 w-4" />
                                                                     {user.active ? 'Deactivate' : 'Activate'}

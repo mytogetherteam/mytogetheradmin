@@ -6,8 +6,8 @@ import Profile from "@/pages/Profile";
 import { authService } from "@/services/authService";
 import { ProtectedRoute } from "@/middleware/authMiddleware";
 import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
 import ManageUsers from "@/pages/users/ManageUsers";
+import UserDetail from "./pages/users/UserDetail";
 import ManageShopRestaurant from "@/pages/shops/ManageShopRestaurant";
 import CreateShopRestaurant from "@/pages/shops/CreateShopRestaurant";
 import ShopsExcelImport from "@/pages/import/ShopsExcelImport";
@@ -78,7 +78,6 @@ function App() {
       <Routes>
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
         </Route>
 
         {/* Legacy redirects */}
@@ -97,6 +96,7 @@ function App() {
 
           {/* Users */}
           <Route path="/users/manage" element={<ManageUsers />} />
+          <Route path="/users/:id" element={<UserDetail />} />
 
           {/* Shops */}
           <Route path="/shops/manage" element={<ManageShopRestaurant />} />
