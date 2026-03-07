@@ -16,6 +16,7 @@ export interface RegisterRequest {
 export interface LoginResponse {
   token: string;
   type: string;
+  refreshToken: string;
   id: number;
   username: string;
   email: string;
@@ -47,6 +48,7 @@ export const authService = {
 
     // Store token and user data
     localStorage.setItem(config.storage.tokenKey, response.token);
+    localStorage.setItem(config.storage.refreshTokenKey, response.refreshToken);
     localStorage.setItem(
       config.storage.userKey,
       JSON.stringify({
@@ -72,6 +74,7 @@ export const authService = {
 
     // Store token and user data after successful registration
     localStorage.setItem(config.storage.tokenKey, response.token);
+    localStorage.setItem(config.storage.refreshTokenKey, response.refreshToken);
     localStorage.setItem(
       config.storage.userKey,
       JSON.stringify({
@@ -91,6 +94,7 @@ export const authService = {
    */
   logout: (): void => {
     localStorage.removeItem(config.storage.tokenKey);
+    localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);
   },
 
@@ -99,6 +103,13 @@ export const authService = {
    */
   getToken: (): string | null => {
     return localStorage.getItem(config.storage.tokenKey);
+  },
+
+  /**
+   * Get stored refresh token
+   */
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem(config.storage.refreshTokenKey);
   },
 
   /**

@@ -1,0 +1,87 @@
+import { useLocation, Link } from "react-router-dom";
+import { ChevronRight, Home } from "lucide-react";
+
+const routeLabels: Record<string, string> = {
+    "analytics": "Dashboard",
+    "users": "Users",
+    "manage": "Manage",
+    "shops": "Shops",
+    "create": "Create",
+    "riders": "Riders",
+    "profile": "Profile",
+    "settings": "Settings",
+    "operating-hours": "Hours",
+    "import": "Import",
+    "shops-excel": "Excel Import",
+    "categories": "Categories",
+    "shop-categories": "Shop Categories",
+    "shop-sub-categories": "Shop Sub-Categories",
+    "shop-payment-types": "Shop Payment Types",
+    "menus": "Menu",
+    "items": "Items",
+    "sub-categories": "Sub-Categories",
+    "orders": "Orders",
+    "board": "Live Board",
+    "history": "History",
+    "moderation": "Moderation",
+    "content": "Content",
+    "user-shop": "Reports",
+    "review": "Review",
+    "reviews": "Reviews",
+    "community": "Community",
+    "posts": "Posts",
+    "comments": "Comments",
+    "lostfound": "Lost & Found",
+    "marketing": "Marketing",
+    "banners": "Banners",
+    "broadcast": "Broadcast",
+    "system": "System",
+    "audit-logs": "Audit Logs",
+    "cities": "Cities",
+    "districts": "Districts",
+    "payment": "Payment",
+    "methods": "Methods"
+};
+
+export function BreadcrumbNav() {
+    const location = useLocation();
+    const pathnames = location.pathname.split("/").filter((x) => x);
+
+    if (pathnames.length === 0) return null;
+
+    return (
+        <nav className="flex items-center text-sm text-muted-foreground transition-all">
+            <Link
+                to="/"
+                className="flex items-center hover:text-foreground transition-colors"
+                title="Home"
+            >
+                <Home className="h-4 w-4" />
+            </Link>
+
+            {pathnames.map((value, index) => {
+                const last = index === pathnames.length - 1;
+                const to = `/${pathnames.slice(0, index + 1).join("/")}`;
+                const label = routeLabels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
+
+                return (
+                    <div key={to} className="flex items-center">
+                        <ChevronRight className="h-4 w-4 mx-1.5 opacity-40 shrink-0" />
+                        {last ? (
+                            <span className="font-semibold text-foreground truncate max-w-[150px]">
+                                {label}
+                            </span>
+                        ) : (
+                            <Link
+                                to={to}
+                                className="hover:text-foreground transition-colors hover:underline underline-offset-4"
+                            >
+                                {label}
+                            </Link>
+                        )}
+                    </div>
+                );
+            })}
+        </nav>
+    );
+}

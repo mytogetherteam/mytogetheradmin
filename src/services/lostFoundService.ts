@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export type LostFoundStatus = 'OPEN' | 'RESOLVED';
 export type LostFoundType = 'LOST' | 'FOUND';
@@ -50,27 +51,27 @@ class LostFoundService {
     if (type) params.append('postType', type);
     
     // Using community posts endpoint with postType=LOST or FOUND as per spec
-    const response = await apiClient.get<ApiResponseData<LostFoundPage>>(`/api/admin/community/posts?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<LostFoundPage>(`${config.endpoints.admin.lostFound.posts}?${params.toString()}`);
+    return response;
   }
 
-  async forceResolve(id: string): Promise<void> {
-    return apiClient.put<void>(`/api/admin/lost-found/${id}/resolve`, {});
+  async forceResolve(postId: string): Promise<void> {
+    return apiClient.put<void>(config.endpoints.admin.lostFound.resolve(postId), {});
   }
 
   async deleteCase(id: string): Promise<void> {
-    return apiClient.delete<void>(`/api/admin/community/posts/${id}`);
+    return apiClient.delete<void>(`${config.endpoints.admin.lostFound.posts}/${id}`);
   }
 
   async getSightings(postId?: string, page = 0, size = 10): Promise<SightingPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (postId) params.append('postId', postId);
-    const response = await apiClient.get<ApiResponseData<SightingPage>>(`/api/admin/lost-found/sightings?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<SightingPage>(`${config.endpoints.admin.lostFound.sightings}?${params.toString()}`);
+    return response;
   }
 
   async deleteSighting(id: string): Promise<void> {
-    return apiClient.delete<void>(`/api/admin/lost-found/sightings/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.lostFound.sightingDetail(id));
   }
 }
 

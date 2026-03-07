@@ -13,6 +13,7 @@ import {
 import { User, Settings, LogOut, Bell } from "lucide-react"
 import { authService } from "@/services/authService"
 import { AdminGlobalSearch } from "@/components/admin-global-search"
+import { BreadcrumbNav } from "@/components/breadcrumb-nav"
 import { Button } from "@/components/ui/button"
 
 export default function AppLayout() {
@@ -31,6 +32,8 @@ export default function AppLayout() {
                 <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background z-20 sticky top-0 border-sidebar-border shadow-sm">
                     <div className="flex flex-1 items-center gap-2">
                         <SidebarTrigger />
+                        <div className="hidden md:block mx-2 h-4 w-px bg-border" />
+                        <BreadcrumbNav />
                     </div>
 
                     <div className="flex items-center gap-3 md:gap-4">

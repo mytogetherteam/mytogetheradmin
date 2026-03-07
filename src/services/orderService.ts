@@ -1,25 +1,48 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'CONFIRMED';
 
 export interface OrderItem {
-  id: string;
+  id: string | number;
   name: string;
+  nameMm?: string;
   quantity: number;
   price: number;
+  totalPrice?: number;
 }
 
 export interface Order {
-  id: string;
+  id: number | string;
+  shopId: number;
   shopName: string;
-  shopId: string;
-  customerName: string;
-  customerId: string;
+  shopNameMm?: string;
+  shopImageUrl?: string;
+  userId?: number | null;
+  userFullName?: string | null;
+  userPhone?: string | null;
   status: OrderStatus;
-  items: OrderItem[];
+  statusLabel: string;
+  statusLabelMm: string;
+  deliveryType: string;
+  deliveryTier?: string | null;
+  estimatedDeliveryTime?: string | null;
+  isScheduled: boolean;
+  scheduledDeliveryTime?: string | null;
+  deliveryAddress?: string | any | null;
+  deliveryFee: number;
+  displayDeliveryFee?: string | null;
   totalAmount: number;
+  displayTotalAmount?: string | null;
+  itemCount?: number | null;
+  items: OrderItem[] | null;
+  paymentSlipUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  
+  // Backward compatibility fields if any
+  customerName?: string;
+  customerId?: string;
 }
 
 export interface OrdersPage {
@@ -39,10 +62,29 @@ export interface OrderFilters {
   size?: number;
 }
 
+export interface OrderHealthData {
+  [status: string]: number;
+}
+
+export interface OrderHistoryEntry {
+  id: string;
+  status: OrderStatus;
+  changedByAdmin?: string;
+  changedAt: string;
+  reason?: string;
+}
+
 class OrderService {
   async getActiveOrders(): Promise<Order[]> {
-    const response = await apiClient.get<ApiResponseData<Order[]>>('/api/admin/orders/active');
-    return response.data;
+    return apiClient.get<Order[]>(config.endpoints.admin.orders.active);
+  }
+
+  async getOrdersHealth(): Promise<OrderHealthData> {
+    return apiClient.get<OrderHealthData>(config.endpoints.admin.orders.health);
+  }
+
+  async getOrderDetail(orderId: string): Promise<Order> {
+    return apiClient.get<Order>(config.endpoints.admin.orders.detail(orderId));
   }
 
   async getOrders(filters: OrderFilters = {}): Promise<OrdersPage> {
@@ -54,13 +96,17 @@ class OrderService {
     params.append('page', String(filters.page ?? 0));
     params.append('size', String(filters.size ?? 20));
     const query = params.toString() ? `?${params.toString()}` : '';
-    const response = await apiClient.get<ApiResponseData<OrdersPage>>(`/api/admin/orders${query}`);
-    return response.data;
+    return apiClient.get<OrdersPage>(`${config.endpoints.admin.orders.list}${query}`);
   }
 
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-    const response = await apiClient.put<ApiResponseData<Order>>(`/api/admin/orders/${id}/status`, { status });
-    return response.data;
+  async getOrderHistory(orderId: string): Promise<OrderHistoryEntry[]> {
+    return apiClient.get<OrderHistoryEntry[]>(config.endpoints.admin.orders.history(orderId));
+  }
+
+  async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
+    const params = new URLSearchParams({ status });
+    if (reason) params.append('reason', reason);
+    return apiClient.put<Order>(`${config.endpoints.admin.orders.status(id)}?${params.toString()}`, {});
   }
 }
 

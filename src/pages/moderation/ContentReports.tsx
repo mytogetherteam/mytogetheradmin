@@ -3,11 +3,14 @@ import { moderationService, Report, ReportStatus, ReportType } from "@/services/
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldAlert, CheckCircle, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShieldAlert, CheckCircle, X } from "lucide-react";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 import { toast } from "sonner";
 import {
@@ -33,7 +36,10 @@ export default function ContentReports() {
     const [loading, setLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState<ReportStatus | "ALL">("PENDING");
     const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Resolve dialog
     const [resolveReport, setResolveReport] = useState<Report | null>(null);
@@ -46,15 +52,17 @@ export default function ContentReports() {
             const data = await moderationService.getReports(
                 statusFilter === "ALL" ? undefined : statusFilter,
                 page,
+                pageSize
             );
             setReports(data.content);
+            setTotalElements(data.totalElements || data.content.length);
             setTotalPages(data.totalPages);
         } catch {
             toast.error("Failed to load reports");
         } finally {
             setLoading(false);
         }
-    }, [statusFilter, page]);
+    }, [statusFilter, page, pageSize]);
 
     useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -83,6 +91,9 @@ export default function ContentReports() {
             toast.error("Failed to dismiss report");
         }
     };
+
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedReports = sortData(reports, sortConfig);
 
     return (
         <div className="flex flex-col gap-6">
@@ -117,11 +128,11 @@ export default function ContentReports() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Reason</TableHead>
-                                <TableHead>Reporter</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Date</TableHead>
+                                <SortableTableHead label="Type" sortKey="reportType" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Reason" sortKey="reason" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Reporter" sortKey="reporterName" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -134,13 +145,13 @@ export default function ContentReports() {
                                         ))}
                                     </TableRow>
                                 ))
-                            ) : reports.length === 0 ? (
+                            ) : sortedReports.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         No reports found.
                                     </TableCell>
                                 </TableRow>
-                            ) : reports.map((r) => (
+                            ) : sortedReports.map((r) => (
                                 <TableRow key={r.id}>
                                     <TableCell>
                                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${TYPE_COLORS[r.reportType]}`}>
@@ -164,22 +175,34 @@ export default function ContentReports() {
                                     </TableCell>
                                     <TableCell>
                                         {r.status === 'PENDING' && (
-                                            <div className="flex gap-1">
-                                                <Button
-                                                    size="sm" variant="outline"
-                                                    className="text-green-600 border-green-200 hover:bg-green-50"
-                                                    onClick={() => setResolveReport(r)}
-                                                >
-                                                    <CheckCircle className="h-3 w-3 mr-1" /> Resolve
-                                                </Button>
-                                                <Button
-                                                    size="sm" variant="ghost"
-                                                    className="text-gray-500"
-                                                    onClick={() => handleDismiss(r.id)}
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            </div>
+                                            <TooltipProvider>
+                                                <div className="flex gap-1">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="outline"
+                                                                className="text-green-600 border-green-200 hover:bg-green-50"
+                                                                onClick={() => setResolveReport(r)}
+                                                            >
+                                                                <CheckCircle className="h-3 w-3 mr-1" /> Resolve
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Mark report as resolved</TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="ghost"
+                                                                className="text-gray-500"
+                                                                onClick={() => handleDismiss(r.id)}
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Dismiss false report</TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                            </TooltipProvider>
                                         )}
                                     </TableCell>
                                 </TableRow>
@@ -189,18 +212,14 @@ export default function ContentReports() {
                 </CardContent>
             </Card>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage((p) => p + 1)}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
+            <DataTablePagination
+                currentPage={page + 1}
+                totalPages={totalPages}
+                totalItems={totalElements}
+                pageSize={pageSize}
+                onPageChange={(p) => setPage(p - 1)}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+            />
 
             {/* Resolve Dialog */}
             <Dialog open={!!resolveReport} onOpenChange={() => setResolveReport(null)}>

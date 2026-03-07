@@ -302,7 +302,10 @@ export default function BannerManagement() {
                                     type="number"
                                     placeholder="0"
                                     value={form.displayOrder}
-                                    onChange={(e) => setForm((f) => ({ ...f, displayOrder: parseInt(e.target.value) || 0 }))}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setForm((f) => ({ ...f, displayOrder: val === "" ? "" : (parseInt(val) || 0) as any }));
+                                    }}
                                 />
                             </div>
                         </div>

@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ChevronLeft, ChevronRight, CheckCircle, Trash2, MapPin, Package } from "lucide-react";
+import { Search, CheckCircle, Trash2, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import {
     Dialog,
     DialogContent,
@@ -30,7 +32,10 @@ export default function LostFound() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<string>("ALL");
+    const [typeFilter, setTypeFilter] = useState<string>("LOST");
+    const [pageSize, setPageSize] = useState(20);
+    const [totalElements, setTotalElements] = useState(0);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Action dialogs
     const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -41,10 +46,11 @@ export default function LostFound() {
         try {
             const data = await lostFoundService.getCases(
                 typeFilter === "ALL" ? undefined : typeFilter as any,
-                page, 10, search
+                page, pageSize, search
             );
             setCases(data.content);
             setTotalPages(data.totalPages);
+            setTotalElements(data.totalElements ?? data.content.length);
         } catch {
             toast.error("Failed to load cases");
         } finally {
@@ -55,15 +61,16 @@ export default function LostFound() {
     const fetchSightings = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await lostFoundService.getSightings(undefined, page, 10);
+            const data = await lostFoundService.getSightings(undefined, page, pageSize);
             setSightings(data.content);
             setTotalPages(data.totalPages);
+            setTotalElements(data.totalElements ?? data.content.length);
         } catch {
             toast.error("Failed to load sightings");
         } finally {
             setLoading(false);
         }
-    }, [page]);
+    }, [page, pageSize]);
 
     useEffect(() => {
         if (tab === "cases") fetchCases();
@@ -93,6 +100,10 @@ export default function LostFound() {
         }
     };
 
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedCases = sortData(cases, sortConfig);
+    const sortedSightings = sortData(sightings, sortConfig);
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center gap-3">
@@ -118,11 +129,10 @@ export default function LostFound() {
                     </div>
                     {tab === "cases" && (
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger className="w-48">
+                            <SelectTrigger className="w-full md:w-48">
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">All Posts</SelectItem>
                                 <SelectItem value="LOST">Lost Items</SelectItem>
                                 <SelectItem value="FOUND">Found Items</SelectItem>
                             </SelectContent>
@@ -140,11 +150,11 @@ export default function LostFound() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Item</TableHead>
-                                        <TableHead>Posted By</TableHead>
+                                        <SortableTableHead label="Type" sortKey="postType" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Item" sortKey="title" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Posted By" sortKey="postedBy" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Location</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -157,13 +167,13 @@ export default function LostFound() {
                                                 ))}
                                             </TableRow>
                                         ))
-                                    ) : cases.length === 0 ? (
+                                    ) : sortedCases.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                 No cases found.
                                             </TableCell>
                                         </TableRow>
-                                    ) : cases.map((c) => (
+                                    ) : sortedCases.map((c) => (
                                         <TableRow key={c.id}>
                                             <TableCell>
                                                 <Badge variant={c.postType === "LOST" ? "destructive" : "default"} className="text-[10px]">
@@ -215,10 +225,10 @@ export default function LostFound() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Case Ref</TableHead>
-                                        <TableHead>Witness</TableHead>
+                                        <SortableTableHead label="Witness" sortKey="witnessName" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Description</TableHead>
                                         <TableHead>Evidence</TableHead>
-                                        <TableHead>Date</TableHead>
+                                        <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -231,13 +241,13 @@ export default function LostFound() {
                                                 ))}
                                             </TableRow>
                                         ))
-                                    ) : sightings.length === 0 ? (
+                                    ) : sortedSightings.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                 No sightings logged.
                                             </TableCell>
                                         </TableRow>
-                                    ) : sightings.map((s) => (
+                                    ) : sortedSightings.map((s) => (
                                         <TableRow key={s.id}>
                                             <TableCell className="text-xs font-medium max-w-[120px] truncate">{s.caseTitle}</TableCell>
                                             <TableCell className="text-sm">{s.witnessName}</TableCell>
@@ -264,17 +274,14 @@ export default function LostFound() {
                 </TabsContent>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage((p) => p + 1)}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+                <DataTablePagination
+                    currentPage={page + 1}
+                    totalPages={totalPages}
+                    totalItems={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={(p) => setPage(p - 1)}
+                    onPageSizeChange={(size) => { setPageSize(size); setPage(0); }}
+                />
             </Tabs>
 
             {/* Action Dialog */}

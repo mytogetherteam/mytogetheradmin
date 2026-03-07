@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export type BannerPlacement = 'HOME_TOP' | 'FEED_MIDDLE' | 'SHOP_DETAIL' | 'SEARCH_TOP';
 
@@ -43,48 +44,60 @@ export interface CreateBannerRequest {
 
 class MarketingService {
   async getBanners(): Promise<Banner[]> {
-    return apiClient.get<Banner[]>('/api/admin/marketing/banners');
+    return apiClient.get<Banner[]>(config.endpoints.admin.marketing.banners.base);
   }
 
   async createBanner(data: CreateBannerRequest): Promise<Banner> {
-    return apiClient.post<Banner>('/api/admin/marketing/banners', data);
+    return apiClient.post<Banner>(config.endpoints.admin.marketing.banners.base, data);
   }
 
   async updateBanner(id: string, data: Partial<CreateBannerRequest>): Promise<Banner> {
-    return apiClient.put<Banner>(`/api/admin/marketing/banners/${id}`, data);
+    return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.detail(id), data);
   }
 
   async deleteBanner(id: string): Promise<void> {
-    return apiClient.delete<void>(`/api/admin/marketing/banners/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.marketing.banners.detail(id));
   }
 
   async toggleBanner(id: string, isActive: boolean): Promise<Banner> {
-    return apiClient.put<Banner>(`/api/admin/marketing/banners/${id}/toggle`, { isActive });
+    return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.toggle(id), { isActive });
   }
 
   async getFeaturedShops(): Promise<FeaturedShop[]> {
-    return apiClient.get<FeaturedShop[]>('/api/admin/marketing/featured-shops');
+    return apiClient.get<FeaturedShop[]>(config.endpoints.admin.marketing.featuredShops);
   }
 
   async boostShop(shopId: string, boostScore: number): Promise<void> {
-    return apiClient.post<void>(`/api/admin/marketing/shops/${shopId}/boost?score=${boostScore}`, {});
+    return apiClient.post<void>(config.endpoints.admin.marketing.shopActions.boost(shopId) + `?score=${boostScore}`, {});
   }
 
   async setFeatured(shopId: string, featured: boolean): Promise<void> {
-    return apiClient.post<void>(`/api/admin/marketing/shops/${shopId}/featured?featured=${featured}`, {});
+    return apiClient.post<void>(config.endpoints.admin.marketing.shopActions.featured(shopId) + `?featured=${featured}`, {});
   }
 
   async broadcastToUsers(title: string, message: string, data?: any): Promise<void> {
-    return apiClient.post<void>('/api/admin/announcements/broadcast/users', { title, message, data });
+    return apiClient.post<void>(config.endpoints.admin.announcements.broadcastUsers, { title, body: message, data });
   }
 
   async broadcastToShops(title: string, message: string, data?: any): Promise<void> {
-    return apiClient.post<void>('/api/admin/announcements/broadcast/shops', { title, message, data });
+    return apiClient.post<void>(config.endpoints.admin.announcements.broadcastShops, { title, body: message, data });
+  }
+
+  async notifySingleUser(userId: string | number, title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.notifyUser(userId), { title, body: message, data });
+  }
+
+  async notifySingleShop(shopId: string | number, title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.notifyShop(shopId), { title, body: message, data });
+  }
+
+  async createAnnouncement(title: string, message: string, data?: any): Promise<void> {
+    return apiClient.post<void>(config.endpoints.admin.announcements.create, { title, body: message, data });
   }
 
   async getBroadcastHistory(page = 0, size = 10): Promise<any> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    return apiClient.get<any>(`/api/admin/announcements/broadcast/history?${params.toString()}`);
+    return apiClient.get<any>(`${config.endpoints.admin.announcements.history}?${params.toString()}`);
   }
 }
 

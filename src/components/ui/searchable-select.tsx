@@ -74,7 +74,7 @@ export function SearchableSelect<T extends Record<string, any>>({
                     className={cn("w-full justify-between", className)}
                     disabled={disabled}
                 >
-                    <span className="truncate">{displayValue}</span>
+                    <span>{displayValue}</span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
@@ -110,7 +110,7 @@ export function SearchableSelect<T extends Record<string, any>>({
                                                 isSelected ? "opacity-100" : "opacity-0"
                                             )}
                                         />
-                                        <span className="truncate">{itemDisplay}</span>
+                                        <span>{itemDisplay}</span>
                                     </CommandItem>
                                 )
                             })}

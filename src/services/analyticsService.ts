@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -10,7 +11,8 @@ export interface DashboardStats {
 
 export interface RevenueData {
   date: string;
-  revenue: number;
+  count: number;
+  amount: number;
 }
 
 export interface SessionData {
@@ -19,27 +21,74 @@ export interface SessionData {
   avgSessionLength: number;
 }
 
+export interface SessionSummary {
+  totalSessions: number;
+  averageDurationSeconds: number;
+  averageActivitiesPerSession: number;
+  averageShopsViewed: number;
+  averageSearches: number;
+  activeSessions: number;
+  topEntryPoints: Record<string, number>;
+  topExitPoints: Record<string, number>;
+}
+
 export interface LocationData {
   district: string;
-  count: number;
+  activityCount: number;
 }
 
 export interface PopularShop {
-  id: string;
-  name: string;
-  revenue: number;
-  orderCount: number;
+  shopId: number;
+  shopName: string;
+  viewCount: number;
+  uniqueViewers: number;
+  revenue?: number;
 }
 
 export interface CategoryStats {
-  name: string;
+  category: string;
   viewCount: number;
+  percentage: number;
+}
+
+export interface FeedSectionStats {
+  sectionType?: string;
+  type?: string;
+  totalViews?: number;
+  impressions?: number;
+  totalClicks?: number;
+  clicks?: number;
+  clickThroughRate?: number;
+  ctr?: number;
+}
+
+export interface DeviceStats {
+  type: string;
+  count: number;
+  percentage: number;
+}
+
+export interface CancellationRateData {
+  totalOrders: number;
+  cancelledOrders: number;
+  cancellationRatePercent: number;
+}
+
+export interface UserGrowthData {
+  date: string;
+  newUsers: number;
+  cumulativeTotal: number;
+}
+
+export interface FeatureUsageData {
+  feature: string;
+  usageCount: number;
+  percentage: number;
 }
 
 class AnalyticsService {
   async getDashboardStats(): Promise<DashboardStats> {
-    const response = await apiClient.get<ApiResponseData<DashboardStats>>('/api/admin/dashboard/stats');
-    return response.data;
+    return apiClient.get<DashboardStats>(config.endpoints.admin.analytics.dashboard);
   }
 
   async getRevenueAnalytics(start?: string, end?: string): Promise<RevenueData[]> {
@@ -47,33 +96,87 @@ class AnalyticsService {
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const response = await apiClient.get<ApiResponseData<RevenueData[]>>(`/api/admin/analytics/revenue${query}`);
-    return response.data;
+    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.revenue}${query}`);
   }
 
-  async getSessionAnalytics(): Promise<SessionData[]> {
-    const response = await apiClient.get<ApiResponseData<SessionData[]>>('/api/admin/analytics/sessions');
-    return response.data;
+  async getSessionAnalytics(): Promise<SessionSummary | SessionData[]> {
+    return apiClient.get<SessionSummary | SessionData[]>(config.endpoints.admin.analytics.sessions);
   }
 
   async getLocationAnalytics(): Promise<LocationData[]> {
-    const response = await apiClient.get<ApiResponseData<LocationData[]>>('/api/admin/analytics/locations');
-    return response.data;
+    return apiClient.get<LocationData[]>(config.endpoints.admin.analytics.locations);
   }
 
   async getPopularShops(): Promise<PopularShop[]> {
-    const response = await apiClient.get<ApiResponseData<PopularShop[]>>('/api/admin/analytics/shops/popular');
-    return response.data;
+    return apiClient.get<PopularShop[]>(config.endpoints.admin.analytics.popularShops);
   }
 
   async getCategoryStats(): Promise<CategoryStats[]> {
-    const response = await apiClient.get<ApiResponseData<CategoryStats[]>>('/api/admin/analytics/categories');
-    return response.data;
+    return apiClient.get<CategoryStats[]>(config.endpoints.admin.analytics.categories);
   }
 
   async getSystemHealth(): Promise<{ dbLatency: number; status: string }> {
-    const response = await apiClient.get<ApiResponseData<{ dbLatency: number; status: string }>>('/api/admin/system/db-latency');
-    return response.data;
+    return apiClient.get<{ dbLatency: number; status: string }>(config.endpoints.admin.system.dbLatency);
+  }
+
+  async getFeedPerformance(): Promise<{ overallCtr: number }> {
+    return apiClient.get<{ overallCtr: number }>(config.endpoints.admin.analytics.feed);
+  }
+
+  async getFeedSectionStats(type: string): Promise<FeedSectionStats> {
+    return apiClient.get<FeedSectionStats>(config.endpoints.admin.analytics.feedSections(type));
+  }
+
+  async getDeviceStats(): Promise<DeviceStats[]> {
+    return apiClient.get<DeviceStats[]>(config.endpoints.admin.analytics.deviceStats);
+  }
+
+  async getOrderVolumeChart(start?: string, end?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any>(`${config.endpoints.admin.analytics.orders}${query}`);
+  }
+
+  async getCancellationRate(start?: string, end?: string): Promise<CancellationRateData> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<CancellationRateData>(`${config.endpoints.admin.analytics.ordersCancellationRate}${query}`);
+  }
+
+  async getUserGrowth(start?: string, end?: string): Promise<UserGrowthData[]> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<UserGrowthData[]>(`${config.endpoints.admin.analytics.usersGrowth}${query}`);
+  }
+
+  async getShopRevenue(shopId: number, start?: string, end?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any>(`${config.endpoints.admin.analytics.shopRevenue(shopId)}${query}`);
+  }
+
+  async getShopOrders(shopId: number, start?: string, end?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any>(`${config.endpoints.admin.analytics.shopOrders(shopId)}${query}`);
+  }
+
+  async getFeatureUsage(): Promise<FeatureUsageData[]> {
+    return apiClient.get<FeatureUsageData[]>(config.endpoints.admin.analytics.features);
+  }
+
+  async getDeviceDetail(deviceId: string): Promise<any> {
+    return apiClient.get<any>(config.endpoints.admin.analytics.deviceDetail(deviceId));
   }
 }
 

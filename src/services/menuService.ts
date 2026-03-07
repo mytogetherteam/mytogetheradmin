@@ -1,4 +1,5 @@
 import { apiClient } from "./apiClient";
+import { config } from "@/config/config";
 
 export interface MenuCategory {
     id?: number;
@@ -21,6 +22,9 @@ export interface MenuItem {
     descriptionTh?: string;
     descriptionEn?: string;
     price: number;
+    originalPrice?: number;
+    discountAmount?: number;
+    discountPercentage?: number;
     smallPrice?: number;
     mediumPrice?: number;
     largePrice?: number;
@@ -32,12 +36,42 @@ export interface MenuItem {
     imageUrls?: string[]; // Multiple images support
     isVegetarian?: boolean;
     isSpicy?: boolean;
-    isPopular?: boolean;
     isAvailable?: boolean;
     isRecommended?: boolean;
+    isPopular?: boolean;
     isHotDeal?: boolean;
     isCombo?: boolean;
     displayOrder?: number;
+    optionGroups?: OptionGroup[];
+    variants?: Variant[];
+}
+
+export interface Option {
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    price: number;
+    isAvailable: boolean;
+}
+
+export interface OptionGroup {
+    id?: number;
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    isRequired: boolean;
+    minSelection: number;
+    maxSelection: number;
+    options: Option[];
+}
+
+export interface Variant {
+    id?: number;
+    nameEn: string;
+    nameMm?: string;
+    nameTh?: string;
+    price: number;
+    isAvailable: boolean;
 }
 
 export interface MenuSubCategory {
@@ -56,96 +90,78 @@ export const menuService = {
     // --- Menu Categories ---
 
     getAllMenuCategories: async (page = 0, size = 20, search = ""): Promise<any> => {
-        const endpoint = `/api/admin/categories?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
-        const response = await apiClient.get<any>(endpoint);
-        return response.data;
+        const endpoint = `${config.endpoints.admin.menu.categories}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
+        return apiClient.get<any>(endpoint);
     },
 
     createMenuCategory: async (shopId: number, data: FormData): Promise<MenuCategory> => {
-        const response = await apiClient.post<any>(`/api/admin/categories/shop/${shopId}`, data);
-        return response.data;
+        return apiClient.post<any>(config.endpoints.admin.menu.shopCategories(shopId), data);
     },
 
     updateMenuCategory: async (id: number, data: FormData): Promise<MenuCategory> => {
-        const response = await apiClient.put<any>(`/api/admin/categories/${id}`, data);
-        return response.data;
+        return apiClient.put<any>(config.endpoints.admin.menu.categoryDetail(id), data);
     },
 
     deleteMenuCategory: async (id: number): Promise<void> => {
-        await apiClient.delete(`/api/admin/categories/${id}`);
+        await apiClient.delete(config.endpoints.admin.menu.categoryDetail(id));
     },
 
     // --- Menu Items ---
 
     getAllMenuItems: async (page = 0, size = 20, search = "", shopId?: number): Promise<any> => {
-        let endpoint = `/api/admin/items?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
+        let endpoint = `${config.endpoints.admin.menu.items}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
         if (shopId) {
             endpoint += `&shopId=${shopId}`;
         }
-        const response = await apiClient.get<any>(endpoint);
-        return response.data;
+        return apiClient.get<any>(endpoint);
     },
 
     getMenuItem: async (id: number): Promise<MenuItem> => {
-        const response = await apiClient.get<any>(`/api/admin/items/${id}`);
-        return response.data;
+        return apiClient.get<any>(config.endpoints.admin.menu.itemDetail(id));
     },
 
     createMenuItem: async (categoryId: number, data: FormData): Promise<MenuItem> => {
-        const response = await apiClient.post<any>(`/api/admin/items/categories/${categoryId}`, data);
-        return response.data;
+        return apiClient.post<any>(config.endpoints.admin.menu.categoryItems(categoryId), data);
     },
 
     updateMenuItem: async (id: number, data: FormData): Promise<MenuItem> => {
-        const response = await apiClient.put<any>(`/api/admin/items/${id}`, data);
-        return response.data;
+        return apiClient.put<any>(config.endpoints.admin.menu.itemDetail(id), data);
     },
 
     deleteMenuItem: async (id: number): Promise<void> => {
-        await apiClient.delete(`/api/admin/items/${id}`);
+        await apiClient.delete(config.endpoints.admin.menu.itemDetail(id));
     },
 
     // --- Menu SubCategories ---
 
     getMenuSubCategories: async (categoryId: number): Promise<MenuSubCategory[]> => {
-        const response = await apiClient.get<any>(`/api/admin/menu-sub-categories/category/${categoryId}`);
-        return response.data;
+        return apiClient.get<any>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
     },
 
     getMenuSubCategory: async (id: number): Promise<MenuSubCategory> => {
-        const response = await apiClient.get<any>(`/api/admin/menu-sub-categories/${id}`);
-        return response.data;
+        return apiClient.get<any>(config.endpoints.admin.menu.subCategoryDetail(id));
     },
 
     createMenuSubCategory: async (categoryId: number, data: FormData): Promise<MenuSubCategory> => {
-        const response = await apiClient.post<any>(`/api/admin/menu-sub-categories/category/${categoryId}`, data);
-        return response.data;
+        return apiClient.post<any>(config.endpoints.admin.menu.subCategoryByCategory(categoryId), data);
     },
 
     updateMenuSubCategory: async (id: number, data: FormData): Promise<MenuSubCategory> => {
-        const response = await apiClient.put<any>(`/api/admin/menu-sub-categories/${id}`, data);
-        return response.data;
+        return apiClient.put<any>(config.endpoints.admin.menu.subCategoryDetail(id), data);
     },
 
     deleteMenuSubCategory: async (id: number): Promise<void> => {
-        await apiClient.delete(`/api/admin/menu-sub-categories/${id}`);
+        await apiClient.delete(config.endpoints.admin.menu.subCategoryDetail(id));
     },
 
     // --- Status Toggles ---
     toggleRecommended: async (id: number, enabled: boolean): Promise<any> => {
-        const response = await apiClient.put<any>(`/api/admin/items/${id}/recommended?enabled=${enabled}`);
-        return response.data;
-    },
-    togglePopular: async (id: number, isPopular: boolean): Promise<any> => {
-        const response = await apiClient.put<any>(`/api/admin/items/${id}/popular?isPopular=${isPopular}`);
-        return response.data;
+        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.recommended(id)}?enabled=${enabled}`);
     },
     toggleAvailable: async (id: number, available: boolean): Promise<any> => {
-        const response = await apiClient.put<any>(`/api/admin/items/${id}/availability?available=${available}`);
-        return response.data;
+        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.availability(id)}?available=${available}`);
     },
     toggleHotDeal: async (id: number, enabled: boolean): Promise<any> => {
-        const response = await apiClient.put<any>(`/api/admin/items/${id}/hot-deal?enabled=${enabled}`);
-        return response.data;
+        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.hotDeal(id)}?enabled=${enabled}`);
     }
 };

@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader } from "@/components/ui/loader"
 import { Input } from "@/components/ui/input"
+import { DataTablePagination } from "@/components/DataTablePagination"
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead"
 import {
     Select,
     SelectContent,
@@ -34,17 +36,16 @@ import {
     Plus,
     Search,
     FileSpreadsheet,
-    ArrowUpDown,
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    CheckCircle,
-    XCircle,
     PowerOff,
     Power,
     Edit,
     Clock,
+    Check,
+    X,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as XLSX from "xlsx"
@@ -57,7 +58,10 @@ export default function ManageShopRestaurant() {
     const [searchTerm, setSearchTerm] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
+    const [pendingCurrentPage, setPendingCurrentPage] = useState(1)
+    const [pendingPageSize, setPendingPageSize] = useState(20)
+    const [pendingTotalElements, setPendingTotalElements] = useState(0)
     const [activeTab, setActiveTab] = useState("all")
     const navigate = useNavigate()
 
@@ -68,8 +72,11 @@ export default function ManageShopRestaurant() {
 
     useEffect(() => {
         loadShops()
-        loadPendingShops()
     }, [])
+
+    useEffect(() => {
+        loadPendingShops()
+    }, [pendingCurrentPage, pendingPageSize])
 
     const loadShops = async () => {
         setLoading(true)
@@ -88,9 +95,10 @@ export default function ManageShopRestaurant() {
     const loadPendingShops = async () => {
         setPendingLoading(true)
         try {
-            const response = await ShopService.getPendingVettingShops(0, 100)
-            const list = response?.data?.content || response?.content || response?.data || []
-            setPendingShops(Array.isArray(list) ? list : [])
+            const response = await ShopService.getPendingVettingShops(pendingCurrentPage - 1, pendingPageSize)
+            const content = response?.content || []
+            setPendingShops(content)
+            setPendingTotalElements(response?.totalElements ?? content.length)
         } catch (error) {
             console.error("Failed to load pending shops:", error)
         } finally {
@@ -120,7 +128,7 @@ export default function ManageShopRestaurant() {
         setActionLoading(shop.id)
         try {
             await ShopService.verifyShop(shop.id)
-            toast.success(`${shop.name} has been verified`)
+            toast.success(`${shop.nameEn || shop.name} has been verified`)
             loadShops()
             loadPendingShops()
         } catch (err) {
@@ -134,7 +142,7 @@ export default function ManageShopRestaurant() {
     const openRejectDialog = (e: React.MouseEvent, shop: any) => {
         e.stopPropagation()
         setRejectReason("")
-        setRejectDialog({ open: true, id: shop.id, name: shop.name })
+        setRejectDialog({ open: true, id: shop.id, name: shop.nameEn || shop.name })
     }
 
     const handleRejectConfirm = async () => {
@@ -155,26 +163,14 @@ export default function ManageShopRestaurant() {
 
     const filteredShops = shops.filter(
         (shop) =>
-            shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (shop.nameMm && shop.nameMm.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.category && shop.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.city && shop.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (shop.district && shop.district.toLowerCase().includes(searchTerm.toLowerCase()))
+            (shop.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.nameMm?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.category?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.city?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (shop.district?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
 
-    const sortedShops = [...filteredShops].sort((a, b) => {
-        if (!sortConfig) return 0
-        const { key, direction } = sortConfig
-        const aValue: any = a[key as keyof Shop]
-        const bValue: any = b[key as keyof Shop]
-        if (aValue === undefined) return 1
-        if (bValue === undefined) return -1
-        const aComp = typeof aValue === "string" ? aValue.toLowerCase() : aValue
-        const bComp = typeof bValue === "string" ? bValue.toLowerCase() : bValue
-        if (aComp < bComp) return direction === "asc" ? -1 : 1
-        if (aComp > bComp) return direction === "asc" ? 1 : -1
-        return 0
-    })
+    const sortedShops = sortData(filteredShops, sortConfig)
 
     const totalItems = sortedShops.length
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
@@ -184,11 +180,7 @@ export default function ManageShopRestaurant() {
 
     if (currentPage > totalPages && totalPages > 0) setCurrentPage(1)
 
-    const handleSort = (key: string) => {
-        let direction: "asc" | "desc" = "asc"
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") direction = "desc"
-        setSortConfig({ key, direction })
-    }
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key))
 
     const exportToExcel = () => {
         const data = sortedShops.map((shop) => ({
@@ -221,15 +213,9 @@ export default function ManageShopRestaurant() {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[60px]">Photo</TableHead>
-                            <TableHead className="w-[70px] cursor-pointer" onClick={() => handleSort("id")}>
-                                <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                                <div className="flex items-center gap-2">Name <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("category")}>
-                                <div className="flex items-center gap-2">Category <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
+                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} />
+                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                            <SortableTableHead label="Category" sortKey="category" sortConfig={sortConfig} onSort={handleSort} />
                             <TableHead>Location</TableHead>
                             <TableHead>Flags</TableHead>
                             <TableHead>Verified</TableHead>
@@ -250,7 +236,7 @@ export default function ManageShopRestaurant() {
                                             {shop.logoUrl ? (
                                                 <img
                                                     src={shop.logoUrl}
-                                                    alt={shop.name}
+                                                    alt={shop.nameEn || shop.name}
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
@@ -260,7 +246,7 @@ export default function ManageShopRestaurant() {
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                     <TableCell className="font-medium">
-                                        <div>{shop.name}</div>
+                                        <div>{shop.nameEn || shop.name}</div>
                                         {shop.nameMm && <div className="text-xs text-muted-foreground">{shop.nameMm}</div>}
                                     </TableCell>
                                     <TableCell>
@@ -307,7 +293,7 @@ export default function ManageShopRestaurant() {
                                                 className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                 onClick={(e) => handleVerify(e, shop)}
                                             >
-                                                <CheckCircle className="h-4 w-4" />
+                                                <Check className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -317,7 +303,7 @@ export default function ManageShopRestaurant() {
                                                 className="text-orange-500 hover:text-orange-600 hover:bg-orange-50"
                                                 onClick={(e) => openRejectDialog(e, shop)}
                                             >
-                                                <XCircle className="h-4 w-4" />
+                                                <X className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
@@ -377,8 +363,9 @@ export default function ManageShopRestaurant() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="mb-4">
+                    {/* Vetting Tabs */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+                        <TabsList>
                             <TabsTrigger value="all">All Shops</TabsTrigger>
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
@@ -441,9 +428,16 @@ export default function ManageShopRestaurant() {
                                 </>
                             )}
                         </TabsContent>
-
                         <TabsContent value="pending">
                             <ShopTable shopList={pendingShops} isLoading={pendingLoading} />
+                            <DataTablePagination
+                                currentPage={pendingCurrentPage}
+                                totalPages={Math.max(1, Math.ceil(pendingTotalElements / pendingPageSize))}
+                                totalItems={pendingTotalElements}
+                                pageSize={pendingPageSize}
+                                onPageChange={setPendingCurrentPage}
+                                onPageSizeChange={(size) => { setPendingPageSize(size); setPendingCurrentPage(1); }}
+                            />
                         </TabsContent>
                     </Tabs>
                 </CardContent>
@@ -473,6 +467,6 @@ export default function ManageShopRestaurant() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

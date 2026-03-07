@@ -1,4 +1,5 @@
 import { apiClient } from "./apiClient";
+import { config } from "@/config/config";
 
 export interface GlobalSearchResult {
     users: SearchUserItem[];
@@ -28,11 +29,11 @@ export interface SearchOrderItem {
 }
 
 class SearchService {
-    async globalSearch(query: string): Promise<GlobalSearchResult> {
+    async globalSearch(query: string, limit: number = 5): Promise<GlobalSearchResult> {
         if (!query || query.trim().length === 0) {
             return { users: [], shops: [], orders: [] };
         }
-        return apiClient.get<GlobalSearchResult>(`/api/admin/search?query=${encodeURIComponent(query)}`);
+        return apiClient.get<GlobalSearchResult>(`${config.endpoints.admin.search}?query=${encodeURIComponent(query)}&limit=${limit}`);
     }
 }
 

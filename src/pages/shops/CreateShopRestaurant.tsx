@@ -26,11 +26,10 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO } from "@/services/shopService"
+import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
-import { apiClient } from "@/services/apiClient"
-import { config } from "@/config/config"
 import {
     Dialog,
     DialogContent,
@@ -46,32 +45,19 @@ import { Badge } from "@/components/ui/badge"
 // Schema based on API CreateShopRequest
 const shopFormSchema = z.object({
     // Basic Info
-    name: z.string().min(2, "Name must be at least 2 characters."),
-    nameMm: z.string().min(1, "Name (Myanmar) is required."),
+    nameEn: z.string().min(2, "Name (English) is required."),
+    nameMm: z.string().optional(),
     nameTh: z.string().optional(),
-    nameEn: z.string().optional(),
-    slug: z.string().optional(),
 
     // Category
-    category: z.string().min(1, "Please select a category."),
-    categoryMm: z.string().optional(),
-    categoryTh: z.string().optional(),
-    categoryEn: z.string().optional(),
-    subCategory: z.string().optional(),
-    subCategoryMm: z.string().optional(),
-    subCategoryTh: z.string().optional(),
-    subCategoryEn: z.string().optional(),
+    shopCategoryId: z.number().min(1, "Please select a category."),
+    shopSubCategoryId: z.number().nullable().optional(),
 
     // Location
-    address: z.string().min(5, "Address must be at least 5 characters."),
+    addressEn: z.string().min(5, "Address must be at least 5 characters."),
     addressMm: z.string().optional(),
     addressTh: z.string().optional(),
-    addressEn: z.string().optional(),
     districtId: z.coerce.number().min(1, "District is required."),
-    district: z.string().optional(),
-    districtMm: z.string().optional(),
-    city: z.string().optional(),
-    cityMm: z.string().optional(),
     latitude: z.coerce.number().min(-90).max(90, "Invalid latitude"),
     longitude: z.coerce.number().min(-180).max(180, "Invalid longitude"),
 
@@ -80,10 +66,9 @@ const shopFormSchema = z.object({
     email: z.string().email("Invalid email").optional().or(z.literal("")),
 
     // Description
-    description: z.string().optional(),
+    descriptionEn: z.string().optional(),
     descriptionMm: z.string().optional(),
     descriptionTh: z.string().optional(),
-    descriptionEn: z.string().optional(),
 
     // Features
     hasDelivery: z.boolean().optional(),
@@ -99,9 +84,6 @@ const shopFormSchema = z.object({
 
     // Price & Delivery
     pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-    pricePreferenceMm: z.string().optional(),
-    pricePreferenceTh: z.string().optional(),
-    pricePreferenceEn: z.string().optional(),
     enableStockCheck: z.boolean().optional(),
     maxItemQuantityPerOrder: z.coerce.number().optional(),
     minOrderAmount: z.coerce.number().optional(),
@@ -140,43 +122,35 @@ export default function CreateShopRestaurant() {
     const [submitting, setSubmitting] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
-    const [categories, setCategories] = useState<string[]>([])
-    const [setupData, setSetupData] = useState<any>(null)
+    const [setupData, setSetupData] = useState<ShopFormDataDTO | null>(null)
     const [setupLoading, setSetupLoading] = useState(true)
+    const [selectedCityId, setSelectedCityId] = useState<number | null>(null)
+    const [availableDistricts, setAvailableDistricts] = useState<DistrictDTO[]>([])
+
+    // Categories
+    const [shopCategories, setShopCategories] = useState<ShopCategoryDTO[]>([])
+    const [shopSubCategories, setShopSubCategories] = useState<ShopSubCategoryDTO[]>([])
+    const [categoriesLoading, setCategoriesLoading] = useState(false)
 
     const form = useForm<ShopFormValues>({
         resolver: zodResolver(shopFormSchema) as Resolver<ShopFormValues>,
         defaultValues: {
-            name: "",
+            nameEn: "",
             nameMm: "",
             nameTh: "",
-            nameEn: "",
-            slug: "",
-            description: "",
-            descriptionMm: "",
-            descriptionTh: "",
-            descriptionEn: "",
-            category: "",
-            categoryMm: "",
-            categoryTh: "",
-            categoryEn: "",
-            subCategory: "",
-            subCategoryMm: "",
-            subCategoryTh: "",
-            subCategoryEn: "",
-            address: "",
+            shopCategoryId: 0,
+            shopSubCategoryId: undefined,
+            addressEn: "",
             addressMm: "",
             addressTh: "",
-            addressEn: "",
             districtId: 0,
-            district: "",
-            districtMm: "",
-            city: "",
-            cityMm: "",
             latitude: 0,
             longitude: 0,
             phone: "",
             email: "",
+            descriptionEn: "",
+            descriptionMm: "",
+            descriptionTh: "",
             hasDelivery: false,
             deliveryEnabled: false,
             hasParking: false,
@@ -186,9 +160,6 @@ export default function CreateShopRestaurant() {
             isHalal: false,
             isVegetarian: false,
             pricePreference: "MEDIUM",
-            pricePreferenceMm: "",
-            pricePreferenceTh: "",
-            pricePreferenceEn: "",
             enableStockCheck: false,
             maxItemQuantityPerOrder: 10,
             minOrderAmount: 0,
@@ -197,6 +168,15 @@ export default function CreateShopRestaurant() {
             mealTypes: [],
             supportedDeliveryTypes: [],
             paymentMethodIds: [],
+            operatingHours: [
+                { dayOfWeek: 1, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 2, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 3, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 4, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                { dayOfWeek: 7, openTime: "09:00", closeTime: "21:00", isClosed: false },
+            ],
         },
     })
 
@@ -204,42 +184,30 @@ export default function CreateShopRestaurant() {
         loadSetupData()
     }, [])
 
+
+
     useEffect(() => {
         if (isEditMode && shopId) {
             loadShopData(shopId)
         } else {
             // Reset form for create mode
             form.reset({
-                name: "",
+                nameEn: "",
                 nameMm: "",
                 nameTh: "",
-                nameEn: "",
-                slug: "",
-                description: "",
-                descriptionMm: "",
-                descriptionTh: "",
-                descriptionEn: "",
-                category: "",
-                categoryMm: "",
-                categoryTh: "",
-                categoryEn: "",
-                subCategory: "",
-                subCategoryMm: "",
-                subCategoryTh: "",
-                subCategoryEn: "",
-                address: "",
+                shopCategoryId: 0,
+                shopSubCategoryId: undefined,
+                addressEn: "",
                 addressMm: "",
                 addressTh: "",
-                addressEn: "",
                 districtId: 0,
-                district: "",
-                districtMm: "",
-                city: "",
-                cityMm: "",
                 latitude: 0,
                 longitude: 0,
                 phone: "",
                 email: "",
+                descriptionEn: "",
+                descriptionMm: "",
+                descriptionTh: "",
                 hasDelivery: false,
                 deliveryEnabled: false,
                 hasParking: false,
@@ -249,9 +217,6 @@ export default function CreateShopRestaurant() {
                 isHalal: false,
                 isVegetarian: false,
                 pricePreference: "MEDIUM",
-                pricePreferenceMm: "",
-                pricePreferenceTh: "",
-                pricePreferenceEn: "",
                 enableStockCheck: false,
                 maxItemQuantityPerOrder: 10,
                 minOrderAmount: 0,
@@ -283,23 +248,60 @@ export default function CreateShopRestaurant() {
 
     const loadSetupData = async () => {
         setSetupLoading(true)
+        setCategoriesLoading(true)
         try {
-            // This now calls the updated categories endpoint which points to setup data
-            const response = await apiClient.get<any>(config.endpoints.shops.categories)
-            const data = response.data
+            const [data, categories] = await Promise.all([
+                PaymentService.getShopFormData(),
+                ShopService.getCategories()
+            ])
             setSetupData(data)
-
-            // Extract categories if available, else use fallback
-            if (data.categories) {
-                setCategories(data.categories)
-            } else {
-                setCategories(["Restaurant", "Retail", "Service", "Other"])
-            }
+            setShopCategories(categories)
         } catch (error) {
             console.error("Failed to load setup data:", error)
-            setCategories(["Restaurant", "Retail", "Service", "Other"])
+            toast.error("Failed to load necessary form data")
         } finally {
             setSetupLoading(false)
+            setCategoriesLoading(false)
+        }
+    }
+
+    // Effect to handle subcategory loading when category changes
+    const selectedCategoryId = form.watch("shopCategoryId")
+    useEffect(() => {
+        const fetchSubCategories = async () => {
+            if (!selectedCategoryId) {
+                setShopSubCategories([])
+                return
+            }
+            try {
+                const subCats = await ShopService.getSubCategories(selectedCategoryId)
+                setShopSubCategories(subCats)
+            } catch (error) {
+                console.error("Failed to load subcategories:", error)
+                toast.error("Failed to load subcategories")
+            }
+        }
+        fetchSubCategories()
+    }, [selectedCategoryId])
+
+    // Handle City Change
+    const handleCityChange = (cityId: number) => {
+        setSelectedCityId(cityId)
+        const city = setupData?.cities.find(c => c.id === cityId)
+        if (city) {
+            setAvailableDistricts(city.districts || [])
+            // Reset district when city changes
+            form.setValue("districtId", 0)
+        }
+    }
+
+    // Handle District Change
+    const handleDistrictChange = (districtId: number) => {
+        const district = availableDistricts.find(d => d.id === districtId)
+        if (district) {
+            form.setValue("districtId", district.id)
+            if (district.latitude) form.setValue("latitude", district.latitude)
+            if (district.longitude) form.setValue("longitude", district.longitude)
         }
     }
 
@@ -317,36 +319,22 @@ export default function CreateShopRestaurant() {
 
             // Map API response to form structure
             form.reset({
-                name: shop.name || "",
+                nameEn: shop.nameEn || "",
                 nameMm: shop.nameMm || "",
                 nameTh: shop.nameTh || "",
-                nameEn: shop.nameEn || "",
-                slug: shop.slug || "",
-                description: shop.description || "",
-                descriptionMm: shop.descriptionMm || "",
-                descriptionTh: shop.descriptionTh || "",
-                descriptionEn: shop.descriptionEn || "",
-                category: shop.category || "",
-                categoryMm: shop.categoryMm || "",
-                categoryTh: shop.categoryTh || "",
-                categoryEn: shop.categoryEn || "",
-                subCategory: shop.subCategory || "",
-                subCategoryMm: shop.subCategoryMm || "",
-                subCategoryTh: shop.subCategoryTh || "",
-                subCategoryEn: shop.subCategoryEn || "",
-                address: shop.address || "",
+                shopCategoryId: shop.shopCategory?.id || 0,
+                shopSubCategoryId: shop.shopSubCategory?.id || undefined,
+                addressEn: shop.addressEn || "",
                 addressMm: shop.addressMm || "",
                 addressTh: shop.addressTh || "",
-                addressEn: shop.addressEn || "",
                 districtId: shop.districtId || 0,
-                district: shop.district || "",
-                districtMm: shop.districtMm || "",
-                city: shop.city || "",
-                cityMm: shop.cityMm || "",
                 latitude: shop.latitude || 0,
                 longitude: shop.longitude || 0,
                 phone: shop.phone || "",
                 email: shop.email || "",
+                descriptionEn: shop.descriptionEn || "",
+                descriptionMm: shop.descriptionMm || "",
+                descriptionTh: shop.descriptionTh || "",
                 hasDelivery: shop.hasDelivery || false,
                 deliveryEnabled: shop.deliveryEnabled || false,
                 hasParking: shop.hasParking || false,
@@ -356,9 +344,6 @@ export default function CreateShopRestaurant() {
                 isHalal: shop.isHalal || false,
                 isVegetarian: shop.isVegetarian || false,
                 pricePreference: shop.pricePreference || "MEDIUM",
-                pricePreferenceMm: shop.pricePreferenceMm || "",
-                pricePreferenceTh: shop.pricePreferenceTh || "",
-                pricePreferenceEn: shop.pricePreferenceEn || "",
                 enableStockCheck: shop.enableStockCheck || false,
                 maxItemQuantityPerOrder: shop.maxItemQuantityPerOrder || 10,
                 minOrderAmount: shop.minOrderAmount || 0,
@@ -412,51 +397,29 @@ export default function CreateShopRestaurant() {
 
             // Prepare the data object (excluding file fields we send separately)
             const {
-                name, nameMm, nameTh, nameEn, slug,
-                category, categoryMm, categoryTh, categoryEn,
-                subCategory, subCategoryMm, subCategoryTh, subCategoryEn,
-                address, addressMm, addressTh, addressEn,
-                districtId, district, districtMm, city, cityMm, latitude, longitude,
+                nameEn, nameMm, nameTh,
+                shopCategoryId, shopSubCategoryId,
+                addressEn, addressMm, addressTh,
+                districtId, latitude, longitude,
                 phone, email,
-                description, descriptionMm, descriptionTh, descriptionEn,
+                descriptionEn, descriptionMm, descriptionTh,
                 hasDelivery, deliveryEnabled, hasParking, hasWifi,
                 isVerified, isActive, isHalal, isVegetarian,
-                pricePreference, pricePreferenceMm, pricePreferenceTh, pricePreferenceEn,
-                enableStockCheck, maxItemQuantityPerOrder, minOrderAmount, baseDeliveryFee,
+                pricePreference, enableStockCheck, maxItemQuantityPerOrder, minOrderAmount, baseDeliveryFee,
                 cuisineTypeIds, mealTypes, supportedDeliveryTypes, paymentMethodIds, operatingHours
             } = data;
 
             const dataWithoutFiles = {
-                name,
-                nameMm,
-                nameTh,
-                nameEn,
-                slug,
-                category,
-                categoryMm,
-                categoryTh,
-                categoryEn,
-                subCategory,
-                subCategoryMm,
-                subCategoryTh,
-                subCategoryEn,
-                address,
-                addressMm,
-                addressTh,
-                addressEn,
+                nameEn, nameMm, nameTh,
+                shopCategoryId,
+                shopSubCategoryId,
+                addressEn, addressMm, addressTh,
                 districtId,
-                district,
-                districtMm,
-                city,
-                cityMm,
                 latitude,
                 longitude,
                 phone,
                 email,
-                description,
-                descriptionMm,
-                descriptionTh,
-                descriptionEn,
+                descriptionEn, descriptionMm, descriptionTh,
                 hasDelivery,
                 deliveryEnabled,
                 hasParking,
@@ -466,9 +429,6 @@ export default function CreateShopRestaurant() {
                 isHalal,
                 isVegetarian,
                 pricePreference,
-                pricePreferenceMm,
-                pricePreferenceTh,
-                pricePreferenceEn,
                 enableStockCheck,
                 maxItemQuantityPerOrder,
                 minOrderAmount,
@@ -625,98 +585,141 @@ export default function CreateShopRestaurant() {
                                         <CardTitle>Basic Information</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="name"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Name (Default)</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="e.g. My Together Cafe" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="nameMm"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Name (Myanmar)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="မြန်မာနာမည်" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                        <div className="space-y-4">
                                             <FormField
                                                 control={form.control}
                                                 name="nameEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Name (English)</FormLabel>
+                                                        <FormLabel>Shop Name (English)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Shop Name in English" {...field} />
+                                                            <Input placeholder="e.g. My Together Cafe" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                            <FormField
-                                                control={form.control}
-                                                name="nameTh"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Name (Thai)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="ชื่อร้านภาษาไทย" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="slug"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Slug</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="my-together-cafe" {...field} />
-                                                        </FormControl>
-                                                        <FormDescription>URL friendly name.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="category"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Category</FormLabel>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                data={categories.map(cat => ({ label: cat, value: cat }))}
-                                                                value="value"
-                                                                labelKey="label"
-                                                                selectedValue={field.value ? { label: field.value, value: field.value } : undefined}
-                                                                onChange={(item) => field.onChange(item?.value || "")}
-                                                                placeholder={setupLoading ? "Loading categories..." : "Select a category"}
-                                                                disabled={setupLoading}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="nameMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Shop Name (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Enter name in Myanmar" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="nameTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Shop Name (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Enter name in Thai" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="shopCategoryId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Category</FormLabel>
+                                                            <FormControl>
+                                                                <SearchableSelect
+                                                                    data={shopCategories.map(cat => ({ label: cat.nameEn || `Category ${cat.id}`, value: cat.id }))}
+                                                                    value="value"
+                                                                    labelKey="label"
+                                                                    selectedValue={field.value ? { label: shopCategories.find(c => c.id === field.value)?.nameEn || `Category ${field.value}`, value: field.value } : undefined}
+                                                                    onChange={(item) => field.onChange(item?.value || 0)}
+                                                                    placeholder={categoriesLoading ? "Loading categories..." : "Select a category"}
+                                                                    disabled={categoriesLoading}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="shopSubCategoryId"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Subcategory (Optional)</FormLabel>
+                                                            <FormControl>
+                                                                <SearchableSelect
+                                                                    data={shopSubCategories.map(subCat => ({ label: subCat.nameEn || `Subcategory ${subCat.id}`, value: subCat.id }))}
+                                                                    value="value"
+                                                                    labelKey="label"
+                                                                    selectedValue={field.value ? { label: shopSubCategories.find(c => c.id === field.value)?.nameEn || `Subcategory ${field.value}`, value: field.value } : undefined}
+                                                                    onChange={(item) => field.onChange(item?.value || undefined)}
+                                                                    placeholder={!form.watch("shopCategoryId") ? "Select Category first" : "Select a subcategory"}
+                                                                    disabled={!form.watch("shopCategoryId")}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <Separator className="my-2" />
+
+                                            <div className="space-y-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="descriptionEn"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Description (English)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="descriptionMm"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Description (Myanmar)</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea rows={2} className="resize-none" placeholder="Description in Myanmar..." {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="descriptionTh"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Description (Thai)</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea rows={2} className="resize-none" placeholder="Description in Thai..." {...field} />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Advanced Types: Cuisine, Meal, Delivery */}
@@ -731,9 +734,10 @@ export default function CreateShopRestaurant() {
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
                                                                     const cuisine = setupData?.cuisineTypes?.find((c: any) => c.id === id)
+                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name || cuisine.slug || `Cuisine ${id}`) : null
                                                                     return cuisine ? (
                                                                         <Badge key={id} variant="secondary" className="gap-1">
-                                                                            {cuisine.name}
+                                                                            {label}
                                                                             <X
                                                                                 className="h-3 w-3 cursor-pointer"
                                                                                 onClick={() => field.onChange(field.value.filter((val: number) => val !== id))}
@@ -744,7 +748,10 @@ export default function CreateShopRestaurant() {
                                                             </div>
                                                             <FormControl>
                                                                 <SearchableSelect
-                                                                    data={setupData?.cuisineTypes?.map((c: any) => ({ label: c.name, value: c.id })) || []}
+                                                                    data={setupData?.cuisineTypes?.map((c: any) => ({
+                                                                        label: c.nameEn || c.name || c.slug || `Cuisine ${c.id}`,
+                                                                        value: c.id
+                                                                    })) || []}
                                                                     value="value"
                                                                     labelKey="label"
                                                                     onChange={(item) => {
@@ -898,43 +905,15 @@ export default function CreateShopRestaurant() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1">
                                             <FormField
                                                 control={form.control}
-                                                name="description"
+                                                name="descriptionEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Description (Default)</FormLabel>
+                                                        <FormLabel>Description</FormLabel>
                                                         <FormControl>
                                                             <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop..." {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <FormField
-                                                control={form.control}
-                                                name="descriptionMm"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description (Myanmar)</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea rows={3} className="resize-none" placeholder="မြန်မာဘာသာဖော်ပါဖယ်ရှားပါး" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <FormField
-                                                control={form.control}
-                                                name="descriptionTh"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description (Thai)</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea rows={3} className="resize-none" placeholder="รายละเอียดภาษาไทย" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -950,86 +929,83 @@ export default function CreateShopRestaurant() {
                                         <CardTitle>Location</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-6">
-                                        {/* Address (English) */}
-                                        <FormField
-                                            control={form.control}
-                                            name="address"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Address (English)</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <div className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="addressEn"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Address (English)</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
 
-                                        {/* Address (Myanmar) */}
-                                        <FormField
-                                            control={form.control}
-                                            name="addressMm"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Address (Myanmar)</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="မြန်မာဘာသာဖြင့်လိပ်စာ" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Myanmar" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Thai" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
 
-                                        {/* Address (Thai) */}
-                                        <FormField
-                                            control={form.control}
-                                            name="addressTh"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Address (Thai)</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="ที่อยู่ภาษาไทย" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    City
+                                                </label>
+                                                <SearchableSelect
+                                                    data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
+                                                    value="value"
+                                                    labelKey="label"
+                                                    selectedValue={selectedCityId ? { label: setupData?.cities.find(c => c.id === selectedCityId)?.nameEn || "", value: selectedCityId } : undefined}
+                                                    onChange={(item) => item && handleCityChange(item.value)}
+                                                    placeholder="Select City"
+                                                    disabled={setupLoading}
+                                                />
+                                            </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <FormField
                                                 control={form.control}
                                                 name="districtId"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>District ID</FormLabel>
+                                                        <FormLabel>District</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" placeholder="District ID" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="district"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>District (English)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. Dagon" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="districtMm"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>District (Myanmar)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. ဒဂုံ" {...field} />
+                                                            <SearchableSelect
+                                                                data={availableDistricts.map(d => ({ label: d.nameEn, value: d.id }))}
+                                                                value="value"
+                                                                labelKey="label"
+                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || "", value: field.value } : undefined}
+                                                                onChange={(item) => item && handleDistrictChange(item.value)}
+                                                                placeholder="Select District"
+                                                                disabled={!selectedCityId}
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1037,34 +1013,7 @@ export default function CreateShopRestaurant() {
                                             />
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="city"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>City (English)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. Yangon" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="cityMm"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>City (Myanmar)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g. ရန်ကုန်" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
@@ -1074,28 +1023,26 @@ export default function CreateShopRestaurant() {
                                                     <FormItem>
                                                         <FormLabel>Phone</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Phone number" {...field} />
+                                                            <Input placeholder="Use commas to add multi phone numbers" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="email"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Email</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="email" placeholder="contact@shop.com" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
-
-                                        {/* Email - Full Width */}
-                                        <FormField
-                                            control={form.control}
-                                            name="email"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Email</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="email" placeholder="contact@shop.com" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
@@ -1549,7 +1496,7 @@ export default function CreateShopRestaurant() {
                     <DialogHeader>
                         <DialogTitle>Delete Shop</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <strong>{form.getValues("name")}</strong>?
+                            Are you sure you want to delete <strong>{form.getValues("nameEn")}</strong>?
                             This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>

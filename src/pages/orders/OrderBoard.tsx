@@ -1,18 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { orderService, Order, OrderStatus } from "@/services/orderService";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, ClipboardList, Clock, CheckCircle, Truck } from "lucide-react";
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+    Skeleton
+} from "@/components/ui/skeleton";
+import { RefreshCw, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
-
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { DataTablePagination } from "@/components/DataTablePagination";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    ACCEPTED: "bg-blue-100 text-blue-800 border-blue-200",
+    CONFIRMED: "bg-blue-100 text-blue-800 border-blue-200",
+    ACCEPTED: "bg-cyan-100 text-cyan-800 border-cyan-200",
     PREPARING: "bg-orange-100 text-orange-800 border-orange-200",
     READY: "bg-purple-100 text-purple-800 border-purple-200",
     DELIVERING: "bg-indigo-100 text-indigo-800 border-indigo-200",
@@ -20,71 +29,32 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
-const STATUS_FLOW: OrderStatus[] = ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED'];
-
-function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (id: string, status: OrderStatus) => void }) {
-    const currentIndex = STATUS_FLOW.indexOf(order.status);
-    const nextStatus = STATUS_FLOW[currentIndex + 1] as OrderStatus | undefined;
-    const [updating, setUpdating] = useState(false);
-
-    const handleAdvance = async () => {
-        if (!nextStatus) return;
-        setUpdating(true);
-        try {
-            await orderService.updateOrderStatus(order.id, nextStatus);
-            onStatusChange(order.id, nextStatus);
-            toast.success(`Order #${order.id.slice(-6)} moved to ${nextStatus}`);
-        } catch {
-            toast.error("Failed to update order status");
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    return (
-        <Card className="border-l-4" style={{ borderLeftColor: order.status === 'CANCELLED' ? '#ef4444' : '#6366f1' }}>
-            <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold">Order #{order.id.slice(-8).toUpperCase()}</CardTitle>
-                    <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status]}`}>
-                        {order.status}
-                    </span>
-                </div>
-                <CardDescription className="text-xs">
-                    {order.shopName} · {order.customerName}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="text-xs text-muted-foreground space-y-1">
-                    {order.items?.slice(0, 3).map((item, i) => (
-                        <div key={i} className="flex justify-between">
-                            <span>{item.name} x{item.quantity}</span>
-                            <span>${item.price.toFixed(2)}</span>
-                        </div>
-                    ))}
-                    {order.items?.length > 3 && <p className="text-muted-foreground">+{order.items.length - 3} more items</p>}
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t">
-                    <span className="font-semibold text-sm">${order.totalAmount?.toFixed(2)}</span>
-                    {nextStatus && order.status !== 'CANCELLED' && (
-                        <Button size="sm" variant="outline" onClick={handleAdvance} disabled={updating}>
-                            {updating ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
-                            → {nextStatus}
-                        </Button>
-                    )}
-                </div>
-                <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString()}</p>
-            </CardContent>
-        </Card>
-    );
-}
-
 const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING'];
 
+function getElapsedTime(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+
+function isPendingSLA(order: Order): boolean {
+    if (order.status !== 'PENDING' || !order.createdAt) return false;
+    const elapsed = Date.now() - new Date(order.createdAt).getTime();
+    return !isNaN(elapsed) && elapsed > 15 * 60 * 1000; // 15 minutes
+}
+
 export default function OrderBoard() {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const fetchOrders = useCallback(async () => {
         try {
@@ -100,15 +70,28 @@ export default function OrderBoard() {
 
     useEffect(() => {
         fetchOrders();
-        const interval = setInterval(fetchOrders, 30000); // auto-refresh every 30s
+        const interval = setInterval(fetchOrders, 30000);
         return () => clearInterval(interval);
     }, [fetchOrders]);
 
-    const handleStatusChange = (id: string, status: OrderStatus) => {
-        setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
+    const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+        try {
+            await orderService.updateOrderStatus(orderId, newStatus);
+            setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+            toast.success(`Order status updated to ${newStatus}`);
+        } catch {
+            toast.error("Failed to update order status");
+        }
     };
 
     const byStatus = (status: OrderStatus) => orders.filter((o) => o.status === status);
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedOrders = sortData(orders, sortConfig);
+
+    // Pagination logic
+    const totalItems = sortedOrders.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const paginatedOrders = sortedOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     return (
         <div className="flex flex-col gap-6">
@@ -116,8 +99,11 @@ export default function OrderBoard() {
                 <div className="flex items-center gap-3">
                     <ClipboardList className="h-6 w-6 text-primary" />
                     <div>
-                        <h1 className="text-lg font-semibold md:text-2xl">Order Board</h1>
-                        <p className="text-xs text-muted-foreground">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
+                        <h1 className="text-lg font-semibold md:text-2xl">Order Board — Live Monitor</h1>
+                        <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                            Auto-refresh every 30s · Last: {lastRefresh.toLocaleTimeString()}
+                        </p>
                     </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
@@ -135,38 +121,116 @@ export default function OrderBoard() {
                 ))}
             </div>
 
-            <Tabs defaultValue="PENDING">
-                <TabsList>
-                    {ACTIVE_STATUSES.map((s) => (
-                        <TabsTrigger key={s} value={s} className="gap-1 text-xs">
-                            {s === 'PENDING' && <Clock className="h-3 w-3" />}
-                            {s === 'DELIVERING' && <Truck className="h-3 w-3" />}
-                            {s === 'DELIVERED' && <CheckCircle className="h-3 w-3" />}
-                            {s}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-                {ACTIVE_STATUSES.map((tabStatus) => (
-                    <TabsContent key={tabStatus} value={tabStatus} className="mt-4">
-                        {loading ? (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48" />)}
-                            </div>
-                        ) : byStatus(tabStatus).length === 0 ? (
-                            <div className="text-center py-16 text-muted-foreground">
-                                <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                                <p>No {tabStatus.toLowerCase()} orders</p>
-                            </div>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {byStatus(tabStatus).map((order) => (
-                                    <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
-                                ))}
-                            </div>
-                        )}
-                    </TabsContent>
-                ))}
-            </Tabs>
+            {/* Active Orders Table */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Active Orders</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <SortableTableHead label="Order ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Customer" sortKey="customerName" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Shop" sortKey="shopName" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Time" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Total" sortKey="totalAmount" sortConfig={sortConfig} onSort={handleSort} />
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                [...Array(5)].map((_, i) => (
+                                    <TableRow key={i}>
+                                        {[...Array(7)].map((__, j) => (
+                                            <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : paginatedOrders.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                        <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                                        No active orders
+                                    </TableCell>
+                                </TableRow>
+                            ) : paginatedOrders.map((order) => (
+                                <TableRow
+                                    key={order.id}
+                                    className={isPendingSLA(order) ? "border-l-4 border-l-red-500 bg-red-500/5" : ""}
+                                >
+                                    <TableCell>
+                                        <button
+                                            className="text-primary underline-offset-4 hover:underline font-mono text-xs"
+                                            onClick={() => navigate(`/orders/${order.id}`)}
+                                        >
+                                            #{String(order.id).slice(-8).toUpperCase()}
+                                        </button>
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        <div className="font-medium text-sm">{order.userFullName || "Guest"}</div>
+                                        {order.userPhone && <div className="text-[10px] text-muted-foreground">{order.userPhone}</div>}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-6 w-6 rounded border overflow-hidden shrink-0 bg-white">
+                                                {order.shopImageUrl ? (
+                                                    <img src={order.shopImageUrl} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center bg-muted text-[8px]">?</div>
+                                                )}
+                                            </div>
+                                            <span className="text-xs font-medium truncate max-w-[120px]">{order.shopName}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || "bg-gray-100"}`}>
+                                            {order.status}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className={`text-xs ${isPendingSLA(order) ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>
+                                        {order.createdAt ? getElapsedTime(order.createdAt) : "—"}
+                                    </TableCell>
+                                    <TableCell className="font-medium text-sm">
+                                        {order.displayTotalAmount || (typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount || "—")}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Select
+                                                value={order.status}
+                                                onValueChange={(val) => handleStatusChange(String(order.id), val as OrderStatus)}
+                                            >
+                                                <SelectTrigger className="w-full h-8 text-xs font-bold">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {['PENDING', 'CONFIRMED', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map((s) => (
+                                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate(`/orders/${order.id}`)}>
+                                                <RefreshCw className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            />
+
         </div>
     );
 }

@@ -3,14 +3,17 @@ import { moderationService, Post } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Search, ChevronLeft, ChevronRight, User, EyeOff, Shield, Users } from "lucide-react";
+import { Trash2, Search, User, EyeOff, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 import {
     Dialog,
     DialogContent,
@@ -30,7 +33,9 @@ export default function CommunityMgt() {
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
     const [postType, setPostType] = useState<string>("ALL");
-
+    const [pageSize, setPageSize] = useState(20);
+    const [totalElements, setTotalElements] = useState(0);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     // Delete Confirmation
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<"post" | "comment">("post");
@@ -39,10 +44,11 @@ export default function CommunityMgt() {
         setLoading(true);
         try {
             const data = await moderationService.getPosts(
-                page, 20, postType === "ALL" ? undefined : postType, search
+                page, pageSize, postType === "ALL" ? undefined : postType, search
             );
             setPosts(data.content);
             setTotalPages(data.totalPages);
+            setTotalElements(data.totalElements ?? data.content.length);
         } catch {
             toast.error("Failed to load posts");
         } finally {
@@ -53,15 +59,16 @@ export default function CommunityMgt() {
     const fetchComments = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await moderationService.getComments(page, 20, undefined, search);
+            const data = await moderationService.getComments(page, pageSize, undefined, search);
             setComments(data.content);
             setTotalPages(data.totalPages);
+            setTotalElements(data.totalElements ?? data.content.length);
         } catch {
             toast.error("Failed to load comments");
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, pageSize]);
 
     useEffect(() => {
         if (tab === "posts") fetchPosts();
@@ -96,6 +103,10 @@ export default function CommunityMgt() {
         }
     };
 
+    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedPosts = sortData(posts, sortConfig);
+    const sortedComments = sortData(comments, sortConfig);
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center gap-3">
@@ -121,14 +132,15 @@ export default function CommunityMgt() {
                     </div>
                     {tab === "posts" && (
                         <Select value={postType} onValueChange={setPostType}>
-                            <SelectTrigger className="w-48">
+                            <SelectTrigger className="w-full md:w-48">
                                 <SelectValue placeholder="All Post Types" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Types</SelectItem>
                                 <SelectItem value="GENERAL">General</SelectItem>
-                                <SelectItem value="LOST">Lost</SelectItem>
-                                <SelectItem value="FOUND">Found</SelectItem>
+                                <SelectItem value="NEWS">News</SelectItem>
+                                <SelectItem value="ALERT">Alert</SelectItem>
+                                <SelectItem value="EVENT">Event</SelectItem>
                             </SelectContent>
                         </Select>
                     )}
@@ -144,11 +156,11 @@ export default function CommunityMgt() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Author</TableHead>
+                                        <SortableTableHead label="Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Content</TableHead>
                                         <TableHead>Stats</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Date</TableHead>
+                                        <SortableTableHead label="Status" sortKey="isHidden" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -161,13 +173,13 @@ export default function CommunityMgt() {
                                                 ))}
                                             </TableRow>
                                         ))
-                                    ) : posts.length === 0 ? (
+                                    ) : sortedPosts.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                 No posts found.
                                             </TableCell>
                                         </TableRow>
-                                    ) : posts.map((p) => (
+                                    ) : sortedPosts.map((p) => (
                                         <TableRow key={p.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -203,17 +215,29 @@ export default function CommunityMgt() {
                                                 {new Date(p.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex gap-1">
-                                                    <Button size="sm" variant="ghost" onClick={() => handleHidePost(p.id)}>
-                                                        <EyeOff className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm" variant="ghost" className="text-destructive"
-                                                        onClick={() => { setDeleteId(p.id); setDeleteTarget("post"); }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                                <TooltipProvider>
+                                                    <div className="flex gap-1">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button size="sm" variant="ghost" onClick={() => handleHidePost(p.id)}>
+                                                                    <EyeOff className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Toggle post visibility</TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm" variant="ghost" className="text-destructive"
+                                                                    onClick={() => { setDeleteId(p.id); setDeleteTarget("post"); }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Delete post permanently</TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TooltipProvider>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -232,10 +256,11 @@ export default function CommunityMgt() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Author</TableHead>
+                                        <SortableTableHead label="Comment Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <SortableTableHead label="Post Author" sortKey="postAuthorName" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Comment</TableHead>
                                         <TableHead>Post Reference</TableHead>
-                                        <TableHead>Date</TableHead>
+                                        <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
                                         <TableHead>Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -243,20 +268,21 @@ export default function CommunityMgt() {
                                     {loading ? (
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                {[...Array(5)].map((__, j) => (
+                                                {[...Array(6)].map((__, j) => (
                                                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                                 ))}
                                             </TableRow>
                                         ))
-                                    ) : comments.length === 0 ? (
+                                    ) : sortedComments.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                            <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                 No comments found.
                                             </TableCell>
                                         </TableRow>
-                                    ) : comments.map((c) => (
+                                    ) : sortedComments.map((c) => (
                                         <TableRow key={c.id}>
-                                            <TableCell className="text-sm font-medium">{c.authorName}</TableCell>
+                                            <TableCell className="text-sm font-medium">{c.authorName || "Unknown"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{c.postAuthorName || "Unknown"}</TableCell>
                                             <TableCell className="max-w-sm">
                                                 <p className="text-sm truncate">{c.content}</p>
                                             </TableCell>
@@ -267,12 +293,19 @@ export default function CommunityMgt() {
                                                 {new Date(c.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
-                                                <Button
-                                                    size="sm" variant="ghost" className="text-destructive"
-                                                    onClick={() => { setDeleteId(c.id); setDeleteTarget("comment"); }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="sm" variant="ghost" className="text-destructive"
+                                                                onClick={() => { setDeleteId(c.id); setDeleteTarget("comment"); }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Delete comment</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -283,17 +316,14 @@ export default function CommunityMgt() {
                 </TabsContent>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" disabled={page >= totalPages - 1 || loading} onClick={() => setPage((p) => p + 1)}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+                <DataTablePagination
+                    currentPage={page + 1}
+                    totalPages={totalPages}
+                    totalItems={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={(p) => setPage(p - 1)}
+                    onPageSizeChange={(size) => { setPageSize(size); setPage(0); }}
+                />
             </Tabs>
 
             {/* Delete Confirmation */}
@@ -302,7 +332,9 @@ export default function CommunityMgt() {
                     <DialogHeader>
                         <DialogTitle>Permanent Deletion</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete this {deleteTarget}? This action cannot be undone.
+                            {deleteTarget === "post"
+                                ? "This will permanently delete the post and all comments. This action cannot be undone."
+                                : "This will permanently delete this comment. This action cannot be undone."}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

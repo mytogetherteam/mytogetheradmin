@@ -44,7 +44,7 @@ export default function CreateSubCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number>(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
     const [isActive, setIsActive] = useState(true);
 
     // Gallery state
@@ -262,7 +262,11 @@ export default function CreateSubCategory() {
                                     id="displayOrder"
                                     type="number"
                                     value={displayOrder}
-                                    onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "") setDisplayOrder("");
+                                        else setDisplayOrder(parseInt(val) || 0);
+                                    }}
                                 />
                             </div>
                         </div>

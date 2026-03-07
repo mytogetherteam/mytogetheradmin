@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export interface AuditLog {
   id: string;
@@ -24,16 +25,15 @@ class SystemService {
   async getAuditLogs(page = 0, size = 20, search = '', adminId?: string): Promise<AuditLogPage> {
     const params = new URLSearchParams({ 
       page: String(page), 
-      size: String(size),
+      size: String(size), 
       search: search
     });
     if (adminId) params.append('adminId', adminId);
-    const response = await apiClient.get<ApiResponseData<AuditLogPage>>(`/api/admin/admin/audit-logs?${params.toString()}`);
-    return response.data;
+    return apiClient.get<AuditLogPage>(`${config.endpoints.admin.auditLogs}?${params.toString()}`);
   }
 
   async getDbLatency(): Promise<any> {
-    return apiClient.get<any>('/api/admin/system/db-latency');
+    return apiClient.get<any>(config.endpoints.admin.system.dbLatency);
   }
 }
 

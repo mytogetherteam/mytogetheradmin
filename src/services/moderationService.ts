@@ -1,4 +1,5 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export type ReportType = 'POST' | 'COMMENT' | 'USER' | 'SHOP';
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
@@ -46,28 +47,26 @@ class ModerationService {
   async getReports(status?: ReportStatus, page = 0, size = 20): Promise<ReportsPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (status) params.append('status', status);
-    const response = await apiClient.get<ApiResponseData<ReportsPage>>(`/api/admin/moderation/reports?${params.toString()}`);
-    return response.data;
+    return apiClient.get<ReportsPage>(`${config.endpoints.admin.moderation.reports}?${params.toString()}`);
   }
 
   async resolveReport(id: string, status: ReportStatus): Promise<void> {
-    return apiClient.put<void>(`/api/admin/moderation/reports/${id}/resolve?status=${status}`, {});
+    return apiClient.put<void>(`${config.endpoints.admin.moderation.resolveReport(id)}?status=${status}`, {});
   }
 
   async dismissReport(id: string): Promise<void> {
-    return apiClient.put<void>(`/api/admin/moderation/reports/${id}/resolve?status=DISMISSED`, {});
+    return apiClient.put<void>(`${config.endpoints.admin.moderation.resolveReport(id)}?status=DISMISSED`, {});
   }
 
   // --- User/Shop Reports ---
   async getUserShopReports(status?: ReportStatus, page = 0, size = 20): Promise<ReportsPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (status) params.append('status', status);
-    const response = await apiClient.get<ApiResponseData<ReportsPage>>(`/api/admin/reports?${params.toString()}`);
-    return response.data;
+    return apiClient.get<ReportsPage>(`${config.endpoints.admin.moderation.userShopReports.list}?${params.toString()}`);
   }
 
-  async updateUserShopReportStatus(id: string, status: ReportStatus): Promise<void> {
-    return apiClient.put<void>(`/api/admin/reports/${id}/status?status=${status}`, {});
+  async updateUserShopReportStatus(id: string, status: string, resolutionNotes?: string): Promise<void> {
+    return apiClient.put<void>(config.endpoints.admin.moderation.userShopReports.status(id), { status, resolutionNotes });
   }
 
   async getPosts(page = 0, size = 20, postType?: string, search = ''): Promise<PostsPage> {
@@ -77,8 +76,7 @@ class ModerationService {
       search: search
     });
     if (postType) params.append('postType', postType);
-    const response = await apiClient.get<ApiResponseData<PostsPage>>(`/api/admin/community/posts?${params.toString()}`);
-    return response.data;
+    return apiClient.get<PostsPage>(`${config.endpoints.admin.moderation.posts}?${params.toString()}`);
   }
 
   async getComments(page = 0, size = 20, postId?: string, search = ''): Promise<any> {
@@ -88,25 +86,23 @@ class ModerationService {
       search: search
     });
     if (postId) params.append('postId', postId);
-    const response = await apiClient.get<ApiResponseData<any>>(`/api/admin/community/comments?${params.toString()}`);
-    return response.data;
+    return apiClient.get<any>(`${config.endpoints.admin.moderation.comments}?${params.toString()}`);
   }
 
   async deleteComment(id: string): Promise<void> {
-    return apiClient.delete<void>(`/api/admin/community/comments/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.commentDetail(id));
   }
 
   async hidePost(id: string): Promise<Post> {
-    const response = await apiClient.put<ApiResponseData<Post>>(`/api/admin/community/posts/${id}/hide`, {});
-    return response.data;
+    return apiClient.put<Post>(config.endpoints.admin.moderation.hidePost(id), {});
   }
 
   async deletePost(id: string): Promise<void> {
-    return apiClient.delete<void>(`/api/admin/community/posts/${id}`);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.postDetail(id));
   }
 
   async banUser(userId: string, reason: string): Promise<void> {
-    return apiClient.post<void>(`/api/admin/users/${userId}/ban`, { reason });
+    return apiClient.post<void>(config.endpoints.admin.moderation.banUser(userId), { reason });
   }
 }
 
