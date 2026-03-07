@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO } from "@/services/shopService"
 import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
@@ -123,6 +123,7 @@ export default function CreateShopRestaurant() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [setupData, setSetupData] = useState<ShopFormDataDTO | null>(null)
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDTO[]>([])
     const [setupLoading, setSetupLoading] = useState(true)
     const [selectedCityId, setSelectedCityId] = useState<number | null>(null)
     const [availableDistricts, setAvailableDistricts] = useState<DistrictDTO[]>([])
@@ -139,7 +140,7 @@ export default function CreateShopRestaurant() {
             nameMm: "",
             nameTh: "",
             shopCategoryId: 0,
-            shopSubCategoryId: undefined,
+            shopSubCategoryId: null,
             addressEn: "",
             addressMm: "",
             addressTh: "",
@@ -196,7 +197,7 @@ export default function CreateShopRestaurant() {
                 nameMm: "",
                 nameTh: "",
                 shopCategoryId: 0,
-                shopSubCategoryId: undefined,
+                shopSubCategoryId: null,
                 addressEn: "",
                 addressMm: "",
                 addressTh: "",
@@ -250,12 +251,14 @@ export default function CreateShopRestaurant() {
         setSetupLoading(true)
         setCategoriesLoading(true)
         try {
-            const [data, categories] = await Promise.all([
+            const [data, categories, paymentData] = await Promise.all([
                 PaymentService.getShopFormData(),
-                ShopService.getCategories()
+                ShopService.getCategories(),
+                PaymentService.getPaymentMethods({ size: 100 })
             ])
             setSetupData(data)
             setShopCategories(categories)
+            setPaymentMethods(paymentData.content || [])
         } catch (error) {
             console.error("Failed to load setup data:", error)
             toast.error("Failed to load necessary form data")
@@ -323,7 +326,7 @@ export default function CreateShopRestaurant() {
                 nameMm: shop.nameMm || "",
                 nameTh: shop.nameTh || "",
                 shopCategoryId: shop.shopCategory?.id || 0,
-                shopSubCategoryId: shop.shopSubCategory?.id || undefined,
+                shopSubCategoryId: shop.shopSubCategory?.id ?? null,
                 addressEn: shop.addressEn || "",
                 addressMm: shop.addressMm || "",
                 addressTh: shop.addressTh || "",
@@ -663,7 +666,7 @@ export default function CreateShopRestaurant() {
                                                                     value="value"
                                                                     labelKey="label"
                                                                     selectedValue={field.value ? { label: shopSubCategories.find(c => c.id === field.value)?.nameEn || `Subcategory ${field.value}`, value: field.value } : undefined}
-                                                                    onChange={(item) => field.onChange(item?.value || undefined)}
+                                                                    onChange={(item) => field.onChange(item?.value ?? null)}
                                                                     placeholder={!form.watch("shopCategoryId") ? "Select Category first" : "Select a subcategory"}
                                                                     disabled={!form.watch("shopCategoryId")}
                                                                 />
@@ -862,7 +865,7 @@ export default function CreateShopRestaurant() {
                                                                     </FormDescription>
                                                                 </div>
                                                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                                                    {(setupData?.paymentMethods || []).map((method: any) => (
+                                                                    {(paymentMethods || []).map((method: any) => (
                                                                         <FormField
                                                                             key={method.id}
                                                                             control={form.control}
@@ -888,7 +891,15 @@ export default function CreateShopRestaurant() {
                                                                                                 }}
                                                                                             />
                                                                                         </FormControl>
-                                                                                        <FormLabel className="font-normal cursor-pointer">
+                                                                                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
+                                                                                            {method.iconUrl && (
+                                                                                                <img
+                                                                                                    src={method.iconUrl}
+                                                                                                    alt={method.name}
+                                                                                                    className="h-5 w-5 object-contain"
+                                                                                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                                                                />
+                                                                                            )}
                                                                                             {method.name}
                                                                                         </FormLabel>
                                                                                     </FormItem>

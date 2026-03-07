@@ -56,7 +56,7 @@ export default function Login() {
                     <form onSubmit={handleLogin}>
                         <div className="grid gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="usernameOrEmail">Username or Email+</Label>
+                                <Label htmlFor="usernameOrEmail">Username or Email</Label>
                                 <Input
                                     id="usernameOrEmail"
                                     type="text"
@@ -70,14 +70,12 @@ export default function Login() {
                             <div className="grid gap-2">
                                 <div className="flex items-center">
                                     <Label htmlFor="password">Password</Label>
-                                    <a href="#" className="ml-auto inline-block text-sm underline">
-                                        Forgot your password?
-                                    </a>
                                 </div>
                                 <div className="relative">
                                     <Input
                                         id="password"
                                         type={showPassword ? "text" : "password"}
+                                        placeholder="********"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                         required
@@ -112,12 +110,6 @@ export default function Login() {
                                     "Login"
                                 )}
                             </Button>
-                        </div>
-                        <div className="mt-4 text-center text-sm">
-                            Don't have an account?{" "}
-                            <Link to="/register" className="underline">
-                                Sign up
-                            </Link>
                         </div>
                     </form>
                 </CardContent>
