@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { orderService, Order } from "@/services/orderService";
+import { orderService, Order, OrderHistoryEntry } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,15 +37,20 @@ export default function OrderDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [order, setOrder] = useState<Order | null>(null);
+    const [history, setHistory] = useState<OrderHistoryEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchOrderDetail = useCallback(async (orderId: string) => {
         setLoading(true);
         console.log("OrderDetail: Fetching ID", orderId);
         try {
-            const data = await orderService.getOrderDetail(orderId);
-            console.log("OrderDetail: Received Data", data);
-            setOrder(data);
+            const [orderData, historyData] = await Promise.all([
+                orderService.getOrderDetail(orderId),
+                orderService.getOrderHistory(orderId).catch(() => [])
+            ]);
+            console.log("OrderDetail: Received Data", orderData, historyData);
+            setOrder(orderData);
+            setHistory(historyData);
         } catch (error) {
             console.error("OrderDetail: Fetch Error", error);
             toast.error("Failed to load order details");
@@ -175,16 +180,21 @@ export default function OrderDetail() {
                                     {order.items.map((item, idx) => (
                                         <div key={idx} className="p-4 flex justify-between items-center hover:bg-muted/50 transition-colors">
                                             <div className="flex gap-3 items-center">
-                                                <div className="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                                                <div className="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
                                                     {item.quantity}x
                                                 </div>
+                                                {item.menuItemImageUrl && (
+                                                    <img src={item.menuItemImageUrl} alt="" className="h-10 w-10 object-cover rounded shadow-sm border" />
+                                                )}
                                                 <div>
-                                                    <p className="font-medium text-sm">{item.name}</p>
-                                                    {item.nameMm && <p className="text-[10px] text-muted-foreground">{item.nameMm}</p>}
+                                                    <p className="font-medium text-sm">{item.menuItemName || item.name}</p>
+                                                    {(item.menuItemNameMm || item.nameMm) && <p className="text-[10px] text-muted-foreground">{item.menuItemNameMm || item.nameMm}</p>}
+                                                    {item.options && <p className="text-xs text-muted-foreground mt-0.5">{item.options}</p>}
+                                                    {item.specialInstructions && <p className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mt-1 italic max-w-xs">{item.specialInstructions}</p>}
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-sm">{renderCurrency(item.totalPrice || (item.price * item.quantity))}</p>
+                                            <div className="text-right shrink-0">
+                                                <p className="font-bold text-sm text-primary">{item.displayPrice || renderCurrency(item.totalPrice || (item.price * item.quantity))}</p>
                                                 <p className="text-[10px] text-muted-foreground">{renderCurrency(item.price)} each</p>
                                             </div>
                                         </div>
@@ -317,24 +327,67 @@ export default function OrderDetail() {
                                 Timeline
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex gap-3">
-                                <div className="w-1 h-full bg-muted rounded"></div>
+                        <CardContent className="space-y-4 pt-1">
+                            {history.length > 0 ? (
                                 <div className="space-y-4">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase">Ordered On</p>
-                                        <p className="text-sm font-medium">
-                                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "—"}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold uppercase">Last Updated</p>
-                                        <p className="text-sm font-medium">
-                                            {order.updatedAt ? new Date(order.updatedAt).toLocaleDateString() : "—"}
-                                        </p>
+                                    {history.map((event, idx) => (
+                                        <div key={event.id || idx} className="flex gap-4 relative">
+                                            {/* Timeline Line connecting dots, except last one */}
+                                            {idx !== history.length - 1 && (
+                                                <div className="absolute left-2.5 top-6 bottom-[-16px] w-[2px] bg-border rounded-full" />
+                                            )}
+
+                                            {/* Status Dot */}
+                                            <div className="relative shrink-0 mt-1">
+                                                <div className="h-5 w-5 rounded-full border-4 border-background bg-primary shadow-sm z-10 relative" />
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="pb-1 w-full">
+                                                <div className="flex justify-between items-start mb-0.5">
+                                                    <p className="text-sm font-bold uppercase tracking-wide">
+                                                        {event.toStatus.replace(/_/g, ' ')}
+                                                    </p>
+                                                    <p className="text-[10px] font-medium text-muted-foreground tabular-nums whitespace-nowrap">
+                                                        {new Date(event.changedAt).toLocaleString(undefined, {
+                                                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                                                    <User className="h-3 w-3" />
+                                                    {event.changedByAdminName || event.changedBy || "System"}
+                                                </div>
+
+                                                {event.note && (
+                                                    <p className="text-xs bg-muted/50 text-muted-foreground p-2 mt-2 rounded border border-border/50">
+                                                        "{event.note}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex gap-3">
+                                    <div className="w-1 h-full bg-muted rounded"></div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase">Ordered On</p>
+                                            <p className="text-sm font-medium">
+                                                {order.createdAt ? new Date(order.createdAt).toLocaleString() : "—"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold uppercase">Last Updated</p>
+                                            <p className="text-sm font-medium">
+                                                {order.updatedAt ? new Date(order.updatedAt).toLocaleString() : "—"}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </CardContent>
                     </Card>
 

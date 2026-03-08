@@ -1,14 +1,23 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'CONFIRMED';
+export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'ACCEPTED' | 'AWAITING_APPROVAL' | 'PAYMENT_SLIP_REQUESTED' | 'PAYMENT_UPLOADED' | 'PAYMENT_VERIFIED' | 'PREPARING' | 'READY' | 'ON_THE_WAY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'INTERNAL_TRACKING';
 
 export interface OrderItem {
   id: string | number;
-  name: string;
+  menuItemId?: number;
+  menuItemName?: string;
+  menuItemNameMm?: string;
+  menuItemNameTh?: string;
+  menuItemNameEn?: string;
+  menuItemImageUrl?: string;
+  name?: string;
   nameMm?: string;
   quantity: number;
   price: number;
+  displayPrice?: string;
+  options?: string;
+  specialInstructions?: string;
   totalPrice?: number;
 }
 
@@ -57,6 +66,7 @@ export interface OrderFilters {
   startDate?: string;
   endDate?: string;
   shopId?: string;
+  search?: string;
   status?: OrderStatus;
   page?: number;
   size?: number;
@@ -67,11 +77,14 @@ export interface OrderHealthData {
 }
 
 export interface OrderHistoryEntry {
-  id: string;
-  status: OrderStatus;
-  changedByAdmin?: string;
+  id: number;
+  fromStatus: OrderStatus;
+  toStatus: OrderStatus;
+  changedBy: string;
+  changedByAdminId?: number;
+  changedByAdminName?: string;
+  note?: string;
   changedAt: string;
-  reason?: string;
 }
 
 class OrderService {
@@ -92,6 +105,7 @@ class OrderService {
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.shopId) params.append('shopId', filters.shopId);
+    if (filters.search) params.append('search', filters.search);
     if (filters.status) params.append('status', filters.status);
     params.append('page', String(filters.page ?? 0));
     params.append('size', String(filters.size ?? 20));

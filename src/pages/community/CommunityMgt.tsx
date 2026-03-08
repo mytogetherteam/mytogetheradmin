@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { moderationService, Post } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -28,7 +29,9 @@ export default function CommunityMgt() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [comments, setComments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [tab, setTab] = useState<"posts" | "comments">("posts");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tab = (searchParams.get("tab") || "posts") as "posts" | "comments";
+    const setTab = (v: "posts" | "comments") => setSearchParams({ tab: v });
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");

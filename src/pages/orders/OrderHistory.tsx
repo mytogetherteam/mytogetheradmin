@@ -20,11 +20,17 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
     CONFIRMED: "bg-blue-100 text-blue-800 border-blue-200",
     ACCEPTED: "bg-cyan-100 text-cyan-800 border-cyan-200",
+    AWAITING_APPROVAL: "bg-amber-100 text-amber-800 border-amber-200",
+    PAYMENT_SLIP_REQUESTED: "bg-pink-100 text-pink-800 border-pink-200",
+    PAYMENT_UPLOADED: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
+    PAYMENT_VERIFIED: "bg-emerald-100 text-emerald-800 border-emerald-200",
     PREPARING: "bg-orange-100 text-orange-800 border-orange-200",
     READY: "bg-purple-100 text-purple-800 border-purple-200",
+    ON_THE_WAY: "bg-indigo-100 text-indigo-800 border-indigo-200",
     DELIVERING: "bg-indigo-100 text-indigo-800 border-indigo-200",
     DELIVERED: "bg-green-100 text-green-800 border-green-200",
     CANCELLED: "bg-red-100 text-red-800 border-red-200",
+    INTERNAL_TRACKING: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 type PeriodPreset = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
@@ -104,6 +110,7 @@ export default function OrderHistory() {
     const [startDate, setStartDate] = useState(todayStr);
     const [endDate, setEndDate] = useState(todayStr);
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
+    const [searchTerm, setSearchTerm] = useState("");
 
     const isCustom = period === "custom";
 
@@ -123,7 +130,8 @@ export default function OrderHistory() {
         startDate,
         endDate,
         status: statusFilter === "ALL" ? undefined : statusFilter as OrderStatus,
-    }), [currentPage, pageSize, startDate, endDate, statusFilter]);
+        search: searchTerm || undefined,
+    }), [currentPage, pageSize, startDate, endDate, statusFilter, searchTerm]);
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
@@ -186,7 +194,7 @@ export default function OrderHistory() {
                         </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-5">
                         <div>
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Date</label>
                             <div className="relative">
@@ -212,6 +220,15 @@ export default function OrderHistory() {
                             </div>
                         </div>
                         <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Shop/ID</label>
+                            <Input
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                onKeyDown={(e) => e.key === 'Enter' && fetchOrders()}
+                            />
+                        </div>
+                        <div>
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
                             <Select
                                 value={statusFilter}
@@ -222,8 +239,8 @@ export default function OrderHistory() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ALL">All Statuses</SelectItem>
-                                    {(['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED'] as OrderStatus[]).map((s) => (
-                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    {(['PENDING', 'CONFIRMED', 'ACCEPTED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'READY', 'ON_THE_WAY', 'DELIVERING', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'] as OrderStatus[]).map((s) => (
+                                        <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
