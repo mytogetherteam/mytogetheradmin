@@ -4,17 +4,28 @@ import { config } from '@/config/config';
 export interface ShopRider {
     id: number;
     shopId: number;
+    shopName?: string;
     name: string;
-    phone: string;
+    phoneNo: string;
     isActive: boolean;
-    vehicleNumber?: string;
+    motorcycleNo?: string;
     vehicleType?: string;
     createdAt?: string;
 }
 
+export interface ShopRiderPage {
+    content: ShopRider[];
+    totalElements: number;
+    totalPages: number;
+    number: number;
+    size: number;
+}
+
 export const shopRiderService = {
-    getAllRiders: async (): Promise<ShopRider[]> => {
-        return apiClient.get<ShopRider[]>(config.endpoints.shops.riders.list);
+    getAllRiders: async (page = 0, size = 20, keyword = ''): Promise<ShopRiderPage> => {
+        const params = new URLSearchParams({ page: String(page), size: String(size) });
+        if (keyword) params.append('keyword', keyword);
+        return apiClient.get<ShopRiderPage>(`${config.endpoints.shops.riders.list}?${params.toString()}`);
     },
 
     getRiderById: async (id: number): Promise<ShopRider> => {

@@ -39,7 +39,7 @@ const paymentMethodSchema = z.object({
     name: z.string().min(1, "Name is required"),
     nameMm: z.string().default(""),
     nameTh: z.string().default(""),
-    displayOrder: z.coerce.number().int().min(0, "Display Order cannot be negative").default(0),
+    displayOrder: z.coerce.number().int().min(0, "Display Order cannot be negative").default(1),
     active: z.boolean().default(true),
 });
 
@@ -60,7 +60,7 @@ export default function PaymentMethodForm() {
             name: "",
             nameMm: "",
             nameTh: "",
-            displayOrder: 0,
+            displayOrder: 1,
             active: true,
         },
     });
@@ -80,7 +80,7 @@ export default function PaymentMethodForm() {
                 name: data.name,
                 nameMm: data.nameMm || "",
                 nameTh: data.nameTh || "",
-                displayOrder: data.displayOrder ?? 0,
+                displayOrder: data.displayOrder ?? 1,
                 active: data.active ?? true,
             });
             if (data.iconUrl) {
@@ -198,7 +198,7 @@ export default function PaymentMethodForm() {
                                                     {...field}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        field.onChange(val === "" ? "" : (parseInt(val) || 0));
+                                                        field.onChange(val === "" ? 1 : (parseInt(val) || 1));
                                                     }}
                                                 />
                                             </FormControl>

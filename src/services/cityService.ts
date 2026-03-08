@@ -6,7 +6,7 @@ export interface CityDTO {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug: string;
+  slug?: string;
   active: boolean;
 }
 
@@ -22,7 +22,6 @@ export interface CreateCityRequest {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug: string;
   active?: boolean;
 }
 

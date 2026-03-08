@@ -17,7 +17,8 @@ import {
     XCircle,
     Info,
     ThumbsUp,
-    Camera
+    Camera,
+    Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -143,24 +144,62 @@ export default function ReviewDetail() {
                                 </div>
                             </div>
 
-                            {review.photoUrls && review.photoUrls.length > 0 && (
+                            {(review.photos && review.photos.length > 0) || (review.photoUrls && review.photoUrls.length > 0) ? (
                                 <div>
                                     <h3 className="text-sm font-semibold text-muted-foreground mb-3">Photo Gallery</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {review.photoUrls.map((url, i) => (
-                                            <div key={i} className="aspect-square rounded-lg border overflow-hidden bg-muted relative group">
-                                                <img src={url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
-                                                <a
-                                                    href={url} target="_blank" rel="noreferrer"
-                                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                                                >
-                                                    <span className="text-white text-xs font-medium">View Original</span>
-                                                </a>
-                                            </div>
-                                        ))}
+                                        {/* Prefer photos with IDs for deletion, fallback to photoUrls for display */}
+                                        {review.photos && review.photos.length > 0 ? (
+                                            review.photos.map((photo) => (
+                                                <div key={photo.id} className="aspect-square rounded-lg border overflow-hidden bg-muted relative group">
+                                                    <img src={photo.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 transition-opacity">
+                                                        <a
+                                                            href={photo.url} target="_blank" rel="noreferrer"
+                                                            className="text-white text-xs font-medium hover:underline flex items-center gap-1"
+                                                        >
+                                                            View Original
+                                                        </a>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-8 px-2"
+                                                            onClick={async () => {
+                                                                if (window.confirm("Are you sure you want to delete this photo?")) {
+                                                                    try {
+                                                                        await reviewService.deleteReviewPhoto(type?.toUpperCase() as ReviewType, photo.id);
+                                                                        toast.success("Photo deleted successfully");
+                                                                        // Refresh data
+                                                                        if (type && id) fetchReviewDetail(type.toUpperCase() as ReviewType, id);
+                                                                    } catch (error) {
+                                                                        console.error(error);
+                                                                        toast.error("Failed to delete photo");
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3 w-3 mr-1" />
+                                                            Delete
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            review.photoUrls?.map((url, i) => (
+                                                <div key={i} className="aspect-square rounded-lg border overflow-hidden bg-muted relative group">
+                                                    <img src={url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                                                    <a
+                                                        href={url} target="_blank" rel="noreferrer"
+                                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                                                    >
+                                                        <span className="text-white text-xs font-medium">View Original</span>
+                                                    </a>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                         </CardContent>
                     </Card>
 

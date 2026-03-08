@@ -27,7 +27,7 @@ export default function CreateShopCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
 
     const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export default function CreateShopCategory() {
             setNameMm(cat.nameMm || "");
             setNameTh(cat.nameTh || "");
             setNameEn(cat.nameEn || "");
-            setDisplayOrder(cat.displayOrder ?? 0);
+            setDisplayOrder(cat.displayOrder ?? 1);
             setIsActive(cat.isActive !== false);
             if (cat.imageUrl) {
                 setExistingImage(cat.imageUrl);
@@ -216,14 +216,13 @@ export default function CreateShopCategory() {
                                 <Label htmlFor="displayOrder">Display Order</Label>
                                 <Input
                                     id="displayOrder"
-                                    type="number"
+                                    type="text"
                                     value={displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "") setDisplayOrder("");
-                                        else setDisplayOrder(parseInt(val) || 0);
+                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
                                     }}
-                                    placeholder="0"
+                                    placeholder="1"
                                 />
                             </div>
                         </div>

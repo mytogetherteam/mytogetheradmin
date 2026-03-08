@@ -47,11 +47,11 @@ class MarketingService {
     return apiClient.get<Banner[]>(config.endpoints.admin.marketing.banners.base);
   }
 
-  async createBanner(data: CreateBannerRequest): Promise<Banner> {
+  async createBanner(data: CreateBannerRequest | FormData): Promise<Banner> {
     return apiClient.post<Banner>(config.endpoints.admin.marketing.banners.base, data);
   }
 
-  async updateBanner(id: string, data: Partial<CreateBannerRequest>): Promise<Banner> {
+  async updateBanner(id: string, data: Partial<CreateBannerRequest> | FormData): Promise<Banner> {
     return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.detail(id), data);
   }
 

@@ -58,6 +58,8 @@ import ManageCities from "@/pages/cities/ManageCities";
 import CreateCity from "@/pages/cities/CreateCity";
 import ManageDistricts from "@/pages/districts/ManageDistricts";
 import CreateDistrict from "@/pages/districts/CreateDistrict";
+import ManageCuisines from "@/pages/cuisines/ManageCuisines";
+import CuisineForm from "@/pages/cuisines/CuisineForm";
 
 function PublicOnlyRoute() {
   if (authService.isAuthenticated()) {
@@ -170,6 +172,11 @@ function App() {
           <Route path="/districts/manage" element={<ManageDistricts />} />
           <Route path="/districts/create" element={<CreateDistrict />} />
           <Route path="/districts/edit/:id" element={<CreateDistrict />} />
+
+          {/* Cuisines */}
+          <Route path="/cuisines/manage" element={<ManageCuisines />} />
+          <Route path="/cuisines/create" element={<CuisineForm />} />
+          <Route path="/cuisines/edit/:id" element={<CuisineForm />} />
 
           {/* Payment */}
           <Route path="/payment/methods" element={<PaymentMethods />} />

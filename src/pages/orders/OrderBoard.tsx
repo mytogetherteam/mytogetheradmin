@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     INTERNAL_TRACKING: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
-const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING'];
+const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY'];
 
 function getElapsedTime(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -211,7 +211,7 @@ export default function OrderBoard() {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {['PENDING', 'CONFIRMED', 'ACCEPTED', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED'].map((s) => (
+                                                    {['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'].map((s) => (
                                                         <SelectItem key={s} value={s}>{s}</SelectItem>
                                                     ))}
                                                 </SelectContent>

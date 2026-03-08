@@ -239,7 +239,7 @@ export default function OrderHistory() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ALL">All Statuses</SelectItem>
-                                    {(['PENDING', 'CONFIRMED', 'ACCEPTED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'READY', 'ON_THE_WAY', 'DELIVERING', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'] as OrderStatus[]).map((s) => (
+                                    {(['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'] as OrderStatus[]).map((s) => (
                                         <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                                     ))}
                                 </SelectContent>

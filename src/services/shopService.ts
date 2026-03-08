@@ -105,7 +105,6 @@ export interface CityDTO {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug: string;
   active: boolean;
   districts?: DistrictDTO[];
 }
@@ -436,9 +435,8 @@ export const ShopService = {
    * POST /api/admin/shops/{id}/reject
    */
   rejectShop: async (id: number, reason?: string): Promise<void> => {
-    let endpoint = config.endpoints.shops.reject(id);
-    if (reason) endpoint += `?reason=${encodeURIComponent(reason)}`;
-    await apiClient.post(endpoint);
+    const endpoint = config.endpoints.shops.reject(id);
+    await apiClient.post(endpoint, { rejectionReason: reason });
   },
 
   /**
