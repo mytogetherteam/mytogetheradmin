@@ -19,6 +19,7 @@ export interface Review {
   createdAt: string;
   updatedAt?: string;
   photoUrls?: string[];
+  photos?: { id: number; url: string }[];
   shopId?: number;
   shopName?: string;
   itemName?: string;
@@ -80,7 +81,7 @@ class ReviewService {
     return apiClient.delete<void>(endpoint);
   }
 
-  async deleteReviewPhoto(type: ReviewType, photoId: string): Promise<void> {
+  async deleteReviewPhoto(type: ReviewType, photoId: number): Promise<void> {
     const endpoint = type === 'SHOPS' 
       ? config.endpoints.admin.reviews.photos.shops(photoId) 
       : config.endpoints.admin.reviews.photos.items(photoId);

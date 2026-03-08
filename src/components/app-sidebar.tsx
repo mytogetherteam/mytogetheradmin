@@ -186,6 +186,39 @@ export function AppSidebar() {
                             </SidebarMenuItem>
                         </Collapsible>
 
+                        {/* Cuisines */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Cuisines">
+                                        <UtensilsCrossed />
+                                        <span>Cuisines</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild isActive={isActive("/cuisines/create")}>
+                                                <Link to="/cuisines/create">
+                                                    <Plus className={cn(isActive("/cuisines/create") && "text-primary")} />
+                                                    <span>Create Cuisine</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild isActive={isActive("/cuisines/manage")}>
+                                                <Link to="/cuisines/manage">
+                                                    <List className={cn(isActive("/cuisines/manage") && "text-primary")} />
+                                                    <span>Manage Cuisines</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+
                         {/* Shop Categories */}
                         <Collapsible asChild className="group/collapsible">
                             <SidebarMenuItem>
@@ -252,71 +285,80 @@ export function AppSidebar() {
                             </SidebarMenuItem>
                         </Collapsible>
 
-                        {/* Payment Method */}
-                        <Collapsible asChild className="group/collapsible">
-                            <SidebarMenuItem>
-                                <CollapsibleTrigger asChild>
-                                    <SidebarMenuButton tooltip="Payment Method">
-                                        <Wallet />
-                                        <span>Payment Method</span>
-                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                    </SidebarMenuButton>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                    <SidebarMenuSub>
-                                        <SidebarMenuSubItem>
-                                            <SidebarMenuSubButton asChild isActive={isActive("/payment/methods/create")}>
-                                                <Link to="/payment/methods/create">
-                                                    <Plus className={cn(isActive("/payment/methods/create") && "text-primary")} />
-                                                    <span>Create Payment Method</span>
-                                                </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
-                                        <SidebarMenuSubItem>
-                                            <SidebarMenuSubButton asChild isActive={isActive("/payment/methods")}>
-                                                <Link to="/payment/methods">
-                                                    <Settings2 className={cn(isActive("/payment/methods") && "text-primary")} />
-                                                    <span>Manage Payment Methods</span>
-                                                </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
-                                    </SidebarMenuSub>
-                                </CollapsibleContent>
-                            </SidebarMenuItem>
-                        </Collapsible>
+                        {/* Payment & Financials */}
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Payment Methods</SidebarGroupLabel>
+                            <SidebarMenu>
+                                <Collapsible asChild className="group/collapsible">
+                                    <SidebarMenuItem>
+                                        <CollapsibleTrigger asChild>
+                                            <SidebarMenuButton tooltip="Payment Method">
+                                                <Wallet />
+                                                <span>Payment Method</span>
+                                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                            </SidebarMenuButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton asChild isActive={isActive("/payment/methods/create")}>
+                                                        <Link to="/payment/methods/create">
+                                                            <Plus className={cn(isActive("/payment/methods/create") && "text-primary")} />
+                                                            <span>Create Payment Method</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton asChild isActive={isActive("/payment/methods")}>
+                                                        <Link to="/payment/methods">
+                                                            <Settings2 className={cn(isActive("/payment/methods") && "text-primary")} />
+                                                            <span>Manage Payment Methods</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </SidebarMenuItem>
+                                </Collapsible>
+                            </SidebarMenu>
+                        </SidebarGroup>
 
-                        {/* Shop Payment Type */}
-                        <Collapsible asChild className="group/collapsible">
-                            <SidebarMenuItem>
-                                <CollapsibleTrigger asChild>
-                                    <SidebarMenuButton tooltip="Shop Payment Type">
-                                        <QrCode />
-                                        <span>Shop Payment Type</span>
-                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                    </SidebarMenuButton>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                    <SidebarMenuSub>
-                                        <SidebarMenuSubItem>
-                                            <SidebarMenuSubButton asChild isActive={isActive("/shop-payment-types/create")}>
-                                                <Link to="/shop-payment-types/create">
-                                                    <Plus className={cn(isActive("/shop-payment-types/create") && "text-primary")} />
-                                                    <span>Create Shop Payment Type</span>
-                                                </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
-                                        <SidebarMenuSubItem>
-                                            <SidebarMenuSubButton asChild isActive={isActive("/shop-payment-types/manage")}>
-                                                <Link to="/shop-payment-types/manage">
-                                                    <Settings2 className={cn(isActive("/shop-payment-types/manage") && "text-primary")} />
-                                                    <span>Manage Shop Payment Types</span>
-                                                </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
-                                    </SidebarMenuSub>
-                                </CollapsibleContent>
-                            </SidebarMenuItem>
-                        </Collapsible>
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Shop Payment Types</SidebarGroupLabel>
+                            <SidebarMenu>
+                                <Collapsible asChild className="group/collapsible">
+                                    <SidebarMenuItem>
+                                        <CollapsibleTrigger asChild>
+                                            <SidebarMenuButton tooltip="Shop Payment Type">
+                                                <QrCode />
+                                                <span>Shop Payment Type</span>
+                                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                            </SidebarMenuButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton asChild isActive={isActive("/shop-payment-types/create")}>
+                                                        <Link to="/shop-payment-types/create">
+                                                            <Plus className={cn(isActive("/shop-payment-types/create") && "text-primary")} />
+                                                            <span>Create Shop Payment Type</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton asChild isActive={isActive("/shop-payment-types/manage")}>
+                                                        <Link to="/shop-payment-types/manage">
+                                                            <Settings2 className={cn(isActive("/shop-payment-types/manage") && "text-primary")} />
+                                                            <span>Manage Shop Payment Types</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </SidebarMenuItem>
+                                </Collapsible>
+                            </SidebarMenu>
+                        </SidebarGroup>
                     </SidebarMenu>
                 </SidebarGroup>
 

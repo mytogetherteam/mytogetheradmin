@@ -44,7 +44,7 @@ export default function CreateShopPaymentType() {
     const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>("");
     const [accountName, setAccountName] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState(true);
     const [qrImage, setQrImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export default function CreateShopPaymentType() {
                     setSelectedPaymentMethodId(existing.paymentMethodId.toString());
                     setAccountName(existing.accountName || "");
                     setAccountNumber(existing.accountNumber || "");
-                    setDisplayOrder(existing.displayOrder);
+                    setDisplayOrder(existing.displayOrder ?? 1);
                     setIsActive(existing.isActive);
                     if (existing.qrImageUrl) {
                         setExistingQrUrl(existing.qrImageUrl);
@@ -276,13 +276,13 @@ export default function CreateShopPaymentType() {
                                         <Label htmlFor="displayOrder">Display Order</Label>
                                         <Input
                                             id="displayOrder"
-                                            type="number"
+                                            type="text"
                                             value={displayOrder}
                                             onChange={(e) => {
                                                 const val = e.target.value;
-                                                if (val === "") setDisplayOrder("");
-                                                else setDisplayOrder(parseInt(val) || 0);
+                                                if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
                                             }}
+                                            placeholder="1"
                                         />
                                     </div>
                                     <div className="flex items-center space-x-2 pt-8">

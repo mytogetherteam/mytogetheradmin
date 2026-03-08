@@ -24,8 +24,8 @@ export default function CreateRider() {
     const isEditMode = !!id;
 
     const [name, setName] = useState("");
-    const [phone, setPhone] = useState("");
-    const [vehicleNumber, setVehicleNumber] = useState("");
+    const [phoneNo, setPhoneNo] = useState("");
+    const [motorcycleNo, setMotorcycleNo] = useState("");
     const [vehicleType, setVehicleType] = useState("");
     const [isActive, setIsActive] = useState(true);
     const [shopId, setShopId] = useState("");
@@ -59,8 +59,8 @@ export default function CreateRider() {
         try {
             const rider = await shopRiderService.getRiderById(riderId);
             setName(rider.name);
-            setPhone(rider.phone);
-            setVehicleNumber(rider.vehicleNumber || "");
+            setPhoneNo(rider.phoneNo);
+            setMotorcycleNo(rider.motorcycleNo || "");
             setVehicleType(rider.vehicleType || "");
             setIsActive(rider.isActive);
             setShopId(rider.shopId.toString());
@@ -83,8 +83,8 @@ export default function CreateRider() {
         try {
             const riderData: Partial<ShopRider> = {
                 name,
-                phone,
-                vehicleNumber,
+                phoneNo,
+                motorcycleNo,
                 vehicleType,
                 isActive,
                 shopId: parseInt(shopId),
@@ -164,8 +164,8 @@ export default function CreateRider() {
                                 <Label htmlFor="phone">Phone Number <span className="text-red-500">*</span></Label>
                                 <Input
                                     id="phone"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
+                                    value={phoneNo}
+                                    onChange={(e) => setPhoneNo(e.target.value)}
                                     required
                                     placeholder="e.g. 0912345678"
                                 />
@@ -177,8 +177,8 @@ export default function CreateRider() {
                                 <Label htmlFor="vehicleNumber">Vehicle Number</Label>
                                 <Input
                                     id="vehicleNumber"
-                                    value={vehicleNumber}
-                                    onChange={(e) => setVehicleNumber(e.target.value)}
+                                    value={motorcycleNo}
+                                    onChange={(e) => setMotorcycleNo(e.target.value)}
                                     placeholder="e.g. 1A-1234"
                                 />
                             </div>
@@ -212,7 +212,7 @@ export default function CreateRider() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={submitting || !name || !phone || !shopId}>
+                            <Button type="submit" disabled={submitting || !name || !phoneNo || !shopId}>
                                 {submitting ? (
                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
                                 ) : isEditMode ? "Update Rider" : "Create Rider"}

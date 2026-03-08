@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X, Loader2, Trash2, Plus, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { Upload, X, Loader2, Trash2, Plus, GripVertical } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
@@ -26,7 +26,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Separator } from "@/components/ui/separator";
 import { OptionGroup, Variant, Option } from "@/services/menuService";
 
 
@@ -64,7 +63,7 @@ export default function CreateMenuItem() {
     const [isAvailable, setIsAvailable] = useState(true);
     const [isCombo, setIsCombo] = useState(false);
     const [isPopular, setIsPopular] = useState(false);
-    const [displayOrder, setDisplayOrder] = useState<string>("0");
+    const [displayOrder, setDisplayOrder] = useState<string>("1");
 
     // Data for dropdowns
     const [shops, setShops] = useState<any[]>([]);
@@ -200,7 +199,7 @@ export default function CreateMenuItem() {
             setIsAvailable(item.isAvailable !== false);
             setIsCombo(item.isCombo || false);
             setIsPopular(item.isPopular || false);
-            setDisplayOrder(String(item.displayOrder || 0));
+            setDisplayOrder(String(item.displayOrder ?? 1));
             setOptionGroups(item.optionGroups || []);
             setVariants(item.variants || []);
 
@@ -364,7 +363,7 @@ export default function CreateMenuItem() {
                 isAvailable,
                 isCombo,
                 isPopular,
-                displayOrder: Number(displayOrder) || 0,
+                displayOrder: Number(displayOrder) || 1,
                 optionGroups,
                 variants
             };
@@ -452,10 +451,10 @@ export default function CreateMenuItem() {
                                 <div className="space-y-2">
                                     <Label>Category</Label>
                                     <SearchableSelect
-                                        data={categories.map(cat => ({ label: cat.name, value: String(cat.id) }))}
+                                        data={categories.map(cat => ({ label: cat.nameEn || cat.name, value: String(cat.id) }))}
                                         value="value"
                                         labelKey="label"
-                                        selectedValue={categoryId ? { label: categories.find(c => String(c.id) === categoryId)?.name || "", value: categoryId } : undefined}
+                                        selectedValue={categoryId ? { label: categories.find(c => String(c.id) === categoryId)?.nameEn || categories.find(c => String(c.id) === categoryId)?.name || "", value: categoryId } : undefined}
                                         onChange={(item) => setCategoryId(item?.value || "")}
                                         placeholder="Select Category"
                                     />
@@ -463,12 +462,13 @@ export default function CreateMenuItem() {
                                 <div className="space-y-2">
                                     <Label>Sub Category</Label>
                                     <SearchableSelect
-                                        data={subCategories.map(sub => ({ label: sub.name, value: String(sub.id) }))}
+                                        data={subCategories.map(sub => ({ label: sub.nameEn || sub.name, value: String(sub.id) }))}
                                         value="value"
                                         labelKey="label"
-                                        selectedValue={subCategoryId ? { label: subCategories.find(s => String(s.id) === subCategoryId)?.name || "", value: subCategoryId } : undefined}
+                                        selectedValue={subCategoryId ? { label: subCategories.find(s => String(s.id) === subCategoryId)?.nameEn || subCategories.find(s => String(s.id) === subCategoryId)?.name || "", value: subCategoryId } : undefined}
                                         onChange={(item) => setSubCategoryId(item?.value || "")}
-                                        placeholder="Select Sub Category"
+                                        placeholder={categoryId ? "Select Sub Category" : "First select Category"}
+                                        disabled={!categoryId}
                                     />
                                 </div>
                             </div>
@@ -527,13 +527,13 @@ export default function CreateMenuItem() {
                                                     const val = e.target.value;
                                                     if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val);
                                                 }}
-                                                placeholder="0"
+                                                placeholder="1"
                                                 className="pr-8"
                                             />
-                                            {displayOrder !== "" && displayOrder !== "0" && (
+                                            {displayOrder !== "" && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => setDisplayOrder("")}
+                                                    onClick={() => setDisplayOrder("1")}
                                                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <X className="h-3 w-3" />

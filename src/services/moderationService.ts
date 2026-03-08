@@ -2,7 +2,7 @@ import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
 export type ReportType = 'POST' | 'COMMENT' | 'USER' | 'SHOP';
-export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
+export type ReportStatus = 'OPEN' | 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN' | 'RESOLVED';
 
 export interface Report {
   id: string;

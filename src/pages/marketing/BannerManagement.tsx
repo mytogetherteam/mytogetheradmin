@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { marketingService, Banner, BannerPlacement, CreateBannerRequest } from "@/services/marketingService";
 import { ShopService } from "@/services/shopService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import {
     Megaphone, Plus, Trash2, Star, TrendingUp, ImageIcon, Search,
-    ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store,
+    ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,7 +37,7 @@ const emptyBanner: CreateBannerRequest = {
     imageUrl: "",
     linkUrl: "",
     placement: "HOME_TOP",
-    displayOrder: 0,
+    displayOrder: 1,
     isActive: true,
     startDate: new Date().toISOString().split('T')[0],
     endDate: "",
@@ -53,7 +53,7 @@ function BannerCard({ banner, onToggle, onDelete }: { banner: Banner; onToggle: 
                     <ImageIcon className="h-10 w-10 text-muted-foreground" />
                 )}
                 <Badge className="absolute top-2 right-2" variant={banner.isActive ? "default" : "secondary"}>
-                    {banner.placement.replace("_", " ")}
+                    {banner.placement?.replace("_", " ")}
                 </Badge>
             </div>
             <CardContent className="pt-3 space-y-2">
@@ -246,7 +246,6 @@ function ShopDetailSheet({
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function BannerManagement() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
     const activeTab = searchParams.get("tab") || "banners";
 
     // Banners state
@@ -255,6 +254,8 @@ export default function BannerManagement() {
     const [showCreate, setShowCreate] = useState(false);
     const [form, setForm] = useState<CreateBannerRequest>(emptyBanner);
     const [saving, setSaving] = useState(false);
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     // Featured Shops state
     const [shops, setShops] = useState<any[]>([]);
@@ -328,15 +329,43 @@ export default function BannerManagement() {
     const handleCreate = async () => {
         setSaving(true);
         try {
-            const newBanner = await marketingService.createBanner(form);
+            let data: CreateBannerRequest | FormData;
+            
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append("title", form.title);
+                if (form.titleMm) formData.append("titleMm", form.titleMm);
+                if (form.titleTh) formData.append("titleTh", form.titleTh);
+                if (form.titleEn) formData.append("titleEn", form.titleEn);
+                if (form.linkUrl) formData.append("linkUrl", form.linkUrl);
+                formData.append("placement", form.placement);
+                formData.append("displayOrder", String(form.displayOrder));
+                formData.append("isActive", String(form.isActive));
+                formData.append("startDate", form.startDate);
+                formData.append("endDate", form.endDate);
+                formData.append("image", imageFile);
+                data = formData;
+            } else {
+                data = form;
+            }
+
+            const newBanner = await marketingService.createBanner(data);
             setBanners((prev) => [...prev, newBanner]);
             setShowCreate(false);
             setForm(emptyBanner);
+            setImageFile(null);
+            setImagePreview(null);
             toast.success("Banner created");
-        } catch {
-            toast.error("Failed to create banner");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
         }
     };
 
@@ -651,22 +680,45 @@ export default function BannerManagement() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium">Image URL</label>
-                                <Input
-                                    placeholder="https://..."
-                                    value={form.imageUrl}
-                                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                                />
+                                <label className="text-sm font-medium">Image</label>
+                                <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+                                    {imagePreview ? (
+                                        <div className="relative">
+                                            <img src={imagePreview} alt="Preview" className="h-32 w-full object-cover rounded mx-auto" />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <label className="flex flex-col items-center justify-center gap-2 cursor-pointer">
+                                            <Upload className="h-8 w-8 text-muted-foreground" />
+                                            <p className="text-sm font-medium">Click to upload</p>
+                                            <p className="text-xs text-muted-foreground">PNG, JPG or WebP</p>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleImageChange}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <label className="text-sm font-medium">Display Order</label>
                                 <Input
-                                    type="number"
-                                    placeholder="0"
+                                    type="text"
+                                    placeholder="1"
                                     value={form.displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        setForm((f) => ({ ...f, displayOrder: val === "" ? "" : (parseInt(val) || 0) as any }));
+                                        if (val === "" || /^\d+$/.test(val)) setForm((f) => ({ ...f, displayOrder: val === "" ? 1 : parseInt(val) }));
                                     }}
                                 />
                             </div>
@@ -716,7 +768,7 @@ export default function BannerManagement() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={!form.title || !form.imageUrl || saving}>
+                        <Button onClick={handleCreate} disabled={!form.title || !imageFile || saving}>
                             <Plus className="h-4 w-4 mr-2" /> Create Banner
                         </Button>
                     </DialogFooter>

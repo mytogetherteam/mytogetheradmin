@@ -32,9 +32,14 @@ export const config = {
         shopCategories: '/api/admin/setup/shop-categories',
         shopCategory: (id: number) => `/api/admin/setup/shop-categories/${id}`,
         shopSubCategories: (categoryId: number) => `/api/admin/setup/shop-categories/${categoryId}/sub-categories`,
+        shopSubCategoriesAll: '/api/admin/setup/shop-categories/sub-categories',
         shopSubCategory: (id: number) => `/api/admin/setup/shop-categories/sub-categories/${id}`,
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
+        cuisines: {
+          list: '/api/admin/cuisines',
+          detail: (id: number) => `/api/admin/cuisines/${id}`,
+        }
       },
       districts: {
         list: '/api/admin/districts',
@@ -72,8 +77,8 @@ export const config = {
         itemVisibility: (id: string) => `/api/admin/reviews/items/${id}/visibility`,
         itemDetail: (id: string) => `/api/admin/reviews/items/${id}`,
         photos: {
-          shops: (id: string) => `/api/admin/reviews/photos/shops/${id}`,
-          items: (id: string) => `/api/admin/reviews/photos/items/${id}`,
+          shops: (photoId: number) => `/api/admin/reviews/photos/shop/${photoId}`,
+          items: (photoId: number) => `/api/admin/reviews/photos/item/${photoId}`,
         }
       },
       orders: {
@@ -179,6 +184,15 @@ export const config = {
     },
     user: {
       profile: '/api/admin/profile',
+    },
+  },
+  websocket: {
+    endpoint: '/ws',
+    topics: {
+      stats: '/topic/admin/stats',
+      reports: '/topic/admin/reports',
+      shopRequests: '/topic/admin/shop-requests',
+      newOrders: '/topic/admin/new-orders',
     },
   },
   storage: {

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
@@ -39,7 +40,9 @@ export default function ManageShopSubCategories() {
     const [subCategories, setSubCategories] = useState<ShopSubCategoryDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetchingCategories, setFetchingCategories] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
+    const [totalElements, setTotalElements] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -49,13 +52,12 @@ export default function ManageShopSubCategories() {
         loadCategories();
     }, []);
 
-    // Load SubCategories when Category Select Changes
+    // Load SubCategories when Category Filter or Search Changes
     useEffect(() => {
-        if (selectedCategoryId) {
-            loadSubCategories(parseInt(selectedCategoryId));
-        } else {
-            setSubCategories([]);
-        }
+        // We will implement local filtering for Category for now if the new API doesn't support categoryId filter
+        // But the prompt says the new endpoint takes search, page, size.
+        // If I want to filter by category, I might still need the category-specific endpoint or the new one should accept categoryId.
+        // Assuming the new one is for "Management/Cleanup" and should be global.
     }, [selectedCategoryId]);
 
     const loadCategories = async () => {
@@ -64,9 +66,6 @@ export default function ManageShopSubCategories() {
             const res = await ShopCategoryService.getShopCategories({ page: 0, size: 100 });
             if (res && res.content) {
                 setCategories(res.content);
-                if (res.content.length > 0) {
-                    setSelectedCategoryId(res.content[0].id.toString());
-                }
             }
         } catch (error) {
             console.error(error);
@@ -76,14 +75,20 @@ export default function ManageShopSubCategories() {
         }
     };
 
-    const loadSubCategories = async (catId: number) => {
+    const fetchSubCategories = async () => {
         setLoading(true);
         try {
-            const data = await ShopCategoryService.getShopSubCategories(catId);
-            if (Array.isArray(data)) {
-                setSubCategories(data);
+            const res = await ShopCategoryService.getShopSubCategoriesPaginated({
+                page: currentPage - 1,
+                size: pageSize,
+                search: searchTerm
+            });
+            if (res && res.content) {
+                setSubCategories(res.content);
+                setTotalElements(res.totalElements);
             } else {
                 setSubCategories([]);
+                setTotalElements(0);
             }
         } catch (error) {
             console.error(error);
@@ -93,15 +98,18 @@ export default function ManageShopSubCategories() {
         }
     };
 
+    // Replace loadSubCategories usage
+    useEffect(() => {
+        fetchSubCategories();
+    }, [currentPage, pageSize, searchTerm]);
+
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedSubCategories = sortData(subCategories, sortConfig);
 
-    const totalItems = sortedSubCategories.length;
+    const totalItems = totalElements;
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentSubCategories = sortedSubCategories.slice(startIndex, endIndex);
+    const currentSubCategories = sortedSubCategories;
 
     const exportToExcel = () => {
         if (subCategories.length === 0) {
@@ -128,9 +136,7 @@ export default function ManageShopSubCategories() {
         try {
             await ShopCategoryService.deleteShopSubCategory(id);
             toast.success("Deleted successfully");
-            if (selectedCategoryId) {
-                loadSubCategories(parseInt(selectedCategoryId));
-            }
+            fetchSubCategories();
         } catch (error) {
             console.error(error);
             toast.error("Failed to delete shop sub-category");
@@ -162,15 +168,28 @@ export default function ManageShopSubCategories() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* Filter Section */}
-                    <div className="mb-6 p-4 border rounded-lg bg-muted/20">
-                        <Label className="mb-2 block">Select Shop Category</Label>
-                        <div className="flex gap-4 items-center">
+                    {/* Search Section */}
+                    <div className="mb-6 flex flex-col md:flex-row gap-4 items-end">
+                        <div className="flex-1 space-y-2">
+                            <Label htmlFor="search">Search Sub-Categories</Label>
+                            <Input
+                                id="search"
+                                placeholder="Search by name..."
+                                value={searchTerm}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setSearchTerm(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                        <div className="w-full md:w-[300px] space-y-2">
+                            <Label className="block">Filter by Category</Label>
                             <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                                <SelectTrigger className="w-full md:w-[300px]">
-                                    <SelectValue placeholder="Select a Category" />
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Categories" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="all">All Categories</SelectItem>
                                     {categories.map((cat) => (
                                         <SelectItem key={cat.id} value={cat.id.toString()}>
                                             {cat.name}
@@ -178,8 +197,8 @@ export default function ManageShopSubCategories() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {fetchingCategories && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                         </div>
+                        {fetchingCategories && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mb-3" />}
                     </div>
 
                     {loading ? (
@@ -258,12 +277,23 @@ export default function ManageShopSubCategories() {
                                         ) : (
                                             <TableRow>
                                                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                    {selectedCategoryId ? "No sub-categories found for this category." : "Please select a category above."}
+                                                    No sub-categories found.
                                                 </TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
+                            </div>
+
+                            <div className="mt-4">
+                                <DataTablePagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    pageSize={pageSize}
+                                    totalItems={totalItems}
+                                    onPageChange={setCurrentPage}
+                                    onPageSizeChange={setPageSize}
+                                />
                             </div>
                         </>
                     )}

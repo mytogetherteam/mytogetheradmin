@@ -17,7 +17,6 @@ export default function CreateCity() {
     const [nameEn, setNameEn] = useState("");
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
-    const [slug, setSlug] = useState("");
     const [active, setActive] = useState(true);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -30,7 +29,6 @@ export default function CreateCity() {
                     setNameEn(city.nameEn);
                     setNameMm(city.nameMm);
                     setNameTh(city.nameTh || "");
-                    setSlug(city.slug);
                     setActive(city.active);
                 })
                 .catch(() => toast.error("Failed to load city"))
@@ -40,11 +38,11 @@ export default function CreateCity() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!nameEn.trim() || !nameMm.trim() || !slug.trim()) return toast.error("Name (EN), Name (MM), and Slug are required");
+        if (!nameEn.trim() || !nameMm.trim()) return toast.error("Name (EN) and Name (MM) are required");
 
         setSubmitting(true);
         try {
-            const data: CreateCityRequest = { nameEn: nameEn.trim(), nameMm: nameMm.trim(), nameTh: nameTh.trim() || undefined, slug: slug.trim(), active };
+            const data: CreateCityRequest = { nameEn: nameEn.trim(), nameMm: nameMm.trim(), nameTh: nameTh.trim() || undefined, active };
             if (isEdit) {
                 await cityService.updateCity(parseInt(id!), data);
                 toast.success("City updated successfully");
@@ -85,9 +83,6 @@ export default function CreateCity() {
                                 <Label htmlFor="nameEn">Name (English) *</Label>
                                 <Input id="nameEn" placeholder="e.g. Yangon" value={nameEn} onChange={(e) => {
                                     setNameEn(e.target.value);
-                                    if (!isEdit && !slug) {
-                                        setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
-                                    }
                                 }} required />
                             </div>
                             <div className="space-y-2">
@@ -99,11 +94,6 @@ export default function CreateCity() {
                             <div className="space-y-2">
                                 <Label htmlFor="nameTh">Name (Thai)</Label>
                                 <Input id="nameTh" placeholder="Optional" value={nameTh} onChange={(e) => setNameTh(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="slug">Slug *</Label>
-                                <Input id="slug" placeholder="e.g. yangon-city" value={slug} onChange={(e) => setSlug(e.target.value)} required />
-                                <p className="text-[10px] text-muted-foreground">Used in URLs (e.g. /cities/yangon)</p>
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">

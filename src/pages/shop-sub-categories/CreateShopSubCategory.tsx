@@ -44,7 +44,7 @@ export default function CreateShopSubCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(0);
+    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState(true);
 
     // Image state
@@ -88,7 +88,7 @@ export default function CreateShopSubCategory() {
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
             setNameEn(subCat.nameEn || "");
-            setDisplayOrder(subCat.displayOrder || 0);
+            setDisplayOrder(subCat.displayOrder ?? 1);
             setIsActive(subCat.isActive !== false);
             setSelectedCategoryId(subCat.categoryId?.toString() || "");
 
@@ -234,13 +234,13 @@ export default function CreateShopSubCategory() {
                                 <Label htmlFor="displayOrder">Display Order</Label>
                                 <Input
                                     id="displayOrder"
-                                    type="number"
+                                    type="text"
                                     value={displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "") setDisplayOrder("");
-                                        else setDisplayOrder(parseInt(val) || 0);
+                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
                                     }}
+                                    placeholder="1"
                                 />
                             </div>
                         </div>

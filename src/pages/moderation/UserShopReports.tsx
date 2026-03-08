@@ -19,12 +19,14 @@ import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
 
-type UserShopReportStatus = "OPEN" | "INVESTIGATING" | "RESOLVED";
+type UserShopReportStatus = "OPEN" | "PENDING" | "REVIEWED" | "INVESTIGATING" | "ACTION_TAKEN" | "DISMISSED" | "RESOLVED";
 
 const STATUS_COLORS: Record<string, string> = {
     OPEN: "bg-yellow-100 text-yellow-800",
-    PENDING: "bg-yellow-100 text-yellow-800",
-    INVESTIGATING: "bg-blue-100 text-blue-800",
+    PENDING: "bg-orange-100 text-orange-800",
+    REVIEWED: "bg-blue-100 text-blue-800",
+    INVESTIGATING: "bg-purple-100 text-purple-800",
+    ACTION_TAKEN: "bg-indigo-100 text-indigo-800",
     RESOLVED: "bg-green-100 text-green-800",
     DISMISSED: "bg-gray-100 text-gray-600",
 };
@@ -112,8 +114,12 @@ export default function UserShopReports() {
             <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
                 <TabsList>
                     <TabsTrigger value="ALL">All</TabsTrigger>
-                    <TabsTrigger value="PENDING">Open</TabsTrigger>
+                    <TabsTrigger value="OPEN">Open</TabsTrigger>
+                    <TabsTrigger value="PENDING">Pending</TabsTrigger>
+                    <TabsTrigger value="REVIEWED">Reviewed</TabsTrigger>
                     <TabsTrigger value="INVESTIGATING">Investigating</TabsTrigger>
+                    <TabsTrigger value="ACTION_TAKEN">Action Taken</TabsTrigger>
+                    <TabsTrigger value="DISMISSED">Dismissed</TabsTrigger>
                     <TabsTrigger value="RESOLVED">Resolved</TabsTrigger>
                 </TabsList>
             </Tabs>
@@ -229,9 +235,12 @@ export default function UserShopReports() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="OPEN">Open</SelectItem>
-                                    <SelectItem value="INVESTIGATING">Investigating</SelectItem>
-                                    <SelectItem value="RESOLVED">Resolved</SelectItem>
+                                    <SelectItem value="OPEN">OPEN</SelectItem>
+                                    <SelectItem value="PENDING">PENDING</SelectItem>
+                                    <SelectItem value="REVIEWED">REVIEWED</SelectItem>
+                                    <SelectItem value="DISMISSED">DISMISSED</SelectItem>
+                                    <SelectItem value="ACTION_TAKEN">ACTION_TAKEN</SelectItem>
+                                    <SelectItem value="RESOLVED">RESOLVED</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

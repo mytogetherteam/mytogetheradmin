@@ -98,6 +98,24 @@ export const ShopCategoryService = {
   },
 
   /**
+   * Get all shop sub-categories with pagination and search
+   */
+  getShopSubCategoriesPaginated: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: ShopSubCategoryDTO[]; totalElements: number; totalPages: number }> => {
+    let url = config.endpoints.admin.payment.shopSubCategoriesAll;
+    const queryParams = new URLSearchParams();
+    if (params) {
+      if (params.page !== undefined) queryParams.append('page', params.page.toString());
+      if (params.size !== undefined) queryParams.append('size', params.size.toString());
+      if (params.search !== undefined) queryParams.append('search', params.search);
+    }
+    const queryString = queryParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+    return apiClient.get(url);
+  },
+
+  /**
    * Create a new shop sub-category
    */
   createShopSubCategory: async (categoryId: number, data: FormData): Promise<ShopSubCategoryDTO> => {

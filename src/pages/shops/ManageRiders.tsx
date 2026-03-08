@@ -29,7 +29,6 @@ import {
     Loader2,
     Plus,
     Search,
-    ArrowUpDown,
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
@@ -40,20 +39,17 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { shopRiderService, ShopRider } from "@/services/shopRiderService";
-import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 
 export default function ManageRiders() {
     const navigate = useNavigate();
     const [riders, setRiders] = useState<ShopRider[]>([]);
-    const [shops, setShops] = useState<any[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [loadingShops, setLoadingShops] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedShopId, setSelectedShopId] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof ShopRider; direction: "asc" | "desc" } | null>(null);
 
     // Delete confirmation dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
@@ -62,8 +58,17 @@ export default function ManageRiders() {
     const loadRiders = async () => {
         setLoading(true);
         try {
-            const data = await shopRiderService.getAllRiders();
-            setRiders(Array.isArray(data) ? data : []);
+            // Spring Boot pagination is 0-indexed
+            const data = await shopRiderService.getAllRiders(currentPage - 1, pageSize, searchTerm);
+            if (data && data.content) {
+                setRiders(data.content);
+                setTotalItems(data.totalElements);
+                setTotalPages(data.totalPages);
+            } else {
+                setRiders([]);
+                setTotalItems(0);
+                setTotalPages(1);
+            }
         } catch (e) {
             console.error(e);
             toast.error("Failed to load shop riders");
@@ -72,66 +77,17 @@ export default function ManageRiders() {
         }
     };
 
-    const loadShops = async () => {
-        setLoadingShops(true);
-        try {
-            const res = await ShopService.getAllShops(0, 100);
-            setShops(res?.content || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoadingShops(false);
-        }
-    };
-
     useEffect(() => {
         loadRiders();
-        loadShops();
-    }, []);
+    }, [currentPage, pageSize, searchTerm]);
 
-    const handleSort = (key: keyof ShopRider) => {
-        let direction: "asc" | "desc" = "asc";
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
-        setSortConfig({ key, direction });
+    const getShopName = (rider: ShopRider) => {
+        return rider.shopName || `Shop #${rider.shopId}`;
     };
 
-    const filteredRiders = riders.filter(r => {
-        const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.phone.includes(searchTerm) ||
-            (r.vehicleNumber && r.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-
-        const matchesShop = selectedShopId === "all" || r.shopId.toString() === selectedShopId;
-
-        return matchesSearch && matchesShop;
-    });
-
-    const getShopName = (shId: number) => {
-        const shop = shops.find(s => s.id === shId);
-        return shop ? shop.name : `Shop #${shId}`;
-    };
-
-    const sortedRiders = [...filteredRiders].sort((a, b) => {
-        if (!sortConfig) return 0;
-        const { key, direction } = sortConfig;
-        let aVal = a[key];
-        let bVal = b[key];
-        if (typeof aVal === "string") aVal = aVal.toLowerCase();
-        if (typeof bVal === "string") bVal = bVal.toLowerCase();
-
-        if (aVal === undefined || bVal === undefined) return 0;
-
-        if (aVal < bVal) return direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return direction === "asc" ? 1 : -1;
-        return 0;
-    });
-
-    const totalItems = sortedRiders.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentRiders = sortedRiders.slice(startIndex, endIndex);
+    const currentRiders = riders;
 
     const handleDeleteClick = (e: React.MouseEvent, id: number, name: string) => {
         e.stopPropagation();
@@ -171,29 +127,14 @@ export default function ManageRiders() {
                             <div className="relative w-full sm:w-auto">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search riders..."
-                                    className="pl-8 w-full sm:w-[200px]"
+                                    placeholder="Search riders or shop..."
+                                    className="pl-8 w-full sm:w-[250px]"
                                     value={searchTerm}
                                     onChange={(e) => {
                                         setSearchTerm(e.target.value);
                                         setCurrentPage(1);
                                     }}
                                 />
-                            </div>
-                            <div className="w-full sm:w-[200px]">
-                                <Select value={selectedShopId} onValueChange={(v) => { setSelectedShopId(v); setCurrentPage(1); }}>
-                                    <SelectTrigger disabled={loadingShops}>
-                                        <SelectValue placeholder={loadingShops ? "Loading..." : "All Shops"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Shops</SelectItem>
-                                        {shops.map((shop) => (
-                                            <SelectItem key={shop.id} value={shop.id.toString()}>
-                                                {shop.nameEn || shop.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
                             </div>
                             <Button onClick={() => navigate("/shops/riders/create")}>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -213,14 +154,14 @@ export default function ManageRiders() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
-                                                <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
+                                            <TableHead className="w-[80px]">
+                                                <div className="flex items-center gap-2">ID</div>
                                             </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                                                <div className="flex items-center gap-2">Name <ArrowUpDown className="h-3 w-3" /></div>
+                                            <TableHead>
+                                                <div className="flex items-center gap-2">Name</div>
                                             </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("phone")}>
-                                                <div className="flex items-center gap-2">Phone <ArrowUpDown className="h-3 w-3" /></div>
+                                            <TableHead>
+                                                <div className="flex items-center gap-2">Phone</div>
                                             </TableHead>
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Vehicle</TableHead>
@@ -240,13 +181,13 @@ export default function ManageRiders() {
                                                     <TableCell>
                                                         <div className="font-medium">{rider.name}</div>
                                                     </TableCell>
-                                                    <TableCell>{rider.phone}</TableCell>
+                                                    <TableCell>{rider.phoneNo}</TableCell>
                                                     <TableCell>
-                                                        <div className="text-sm font-medium">{getShopName(rider.shopId)}</div>
+                                                        <div className="text-sm font-medium">{getShopName(rider)}</div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="text-sm">
-                                                            {rider.vehicleNumber || "—"}
+                                                            {rider.motorcycleNo || "—"}
                                                             {rider.vehicleType && <span className="text-xs text-muted-foreground ml-1">({rider.vehicleType})</span>}
                                                         </div>
                                                     </TableCell>

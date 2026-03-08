@@ -7,6 +7,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react()],
+    define: {
+      // sockjs-client (CommonJS) references Node's `global`; polyfill for browser
+      global: 'globalThis',
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -18,6 +22,12 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
           changeOrigin: true,
           secure: true,
+        },
+        '/ws': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+          ws: true,
         },
       },
     },

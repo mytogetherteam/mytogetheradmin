@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Card,
@@ -20,9 +20,34 @@ import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/se
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { ShopService } from "@/services/shopService";
 import { moderationService } from "@/services/moderationService";
-import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function getDefaultDates() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+        start: start.toISOString().split("T")[0],
+        end: end.toISOString().split("T")[0],
+    };
+}
+
+const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+    PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
+    CONFIRMED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
+    ACCEPTED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
+    PREPARING: { bg: "bg-orange-500/10", text: "text-orange-500", dot: "bg-orange-500" },
+    READY: { bg: "bg-purple-500/10", text: "text-purple-500", dot: "bg-purple-500" },
+    ON_THE_WAY: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
+    DELIVERING: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
+};
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
 
 function StatCard({
     title,
@@ -30,19 +55,40 @@ function StatCard({
     prefix = "",
     icon: Icon,
     loading,
+    live,
 }: {
     title: string;
     value: number | string;
-    change?: number;
     prefix?: string;
     icon: React.ElementType;
     loading?: boolean;
+    live?: boolean;
 }) {
+    const [flash, setFlash] = useState(false);
+    const prevVal = useRef(value);
+
+    useEffect(() => {
+        if (live && prevVal.current !== value) {
+            setFlash(true);
+            const t = setTimeout(() => setFlash(false), 1200);
+            prevVal.current = value;
+            return () => clearTimeout(t);
+        }
+    }, [value, live]);
+
     return (
-        <Card>
+        <Card className={flash ? "ring-2 ring-green-500/40 transition-all duration-300" : "transition-all duration-300"}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-1.5">
+                    {live && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[9px] font-semibold tracking-wide">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                            LIVE
+                        </span>
+                    )}
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                </div>
             </CardHeader>
             <CardContent>
                 {loading ? (
@@ -60,25 +106,90 @@ function StatCard({
     );
 }
 
-function getDefaultDates() {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30); // Default to 30 days ago
-    return {
-        start: start.toISOString().split("T")[0],
-        end: end.toISOString().split("T")[0],
-    };
+/** Dismissable alert banner shown when a new WS alert arrives */
+function AlertBanner({
+    icon: Icon,
+    color,
+    title,
+    subtitle,
+    onDismiss,
+}: {
+    icon: React.ElementType;
+    color: string;
+    title: string;
+    subtitle?: string;
+    onDismiss: () => void;
+}) {
+    return (
+        <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${color} animate-in slide-in-from-top-2 duration-300`}
+        >
+            <Icon className="h-4 w-4 shrink-0" />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold leading-tight">{title}</p>
+                {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+            </div>
+            <button
+                onClick={onDismiss}
+                className="ml-auto shrink-0 h-5 w-5 rounded-sm opacity-60 hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+                <X className="h-3.5 w-3.5" />
+            </button>
+        </div>
+    );
 }
 
-const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-    PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
-    CONFIRMED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
-    ACCEPTED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
-    PREPARING: { bg: "bg-orange-500/10", text: "text-orange-500", dot: "bg-orange-500" },
-    READY: { bg: "bg-purple-500/10", text: "text-purple-500", dot: "bg-purple-500" },
-    ON_THE_WAY: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
-    DELIVERING: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
-};
+/** Small live-order ticker shown inside the Order Health card */
+function NewOrderTicker({ order }: { order: { message?: string; id?: string | number } | null }) {
+    const [visible, setVisible] = useState(false);
+    const [text, setText] = useState("");
+
+    useEffect(() => {
+        if (!order) return;
+        setText(order.message || (order.id ? `New order #${order.id} arrived` : "New order received"));
+        setVisible(true);
+        const t = setTimeout(() => setVisible(false), 6000);
+        return () => clearTimeout(t);
+    }, [order]);
+
+    if (!visible) return null;
+
+    return (
+        <div className="flex items-center gap-2 px-3 py-1.5 mb-3 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-xs font-medium animate-in slide-in-from-left-2 duration-300">
+            <ShoppingBag className="h-3.5 w-3.5 shrink-0 animate-bounce" />
+            <span className="truncate">{text}</span>
+            <span className="ml-auto shrink-0 text-[10px] opacity-60">live</span>
+        </div>
+    );
+}
+
+// ─── Connection Status Indicator ────────────────────────────────────────────
+
+function WsStatusBadge({ connected }: { connected: boolean }) {
+    return (
+        <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors duration-500 ${connected
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+        >
+            {connected ? (
+                <>
+                    <Wifi className="h-3 w-3" />
+                    <span>Live</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                </>
+            ) : (
+                <>
+                    <WifiOff className="h-3 w-3" />
+                    <span>Offline</span>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -86,6 +197,7 @@ export default function Dashboard() {
     const [startDate, setStartDate] = useState(defaults.start);
     const [endDate, setEndDate] = useState(defaults.end);
 
+    // REST baseline data
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
@@ -95,6 +207,13 @@ export default function Dashboard() {
     const [systemHealth, setSystemHealth] = useState<{ dbLatency: number; status: string; performance?: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // WebSocket live data
+    const { connected, systemStats, latestReport, latestShopRequest, latestOrder } = useAdminWebSocket();
+
+    // Dismissed alert state
+    const [reportDismissed, setReportDismissed] = useState<string | null>(null);
+    const [shopRequestDismissed, setShopRequestDismissed] = useState<string | null>(null);
 
     useEffect(() => {
         async function load() {
@@ -116,7 +235,7 @@ export default function Dashboard() {
                 setPendingShopsCount(pendingData?.totalElements ?? 0);
                 setOpenReportsCount(reportsData?.totalElements ?? 0);
                 setSystemHealth(sysHealth);
-            } catch (err) {
+            } catch {
                 setError("Failed to load dashboard data.");
             } finally {
                 setLoading(false);
@@ -125,52 +244,80 @@ export default function Dashboard() {
         load();
     }, [startDate, endDate]);
 
+    // Derived: prefer live WS stats where available, fall back to REST baseline
+    const liveStats: Partial<SystemStatsDTO> = systemStats ?? {};
+    const totalUsers = liveStats.totalUsers ?? stats?.totalUsers ?? 0;
+    const activeShops = liveStats.activeShops ?? stats?.totalShops ?? 0;
+    const revenueToday = liveStats.revenueToday ?? stats?.totalRevenueToday ?? 0;
+    const pendingOrders = liveStats.pendingOrders ?? 0;
+    const isLive = !!systemStats;
+
+    // Alert keys (used to detect new entries)
+    const latestReportKey = latestReport?.timestamp ?? null;
+    const latestShopKey = latestShopRequest?.timestamp ?? null;
+
+    const showReportBanner = latestReportKey && latestReportKey !== reportDismissed;
+    const showShopRequestBanner = latestShopKey && latestShopKey !== shopRequestDismissed;
+
     const chartData = revenue.length > 0
         ? revenue.map((r) => ({ name: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }), total: r.amount ?? 0 }))
         : [];
 
     return (
         <div className="flex flex-col gap-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
-                {error && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {error}
-                    </Badge>
-                )}
+                <div className="flex items-center gap-3">
+                    {error && (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {error}
+                        </Badge>
+                    )}
+                    <WsStatusBadge connected={connected} />
+                </div>
             </div>
+
+            {/* WebSocket Alert Banners */}
+            {(showReportBanner || showShopRequestBanner) && (
+                <div className="flex flex-col gap-2">
+                    {showReportBanner && (
+                        <AlertBanner
+                            icon={Flag}
+                            color="border-red-500/30 bg-red-500/5 text-red-500"
+                            title="New Report Received"
+                            subtitle={
+                                (latestReport?.message as string | undefined) ||
+                                (latestReport?.id ? `Report #${latestReport.id}` : "A user or content has been reported")
+                            }
+                            onDismiss={() => setReportDismissed(latestReportKey!)}
+                        />
+                    )}
+                    {showShopRequestBanner && (
+                        <AlertBanner
+                            icon={Bell}
+                            color="border-yellow-500/30 bg-yellow-500/5 text-yellow-500"
+                            title="New Shop Approval Request"
+                            subtitle={
+                                (latestShopRequest?.message as string | undefined) ||
+                                (latestShopRequest?.id ? `Shop #${latestShopRequest.id} pending review` : "A shop is awaiting vetting")
+                            }
+                            onDismiss={() => setShopRequestDismissed(latestShopKey!)}
+                        />
+                    )}
+                </div>
+            )}
 
             {/* Row 1: KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                    title="Total Users"
-                    value={stats?.totalUsers ?? 0}
-                    icon={Users}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Total Shops"
-                    value={stats?.totalShops ?? 0}
-                    icon={Store}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Orders Today"
-                    value={stats?.totalOrdersToday ?? 0}
-                    icon={ShoppingCart}
-                    loading={loading}
-                />
-                <StatCard
-                    title="Revenue Today"
-                    value={stats?.totalRevenueToday ?? 0}
-                    prefix="$"
-                    icon={DollarSign}
-                    loading={loading}
-                />
+                <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
+                <StatCard title="Active Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
+                <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} />
+                <StatCard title="Revenue Today" value={revenueToday} prefix="$" icon={DollarSign} loading={loading} live={isLive} />
             </div>
 
-            {/* Row 2: Alert Banners */}
+            {/* Row 2: Moderation Alert Cards */}
             <div className="grid gap-4 md:grid-cols-2">
                 <Card
                     className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-colors"
@@ -207,7 +354,10 @@ export default function Dashboard() {
                         {loading ? (
                             <Skeleton className="h-8 w-12" />
                         ) : (
-                            <span className="text-2xl font-bold text-red-500">{openReportsCount}</span>
+                            <span className="text-2xl font-bold text-red-500">
+                                {/* prefer live WS count if available */}
+                                {isLive ? (liveStats.pendingReports ?? openReportsCount) : openReportsCount}
+                            </span>
                         )}
                     </CardContent>
                 </Card>
@@ -216,10 +366,23 @@ export default function Dashboard() {
             {/* Row 3: Order Health */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Order Health</CardTitle>
-                    <CardDescription>Live order counts by status</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-base">Order Health</CardTitle>
+                            <CardDescription>Live order counts by status</CardDescription>
+                        </div>
+                        {isLive && (
+                            <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                Real-time
+                            </span>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
+                    {/* New order ticker */}
+                    <NewOrderTicker order={latestOrder} />
+
                     {loading ? (
                         <div className="flex gap-3">
                             {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-9 w-32" />)}
@@ -267,6 +430,15 @@ export default function Dashboard() {
                             <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" />
                             <span className="text-xs text-muted-foreground">Unable to fetch status</span>
                         </>
+                    )}
+                    {/* WebSocket system health string */}
+                    {isLive && liveStats.systemHealth && (
+                        <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${liveStats.systemHealth === 'HEALTHY'
+                                ? 'bg-green-500/10 text-green-500'
+                                : 'bg-red-500/10 text-red-500'
+                            }`}>
+                            {liveStats.systemHealth}
+                        </span>
                     )}
                 </CardContent>
             </Card>
@@ -349,7 +521,7 @@ export default function Dashboard() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-semibold truncate text-foreground/90">{shopName}</p>
-                                                    <div className="flex items-center gap-1.5 ">
+                                                    <div className="flex items-center gap-1.5">
                                                         <Users className="h-3 w-3 text-muted-foreground" />
                                                         <span className="text-[11px] text-muted-foreground font-medium">{unique.toLocaleString()} unique</span>
                                                     </div>
@@ -361,7 +533,7 @@ export default function Dashboard() {
                                                 </Badge>
                                             </div>
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
                         ) : (

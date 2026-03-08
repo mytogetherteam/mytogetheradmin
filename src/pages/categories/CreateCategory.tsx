@@ -34,7 +34,7 @@ export default function CreateCategory() {
   const [nameMm, setNameMm] = useState("");
   const [nameTh, setNameTh] = useState("");
   const [nameEn, setNameEn] = useState("");
-  const [displayOrder, setDisplayOrder] = useState<number | "">(0);
+  const [displayOrder, setDisplayOrder] = useState<number | "">(1);
   const [isActive, setIsActive] = useState<boolean>(true);
 
   // Shop selector state (for create mode)
@@ -52,10 +52,7 @@ export default function CreateCategory() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImage, setExistingImage] = useState<string | null>(null);
 
-  // Gallery state
-  const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
-  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  // Gallery state removed
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -71,9 +68,6 @@ export default function CreateCategory() {
       setExistingImage(null);
       setImageFile(null);
       setImagePreview(null);
-      setExistingGalleryImages([]);
-      setGalleryFiles([]);
-      setGalleryPreviews([]);
       loadShops();
     }
   }, [id, isEditMode]);
@@ -100,13 +94,10 @@ export default function CreateCategory() {
       setNameMm(cat.nameMm || "");
       setNameTh(cat.nameTh || "");
       setNameEn(cat.nameEn || "");
-      setDisplayOrder(cat.displayOrder ?? 0);
+      setDisplayOrder(cat.displayOrder ?? 1);
       setIsActive(cat.isActive !== false);
       if (cat.imageUrl || cat.image || cat.icon) {
         setExistingImage(cat.imageUrl || cat.image || cat.icon);
-      }
-      if (cat.galleryUrls && Array.isArray(cat.galleryUrls)) {
-        setExistingGalleryImages(cat.galleryUrls);
       }
     } catch (error) {
       console.error(error);
@@ -130,31 +121,6 @@ export default function CreateCategory() {
     setImageFile(null);
     setImagePreview(null);
     setExistingImage(null);
-  };
-
-  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const newFiles = Array.from(files);
-    setGalleryFiles((prev) => [...prev, ...newFiles]);
-
-    newFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setGalleryPreviews((prev) => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeGalleryImage = (index: number) => {
-    setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
-    setGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const removeExistingGalleryImage = (url: string) => {
-    setExistingGalleryImages((prev) => prev.filter((img) => img !== url));
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -181,10 +147,6 @@ export default function CreateCategory() {
       if (imageFile) {
         formData.append("image", imageFile);
       }
-
-      galleryFiles.forEach((file) => {
-        formData.append("galleryPhotos", file);
-      });
 
       if (isEditMode && id) {
         await ShopService.updateCategory(parseInt(id), formData);
@@ -312,14 +274,13 @@ export default function CreateCategory() {
                 <Label htmlFor="displayOrder">Display Order</Label>
                 <Input
                   id="displayOrder"
-                  type="number"
+                  type="text"
                   value={displayOrder}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === "") setDisplayOrder("");
-                    else setDisplayOrder(parseInt(val) || 0);
+                    if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
                   }}
-                  placeholder="0"
+                  placeholder="1"
                 />
               </div>
             </div>
@@ -370,63 +331,7 @@ export default function CreateCategory() {
                 )}
               </div>
 
-              {/* Gallery Photos */}
-              <div className="space-y-2">
-                <Label>Gallery Photos</Label>
-                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={handleGalleryChange}
-                  />
-                  <div className="text-center space-y-2 pointer-events-none">
-                    <div className="flex justify-center">
-                      <Upload className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <div className="text-sm font-medium">Upload Gallery Photos</div>
-                    <div className="text-xs text-muted-foreground">Multiple allowed</div>
-                  </div>
-                </div>
-
-                {(existingGalleryImages.length > 0 || galleryPreviews.length > 0) && (
-                  <div className="grid grid-cols-3 gap-2 mt-4">
-                    {existingGalleryImages.map((src, idx) => (
-                      <div key={`existing-${idx}`} className="relative aspect-square rounded-md overflow-hidden border">
-                        <img src={src} className="w-full h-full object-cover" alt="Gallery Existing" />
-                        <div className="absolute top-1 right-1 z-20">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="h-6 w-6 rounded-full shadow-sm"
-                            onClick={() => removeExistingGalleryImage(src)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {galleryPreviews.map((src, idx) => (
-                      <div key={`new-${idx}`} className="relative aspect-square rounded-md overflow-hidden border">
-                        <img src={src} className="w-full h-full object-cover" alt="Gallery Preview" />
-                        <div className="absolute top-1 right-1 z-20">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="h-6 w-6 rounded-full shadow-sm"
-                            onClick={() => removeGalleryImage(idx)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Gallery Photos removed */}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t">

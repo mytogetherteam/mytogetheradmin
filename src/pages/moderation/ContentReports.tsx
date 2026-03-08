@@ -22,6 +22,9 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800",
     RESOLVED: "bg-green-100 text-green-800",
     DISMISSED: "bg-gray-100 text-gray-600",
+    OPEN: "bg-red-100 text-red-800",
+    REVIEWED: "bg-blue-100 text-blue-800",
+    ACTION_TAKEN: "bg-purple-100 text-purple-800",
 };
 
 const TYPE_COLORS: Record<ReportType, string> = {
