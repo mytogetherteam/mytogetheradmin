@@ -1,4 +1,4 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
 
 const routeLabels: Record<string, string> = {
@@ -40,12 +40,27 @@ const routeLabels: Record<string, string> = {
     "cities": "Cities",
     "districts": "Districts",
     "payment": "Payment",
-    "methods": "Methods"
+    "methods": "Methods",
+    "vetting": "Vetting Queue",
+};
+
+// Tab labels: maps ?tab= values to human-readable names
+const tabLabels: Record<string, string> = {
+    "banners": "Banners",
+    "featured": "Featured Shops",
+    "posts": "Posts Feed",
+    "comments": "Comment Board",
+    "shop-reviews": "Shop Reviews",
+    "item-reviews": "Item Reviews",
+    "content-reports": "Content Reports",
+    "user-reports": "User Reports",
 };
 
 export function BreadcrumbNav() {
     const location = useLocation();
+    const [searchParams] = useSearchParams();
     const pathnames = location.pathname.split("/").filter((x) => x);
+    const activeTab = searchParams.get("tab");
 
     if (pathnames.length === 0) return null;
 
@@ -67,7 +82,7 @@ export function BreadcrumbNav() {
                 return (
                     <div key={to} className="flex items-center">
                         <ChevronRight className="h-4 w-4 mx-1.5 opacity-40 shrink-0" />
-                        {last ? (
+                        {last && !activeTab ? (
                             <span className="font-semibold text-foreground truncate max-w-[150px]">
                                 {label}
                             </span>
@@ -82,6 +97,16 @@ export function BreadcrumbNav() {
                     </div>
                 );
             })}
+
+            {/* Append active tab as the last breadcrumb segment */}
+            {activeTab && tabLabels[activeTab] && (
+                <div className="flex items-center">
+                    <ChevronRight className="h-4 w-4 mx-1.5 opacity-40 shrink-0" />
+                    <span className="font-semibold text-foreground truncate max-w-[180px]">
+                        {tabLabels[activeTab]}
+                    </span>
+                </div>
+            )}
         </nav>
     );
 }

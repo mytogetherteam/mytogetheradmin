@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { Loader } from "@/components/ui/loader"
 import { Input } from "@/components/ui/input"
 import { DataTablePagination } from "@/components/DataTablePagination"
@@ -40,8 +41,6 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    PowerOff,
-    Power,
     Edit,
     Clock,
     Check,
@@ -270,10 +269,17 @@ export default function ManageShopRestaurant() {
                                             <Badge variant="secondary">Unverified</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell>
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${(shop as any).isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                            {(shop as any).isActive !== false ? "Active" : "Inactive"}
-                                        </span>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-2">
+                                            <Switch
+                                                checked={(shop as any).isActive !== false}
+                                                disabled={actionLoading === shop.id}
+                                                onCheckedChange={() => handleToggleStatus({ stopPropagation: () => { } } as any, shop)}
+                                            />
+                                            <span className={`text-xs font-medium ${(shop as any).isActive !== false ? "text-green-600" : "text-red-500"}`}>
+                                                {(shop as any).isActive !== false ? "Active" : "Inactive"}
+                                            </span>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -304,19 +310,6 @@ export default function ManageShopRestaurant() {
                                                 onClick={(e) => openRejectDialog(e, shop)}
                                             >
                                                 <X className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                title={(shop as any).isActive !== false ? "Deactivate" : "Activate"}
-                                                disabled={actionLoading === shop.id}
-                                                className={(shop as any).isActive !== false
-                                                    ? "text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                    : "text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                }
-                                                onClick={(e) => handleToggleStatus(e, shop)}
-                                            >
-                                                {(shop as any).isActive !== false ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                                             </Button>
                                         </div>
                                     </TableCell>

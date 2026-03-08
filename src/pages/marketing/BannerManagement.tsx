@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
-import { marketingService, Banner, BannerPlacement, FeaturedShop, CreateBannerRequest } from "@/services/marketingService";
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { marketingService, Banner, BannerPlacement, CreateBannerRequest } from "@/services/marketingService";
+import { ShopService } from "@/services/shopService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +10,21 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Megaphone, Plus, Trash2, Star, TrendingUp, ImageIcon } from "lucide-react";
+import {
+    Megaphone, Plus, Trash2, Star, TrendingUp, ImageIcon, Search,
+    ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const PLACEMENTS: BannerPlacement[] = ['HOME_TOP', 'FEED_MIDDLE', 'SHOP_DETAIL', 'SEARCH_TOP'];
@@ -70,28 +78,233 @@ function BannerCard({ banner, onToggle, onDelete }: { banner: Banner; onToggle: 
     );
 }
 
+// ── Shop Detail Sheet ─────────────────────────────────────────────────────────
+function ShopDetailSheet({
+    shop,
+    open,
+    onClose,
+    onToggleFeatured,
+    onBoost,
+    featuringId,
+}: {
+    shop: any | null;
+    open: boolean;
+    onClose: () => void;
+    onToggleFeatured: (shop: any) => void;
+    onBoost: (shop: any) => void;
+    featuringId: number | null;
+}) {
+    if (!shop) return null;
+
+    const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
+        <div className="flex justify-between items-start gap-4 py-2 border-b border-muted/40 last:border-0">
+            <span className="text-xs font-bold uppercase text-muted-foreground shrink-0">{label}</span>
+            <span className="text-sm text-right">{value ?? "N/A"}</span>
+        </div>
+    );
+
+    const BoolBadge = ({ value, label }: { value?: boolean; label: string }) => (
+        <div className="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/30 border border-muted/40">
+            <span className="text-[10px] text-muted-foreground uppercase font-bold">{label}</span>
+            {value
+                ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 text-[10px] hover:bg-green-500/10"><CheckCircle2 className="h-3 w-3" /> Yes</Badge>
+                : <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px]"><XCircle className="h-3 w-3" /> No</Badge>
+            }
+        </div>
+    );
+
+    return (
+        <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+            <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader className="pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                        {shop.logoUrl ? (
+                            <img src={shop.logoUrl} alt={shop.nameEn} className="h-14 w-14 rounded-xl object-cover border" />
+                        ) : (
+                            <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <Store className="h-7 w-7 text-primary" />
+                            </div>
+                        )}
+                        <div>
+                            <SheetTitle className="text-lg">{shop.nameEn || shop.nameMm || "Shop"}</SheetTitle>
+                            <SheetDescription className="flex items-center gap-2 mt-1">
+                                <span>ID: {shop.id}</span>
+                                {shop.isFeatured && (
+                                    <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 gap-1 text-[10px] hover:bg-yellow-500/10">
+                                        <Star className="h-3 w-3 fill-yellow-500" /> Featured
+                                    </Badge>
+                                )}
+                                <Badge variant={shop.isActive ? "default" : "secondary"} className="text-[10px]">
+                                    {shop.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                            </SheetDescription>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-3">
+                        <Button
+                            className="flex-1"
+                            variant={shop.isFeatured ? "outline" : "default"}
+                            size="sm"
+                            disabled={featuringId === shop.id}
+                            onClick={() => onToggleFeatured(shop)}
+                        >
+                            <Star className={`h-4 w-4 mr-2 ${shop.isFeatured ? "fill-yellow-500 text-yellow-500" : ""}`} />
+                            {shop.isFeatured ? "Unfeature Shop" : "Set as Featured"}
+                        </Button>
+                        <Button
+                            className="flex-1"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onBoost(shop)}
+                        >
+                            <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
+                            Boost Score
+                        </Button>
+                    </div>
+                </SheetHeader>
+
+                <div className="mt-4 space-y-4">
+                    {/* Basic Info */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Basic Info</h3>
+                        <InfoRow label="Name (EN)" value={shop.nameEn} />
+                        <InfoRow label="Name (MM)" value={shop.nameMm} />
+                        <InfoRow label="Name (TH)" value={shop.nameTh} />
+                        <InfoRow label="Category" value={shop.shopCategory?.nameEn || shop.category} />
+                        <InfoRow label="Sub-Category" value={shop.shopSubCategory?.nameEn || shop.subCategory} />
+                        <InfoRow label="Price Preference" value={shop.pricePreference} />
+                    </div>
+
+                    {/* Contact */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Contact</h3>
+                        <div className="space-y-1.5">
+                            {shop.phone && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {shop.phone}
+                                </div>
+                            )}
+                            {shop.email && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {shop.email}
+                                </div>
+                            )}
+                            {(shop.addressEn || shop.address) && (
+                                <div className="flex items-start gap-2 text-sm">
+                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
+                                    <span>{shop.addressEn || shop.address}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Features */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Features</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            <BoolBadge value={shop.hasDelivery} label="Delivery" />
+                            <BoolBadge value={shop.hasWifi} label="WiFi" />
+                            <BoolBadge value={shop.hasParking} label="Parking" />
+                            <BoolBadge value={shop.isHalal} label="Halal" />
+                            <BoolBadge value={shop.isVegetarian} label="Vegetarian" />
+                            <BoolBadge value={shop.isVerified} label="Verified" />
+                        </div>
+                    </div>
+
+                    {/* Delivery Info */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Delivery Info</h3>
+                        <InfoRow label="Base Delivery Fee" value={shop.baseDeliveryFee != null ? `${shop.baseDeliveryFee} MMK` : null} />
+                        <InfoRow label="Min Order Amount" value={shop.minOrderAmount != null ? `${shop.minOrderAmount} MMK` : null} />
+                        <InfoRow label="Max Qty / Order" value={shop.maxItemQuantityPerOrder} />
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Location</h3>
+                        <InfoRow label="District" value={shop.districtId} />
+                        <InfoRow label="Latitude" value={shop.latitude} />
+                        <InfoRow label="Longitude" value={shop.longitude} />
+                    </div>
+
+                    {/* Timestamps */}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Timestamps</h3>
+                        <InfoRow label="Created At" value={shop.createdAt ? new Date(shop.createdAt).toLocaleString() : null} />
+                        <InfoRow label="Updated At" value={shop.updatedAt ? new Date(shop.updatedAt).toLocaleString() : null} />
+                    </div>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function BannerManagement() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const activeTab = searchParams.get("tab") || "banners";
+
+    // Banners state
     const [banners, setBanners] = useState<Banner[]>([]);
-    const [featuredShops, setFeaturedShops] = useState<FeaturedShop[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [bannersLoading, setBannersLoading] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [form, setForm] = useState<CreateBannerRequest>(emptyBanner);
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        async function load() {
-            setLoading(true);
-            const [b, f] = await Promise.all([
-                marketingService.getBanners().catch(() => []),
-                marketingService.getFeaturedShops().catch(() => []),
-            ]);
+    // Featured Shops state
+    const [shops, setShops] = useState<any[]>([]);
+    const [shopsLoading, setShopsLoading] = useState(false);
+    const [shopSearch, setShopSearch] = useState("");
+    const [featuringId, setFeaturingId] = useState<number | null>(null);
+
+    // Detail Sheet
+    const [selectedShop, setSelectedShop] = useState<any | null>(null);
+    const [sheetOpen, setSheetOpen] = useState(false);
+
+    // Boost Dialog
+    const [boostShop, setBoostShop] = useState<any | null>(null);
+    const [boostScore, setBoostScore] = useState("10");
+    const [boosting, setBoosting] = useState(false);
+
+    const handleTabChange = (value: string) => {
+        setSearchParams({ tab: value });
+    };
+
+    // Load banners
+    const loadBanners = useCallback(async () => {
+        setBannersLoading(true);
+        try {
+            const b = await marketingService.getBanners().catch(() => []);
             setBanners(b);
-            setFeaturedShops(f);
-            setLoading(false);
+        } finally {
+            setBannersLoading(false);
         }
-        load();
     }, []);
 
+    // Load all shops for featured tab
+    const loadShops = useCallback(async () => {
+        setShopsLoading(true);
+        try {
+            const data = await ShopService.getAllShops(0, 200);
+            setShops(data.content || []);
+        } catch {
+            toast.error("Failed to load shops");
+        } finally {
+            setShopsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === "banners") loadBanners();
+        else if (activeTab === "featured") loadShops();
+    }, [activeTab, loadBanners, loadShops]);
+
+    // Banner actions
     const handleToggle = async (id: string, isActive: boolean) => {
         try {
             const updated = await marketingService.toggleBanner(id, isActive);
@@ -127,16 +340,55 @@ export default function BannerManagement() {
         }
     };
 
-    const handleBoostToggleFeatured = async (shop: FeaturedShop) => {
+    // Featured actions
+    const handleToggleFeatured = async (shop: any) => {
+        setFeaturingId(shop.id);
         try {
-            const newFeaturedStatus = !shop.isFeatured;
-            await marketingService.setFeatured(shop.shopId, newFeaturedStatus);
-            setFeaturedShops((prev) => prev.map((s) => s.shopId === shop.shopId ? { ...s, isFeatured: newFeaturedStatus } : s));
-            toast.success(`Shop ${newFeaturedStatus ? "featured" : "unfeatured"}`);
+            const newVal = !shop.isFeatured;
+            await marketingService.setFeatured(String(shop.id), newVal);
+            setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isFeatured: newVal } : s));
+            if (selectedShop?.id === shop.id) setSelectedShop((s: any) => ({ ...s, isFeatured: newVal }));
+            toast.success(`Shop ${newVal ? "featured ⭐" : "unfeatured"}`);
         } catch {
             toast.error("Failed to update featured status");
+        } finally {
+            setFeaturingId(null);
         }
     };
+
+    const handleOpenBoost = (shop: any) => {
+        setBoostShop(shop);
+        setBoostScore("10");
+    };
+
+    const handleBoostSubmit = async () => {
+        if (!boostShop) return;
+        const score = parseFloat(boostScore);
+        if (isNaN(score) || score <= 0) {
+            toast.error("Please enter a valid boost score");
+            return;
+        }
+        setBoosting(true);
+        try {
+            await marketingService.boostShop(String(boostShop.id), score);
+            toast.success(`Boost applied (+${score}) to ${boostShop.nameEn || boostShop.nameMm}`);
+            setBoostShop(null);
+        } catch {
+            toast.error("Failed to boost shop");
+        } finally {
+            setBoosting(false);
+        }
+    };
+
+    const filteredShops = shops.filter(s => {
+        const q = shopSearch.toLowerCase();
+        return (
+            (s.nameEn || "").toLowerCase().includes(q) ||
+            (s.nameMm || "").toLowerCase().includes(q) ||
+            (s.phone || "").toLowerCase().includes(q) ||
+            (s.category || s.shopCategory?.nameEn || "").toLowerCase().includes(q)
+        );
+    });
 
     return (
         <div className="flex flex-col gap-6">
@@ -145,7 +397,7 @@ export default function BannerManagement() {
                 <h1 className="text-lg font-semibold md:text-2xl">Marketing</h1>
             </div>
 
-            <Tabs defaultValue="banners">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList>
                     <TabsTrigger value="banners" className="flex items-center gap-2">
                         <ImageIcon className="h-4 w-4" /> Banners
@@ -155,14 +407,14 @@ export default function BannerManagement() {
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Banners Tab */}
+                {/* ── Banners Tab ────────────────────────────────────────── */}
                 <TabsContent value="banners" className="mt-4 space-y-4">
                     <div className="flex justify-end">
                         <Button onClick={() => setShowCreate(true)}>
                             <Plus className="h-4 w-4 mr-2" /> New Banner
                         </Button>
                     </div>
-                    {loading ? (
+                    {bannersLoading ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64" />)}
                         </div>
@@ -180,71 +432,181 @@ export default function BannerManagement() {
                     )}
                 </TabsContent>
 
-                {/* Featured Shops Tab */}
-                <TabsContent value="featured" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Featured & Boosted Shops</CardTitle>
-                            <CardDescription>Toggle featured status or manage boost score for shops.</CardDescription>
+                {/* ── Featured Shops Tab ─────────────────────────────────── */}
+                <TabsContent value="featured" className="mt-4 space-y-4">
+                    {/* Search */}
+                    <div className="relative max-w-sm">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search shops..."
+                            className="pl-9"
+                            value={shopSearch}
+                            onChange={(e) => setShopSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <Card className="shadow-sm border-muted/60">
+                        <CardHeader className="pb-3 border-b">
+                            <CardTitle className="text-base flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Star className="h-5 w-5 text-yellow-500" />
+                                    All Shops
+                                </div>
+                                <Badge variant="secondary" className="rounded-full px-3">
+                                    {filteredShops.length} shops
+                                </Badge>
+                            </CardTitle>
+                            <CardDescription>
+                                Toggle featured status or boost a shop's trending score for visibility.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Shop</TableHead>
-                                        <TableHead>Trending Score</TableHead>
-                                        <TableHead>Boost Expiry</TableHead>
-                                        <TableHead>Featured</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        [...Array(5)].map((_, i) => (
-                                            <TableRow key={i}>
-                                                {[...Array(4)].map((__, j) => (
-                                                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                                                ))}
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/30">
+                                            <TableHead className="py-3">Shop</TableHead>
+                                            <TableHead>Category</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Featured</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {shopsLoading ? (
+                                            [...Array(5)].map((_, i) => (
+                                                <TableRow key={i}>
+                                                    {[...Array(5)].map((__, j) => (
+                                                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))
+                                        ) : filteredShops.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                                    {shopSearch ? "No shops matching your search." : "No shops found."}
+                                                </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : featuredShops.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                                No featured shops data.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : featuredShops.map((shop) => (
-                                        <TableRow key={shop.shopId}>
-                                            <TableCell className="font-medium">{shop.shopName}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-1">
-                                                    <TrendingUp className="h-3 w-3 text-green-500" />
-                                                    {shop.trendingScore}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {shop.boostExpiry ? new Date(shop.boostExpiry).toLocaleDateString() : "—"}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Switch
-                                                        checked={shop.isFeatured}
-                                                        onCheckedChange={() => handleBoostToggleFeatured(shop)}
-                                                    />
-                                                    {shop.isFeatured && (
-                                                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                        ) : filteredShops.map((shop) => (
+                                            <TableRow key={shop.id} className="hover:bg-muted/20 transition-colors">
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        {shop.logoUrl ? (
+                                                            <img src={shop.logoUrl} className="h-9 w-9 rounded-lg object-cover border" alt="" />
+                                                        ) : (
+                                                            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                                                <Store className="h-4 w-4 text-muted-foreground" />
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <p className="font-medium text-sm leading-tight">{shop.nameEn || shop.nameMm}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-mono">ID: {shop.id}</p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {shop.shopCategory?.nameEn || shop.category || "—"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={shop.isActive ? "default" : "secondary"} className="text-[10px]">
+                                                        {shop.isActive ? "Active" : "Inactive"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Switch
+                                                            checked={!!shop.isFeatured}
+                                                            disabled={featuringId === shop.id}
+                                                            onCheckedChange={() => handleToggleFeatured(shop)}
+                                                        />
+                                                        {shop.isFeatured && (
+                                                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {/* Boost button */}
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="gap-1.5 text-green-700 border-green-200 hover:bg-green-50"
+                                                            onClick={() => handleOpenBoost(shop)}
+                                                        >
+                                                            <TrendingUp className="h-3.5 w-3.5" />
+                                                            Boost
+                                                        </Button>
+                                                        {/* Detail button */}
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => { setSelectedShop(shop); setSheetOpen(true); }}
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
 
-            {/* Create Banner Dialog */}
+            {/* ── Shop Detail Sheet ────────────────────────────────────── */}
+            <ShopDetailSheet
+                shop={selectedShop}
+                open={sheetOpen}
+                onClose={() => setSheetOpen(false)}
+                onToggleFeatured={handleToggleFeatured}
+                onBoost={handleOpenBoost}
+                featuringId={featuringId}
+            />
+
+            {/* ── Boost Dialog ─────────────────────────────────────────── */}
+            <Dialog open={!!boostShop} onOpenChange={(o) => !o && setBoostShop(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-green-600" /> Boost Shop Score
+                        </DialogTitle>
+                        <DialogDescription>
+                            Manually increase the trending score for{" "}
+                            <strong>{boostShop?.nameEn || boostShop?.nameMm}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium">Boost Score</label>
+                        <Input
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={boostScore}
+                            onChange={(e) => setBoostScore(e.target.value)}
+                            placeholder="e.g. 10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            This score will be added to the shop's current trending score to increase visibility on the platform.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBoostShop(null)}>Cancel</Button>
+                        <Button
+                            onClick={handleBoostSubmit}
+                            disabled={boosting || !boostScore}
+                            className="gap-2"
+                        >
+                            <Zap className="h-4 w-4" />
+                            {boosting ? "Boosting..." : "Apply Boost"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Create Banner Dialog ─────────────────────────────────── */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
