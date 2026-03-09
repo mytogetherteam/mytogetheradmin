@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,11 +29,19 @@ const adminProfileFormSchema = z.object({
 
 type AdminProfileFormValues = z.infer<typeof adminProfileFormSchema>;
 
+interface AdminData {
+    id: number;
+    username: string;
+    fullName: string;
+    email: string;
+    role?: string;
+}
+
 export default function AdminProfile() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-     
-    const [adminData, setAdminData] = useState<any>(null);
+
+    const [adminData, setAdminData] = useState<AdminData | null>(null);
 
     const form = useForm<AdminProfileFormValues>({
         resolver: zodResolver(adminProfileFormSchema),
@@ -44,11 +52,7 @@ export default function AdminProfile() {
         },
     });
 
-    useEffect(() => {
-        loadAdminProfile();
-    }, []);
-
-    const loadAdminProfile = async () => {
+    const loadAdminProfile = useCallback(async () => {
         setLoading(true);
         try {
             const userData = authService.getUserData();
@@ -68,7 +72,11 @@ export default function AdminProfile() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [form]);
+
+    useEffect(() => {
+        loadAdminProfile();
+    }, [loadAdminProfile]);
 
     async function onSubmit(data: AdminProfileFormValues) {
         setSubmitting(true);
@@ -80,13 +88,15 @@ export default function AdminProfile() {
             });
 
             // Update local storage with new data
-            const updatedUserData = {
-                ...adminData,
-                username: data.username,
-                fullName: data.fullName,
-            };
-            localStorage.setItem('user_data', JSON.stringify(updatedUserData));
-            setAdminData(updatedUserData);
+            if (adminData) {
+                const updatedUserData: AdminData = {
+                    ...adminData,
+                    username: data.username,
+                    fullName: data.fullName,
+                };
+                localStorage.setItem('user_data', JSON.stringify(updatedUserData));
+                setAdminData(updatedUserData);
+            }
 
             toast.success("Profile updated successfully!");
         } catch (error) {

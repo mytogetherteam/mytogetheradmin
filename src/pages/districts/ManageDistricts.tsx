@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -36,14 +36,14 @@ export default function ManageDistricts() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCities = async () => {
+    const loadCities = useCallback(async () => {
         try {
             const res = await cityService.getCities(0, 500);
             setCities(res.content || []);
         } catch { /* ignore */ }
-    };
+    }, []);
 
-    const loadDistricts = async () => {
+    const loadDistricts = useCallback(async () => {
         setLoading(true);
         try {
             const res = await districtService.getDistricts(0, 500, searchTerm, selectedCityId);
@@ -52,14 +52,14 @@ export default function ManageDistricts() {
             console.error(e);
             toast.error("Failed to load districts");
         } finally { setLoading(false); }
-    };
+    }, [searchTerm, selectedCityId]);
 
-    useEffect(() => { loadCities(); }, []);
+    useEffect(() => { loadCities(); }, [loadCities]);
 
     useEffect(() => {
         const timer = setTimeout(() => loadDistricts(), 500);
         return () => clearTimeout(timer);
-    }, [searchTerm, selectedCityId]);
+    }, [loadDistricts]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 

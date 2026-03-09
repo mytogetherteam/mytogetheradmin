@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,13 +65,7 @@ export default function PaymentMethodForm() {
         },
     });
 
-    useEffect(() => {
-        if (isEditMode && id) {
-            loadPaymentMethod(parseInt(id, 10));
-        }
-    }, [id, isEditMode]);
-
-    const loadPaymentMethod = async (paymentId: number) => {
+    const loadPaymentMethod = useCallback(async (paymentId: number) => {
         setLoading(true);
         try {
             const data = await PaymentService.getPaymentMethodById(paymentId);
@@ -93,7 +87,13 @@ export default function PaymentMethodForm() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [form, navigate]);
+
+    useEffect(() => {
+        if (isEditMode && id) {
+            loadPaymentMethod(parseInt(id, 10));
+        }
+    }, [id, isEditMode, loadPaymentMethod]);
 
     const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] ?? null;

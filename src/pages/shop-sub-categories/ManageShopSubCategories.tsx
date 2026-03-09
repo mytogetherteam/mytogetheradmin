@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -48,20 +48,7 @@ export default function ManageShopSubCategories() {
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-    // Load Categories on Mount
-    useEffect(() => {
-        loadCategories();
-    }, []);
-
-    // Load SubCategories when Category Filter or Search Changes
-    useEffect(() => {
-        // We will implement local filtering for Category for now if the new API doesn't support categoryId filter
-        // But the prompt says the new endpoint takes search, page, size.
-        // If I want to filter by category, I might still need the category-specific endpoint or the new one should accept categoryId.
-        // Assuming the new one is for "Management/Cleanup" and should be global.
-    }, [selectedCategoryId]);
-
-    const loadCategories = async () => {
+    const loadCategories = useCallback(async () => {
         setFetchingCategories(true);
         try {
             const res = await ShopCategoryService.getShopCategories({ page: 0, size: 100 });
@@ -74,9 +61,14 @@ export default function ManageShopSubCategories() {
         } finally {
             setFetchingCategories(false);
         }
-    };
+    }, []);
 
-    const fetchSubCategories = async () => {
+    // Load Categories on Mount
+    useEffect(() => {
+        loadCategories();
+    }, [loadCategories]);
+
+    const fetchSubCategories = useCallback(async () => {
         setLoading(true);
         try {
             const res = await ShopCategoryService.getShopSubCategoriesPaginated({
@@ -97,12 +89,12 @@ export default function ManageShopSubCategories() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize, searchTerm]);
 
     // Replace loadSubCategories usage
     useEffect(() => {
         fetchSubCategories();
-    }, [currentPage, pageSize, searchTerm]);
+    }, [fetchSubCategories]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 

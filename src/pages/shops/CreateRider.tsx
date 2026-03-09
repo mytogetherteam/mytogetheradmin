@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { shopRiderService, ShopRider } from "@/services/shopRiderService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop } from "@/services/shopService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,8 @@ export default function CreateRider() {
     const [isActive, setIsActive] = useState(true);
     const [shopId, setShopId] = useState("");
 
-     
-    const [shops, setShops] = useState<any[]>([]);
+
+    const [shops, setShops] = useState<Shop[]>([]);
     const [loadingShops, setLoadingShops] = useState(false);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop, ShopDetail } from "@/services/shopService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 export default function ShopProfileSettings() {
-     
-    const [shops, setShops] = useState<any[]>([]);
+
+    const [shops, setShops] = useState<Shop[]>([]);
     const [selectedShopId, setSelectedShopId] = useState<string>("");
-     
-    const [profile, setProfile] = useState<any>(null);
+
+    const [profile, setProfile] = useState<ShopDetail | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingShops, setLoadingShops] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -74,9 +74,9 @@ export default function ShopProfileSettings() {
             // Convert profile back to FormData if necessary, or send as object
             // Use updateShop since it's the admin way to update shop details
             const formData = new FormData();
-            formData.append('name', profile.name);
-            if (profile.phone) formData.append('phone', profile.phone);
-            if (profile.address) formData.append('address', profile.address);
+            formData.append('name', profile?.name || "");
+            if (profile?.phone) formData.append('phone', profile.phone);
+            if (profile?.address) formData.append('address', profile.address);
 
             await ShopService.updateShop(parseInt(selectedShopId), formData);
             toast.success("Shop profile updated successfully");
@@ -92,7 +92,7 @@ export default function ShopProfileSettings() {
         if (!selectedShopId) return;
         try {
             await ShopService.toggleShopOpenStatus(isOpen, parseInt(selectedShopId));
-            setProfile({ ...profile, isOpen });
+            setProfile(prev => prev ? { ...prev, isOpen } : null);
             toast.success(`Shop is now ${isOpen ? 'Open' : 'Closed'}`);
         } catch (e) {
             console.error(e);
@@ -172,14 +172,14 @@ export default function ShopProfileSettings() {
                                             <Label>Shop Name</Label>
                                             <Input
                                                 value={profile?.name || ""}
-                                                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                                                onChange={(e) => setProfile(prev => prev ? { ...prev, name: e.target.value } : null)}
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Phone</Label>
                                             <Input
                                                 value={profile?.phone || ""}
-                                                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                                onChange={(e) => setProfile(prev => prev ? { ...prev, phone: e.target.value } : null)}
                                             />
                                         </div>
                                     </div>
@@ -187,7 +187,7 @@ export default function ShopProfileSettings() {
                                         <Label>Address</Label>
                                         <Input
                                             value={profile?.address || ""}
-                                            onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                                            onChange={(e) => setProfile(prev => prev ? { ...prev, address: e.target.value } : null)}
                                         />
                                     </div>
                                     <div className="flex justify-end">
@@ -214,7 +214,7 @@ export default function ShopProfileSettings() {
                                     </p>
                                 </div>
                                 <Switch
-                                    checked={profile?.isOpen}
+                                    checked={profile?.isOpen || false}
                                     onCheckedChange={handleToggleStatus}
                                 />
                             </CardContent>

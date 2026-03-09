@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -48,7 +48,7 @@ export default function ManageShopCategories() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCategories = async () => {
+    const loadCategories = useCallback(async () => {
         setLoading(true);
         try {
             const res = await ShopCategoryService.getShopCategories({
@@ -63,14 +63,14 @@ export default function ManageShopCategories() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchTerm]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             loadCategories();
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [loadCategories]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 

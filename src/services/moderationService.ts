@@ -49,6 +49,7 @@ export interface Comment {
   authorId: string;
   content: string;
   postId: string;
+  postAuthorName?: string;
   createdAt: string;
   isHidden: boolean;
 }

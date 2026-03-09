@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -44,7 +44,7 @@ export default function PaymentMethods() {
     const [totalPages, setTotalPages] = useState(0);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
-    const loadItems = async () => {
+    const loadItems = useCallback(async () => {
         setLoading(true);
         try {
             const response = await PaymentService.getPaymentMethods({
@@ -62,14 +62,14 @@ export default function PaymentMethods() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize, searchTerm]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             loadItems();
         }, 300);
         return () => clearTimeout(timer);
-    }, [currentPage, pageSize, searchTerm]);
+    }, [loadItems]);
 
     const handleSort = (key: keyof PaymentMethodDTO) => {
         let direction: "asc" | "desc" = "asc";

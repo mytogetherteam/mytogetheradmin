@@ -106,7 +106,7 @@ function buildTemplateWorkbook() {
   return wb;
 }
 
-import { useExcelImport } from "@/context/ExcelImportContext";
+import { useExcelImport } from "@/context/use-excel-import";
 
 export default function ShopsExcelImport() {
   const {
@@ -132,8 +132,8 @@ export default function ShopsExcelImport() {
   const [backendResult, setBackendResult] = useState<unknown>(null);
 
   const sheet = workbookData[selectedSheet];
-  const headers = sheet?.headers ?? [];
-  const rows = sheet?.rows ?? [];
+  const headers = useMemo(() => sheet?.headers ?? [], [sheet]);
+  const rows = useMemo(() => sheet?.rows ?? [], [sheet]);
 
   const hasErrors = useMemo(() => {
     return rows.some(r => headers.some(h => isBlank(r[h])));
@@ -154,9 +154,9 @@ export default function ShopsExcelImport() {
 
       if (aComp === null || aComp === undefined) return 1;
       if (bComp === null || bComp === undefined) return -1;
-      if ((aComp as any) < (bComp as any)) return direction === "asc" ? -1 : 1;
-      if ((aComp as any) > (bComp as any)) return direction === "asc" ? 1 : -1;
-      return 0;
+      if (aComp === bComp) return 0;
+      if (aComp! < bComp!) return direction === "asc" ? -1 : 1;
+      return direction === "asc" ? 1 : -1;
     });
 
     return sorted;

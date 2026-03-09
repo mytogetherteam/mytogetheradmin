@@ -118,10 +118,10 @@ export default function ManageMenuItems() {
             Name: i.name,
             Price: i.price,
             Currency: i.currency,
-             
-            Shop: (i as any).shopName || i.shopId,
-             
-            Category: (i as any).categoryName || 'Uncategorized'
+
+            Shop: i.shopName || i.shopId,
+
+            Category: i.categoryName || 'Uncategorized'
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -220,10 +220,10 @@ export default function ManageMenuItems() {
                                                         )}
                                                     </TableCell>
                                                     { }
-                                                    <TableCell className="text-sm">{(item as any).shopName || item.shopId}</TableCell>
+                                                    <TableCell className="text-sm">{item.shopName || item.shopId}</TableCell>
                                                     <TableCell>
                                                         { }
-                                                        <Badge variant="outline" className="font-normal">{(item as any).categoryName || "Uncategorized"}</Badge>
+                                                        <Badge variant="outline" className="font-normal">{item.categoryName || "Uncategorized"}</Badge>
                                                     </TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex flex-col gap-2">

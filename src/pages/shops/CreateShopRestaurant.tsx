@@ -852,7 +852,7 @@ export default function CreateShopRestaurant() {
                                                                 </div>
                                                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                                                     { }
-                                                                    {(paymentMethods || []).map((method: any) => (
+                                                                    {(paymentMethods || []).map((method: PaymentMethodDTO) => (
                                                                         <FormField
                                                                             key={method.id}
                                                                             control={form.control}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { moderationService, Post } from "@/services/moderationService";
+import { moderationService, Post, Comment } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -28,8 +28,8 @@ import {
 
 export default function CommunityMgt() {
     const [posts, setPosts] = useState<Post[]>([]);
-     
-    const [comments, setComments] = useState<any[]>([]);
+
+    const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const tab = (searchParams.get("tab") || "posts") as "posts" | "comments";
@@ -59,7 +59,7 @@ export default function CommunityMgt() {
         } finally {
             setLoading(false);
         }
-    }, [page, postType, search]);
+    }, [page, postType, search, pageSize]);
 
     const fetchComments = useCallback(async () => {
         setLoading(true);
@@ -120,7 +120,7 @@ export default function CommunityMgt() {
             </div>
 
             { }
-            <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(0); }}>
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as "posts" | "comments"); setPage(0); }}>
                 <TabsList>
                     <TabsTrigger value="posts">Posts Feed</TabsTrigger>
                     <TabsTrigger value="comments">Comment Board</TabsTrigger>
