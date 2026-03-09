@@ -26,21 +26,27 @@ import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+import type {
+    UserDetail as UserDetailType,
+    OrderHistoryItem,
+    ActivityHistoryItem
+} from "@/services/userService";
+
 export default function UserDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [user, setUser] = useState<any | null>(null);
+    const [user, setUser] = useState<UserDetailType | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Orders History State
-    const [orders, setOrders] = useState<any[]>([]);
+    const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [ordersPage, setOrdersPage] = useState(1);
     const [ordersTotalPages, setOrdersTotalPages] = useState(1);
     const [ordersTotalItems, setOrdersTotalItems] = useState(0);
 
     // Activity Log State
-    const [activities, setActivities] = useState<any[]>([]);
+    const [activities, setActivities] = useState<ActivityHistoryItem[]>([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
     const [activitiesPage, setActivitiesPage] = useState(1);
     const [activitiesTotalPages, setActivitiesTotalPages] = useState(1);
@@ -331,23 +337,26 @@ export default function UserDetail() {
                                         { label: "Facebook", key: "hasFacebook", color: "text-blue-600", bg: "bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-900/40" },
                                         { label: "Line", key: "hasLine", color: "text-green-600", bg: "bg-green-50 border-green-100 dark:bg-green-950/30 dark:border-green-900/40" },
                                         { label: "TikTok", key: "hasTiktok", color: "text-foreground", bg: "bg-muted/60 border-muted" },
-                                    ].map(({ label, key, color, bg }) => (
-                                        <div
-                                            key={key}
-                                            className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-opacity ${user[key] ? bg : "bg-muted/20 border-muted/30 opacity-40"}`}
-                                        >
-                                            <p className={`text-sm font-bold ${user[key] ? color : "text-muted-foreground"}`}>{label}</p>
-                                            {user[key] ? (
-                                                <Badge className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 text-[10px] hover:bg-green-500/10">
-                                                    <CheckCircle2 className="h-3 w-3" /> Linked
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px]">
-                                                    <XCircle className="h-3 w-3" /> Not linked
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    ))}
+                                    ].map(({ label, key, color, bg }) => {
+                                        const isLinked = !!user[key as keyof UserDetailType];
+                                        return (
+                                            <div
+                                                key={key}
+                                                className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-opacity ${isLinked ? bg : "bg-muted/20 border-muted/30 opacity-40"}`}
+                                            >
+                                                <p className={`text-sm font-bold ${isLinked ? color : "text-muted-foreground"}`}>{label}</p>
+                                                {isLinked ? (
+                                                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 text-[10px] hover:bg-green-500/10">
+                                                        <CheckCircle2 className="h-3 w-3" /> Linked
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px]">
+                                                        <XCircle className="h-3 w-3" /> Not linked
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>

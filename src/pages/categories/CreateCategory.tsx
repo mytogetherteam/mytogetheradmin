@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop } from "@/services/shopService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export default function CreateCategory() {
   const [isActive, setIsActive] = useState<boolean>(true);
 
   // Shop selector state (for create mode)
-  const [shops, setShops] = useState<any[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShopId, setSelectedShopId] = useState<string>("");
   const [loadingShops, setLoadingShops] = useState(false);
 

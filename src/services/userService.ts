@@ -20,12 +20,20 @@ export interface UserListItem {
   role: string;
   active: boolean;
   createdAt: string;
-  [key: string]: unknown;
 }
 
-export interface UserDetail extends UserListItem {
+export interface UserDetail extends UserListItem, UserProfile {
   phone?: string;
-  [key: string]: unknown;
+  userPhone?: string; // Some APIs use this
+  avatarUrl?: string;
+  updatedAt?: string;
+  hasCompletedOnboarding?: boolean;
+  agreedToTermsAt?: string;
+  privacyPolicyVersion?: string;
+  hasGoogle?: boolean;
+  hasFacebook?: boolean;
+  hasLine?: boolean;
+  hasTiktok?: boolean;
 }
 
 export interface PageResponse<T> {
@@ -41,6 +49,29 @@ export interface UserLookup {
   username: string;
   fullName: string;
   role?: string;
+}
+
+export interface OrderHistoryItem {
+  id: number | string;
+  shopName?: string;
+  status: string;
+  statusLabel?: string;
+  itemCount: number;
+  totalAmount: number;
+  displayTotalAmount?: string;
+  createdAt: string;
+}
+
+export interface ActivityHistoryItem {
+  id: number | string;
+  activityType: string;
+  targetId?: number | string;
+  targetName?: string;
+  searchQuery?: string;
+  metadata?: string;
+  osName?: string;
+  deviceId?: string;
+  createdAt: string;
 }
 
 // Redundant ProfileResponse removed
@@ -75,14 +106,14 @@ export const userService = {
     return apiClient.get<UserDetail>(config.endpoints.admin.users.detail(id));
   },
 
-  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<PageResponse<Record<string, unknown>>> => {
+  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<PageResponse<OrderHistoryItem>> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    return apiClient.get<PageResponse<Record<string, unknown>>>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
+    return apiClient.get<PageResponse<OrderHistoryItem>>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
   },
 
-  getUserActivity: async (id: string | number, page = 0, size = 10): Promise<PageResponse<Record<string, unknown>>> => {
+  getUserActivity: async (id: string | number, page = 0, size = 10): Promise<PageResponse<ActivityHistoryItem>> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    return apiClient.get<PageResponse<Record<string, unknown>>>(`${config.endpoints.admin.users.activity(id)}?${params.toString()}`);
+    return apiClient.get<PageResponse<ActivityHistoryItem>>(`${config.endpoints.admin.users.activity(id)}?${params.toString()}`);
   },
 
   lookupUsers: async (search = ''): Promise<UserLookup[]> => {

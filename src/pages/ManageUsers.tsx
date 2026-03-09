@@ -34,7 +34,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     DropdownMenu,
     DropdownMenuContent,

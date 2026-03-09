@@ -33,6 +33,7 @@ const daysOfWeekMap: Record<number, string> = {
 }
 
 export default function ShopOperatingHours() {
+     
     const [shops, setShops] = useState<any[]>([])
     const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
     const [operatingHours, setOperatingHours] = useState<OperatingHour[]>([])
@@ -56,6 +57,7 @@ export default function ShopOperatingHours() {
         setLoadingShops(true)
         try {
             // Using lookup for lightweight dropdown if available, falling back to full list
+             
             const response: any = await ShopService.getAllShops(0, 1000)
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
@@ -70,6 +72,7 @@ export default function ShopOperatingHours() {
     const loadOperatingHours = async (shopId: number) => {
         setLoadingHours(true)
         try {
+             
             const response: any = await ShopService.getShopOperatingHours(shopId)
             const data = response?.data || response;
             setOperatingHours(Array.isArray(data) ? data : [])
@@ -82,13 +85,14 @@ export default function ShopOperatingHours() {
         }
     }
 
+     
     const formatTimeObj = (timeObj: any) => {
         if (!timeObj) return ""
         const pad = (num: number) => String(num).padStart(2, '0')
         return `${pad(timeObj.hour)}:${pad(timeObj.minute)}`
     }
 
-    const formatTime = (timeStr: string | undefined, timeObj: any) => {
+    const formatTime = (timeStr: string | undefined,   timeObj: any) => {
         if (timeStr) return timeStr;
         if (timeObj) return formatTimeObj(timeObj);
         return "";

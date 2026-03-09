@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/skeleton";
 import { RefreshCw, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {

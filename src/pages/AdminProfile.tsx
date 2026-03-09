@@ -32,6 +32,7 @@ type AdminProfileFormValues = z.infer<typeof adminProfileFormSchema>;
 export default function AdminProfile() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+     
     const [adminData, setAdminData] = useState<any>(null);
 
     const form = useForm<AdminProfileFormValues>({

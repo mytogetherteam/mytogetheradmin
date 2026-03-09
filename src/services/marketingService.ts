@@ -50,6 +50,8 @@ export interface BroadcastHistoryItem {
   body: string;
   sentAt: string;
   recipientCount?: number;
+  sentByName?: string;
+  targetType?: string;
   [key: string]: unknown;
 }
 

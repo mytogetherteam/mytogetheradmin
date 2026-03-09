@@ -30,6 +30,7 @@ export default function CreateRider() {
     const [isActive, setIsActive] = useState(true);
     const [shopId, setShopId] = useState("");
 
+     
     const [shops, setShops] = useState<any[]>([]);
     const [loadingShops, setLoadingShops] = useState(false);
     const [loading, setLoading] = useState(false);

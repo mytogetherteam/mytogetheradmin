@@ -35,8 +35,8 @@ export const adminImportService = {
     if (!response.ok) {
       const data = await parseJsonSafe(response);
       const message =
-        typeof data === "object" && data && "message" in (data as any)
-          ? String((data as any).message)
+        typeof data === "object" && data !== null && "message" in data
+          ? String((data as { message: unknown }).message)
           : `HTTP ${response.status}: ${response.statusText}`;
       throw new ApiError(message, response.status, data);
     }
@@ -62,8 +62,8 @@ export const adminImportService = {
     if (!response.ok) {
       const data = await parseJsonSafe(response);
       const message =
-        typeof data === "object" && data && "message" in (data as any)
-          ? String((data as any).message)
+        typeof data === "object" && data !== null && "message" in data
+          ? String((data as { message: unknown }).message)
           : `HTTP ${response.status}: ${response.statusText}`;
       throw new ApiError(message, response.status, data);
     }

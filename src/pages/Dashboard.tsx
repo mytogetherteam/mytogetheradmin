@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
 import { orderService, OrderHealthData } from "@/services/orderService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, PageableResponse, Shop } from "@/services/shopService";
 import { moderationService } from "@/services/moderationService";
 import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -235,8 +235,8 @@ export default function Dashboard() {
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
-                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ content: [], totalElements: 0 } as any)),
-                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ content: [], totalElements: 0 } as any)),
+                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<Shop>)),
+                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<unknown>)),
                     analyticsService.getSystemHealth().catch(() => null),
                 ]);
                 setStats(statsData);

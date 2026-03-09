@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -25,16 +25,17 @@ import {
     FileSpreadsheet,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
-import { menuService } from "@/services/menuService";
+import { menuService, MenuItem } from "@/services/menuService";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 
 export default function ManageMenuItems() {
     const navigate = useNavigate();
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -43,7 +44,7 @@ export default function ManageMenuItems() {
     const [totalPages, setTotalPages] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-    const loadItems = async () => {
+    const loadItems = useCallback(async () => {
         setLoading(true);
         try {
             const response = await menuService.getAllMenuItems(currentPage - 1, pageSize, searchTerm);
@@ -62,20 +63,21 @@ export default function ManageMenuItems() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize, searchTerm]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             loadItems();
         }, 300);
         return () => clearTimeout(timer);
-    }, [currentPage, pageSize, searchTerm]);
+    }, [loadItems]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedItems = sortData(items, sortConfig);
 
-    const handleToggleFlag = async (item: any, flagType: 'recommended' | 'available' | 'hotdeal', value: boolean) => {
+    const handleToggleFlag = async (item: MenuItem, flagType: 'recommended' | 'available' | 'hotdeal', value: boolean) => {
+        if (!item.id) return;
         try {
             switch (flagType) {
                 case 'recommended':
@@ -116,8 +118,10 @@ export default function ManageMenuItems() {
             Name: i.name,
             Price: i.price,
             Currency: i.currency,
-            Shop: i.shopName || i.shopId,
-            Category: i.categoryName || 'Uncategorized'
+             
+            Shop: (i as any).shopName || i.shopId,
+             
+            Category: (i as any).categoryName || 'Uncategorized'
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -215,9 +219,11 @@ export default function ManageMenuItems() {
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-sm">{item.shopName || item.shopId}</TableCell>
+                                                    { }
+                                                    <TableCell className="text-sm">{(item as any).shopName || item.shopId}</TableCell>
                                                     <TableCell>
-                                                        <Badge variant="outline" className="font-normal">{item.categoryName || "Uncategorized"}</Badge>
+                                                        { }
+                                                        <Badge variant="outline" className="font-normal">{(item as any).categoryName || "Uncategorized"}</Badge>
                                                     </TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex flex-col gap-2">
@@ -239,7 +245,7 @@ export default function ManageMenuItems() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                                     No results found.
                                                 </TableCell>
                                             </TableRow>

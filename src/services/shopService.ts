@@ -340,7 +340,7 @@ export const ShopService = {
       // We assume it returns an array of categories directly
       // If it returns a paginated response, handle `.content`, though setup endpoints usually return raw arrays
       return Array.isArray(response) ? response : (response as { content?: ShopCategoryDTO[] }).content || [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },
@@ -355,7 +355,7 @@ export const ShopService = {
         config.endpoints.admin.payment.shopSubCategories(categoryId)
       );
       return Array.isArray(response) ? response : (response as { content?: ShopSubCategoryDTO[] }).content || [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },

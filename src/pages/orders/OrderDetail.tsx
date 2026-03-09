@@ -97,6 +97,7 @@ export default function OrderDetail() {
     }
 
     // Helper to safely render the address which might be a string or an object
+     
     const renderAddress = (addr: any) => {
         if (!addr) return "N/A";
         if (typeof addr === 'string') return addr;
@@ -113,6 +114,7 @@ export default function OrderDetail() {
     };
 
     // Helper to safely render currency/amounts
+     
     const renderCurrency = (val: any) => {
         if (val === null || val === undefined) return "0";
         if (typeof val === 'string' || typeof val === 'number') return val.toString();

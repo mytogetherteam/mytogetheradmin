@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { lostFoundService, LostFoundPost, Sighting } from "@/services/lostFoundService";
+import { lostFoundService, LostFoundPost, Sighting, LostFoundType } from "@/services/lostFoundService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, CheckCircle, Trash2, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     Dialog,
     DialogContent,
@@ -45,7 +46,7 @@ export default function LostFound() {
         setLoading(true);
         try {
             const data = await lostFoundService.getCases(
-                typeFilter === "ALL" ? undefined : typeFilter as any,
+                typeFilter === "ALL" ? undefined : typeFilter as LostFoundType,
                 page, pageSize, search
             );
             setCases(data.content);
@@ -56,7 +57,7 @@ export default function LostFound() {
         } finally {
             setLoading(false);
         }
-    }, [page, typeFilter, search]);
+    }, [page, pageSize, typeFilter, search]);
 
     const fetchSightings = useCallback(async () => {
         setLoading(true);
@@ -111,7 +112,7 @@ export default function LostFound() {
                 <h1 className="text-lg font-semibold md:text-2xl">Lost & Found Management</h1>
             </div>
 
-            <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(0); }}>
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as "cases" | "sightings"); setPage(0); }}>
                 <TabsList>
                     <TabsTrigger value="cases">Active Cases</TabsTrigger>
                     <TabsTrigger value="sightings">Sightings Log</TabsTrigger>

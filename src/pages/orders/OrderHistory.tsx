@@ -12,7 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { History, Search } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { exportService } from "@/services/exportService";
 import { FileSpreadsheet } from "lucide-react";
 

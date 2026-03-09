@@ -25,7 +25,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Star, Trash2, MessageSquare, CheckCircle2, XCircle } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { Badge } from "@/components/ui/badge";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { toast } from "sonner";
 
 export default function Reviews() {

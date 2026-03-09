@@ -17,8 +17,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 export default function ShopProfileSettings() {
+     
     const [shops, setShops] = useState<any[]>([]);
     const [selectedShopId, setSelectedShopId] = useState<string>("");
+     
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [loadingShops, setLoadingShops] = useState(false);

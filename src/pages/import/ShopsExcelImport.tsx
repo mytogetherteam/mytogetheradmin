@@ -146,16 +146,16 @@ export default function ShopsExcelImport() {
       if (!sortConfig) return 0;
       const { key, direction } = sortConfig;
 
-      const aVal = key === "__excelRow" ? a.__excelRow : (a[key] as any);
-      const bVal = key === "__excelRow" ? b.__excelRow : (b[key] as any);
+      const aVal = key === "__excelRow" ? a.__excelRow : a[key];
+      const bVal = key === "__excelRow" ? b.__excelRow : b[key];
 
-      const aComp = typeof aVal === "string" ? aVal.toLowerCase() : aVal;
-      const bComp = typeof bVal === "string" ? bVal.toLowerCase() : bVal;
+      const aComp = typeof aVal === "string" ? aVal.toLowerCase() : (aVal as number | boolean | null);
+      const bComp = typeof bVal === "string" ? bVal.toLowerCase() : (bVal as number | boolean | null);
 
       if (aComp === null || aComp === undefined) return 1;
       if (bComp === null || bComp === undefined) return -1;
-      if (aComp < bComp) return direction === "asc" ? -1 : 1;
-      if (aComp > bComp) return direction === "asc" ? 1 : -1;
+      if ((aComp as any) < (bComp as any)) return direction === "asc" ? -1 : 1;
+      if ((aComp as any) > (bComp as any)) return direction === "asc" ? 1 : -1;
       return 0;
     });
 
@@ -193,7 +193,7 @@ export default function ShopsExcelImport() {
         next[name] = parseSheetToRows(ws);
       });
 
-      setWorkbookData(next as any);
+      setWorkbookData(next as Record<SheetKey, { headers: string[]; rows: ParsedRow[] }>);
       const firstAvailable = (Object.keys(SHEET_CONFIG) as SheetKey[]).find((k) => next[k]?.rows.length);
       if (firstAvailable) setSelectedSheet(firstAvailable);
 

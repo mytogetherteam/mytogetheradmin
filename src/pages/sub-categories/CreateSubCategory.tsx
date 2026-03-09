@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { menuService } from "@/services/menuService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, MenuCategory } from "@/services/shopService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +36,7 @@ export default function CreateSubCategory() {
     const [fetchingCategories, setFetchingCategories] = useState(false);
 
     // Data State
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
     // Form State
