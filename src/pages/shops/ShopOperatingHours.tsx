@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
-import { ShopService, OperatingHour } from "@/services/shopService"
+import { ShopService, OperatingHour, Shop } from "@/services/shopService"
 import {
     Table,
     TableBody,
@@ -33,8 +33,8 @@ const daysOfWeekMap: Record<number, string> = {
 }
 
 export default function ShopOperatingHours() {
-     
-    const [shops, setShops] = useState<any[]>([])
+
+    const [shops, setShops] = useState<Shop[]>([])
     const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
     const [operatingHours, setOperatingHours] = useState<OperatingHour[]>([])
 
@@ -57,8 +57,8 @@ export default function ShopOperatingHours() {
         setLoadingShops(true)
         try {
             // Using lookup for lightweight dropdown if available, falling back to full list
-             
-            const response: any = await ShopService.getAllShops(0, 1000)
+
+            const response = await ShopService.getAllShops(0, 1000)
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
         } catch (error) {
@@ -72,9 +72,8 @@ export default function ShopOperatingHours() {
     const loadOperatingHours = async (shopId: number) => {
         setLoadingHours(true)
         try {
-             
-            const response: any = await ShopService.getShopOperatingHours(shopId)
-            const data = response?.data || response;
+
+            const data = await ShopService.getShopOperatingHours(shopId)
             setOperatingHours(Array.isArray(data) ? data : [])
         } catch (error) {
             console.error("Failed to load operating hours:", error)
@@ -85,14 +84,14 @@ export default function ShopOperatingHours() {
         }
     }
 
-     
-    const formatTimeObj = (timeObj: any) => {
+
+    const formatTimeObj = (timeObj: { hour: number, minute: number }) => {
         if (!timeObj) return ""
         const pad = (num: number) => String(num).padStart(2, '0')
         return `${pad(timeObj.hour)}:${pad(timeObj.minute)}`
     }
 
-    const formatTime = (timeStr: string | undefined,   timeObj: any) => {
+    const formatTime = (timeStr: string | undefined, timeObj: { hour: number, minute: number } | undefined) => {
         if (timeStr) return timeStr;
         if (timeObj) return formatTimeObj(timeObj);
         return "";

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -30,7 +30,7 @@ export default function ManageCities() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCities = async () => {
+    const loadCities = useCallback(async () => {
         setLoading(true);
         try {
             const res = await cityService.getCities(0, 500, searchTerm);
@@ -41,12 +41,12 @@ export default function ManageCities() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchTerm]);
 
     useEffect(() => {
         const timer = setTimeout(() => loadCities(), 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [loadCities]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 

@@ -97,8 +97,15 @@ export default function OrderDetail() {
     }
 
     // Helper to safely render the address which might be a string or an object
-     
-    const renderAddress = (addr: any) => {
+
+    interface Address {
+        buildingName?: string;
+        floor?: string;
+        address?: string;
+        note?: string;
+    }
+
+    const renderAddress = (addr: string | Address | null | undefined) => {
         if (!addr) return "N/A";
         if (typeof addr === 'string') return addr;
         if (typeof addr === 'object') {
@@ -114,12 +121,17 @@ export default function OrderDetail() {
     };
 
     // Helper to safely render currency/amounts
-     
-    const renderCurrency = (val: any) => {
+
+    interface Price {
+        displayValue?: string;
+        amount?: number;
+    }
+
+    const renderCurrency = (val: string | number | Price | null | undefined) => {
         if (val === null || val === undefined) return "0";
         if (typeof val === 'string' || typeof val === 'number') return val.toString();
         if (typeof val === 'object') {
-            return val.displayValue || val.amount || JSON.stringify(val);
+            return val.displayValue || (val.amount !== undefined ? val.amount.toString() : JSON.stringify(val));
         }
         return "N/A";
     };

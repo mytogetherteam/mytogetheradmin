@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { ShopService, Shop } from "@/services/shopService"
 import {
@@ -70,15 +70,7 @@ export default function ManageShopRestaurant() {
     const [rejectReason, setRejectReason] = useState("")
     const [actionLoading, setActionLoading] = useState<number | null>(null)
 
-    useEffect(() => {
-        loadShops()
-    }, [])
-
-    useEffect(() => {
-        loadPendingShops()
-    }, [pendingCurrentPage, pendingPageSize])
-
-    const loadShops = async () => {
+    const loadShops = useCallback(async () => {
         setLoading(true)
         try {
             const response = await ShopService.getAllShops(0, 200)
@@ -90,9 +82,9 @@ export default function ManageShopRestaurant() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
 
-    const loadPendingShops = async () => {
+    const loadPendingShops = useCallback(async () => {
         setPendingLoading(true)
         try {
             const response = await ShopService.getPendingVettingShops(pendingCurrentPage - 1, pendingPageSize)
@@ -104,7 +96,15 @@ export default function ManageShopRestaurant() {
         } finally {
             setPendingLoading(false)
         }
-    }
+    }, [pendingCurrentPage, pendingPageSize])
+
+    useEffect(() => {
+        loadShops()
+    }, [loadShops])
+
+    useEffect(() => {
+        loadPendingShops()
+    }, [loadPendingShops])
 
     const handleToggleStatus = async (e: React.MouseEvent, shop: Shop) => {
         e.stopPropagation()

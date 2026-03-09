@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop } from "@/services/shopService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,16 +18,16 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
 export default function VettingQueue() {
-     
-    const [shops, setShops] = useState<any[]>([]);
+
+    const [shops, setShops] = useState<Shop[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [totalElements, setTotalElements] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-     
-    const [rejectShop, setRejectShop] = useState<any | null>(null);
+
+    const [rejectShop, setRejectShop] = useState<Shop | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -118,7 +118,7 @@ export default function VettingQueue() {
                                             No shops pending approval
                                         </TableCell>
                                     </TableRow>
-                                ) : sortedShops.map((shop: any) => (
+                                ) : sortedShops.map((shop: Shop) => (
                                     <TableRow key={shop.id}>
                                         <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                         <TableCell className="font-medium">{shop.nameEn || shop.name}</TableCell>

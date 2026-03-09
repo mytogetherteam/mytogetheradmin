@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -55,11 +55,7 @@ export default function Profile() {
         },
     })
 
-    useEffect(() => {
-        loadProfile()
-    }, [])
-
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         setLoading(true)
         try {
             const profile = await userService.getProfile()
@@ -79,7 +75,11 @@ export default function Profile() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [form])
+
+    useEffect(() => {
+        loadProfile()
+    }, [loadProfile])
 
     async function onSubmit(data: ProfileFormValues) {
         setSubmitting(true)

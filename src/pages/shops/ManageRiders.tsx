@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -55,7 +55,7 @@ export default function ManageRiders() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadRiders = async () => {
+    const loadRiders = useCallback(async () => {
         setLoading(true);
         try {
             // Spring Boot pagination is 0-indexed
@@ -75,11 +75,11 @@ export default function ManageRiders() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize, searchTerm]);
 
     useEffect(() => {
         loadRiders();
-    }, [currentPage, pageSize, searchTerm]);
+    }, [loadRiders]);
 
     const getShopName = (rider: ShopRider) => {
         return rider.shopName || `Shop #${rider.shopId}`;

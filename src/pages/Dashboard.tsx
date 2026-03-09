@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Card,
@@ -256,7 +256,7 @@ export default function Dashboard() {
     }, [startDate, endDate]);
 
     // Derived: prefer live WS stats where available, fall back to REST baseline
-    const liveStats: Partial<SystemStatsDTO> = systemStats ?? {};
+    const liveStats: Partial<SystemStatsDTO> = useMemo(() => systemStats ?? {}, [systemStats]);
     const totalUsers = liveStats.totalUsers ?? stats?.totalUsers ?? 0;
     const isLive = !!systemStats;
 

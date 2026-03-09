@@ -51,6 +51,8 @@ export interface MenuItem {
     displayOrder?: number;
     optionGroups?: OptionGroup[];
     variants?: Variant[];
+    shopName?: string;
+    categoryName?: string;
 }
 
 export interface Option {

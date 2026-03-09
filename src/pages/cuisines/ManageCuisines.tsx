@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cuisineService, CuisineDTO } from "@/services/cuisineService";
 import {
@@ -51,7 +51,7 @@ export default function ManageCuisines() {
     const [totalPages, setTotalPages] = useState(0);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    const fetchCuisines = async () => {
+    const fetchCuisines = useCallback(async () => {
         setLoading(true);
         try {
             const data = await cuisineService.getCuisines(page, 10, searchTerm);
@@ -63,11 +63,11 @@ export default function ManageCuisines() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, searchTerm]);
 
     useEffect(() => {
         fetchCuisines();
-    }, [page, searchTerm]);
+    }, [fetchCuisines]);
 
     const handleDelete = async () => {
         if (!deleteId) return;

@@ -94,6 +94,8 @@ export interface Shop {
   longitude?: number;
   createdAt?: string;
   updatedAt?: string;
+  ownerName?: string;
+  isOpen?: boolean;
 }
 
 export interface DistrictDTO {
