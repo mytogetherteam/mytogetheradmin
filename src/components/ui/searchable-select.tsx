@@ -29,7 +29,7 @@ export interface SearchableSelectProps<T> {
     className?: string
 }
 
-export function SearchableSelect<T extends Record<string, any>>({
+export function SearchableSelect<T extends { [key: string]: unknown }>({
     title,
     data,
     value: valueKey,

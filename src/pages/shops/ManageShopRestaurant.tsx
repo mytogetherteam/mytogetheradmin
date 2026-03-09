@@ -16,7 +16,8 @@ import { Switch } from "@/components/ui/switch"
 import { Loader } from "@/components/ui/loader"
 import { Input } from "@/components/ui/input"
 import { DataTablePagination } from "@/components/DataTablePagination"
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead"
+import { SortableTableHead } from "@/components/SortableTableHead"
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils"
 import {
     Select,
     SelectContent,
@@ -51,7 +52,7 @@ import * as XLSX from "xlsx"
 
 export default function ManageShopRestaurant() {
     const [shops, setShops] = useState<Shop[]>([])
-    const [pendingShops, setPendingShops] = useState<any[]>([])
+    const [pendingShops, setPendingShops] = useState<Shop[]>([])
     const [loading, setLoading] = useState(true)
     const [pendingLoading, setPendingLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
@@ -105,7 +106,7 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const handleToggleStatus = async (e: React.MouseEvent, shop: any) => {
+    const handleToggleStatus = async (e: React.MouseEvent, shop: Shop) => {
         e.stopPropagation()
         const newStatus = !shop.isActive
         setActionLoading(shop.id)
@@ -122,7 +123,7 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const handleVerify = async (e: React.MouseEvent, shop: any) => {
+    const handleVerify = async (e: React.MouseEvent, shop: Shop) => {
         e.stopPropagation()
         setActionLoading(shop.id)
         try {
@@ -138,7 +139,7 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const openRejectDialog = (e: React.MouseEvent, shop: any) => {
+    const openRejectDialog = (e: React.MouseEvent, shop: Shop) => {
         e.stopPropagation()
         setRejectReason("")
         setRejectDialog({ open: true, id: shop.id, name: shop.nameEn || shop.name })
@@ -195,7 +196,7 @@ export default function ManageShopRestaurant() {
             Rating: shop.ratingAvg || 0,
             ReviewCount: shop.ratingCount || 0,
             Verified: shop.isVerified ? "Yes" : "No",
-            Active: (shop as any).isActive ? "Yes" : "No",
+            Active: shop.isActive ? "Yes" : "No",
         }))
         const ws = XLSX.utils.json_to_sheet(data)
         const wb = XLSX.utils.book_new()
@@ -203,7 +204,7 @@ export default function ManageShopRestaurant() {
         XLSX.writeFile(wb, "Shops.xlsx")
     }
 
-    const ShopTable = ({ shopList, isLoading }: { shopList: any[]; isLoading: boolean }) => (
+    const ShopTable = ({ shopList, isLoading }: { shopList: Shop[]; isLoading: boolean }) => (
         isLoading ? (
             <div className="flex justify-center items-center py-12"><Loader /></div>
         ) : (
@@ -272,12 +273,12 @@ export default function ManageShopRestaurant() {
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center gap-2">
                                             <Switch
-                                                checked={(shop as any).isActive !== false}
+                                                checked={shop.isActive !== false}
                                                 disabled={actionLoading === shop.id}
-                                                onCheckedChange={() => handleToggleStatus({ stopPropagation: () => { } } as any, shop)}
+                                                onCheckedChange={() => handleToggleStatus({ stopPropagation: () => { } } as unknown as React.MouseEvent, shop)}
                                             />
-                                            <span className={`text-xs font-medium ${(shop as any).isActive !== false ? "text-green-600" : "text-red-500"}`}>
-                                                {(shop as any).isActive !== false ? "Active" : "Inactive"}
+                                            <span className={`text-xs font-medium ${shop.isActive !== false ? "text-green-600" : "text-red-500"}`}>
+                                                {shop.isActive !== false ? "Active" : "Inactive"}
                                             </span>
                                         </div>
                                     </TableCell>

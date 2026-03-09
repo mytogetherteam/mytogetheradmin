@@ -21,6 +21,12 @@ export interface AuditLogPage {
   number: number;
 }
 
+export interface DbLatencyResponse {
+  status: string;
+  dbLatency: number;
+  performance?: string;
+}
+
 class SystemService {
   async getAuditLogs(page = 0, size = 20, search = '', adminId?: string): Promise<AuditLogPage> {
     const params = new URLSearchParams({ 
@@ -32,8 +38,8 @@ class SystemService {
     return apiClient.get<AuditLogPage>(`${config.endpoints.admin.auditLogs}?${params.toString()}`);
   }
 
-  async getDbLatency(): Promise<any> {
-    return apiClient.get<any>(config.endpoints.admin.system.dbLatency);
+  async getDbLatency(): Promise<DbLatencyResponse> {
+    return apiClient.get<DbLatencyResponse>(config.endpoints.admin.system.dbLatency);
   }
 }
 

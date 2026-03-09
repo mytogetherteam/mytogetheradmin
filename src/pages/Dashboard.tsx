@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
 import { orderService, OrderHealthData } from "@/services/orderService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, PageableResponse, Shop } from "@/services/shopService";
 import { moderationService } from "@/services/moderationService";
 import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -69,10 +69,14 @@ function StatCard({
 
     useEffect(() => {
         if (live && prevVal.current !== value) {
-            setFlash(true);
+            // Use timeout to ensure it happens after render to avoid cascading render warning
+            const timer = setTimeout(() => setFlash(true), 0);
             const t = setTimeout(() => setFlash(false), 1200);
             prevVal.current = value;
-            return () => clearTimeout(t);
+            return () => {
+                clearTimeout(timer);
+                clearTimeout(t);
+            };
         }
     }, [value, live]);
 
@@ -146,10 +150,17 @@ function NewOrderTicker({ order }: { order: { message?: string; id?: string | nu
 
     useEffect(() => {
         if (!order) return;
-        setText(order.message || (order.id ? `New order #${order.id} arrived` : "New order received"));
-        setVisible(true);
+        // Use timeout to avoid synchronous setState in effect warning
+        const timer = setTimeout(() => {
+            setText(order.message || (order.id ? `New order #${order.id} arrived` : "New order received"));
+            setVisible(true);
+        }, 0);
+
         const t = setTimeout(() => setVisible(false), 6000);
-        return () => clearTimeout(t);
+        return () => {
+            clearTimeout(timer);
+            clearTimeout(t);
+        };
     }, [order]);
 
     if (!visible) return null;
@@ -169,8 +180,8 @@ function WsStatusBadge({ connected }: { connected: boolean }) {
     return (
         <div
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors duration-500 ${connected
-                    ? "bg-green-500/10 text-green-500 border-green-500/20"
-                    : "bg-muted text-muted-foreground border-border"
+                ? "bg-green-500/10 text-green-500 border-green-500/20"
+                : "bg-muted text-muted-foreground border-border"
                 }`}
         >
             {connected ? (
@@ -224,8 +235,8 @@ export default function Dashboard() {
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
-                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ totalElements: 0 })),
-                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ totalElements: 0 })),
+                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<Shop>)),
+                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<unknown>)),
                     analyticsService.getSystemHealth().catch(() => null),
                 ]);
                 setStats(statsData);
@@ -247,10 +258,27 @@ export default function Dashboard() {
     // Derived: prefer live WS stats where available, fall back to REST baseline
     const liveStats: Partial<SystemStatsDTO> = systemStats ?? {};
     const totalUsers = liveStats.totalUsers ?? stats?.totalUsers ?? 0;
-    const activeShops = liveStats.activeShops ?? stats?.totalShops ?? 0;
-    const revenueToday = liveStats.revenueToday ?? stats?.totalRevenueToday ?? 0;
-    const pendingOrders = liveStats.pendingOrders ?? 0;
     const isLive = !!systemStats;
+
+    // Server uses totalShops as the primary count in the live feed
+    const activeShops = liveStats.totalShops ?? stats?.totalShops ?? 0;
+
+    const revenueToday = liveStats.totalRevenueToday ?? stats?.totalRevenueToday ?? 0;
+
+    // If the server provides totalOrdersToday, we use it for a live look at today's volume. 
+    const ordersValue = liveStats.totalOrdersToday ?? 0;
+    const ordersLabel = (liveStats.totalOrdersToday !== undefined && isLive) ? "Orders Today" : "Pending Orders";
+
+    useEffect(() => {
+        if (isLive) {
+            console.log('[Dashboard] Data Synced:', {
+                totalShops: liveStats.totalShops,
+                totalRevenueToday: liveStats.totalRevenueToday,
+                totalOrdersToday: liveStats.totalOrdersToday,
+                displayShops: activeShops
+            });
+        }
+    }, [isLive, liveStats, activeShops]);
 
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;
@@ -313,7 +341,7 @@ export default function Dashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
                 <StatCard title="Active Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
-                <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} />
+                <StatCard title={ordersLabel} value={ordersValue} icon={ShoppingCart} loading={loading} live={isLive} />
                 <StatCard title="Revenue Today" value={revenueToday} prefix="$" icon={DollarSign} loading={loading} live={isLive} />
             </div>
 
@@ -434,8 +462,8 @@ export default function Dashboard() {
                     {/* WebSocket system health string */}
                     {isLive && liveStats.systemHealth && (
                         <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${liveStats.systemHealth === 'HEALTHY'
-                                ? 'bg-green-500/10 text-green-500'
-                                : 'bg-red-500/10 text-red-500'
+                            ? 'bg-green-500/10 text-green-500'
+                            : 'bg-red-500/10 text-red-500'
                             }`}>
                             {liveStats.systemHealth}
                         </span>

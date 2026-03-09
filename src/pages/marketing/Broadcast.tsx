@@ -12,13 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Megaphone, Send, History, Users, Store, User } from "lucide-react";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { Megaphone, Send, History, Users, Store, User as UserIcon } from "lucide-react";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { BroadcastHistoryItem } from "@/services/marketingService";
+import { UserListItem as User } from "@/services/userService";
+import { Shop } from "@/services/shopService";
 
 export default function Broadcast() {
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<BroadcastHistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
@@ -32,8 +37,8 @@ export default function Broadcast() {
     const [target, setTarget] = useState<"USERS" | "SHOPS" | "SINGLE_USER" | "SINGLE_SHOP">("USERS");
     const [sending, setSending] = useState(false);
 
-    const [shops, setShops] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
+    const [shops, setShops] = useState<Shop[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [selectedShopId, setSelectedShopId] = useState<string>("");
     const [selectedUserId, setSelectedUserId] = useState<string>("");
 
@@ -121,7 +126,7 @@ export default function Broadcast() {
                         <form onSubmit={handleSend} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Target Audience</label>
-                                <Select value={target} onValueChange={(v: any) => setTarget(v)}>
+                                <Select value={target} onValueChange={(v: "USERS" | "SHOPS" | "SINGLE_USER" | "SINGLE_SHOP") => setTarget(v)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -138,7 +143,7 @@ export default function Broadcast() {
                                         </SelectItem>
                                         <SelectItem value="SINGLE_USER">
                                             <div className="flex items-center gap-2">
-                                                <User className="h-4 w-4" /> <span>Single User</span>
+                                                <UserIcon className="h-4 w-4" /> <span>Single User</span>
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="SINGLE_SHOP">
@@ -154,10 +159,10 @@ export default function Broadcast() {
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select User</label>
                                     <SearchableSelect
-                                        data={users.map(u => ({ label: u.name || u.phone || u.email || `User #${u.id}`, value: String(u.id) }))}
+                                        data={users.map(u => ({ label: u.fullName || u.email || u.username || `User #${u.id}`, value: String(u.id) }))}
                                         value="value"
                                         labelKey="label"
-                                        selectedValue={selectedUserId ? { label: users.find(u => String(u.id) === selectedUserId)?.name || users.find(u => String(u.id) === selectedUserId)?.phone || users.find(u => String(u.id) === selectedUserId)?.email || `User #${selectedUserId}`, value: selectedUserId } : undefined}
+                                        selectedValue={selectedUserId ? { label: users.find(u => String(u.id) === selectedUserId)?.fullName || users.find(u => String(u.id) === selectedUserId)?.email || users.find(u => String(u.id) === selectedUserId)?.username || `User #${selectedUserId}`, value: selectedUserId } : undefined}
                                         onChange={(item) => setSelectedUserId(item?.value || "")}
                                         placeholder="Search user..."
                                     />
@@ -242,8 +247,8 @@ export default function Broadcast() {
                                 ) : sortedHistory.map((h) => (
                                     <TableRow key={h.id}>
                                         <TableCell>
-                                            <Badge variant="outline" className={h.targetType === "USERS" ? "text-blue-600 bg-blue-50" : "text-purple-600 bg-purple-50"}>
-                                                {h.targetType}
+                                            <Badge variant="outline" className={h.targetType === "USERS" ? "text-blue-600 bg-blue-50 border-blue-100" : "text-purple-600 bg-purple-50 border-purple-100"}>
+                                                {String(h.targetType)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="font-medium text-sm">{h.title}</TableCell>
@@ -274,10 +279,3 @@ export default function Broadcast() {
     );
 }
 
-function Badge({ children, className }: any) {
-    return (
-        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${className}`}>
-            {children}
-        </span>
-    );
-}

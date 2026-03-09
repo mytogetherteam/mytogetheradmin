@@ -5,13 +5,15 @@ import { config } from '@/config/config';
 
 export interface SystemStatsDTO {
   totalUsers: number;
-  activeUsers24h: number;
-  totalOrders: number;
-  pendingOrders: number;
-  revenueToday: number;
-  activeShops: number;
-  systemHealth: string;
-  pendingReports: number;
+  totalShops: number;
+  totalReviews: number;
+  totalOrdersToday: number;
+  totalRevenueToday: number;
+  // Optional/Legacy fields (might be missing in newer versions)
+  activeUsers24h?: number;
+  pendingOrders?: number;
+  systemHealth?: string;
+  pendingReports?: number;
 }
 
 export interface AdminAlertPayload {
@@ -62,7 +64,9 @@ export function useAdminWebSocket(): AdminWebSocketState {
 
         client.subscribe(config.websocket.topics.stats, (msg) => {
           try {
-            setSystemStats(JSON.parse(msg.body) as SystemStatsDTO);
+            const stats = JSON.parse(msg.body) as SystemStatsDTO;
+            console.log('[AdminWS] Received stats:', stats);
+            setSystemStats(stats);
           } catch { /* ignore malformed */ }
         });
 

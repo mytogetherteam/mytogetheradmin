@@ -1,13 +1,20 @@
 import { apiClient } from "./apiClient";
 import { config } from "@/config/config";
+import { PageableResponse } from "./shopService";
 
 export interface MenuCategory {
     id?: number;
     name: string;
+    nameMm?: string;
+    nameTh?: string;
+    nameEn?: string;
     description?: string;
-    shopId?: number; // If categories are shop-specific
+    shopId?: number;
     slug?: string;
-    mediaUrl?: string; // If category has an image
+    mediaUrl?: string;
+    displayOrder?: number;
+    isActive?: boolean;
+    imageUrl?: string;
 }
 
 export interface MenuItem {
@@ -89,17 +96,17 @@ export interface MenuSubCategory {
 export const menuService = {
     // --- Menu Categories ---
 
-    getAllMenuCategories: async (page = 0, size = 20, search = ""): Promise<any> => {
+    getAllMenuCategories: async (page = 0, size = 20, search = ""): Promise<PageableResponse<MenuCategory>> => {
         const endpoint = `${config.endpoints.admin.menu.categories}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
-        return apiClient.get<any>(endpoint);
+        return apiClient.get<PageableResponse<MenuCategory>>(endpoint);
     },
 
     createMenuCategory: async (shopId: number, data: FormData): Promise<MenuCategory> => {
-        return apiClient.post<any>(config.endpoints.admin.menu.shopCategories(shopId), data);
+        return apiClient.post<MenuCategory>(config.endpoints.admin.menu.shopCategories(shopId), data);
     },
 
     updateMenuCategory: async (id: number, data: FormData): Promise<MenuCategory> => {
-        return apiClient.put<any>(config.endpoints.admin.menu.categoryDetail(id), data);
+        return apiClient.put<MenuCategory>(config.endpoints.admin.menu.categoryDetail(id), data);
     },
 
     deleteMenuCategory: async (id: number): Promise<void> => {
@@ -108,24 +115,24 @@ export const menuService = {
 
     // --- Menu Items ---
 
-    getAllMenuItems: async (page = 0, size = 20, search = "", shopId?: number): Promise<any> => {
+    getAllMenuItems: async (page = 0, size = 20, search = "", shopId?: number): Promise<PageableResponse<MenuItem>> => {
         let endpoint = `${config.endpoints.admin.menu.items}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
         if (shopId) {
             endpoint += `&shopId=${shopId}`;
         }
-        return apiClient.get<any>(endpoint);
+        return apiClient.get<PageableResponse<MenuItem>>(endpoint);
     },
 
     getMenuItem: async (id: number): Promise<MenuItem> => {
-        return apiClient.get<any>(config.endpoints.admin.menu.itemDetail(id));
+        return apiClient.get<MenuItem>(config.endpoints.admin.menu.itemDetail(id));
     },
 
     createMenuItem: async (categoryId: number, data: FormData): Promise<MenuItem> => {
-        return apiClient.post<any>(config.endpoints.admin.menu.categoryItems(categoryId), data);
+        return apiClient.post<MenuItem>(config.endpoints.admin.menu.categoryItems(categoryId), data);
     },
 
     updateMenuItem: async (id: number, data: FormData): Promise<MenuItem> => {
-        return apiClient.put<any>(config.endpoints.admin.menu.itemDetail(id), data);
+        return apiClient.put<MenuItem>(config.endpoints.admin.menu.itemDetail(id), data);
     },
 
     deleteMenuItem: async (id: number): Promise<void> => {
@@ -135,19 +142,19 @@ export const menuService = {
     // --- Menu SubCategories ---
 
     getMenuSubCategories: async (categoryId: number): Promise<MenuSubCategory[]> => {
-        return apiClient.get<any>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
+        return apiClient.get<MenuSubCategory[]>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
     },
 
     getMenuSubCategory: async (id: number): Promise<MenuSubCategory> => {
-        return apiClient.get<any>(config.endpoints.admin.menu.subCategoryDetail(id));
+        return apiClient.get<MenuSubCategory>(config.endpoints.admin.menu.subCategoryDetail(id));
     },
 
     createMenuSubCategory: async (categoryId: number, data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.post<any>(config.endpoints.admin.menu.subCategoryByCategory(categoryId), data);
+        return apiClient.post<MenuSubCategory>(config.endpoints.admin.menu.subCategoryByCategory(categoryId), data);
     },
 
     updateMenuSubCategory: async (id: number, data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.put<any>(config.endpoints.admin.menu.subCategoryDetail(id), data);
+        return apiClient.put<MenuSubCategory>(config.endpoints.admin.menu.subCategoryDetail(id), data);
     },
 
     deleteMenuSubCategory: async (id: number): Promise<void> => {
@@ -155,13 +162,13 @@ export const menuService = {
     },
 
     // --- Status Toggles ---
-    toggleRecommended: async (id: number, enabled: boolean): Promise<any> => {
-        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.recommended(id)}?enabled=${enabled}`);
+    toggleRecommended: async (id: number, enabled: boolean): Promise<MenuItem> => {
+        return apiClient.put<MenuItem>(`${config.endpoints.admin.menu.itemActions.recommended(id)}?enabled=${enabled}`);
     },
-    toggleAvailable: async (id: number, available: boolean): Promise<any> => {
-        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.availability(id)}?available=${available}`);
+    toggleAvailable: async (id: number, available: boolean): Promise<MenuItem> => {
+        return apiClient.put<MenuItem>(`${config.endpoints.admin.menu.itemActions.availability(id)}?available=${available}`);
     },
-    toggleHotDeal: async (id: number, enabled: boolean): Promise<any> => {
-        return apiClient.put<any>(`${config.endpoints.admin.menu.itemActions.hotDeal(id)}?enabled=${enabled}`);
+    toggleHotDeal: async (id: number, enabled: boolean): Promise<MenuItem> => {
+        return apiClient.put<MenuItem>(`${config.endpoints.admin.menu.itemActions.hotDeal(id)}?enabled=${enabled}`);
     }
 };

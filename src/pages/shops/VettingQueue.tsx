@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
 export default function VettingQueue() {
+     
     const [shops, setShops] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +26,7 @@ export default function VettingQueue() {
     const [totalElements, setTotalElements] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
+     
     const [rejectShop, setRejectShop] = useState<any | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [actionLoading, setActionLoading] = useState(false);

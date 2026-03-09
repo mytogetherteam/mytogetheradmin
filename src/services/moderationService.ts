@@ -43,6 +43,23 @@ export interface PostsPage {
   number: number;
 }
 
+export interface Comment {
+  id: string;
+  authorName: string;
+  authorId: string;
+  content: string;
+  postId: string;
+  createdAt: string;
+  isHidden: boolean;
+}
+
+export interface CommentsPage {
+  content: Comment[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
 class ModerationService {
   async getReports(status?: ReportStatus, page = 0, size = 20): Promise<ReportsPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
@@ -79,14 +96,14 @@ class ModerationService {
     return apiClient.get<PostsPage>(`${config.endpoints.admin.moderation.posts}?${params.toString()}`);
   }
 
-  async getComments(page = 0, size = 20, postId?: string, search = ''): Promise<any> {
+  async getComments(page = 0, size = 20, postId?: string, search = ''): Promise<CommentsPage> {
     const params = new URLSearchParams({ 
       page: String(page), 
       size: String(size),
       search: search
     });
     if (postId) params.append('postId', postId);
-    return apiClient.get<any>(`${config.endpoints.admin.moderation.comments}?${params.toString()}`);
+    return apiClient.get<CommentsPage>(`${config.endpoints.admin.moderation.comments}?${params.toString()}`);
   }
 
   async deleteComment(id: string): Promise<void> {

@@ -17,7 +17,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
 type UserShopReportStatus = "OPEN" | "PENDING" | "REVIEWED" | "INVESTIGATING" | "ACTION_TAKEN" | "DISMISSED" | "RESOLVED";
 

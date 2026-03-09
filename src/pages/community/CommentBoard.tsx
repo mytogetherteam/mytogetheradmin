@@ -14,7 +14,8 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
 interface Comment {
     id: string;

@@ -25,7 +25,7 @@ import {
     Trash2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ShopService } from "@/services/shopService";
+import { ShopService, MenuCategory } from "@/services/shopService";
 import { menuService, MenuSubCategory } from "@/services/menuService";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 
 export default function ManageSubCategories() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
     const [subCategories, setSubCategories] = useState<MenuSubCategory[]>([]);
@@ -60,17 +60,10 @@ export default function ManageSubCategories() {
         setFetchingCategories(true);
         try {
             const res = await ShopService.getAdminCategories(0, 100, "");
-            if (res && res.content) {
-                setCategories(res.content);
-                // Automatically select the first category if available to show some data
-                if (res.content.length > 0) {
-                    setSelectedCategoryId(res.content[0].id.toString());
-                }
-            } else if (Array.isArray(res)) {
-                setCategories(res);
-                if (res.length > 0) {
-                    setSelectedCategoryId(res[0].id.toString());
-                }
+            const content = res.content || [];
+            setCategories(content);
+            if (content.length > 0) {
+                setSelectedCategoryId(content[0].id.toString());
             }
         } catch (error) {
             console.error(error);

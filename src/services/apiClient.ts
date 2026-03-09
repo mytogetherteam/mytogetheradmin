@@ -117,23 +117,36 @@ class ApiClient {
         throw new Error('Refresh failed');
       }
 
-      const data = await refreshResponse.json();
-      const newToken = data.data?.token || data.token;
-      const newRefreshToken = data.data?.refreshToken || data.refreshToken;
+      const responseData = await refreshResponse.json();
+      const data = responseData.data || responseData;
+      const newToken = data.token;
+      const newRefreshToken = data.refreshToken;
 
       if (newToken) {
         localStorage.setItem(config.storage.tokenKey, newToken);
         if (newRefreshToken) {
           localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
         }
+
+        // Synchronize user data if present in response
+        if (data.id && data.username) {
+            const userProfile = {
+                id: data.id,
+                username: data.username,
+                email: data.email,
+                fullName: data.fullName,
+                role: data.role
+            };
+            localStorage.setItem(config.storage.userKey, JSON.stringify(userProfile));
+        }
         
-        console.log('Token successfully refreshed');
+        console.log('Token and user data successfully refreshed');
         this.isRefreshing = false;
         this.onRefreshed(newToken);
       } else {
         throw new Error('Invalid refresh response');
       }
-    } catch (error) {
+    } catch {
       this.isRefreshing = false;
       this.handleLogout();
       throw new ApiError('Session expired', 401);
@@ -186,7 +199,7 @@ class ApiClient {
 
         // If already refreshing, wait for it to finish
         return new Promise<T>((resolve) => {
-          this.addRefreshSubscriber((_newToken) => {
+          this.addRefreshSubscriber(() => {
             resolve(this.request<T>(endpoint, options));
           });
         });

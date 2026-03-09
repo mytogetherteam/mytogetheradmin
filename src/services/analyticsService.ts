@@ -131,12 +131,12 @@ class AnalyticsService {
     return apiClient.get<DeviceStats[]>(config.endpoints.admin.analytics.deviceStats);
   }
 
-  async getOrderVolumeChart(start?: string, end?: string): Promise<any> {
+  async getOrderVolumeChart(start?: string, end?: string): Promise<RevenueData[]> {
     const params = new URLSearchParams();
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<any>(`${config.endpoints.admin.analytics.orders}${query}`);
+    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.orders}${query}`);
   }
 
   async getCancellationRate(start?: string, end?: string): Promise<CancellationRateData> {
@@ -155,28 +155,28 @@ class AnalyticsService {
     return apiClient.get<UserGrowthData[]>(`${config.endpoints.admin.analytics.usersGrowth}${query}`);
   }
 
-  async getShopRevenue(shopId: number, start?: string, end?: string): Promise<any> {
+  async getShopRevenue(shopId: number, start?: string, end?: string): Promise<RevenueData[]> {
     const params = new URLSearchParams();
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<any>(`${config.endpoints.admin.analytics.shopRevenue(shopId)}${query}`);
+    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.shopRevenue(shopId)}${query}`);
   }
 
-  async getShopOrders(shopId: number, start?: string, end?: string): Promise<any> {
+  async getShopOrders(shopId: number, start?: string, end?: string): Promise<RevenueData[]> {
     const params = new URLSearchParams();
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<any>(`${config.endpoints.admin.analytics.shopOrders(shopId)}${query}`);
+    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.shopOrders(shopId)}${query}`);
   }
 
   async getFeatureUsage(): Promise<FeatureUsageData[]> {
     return apiClient.get<FeatureUsageData[]>(config.endpoints.admin.analytics.features);
   }
 
-  async getDeviceDetail(deviceId: string): Promise<any> {
-    return apiClient.get<any>(config.endpoints.admin.analytics.deviceDetail(deviceId));
+  async getDeviceDetail(deviceId: string): Promise<Record<string, unknown>> {
+    return apiClient.get<Record<string, unknown>>(config.endpoints.admin.analytics.deviceDetail(deviceId));
   }
 }
 

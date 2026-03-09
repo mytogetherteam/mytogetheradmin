@@ -15,7 +15,8 @@ import {
     Loader2, Plus, Search, FileSpreadsheet, Trash2, Edit,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { districtService, DistrictDTO } from "@/services/districtService";
 import { cityService, CityDTO } from "@/services/cityService";

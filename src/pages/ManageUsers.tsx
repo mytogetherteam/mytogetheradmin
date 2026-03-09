@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -34,7 +34,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -44,14 +45,14 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { userService } from "@/services/userService";
+import { userService, UserListItem } from "@/services/userService";
 import { exportService } from "@/services/exportService";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManageUsers() {
     const navigate = useNavigate();
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<UserListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -62,11 +63,11 @@ export default function ManageUsers() {
 
     // User Actions State
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
     const [newRole, setNewRole] = useState("USER");
     const [actionLoading, setActionLoading] = useState(false);
 
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         setLoading(true);
         try {
             const response = await userService.getAllUsers(currentPage - 1, pageSize, searchTerm);
@@ -85,14 +86,14 @@ export default function ManageUsers() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize, searchTerm]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             loadUsers();
         }, 300);
         return () => clearTimeout(timer);
-    }, [currentPage, pageSize, searchTerm]);
+    }, [loadUsers]);
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));
@@ -105,10 +106,10 @@ export default function ManageUsers() {
         toast.info("Exporting users...");
     };
 
-    const handleToggleStatus = async (user: any) => {
+    const handleToggleStatus = async (user: UserListItem) => {
         setActionLoading(true);
         try {
-            await userService.toggleUserStatus(user.id, !user.active);
+            await userService.toggleUserStatus(String(user.id), !user.active);
             toast.success(`User ${user.active ? 'deactivated' : 'activated'} successfully`);
             loadUsers();
         } catch (error) {
@@ -119,7 +120,7 @@ export default function ManageUsers() {
         }
     };
 
-    const handleOpenRoleDialog = (user: any) => {
+    const handleOpenRoleDialog = (user: UserListItem) => {
         setSelectedUser(user);
         setNewRole(user.role || 'USER');
         setRoleDialogOpen(true);
@@ -129,7 +130,7 @@ export default function ManageUsers() {
         if (!selectedUser) return;
         setActionLoading(true);
         try {
-            await userService.updateUserRole(selectedUser.id, newRole);
+            await userService.updateUserRole(String(selectedUser.id), newRole);
             toast.success(`User role updated to ${newRole}`);
             setRoleDialogOpen(false);
             loadUsers();
@@ -201,7 +202,7 @@ export default function ManageUsers() {
                                                     onClick={() => navigate(`/users/${user.id}`)}
                                                 >
                                                     <TableCell className="font-mono text-xs">{user.id}</TableCell>
-                                                    <TableCell className="font-medium">{user.name || user.fullName || "N/A"}</TableCell>
+                                                    <TableCell className="font-medium">{(user.fullName || (user.username as string) || "N/A")}</TableCell>
                                                     <TableCell className="text-sm">{user.email}</TableCell>
                                                     <TableCell><Badge variant="outline" className="font-normal">{user.role || "User"}</Badge></TableCell>
                                                     <TableCell>
@@ -268,7 +269,7 @@ export default function ManageUsers() {
                     <DialogHeader>
                         <DialogTitle>Change User Role</DialogTitle>
                         <DialogDescription>
-                            Select a new role for <span className="font-semibold">{selectedUser?.name || selectedUser?.fullName || 'this user'}</span>.
+                            Select a new role for <span className="font-semibold">{(selectedUser?.fullName || (selectedUser?.username as string) || 'this user')}</span>.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">

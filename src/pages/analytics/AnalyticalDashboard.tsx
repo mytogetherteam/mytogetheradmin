@@ -58,13 +58,13 @@ export default function AnalyticalDashboard() {
     const [deviceStats, setDeviceStats] = useState<DeviceStats[]>([]);
     const [overallCtr, setOverallCtr] = useState<number | null>(null);
     const [userGrowth, setUserGrowth] = useState<UserGrowthData[]>([]);
-    const [orderVolume, setOrderVolume] = useState<any[]>([]);
+    const [orderVolume, setOrderVolume] = useState<RevenueData[]>([]);
     const [cancellationRate, setCancellationRate] = useState<CancellationRateData | null>(null);
     const [featureUsage, setFeatureUsage] = useState<FeatureUsageData[]>([]);
     const [shops, setShops] = useState<Shop[]>([]);
     const [selectedShopId, setSelectedShopId] = useState<string>("");
-    const [shopRevenue, setShopRevenue] = useState<any[]>([]);
-    const [shopOrders, setShopOrders] = useState<any[]>([]);
+    const [shopRevenue, setShopRevenue] = useState<RevenueData[]>([]);
+    const [shopOrders, setShopOrders] = useState<RevenueData[]>([]);
     const [loading, setLoading] = useState(true);
     const [shopLoading, setShopLoading] = useState(false);
 
@@ -72,7 +72,7 @@ export default function AnalyticalDashboard() {
         setLoading(true);
         try {
             switch (tab) {
-                case "revenue":
+                case "revenue": {
                     const [rev, orders, cancel] = await Promise.all([
                         analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                         analyticsService.getOrderVolumeChart(startDate, endDate).catch(() => []),
@@ -82,7 +82,8 @@ export default function AnalyticalDashboard() {
                     setOrderVolume(orders);
                     setCancellationRate(cancel);
                     break;
-                case "users":
+                }
+                case "users": {
                     const [sess, growth, devices, features] = await Promise.all([
                         analyticsService.getSessionAnalytics().catch(() => null),
                         analyticsService.getUserGrowth(startDate, endDate).catch(() => []),
@@ -94,21 +95,24 @@ export default function AnalyticalDashboard() {
                     setDeviceStats(devices);
                     setFeatureUsage(features);
                     break;
-                case "shops":
+                }
+                case "shops": {
                     const [popular, cats, allShops] = await Promise.all([
                         analyticsService.getPopularShops().catch(() => []),
                         analyticsService.getCategoryStats().catch(() => []),
-                        ShopService.getAllShops(0, 100).catch(() => ({ content: [] })),
+                        ShopService.getAllShops(0, 100).catch(() => ({ content: [] as Shop[], totalElements: 0, totalPages: 0, number: 0, size: 0 })),
                     ]);
                     setPopularShops(popular);
                     setCategories(cats);
                     setShops(allShops?.content || []);
                     break;
-                case "locations":
+                }
+                case "locations": {
                     const locs = await analyticsService.getLocationAnalytics().catch(() => []);
                     setLocations(locs);
                     break;
-                case "feed":
+                }
+                case "feed": {
                     const [feedPerf, ...sections] = await Promise.all([
                         analyticsService.getFeedPerformance().catch(() => null),
                         ...FEED_TYPES.map((t) => analyticsService.getFeedSectionStats(t).catch(() => ({ type: t, impressions: 0, clicks: 0, ctr: 0 })))
@@ -116,6 +120,7 @@ export default function AnalyticalDashboard() {
                     setOverallCtr(feedPerf?.overallCtr ?? null);
                     setFeedSections(sections);
                     break;
+                }
             }
         } finally {
             setLoading(false);
@@ -156,17 +161,17 @@ export default function AnalyticalDashboard() {
     }));
 
     const orderVolumeData = orderVolume.map((o) => ({
-        date: new Date(o.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: new Date(o.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         Orders: o.count ?? 0,
     }));
 
     const shopRevenueData = shopRevenue.map((r) => ({
-        date: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: new Date(r.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         Revenue: r.amount ?? 0,
     }));
 
     const shopOrdersData = shopOrders.map((o) => ({
-        date: new Date(o.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: new Date(o.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         Orders: o.count ?? 0,
     }));
 

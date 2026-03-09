@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Search, User, EyeOff, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     Dialog,
     DialogContent,
@@ -27,6 +28,7 @@ import {
 
 export default function CommunityMgt() {
     const [posts, setPosts] = useState<Post[]>([]);
+     
     const [comments, setComments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -117,6 +119,7 @@ export default function CommunityMgt() {
                 <h1 className="text-lg font-semibold md:text-2xl">Community Management</h1>
             </div>
 
+            { }
             <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(0); }}>
                 <TabsList>
                     <TabsTrigger value="posts">Posts Feed</TabsTrigger>

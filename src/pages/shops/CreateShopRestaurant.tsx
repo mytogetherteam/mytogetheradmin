@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useForm, Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
 import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
@@ -181,11 +181,114 @@ export default function CreateShopRestaurant() {
         },
     })
 
-    useEffect(() => {
-        loadSetupData()
+    const loadSetupData = useCallback(async () => {
+        setSetupLoading(true)
+        setCategoriesLoading(true)
+        try {
+            const [data, categories, paymentData] = await Promise.all([
+                PaymentService.getShopFormData(),
+                ShopService.getCategories(),
+                PaymentService.getPaymentMethods({ size: 100 })
+            ])
+            setSetupData(data)
+            setShopCategories(categories)
+            setPaymentMethods(paymentData.content || [])
+        } catch (error) {
+            console.error("Failed to load setup data:", error)
+            toast.error("Failed to load necessary form data")
+        } finally {
+            setSetupLoading(false)
+            setCategoriesLoading(false)
+        }
     }, [])
 
+    const loadShopData = useCallback(async (id: string) => {
+        setLoading(true)
+        try {
+            const shopId = parseInt(id, 10)
+            if (isNaN(shopId)) {
+                toast.error("Invalid shop ID")
+                navigate("/shops/manage")
+                return
+            }
 
+            const shop = await ShopService.getShopById(shopId)
+
+            // Map API response to form structure
+            form.reset({
+                nameEn: shop.nameEn || "",
+                nameMm: shop.nameMm || "",
+                nameTh: shop.nameTh || "",
+                shopCategoryId: shop.shopCategory?.id || 0,
+                shopSubCategoryId: shop.shopSubCategory?.id ?? null,
+                addressEn: shop.addressEn || "",
+                addressMm: shop.addressMm || "",
+                addressTh: shop.addressTh || "",
+                districtId: shop.districtId || 0,
+                latitude: shop.latitude || 0,
+                longitude: shop.longitude || 0,
+                phone: shop.phone || "",
+                email: shop.email || "",
+                descriptionEn: shop.descriptionEn || "",
+                descriptionMm: shop.descriptionMm || "",
+                descriptionTh: shop.descriptionTh || "",
+                hasDelivery: shop.hasDelivery || false,
+                deliveryEnabled: shop.deliveryEnabled || false,
+                hasParking: shop.hasParking || false,
+                hasWifi: shop.hasWifi || false,
+                isVerified: shop.isVerified || false,
+                isActive: shop.isActive ?? true,
+                isHalal: shop.isHalal || false,
+                isVegetarian: shop.isVegetarian || false,
+                pricePreference: shop.pricePreference || "MEDIUM",
+                enableStockCheck: shop.enableStockCheck || false,
+                maxItemQuantityPerOrder: shop.maxItemQuantityPerOrder || 10,
+                minOrderAmount: shop.minOrderAmount || 0,
+                baseDeliveryFee: shop.baseDeliveryFee || 0,
+                cuisineTypeIds: shop.cuisineTypes ? shop.cuisineTypes.map((c: CuisineTypeDTO) => c.id) : [],
+                mealTypes: shop.mealTypes || [],
+                supportedDeliveryTypes: shop.supportedDeliveryTypes || [],
+                paymentMethodIds: shop.paymentMethodIds || [],
+                operatingHours: shop.operatingHours && shop.operatingHours.length > 0
+                    ? shop.operatingHours
+                    : [
+                        { dayOfWeek: 1, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 2, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 3, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 4, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                        { dayOfWeek: 7, openTime: "09:00", closeTime: "21:00", isClosed: false },
+                    ],
+            })
+
+            // Handle images
+            if (shop.logoUrl) {
+                setLogoPreview(shop.logoUrl);
+            }
+            if (shop.coverUrl) {
+                setCoverPreview(shop.coverUrl);
+            } else if (shop.primaryPhotoUrl) {
+                setCoverPreview(shop.primaryPhotoUrl);
+            }
+            if (shop.photos) {
+                setExistingGalleryImages(shop.photos.map(p => p.url));
+            }
+
+        } catch (error) {
+            console.error("Failed to load shop:", error)
+            toast.error("Failed to load shop data", {
+                description: "Unable to fetch shop details"
+            })
+            navigate("/shops/manage")
+        } finally {
+            setLoading(false)
+        }
+    }, [form, navigate])
+
+    useEffect(() => {
+        loadSetupData()
+    }, [loadSetupData])
 
     useEffect(() => {
         if (isEditMode && shopId) {
@@ -244,29 +347,7 @@ export default function CreateShopRestaurant() {
             setGalleryPreviews([])
             setGalleryFiles([])
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shopId, isEditMode])
-
-    const loadSetupData = async () => {
-        setSetupLoading(true)
-        setCategoriesLoading(true)
-        try {
-            const [data, categories, paymentData] = await Promise.all([
-                PaymentService.getShopFormData(),
-                ShopService.getCategories(),
-                PaymentService.getPaymentMethods({ size: 100 })
-            ])
-            setSetupData(data)
-            setShopCategories(categories)
-            setPaymentMethods(paymentData.content || [])
-        } catch (error) {
-            console.error("Failed to load setup data:", error)
-            toast.error("Failed to load necessary form data")
-        } finally {
-            setSetupLoading(false)
-            setCategoriesLoading(false)
-        }
-    }
+    }, [shopId, isEditMode, loadShopData, form])
 
     // Effect to handle subcategory loading when category changes
     const selectedCategoryId = form.watch("shopCategoryId")
@@ -286,111 +367,6 @@ export default function CreateShopRestaurant() {
         }
         fetchSubCategories()
     }, [selectedCategoryId])
-
-    // Handle City Change
-    const handleCityChange = (cityId: number) => {
-        setSelectedCityId(cityId)
-        const city = setupData?.cities.find(c => c.id === cityId)
-        if (city) {
-            setAvailableDistricts(city.districts || [])
-            // Reset district when city changes
-            form.setValue("districtId", 0)
-        }
-    }
-
-    // Handle District Change
-    const handleDistrictChange = (districtId: number) => {
-        const district = availableDistricts.find(d => d.id === districtId)
-        if (district) {
-            form.setValue("districtId", district.id)
-            if (district.latitude) form.setValue("latitude", district.latitude)
-            if (district.longitude) form.setValue("longitude", district.longitude)
-        }
-    }
-
-    const loadShopData = async (id: string) => {
-        setLoading(true)
-        try {
-            const shopId = parseInt(id, 10)
-            if (isNaN(shopId)) {
-                toast.error("Invalid shop ID")
-                navigate("/shops/manage")
-                return
-            }
-
-            const shop = await ShopService.getShopById(shopId)
-
-            // Map API response to form structure
-            form.reset({
-                nameEn: shop.nameEn || "",
-                nameMm: shop.nameMm || "",
-                nameTh: shop.nameTh || "",
-                shopCategoryId: shop.shopCategory?.id || 0,
-                shopSubCategoryId: shop.shopSubCategory?.id ?? null,
-                addressEn: shop.addressEn || "",
-                addressMm: shop.addressMm || "",
-                addressTh: shop.addressTh || "",
-                districtId: shop.districtId || 0,
-                latitude: shop.latitude || 0,
-                longitude: shop.longitude || 0,
-                phone: shop.phone || "",
-                email: shop.email || "",
-                descriptionEn: shop.descriptionEn || "",
-                descriptionMm: shop.descriptionMm || "",
-                descriptionTh: shop.descriptionTh || "",
-                hasDelivery: shop.hasDelivery || false,
-                deliveryEnabled: shop.deliveryEnabled || false,
-                hasParking: shop.hasParking || false,
-                hasWifi: shop.hasWifi || false,
-                isVerified: shop.isVerified || false,
-                isActive: shop.isActive ?? true,
-                isHalal: shop.isHalal || false,
-                isVegetarian: shop.isVegetarian || false,
-                pricePreference: shop.pricePreference || "MEDIUM",
-                enableStockCheck: shop.enableStockCheck || false,
-                maxItemQuantityPerOrder: shop.maxItemQuantityPerOrder || 10,
-                minOrderAmount: shop.minOrderAmount || 0,
-                baseDeliveryFee: shop.baseDeliveryFee || 0,
-                cuisineTypeIds: shop.cuisineTypes ? shop.cuisineTypes.map((c: any) => c.id) : [],
-                mealTypes: shop.mealTypes || [],
-                supportedDeliveryTypes: shop.supportedDeliveryTypes || [],
-                paymentMethodIds: shop.paymentMethodIds || [],
-                operatingHours: shop.operatingHours && shop.operatingHours.length > 0
-                    ? shop.operatingHours
-                    : [
-                        { dayOfWeek: 1, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 2, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 3, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 4, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                        { dayOfWeek: 7, openTime: "09:00", closeTime: "21:00", isClosed: false },
-                    ],
-            })
-
-            // Handle images
-            if (shop.logoUrl) {
-                setLogoPreview(shop.logoUrl);
-            }
-            if (shop.coverUrl) {
-                setCoverPreview(shop.coverUrl);
-            } else if (shop.primaryPhotoUrl) {
-                setCoverPreview(shop.primaryPhotoUrl);
-            }
-            if (shop.photos) {
-                setExistingGalleryImages(shop.photos.map(p => p.url));
-            }
-
-        } catch (error) {
-            console.error("Failed to load shop:", error)
-            toast.error("Failed to load shop data", {
-                description: "Unable to fetch shop details"
-            })
-            navigate("/shops/manage")
-        } finally {
-            setLoading(false)
-        }
-    }
 
     async function onSubmit(data: ShopFormValues) {
         setSubmitting(true)
@@ -547,6 +523,16 @@ export default function CreateShopRestaurant() {
             }
             reader.readAsDataURL(file)
         })
+    }
+
+    const handleCityChange = async (cityId: number) => {
+        setSelectedCityId(cityId)
+        setAvailableDistricts([])
+        form.setValue("districtId", null as unknown as number)
+    }
+
+    const handleDistrictChange = (districtId: number) => {
+        form.setValue("districtId", districtId)
     }
 
     const removeNewGalleryImage = (fileIndex: number) => {
@@ -736,7 +722,7 @@ export default function CreateShopRestaurant() {
                                                             <FormLabel>Cuisine Types</FormLabel>
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
-                                                                    const cuisine = setupData?.cuisineTypes?.find((c: any) => c.id === id)
+                                                                    const cuisine = setupData?.cuisineTypes?.find((c: CuisineTypeDTO) => c.id === id)
                                                                     const label = cuisine ? (cuisine.nameEn || cuisine.name || cuisine.slug || `Cuisine ${id}`) : null
                                                                     return cuisine ? (
                                                                         <Badge key={id} variant="secondary" className="gap-1">
@@ -751,7 +737,7 @@ export default function CreateShopRestaurant() {
                                                             </div>
                                                             <FormControl>
                                                                 <SearchableSelect
-                                                                    data={setupData?.cuisineTypes?.map((c: any) => ({
+                                                                    data={setupData?.cuisineTypes?.map((c: CuisineTypeDTO) => ({
                                                                         label: c.nameEn || c.name || c.slug || `Cuisine ${c.id}`,
                                                                         value: c.id
                                                                     })) || []}
@@ -865,6 +851,7 @@ export default function CreateShopRestaurant() {
                                                                     </FormDescription>
                                                                 </div>
                                                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                                    { }
                                                                     {(paymentMethods || []).map((method: any) => (
                                                                         <FormField
                                                                             key={method.id}

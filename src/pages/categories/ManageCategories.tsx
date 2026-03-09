@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -27,15 +27,16 @@ import {
   Edit,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead, SortConfig, toggleSort, sortData } from "@/components/SortableTableHead";
+import { SortableTableHead } from "@/components/SortableTableHead";
+import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
-import { ShopService } from "@/services/shopService";
+import { ShopService, MenuCategory } from "@/services/shopService";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 export default function ManageCategories() {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,11 +47,11 @@ export default function ManageCategories() {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
   const [deleting, setDeleting] = useState(false);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
       const res = await ShopService.getAdminCategories(0, 200, searchTerm);
-      const list = res?.data?.content || res?.content || res?.data || res;
+      const list = res?.content || [];
       setCategories(Array.isArray(list) ? list : []);
     } catch (e) {
       console.error(e);
@@ -58,14 +59,14 @@ export default function ManageCategories() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadCategories();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [loadCategories]);
 
   const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 

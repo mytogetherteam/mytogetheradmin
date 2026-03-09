@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X, Loader2, Trash2, Plus, GripVertical } from "lucide-react";
+import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService } from "@/services/menuService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop } from "@/services/shopService";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -26,7 +26,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { OptionGroup, Variant, Option } from "@/services/menuService";
+import { OptionGroup, Variant, Option, MenuCategory, MenuSubCategory } from "@/services/menuService";
 
 
 export default function CreateMenuItem() {
@@ -66,9 +66,9 @@ export default function CreateMenuItem() {
     const [displayOrder, setDisplayOrder] = useState<string>("1");
 
     // Data for dropdowns
-    const [shops, setShops] = useState<any[]>([]);
-    const [categories, setCategories] = useState<any[]>([]);
-    const [subCategories, setSubCategories] = useState<any[]>([]);
+    const [shops, setShops] = useState<Shop[]>([]);
+    const [categories, setCategories] = useState<MenuCategory[]>([]);
+    const [subCategories, setSubCategories] = useState<MenuSubCategory[]>([]);
     const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
     const [variants, setVariants] = useState<Variant[]>([]);
 
@@ -83,96 +83,34 @@ export default function CreateMenuItem() {
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
 
-    useEffect(() => {
-        if (!isEditMode) {
-            const generatedSlug = (nameEn || "")
-                .toLowerCase()
-                .trim()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-');
-            setSlug(generatedSlug);
-        }
-    }, [nameEn, isEditMode]);
-
-    useEffect(() => {
-        loadShops();
-        loadCategories();
-        if (isEditMode && id) {
-            loadItem(parseInt(id));
-        } else {
-            // Reset form for create mode
-            setNameMm("");
-            setNameTh("");
-            setNameEn("");
-            setSlug("");
-            setDescription("");
-            setDescriptionMm("");
-            setDescriptionTh("");
-            setDescriptionEn("");
-            setPrice("");
-            setOriginalPrice("");
-            setDiscountAmount("");
-            setDiscountPercentage("");
-            setCurrency("MMK");
-            setShopId("");
-            setCategoryId("");
-            setSubCategoryId("");
-            setIsVegetarian(false);
-            setIsSpicy(false);
-
-            setIsAvailable(true);
-            setIsCombo(false);
-            setIsPopular(false);
-            setDisplayOrder("0");
-            setImageFile(null);
-            setImagePreview(null);
-            setExistingImage(null);
-            setExistingGalleryImages([]);
-            setGalleryFiles([]);
-            setGalleryPreviews([]);
-            setOptionGroups([]);
-            setVariants([]);
-        }
-    }, [id, isEditMode]);
-
-    useEffect(() => {
-        if (categoryId) {
-            loadSubCategories(parseInt(categoryId));
-        } else {
-            setSubCategories([]);
-            setSubCategoryId("");
-        }
-    }, [categoryId]);
-
-    const loadShops = async () => {
+    const loadShops = useCallback(async () => {
         try {
             const res = await ShopService.getAllShops(0, 100);
             setShops(res.content || []);
         } catch (e) {
             console.error(e);
         }
-    };
+    }, []);
 
-    const loadCategories = async () => {
+    const loadCategories = useCallback(async () => {
         try {
             const res = await ShopService.getAdminCategories(0, 100);
-            setCategories(res.content || res || []);
+            setCategories(res.content || []);
         } catch (e) {
             console.error(e);
         }
-    };
+    }, []);
 
-    const loadSubCategories = async (catId: number) => {
+    const loadSubCategories = useCallback(async (catId: number) => {
         try {
             const res = await menuService.getMenuSubCategories(catId);
             setSubCategories(res || []);
         } catch (e) {
             console.error(e);
         }
-    };
+    }, []);
 
-    const loadItem = async (itemId: number) => {
+    const loadItem = useCallback(async (itemId: number) => {
         setLoading(true);
         try {
             const item = await menuService.getMenuItem(itemId);
@@ -215,7 +153,69 @@ export default function CreateMenuItem() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!isEditMode) {
+            const generatedSlug = (nameEn || "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-');
+            setSlug(generatedSlug);
+        }
+    }, [nameEn, isEditMode]);
+
+    useEffect(() => {
+        loadShops();
+        loadCategories();
+        if (isEditMode && id) {
+            loadItem(parseInt(id));
+        } else {
+            // Reset form for create mode
+            setNameMm("");
+            setNameTh("");
+            setNameEn("");
+            setSlug("");
+            setDescription("");
+            setDescriptionMm("");
+            setDescriptionTh("");
+            setDescriptionEn("");
+            setPrice("");
+            setOriginalPrice("");
+            setDiscountAmount("");
+            setDiscountPercentage("");
+            setCurrency("MMK");
+            setShopId("");
+            setCategoryId("");
+            setSubCategoryId("");
+            setIsVegetarian(false);
+            setIsSpicy(false);
+
+            setIsAvailable(true);
+            setIsCombo(false);
+            setIsPopular(false);
+            setDisplayOrder("1");
+            setImageFile(null);
+            setImagePreview(null);
+            setExistingImage(null);
+            setExistingGalleryImages([]);
+            setGalleryFiles([]);
+            setGalleryPreviews([]);
+            setOptionGroups([]);
+            setVariants([]);
+        }
+    }, [id, isEditMode, loadShops, loadCategories, loadItem]);
+
+    useEffect(() => {
+        if (categoryId) {
+            loadSubCategories(parseInt(categoryId));
+        } else {
+            setSubCategories([]);
+            setSubCategoryId("");
+        }
+    }, [categoryId, loadSubCategories]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -259,7 +259,7 @@ export default function CreateMenuItem() {
     };
 
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-        let rawValue = e.target.value.replace(/,/g, "");
+        const rawValue = e.target.value.replace(/,/g, "");
         if (rawValue === "") {
             setter("");
             return;
@@ -273,7 +273,6 @@ export default function CreateMenuItem() {
         }
     };
 
-    // Option Groups Helpers
     const addOptionGroup = () => {
         setOptionGroups([...optionGroups, {
             nameEn: "",
@@ -312,7 +311,6 @@ export default function CreateMenuItem() {
         setOptionGroups(newGroups);
     };
 
-    // Variants Helpers
     const addVariant = () => {
         setVariants([...variants, { nameEn: "", price: 0, isAvailable: true }]);
     };
@@ -516,30 +514,17 @@ export default function CreateMenuItem() {
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Pricing & Details</h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* Moved Sub Category up to Category row */}
                                     <div className="space-y-2">
                                         <Label>Display Order</Label>
-                                        <div className="relative group">
-                                            <Input
-                                                type="text"
-                                                value={displayOrder}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val);
-                                                }}
-                                                placeholder="1"
-                                                className="pr-8"
-                                            />
-                                            {displayOrder !== "" && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setDisplayOrder("1")}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            )}
-                                        </div>
+                                        <Input
+                                            type="text"
+                                            value={displayOrder}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val);
+                                            }}
+                                            placeholder="1"
+                                        />
                                     </div>
                                     <div className="space-y-2 col-span-2">
                                         <Label>Currency</Label>
@@ -618,13 +603,10 @@ export default function CreateMenuItem() {
                                         <Switch checked={isPopular} onCheckedChange={setIsPopular} id="popular" />
                                         <Label htmlFor="popular" className="font-medium cursor-pointer">Popular Item</Label>
                                     </div>
-
-
                                 </div>
                             </div>
                         </div>
 
-                        {/* Advanced Configuration: Option Groups & Variants */}
                         <div className="space-y-6 pt-6 border-t font-sans">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-bold">Advanced Customization</h3>
@@ -800,52 +782,52 @@ export default function CreateMenuItem() {
                                             No variants added.
                                         </div>
                                     ) : (
-                                        <div className="space-y-2">
-                                            {variants.map((v, vIdx) => (
-                                                <div key={vIdx} className="flex flex-wrap items-center gap-3 p-3 bg-white border rounded-lg shadow-xs group/v">
-                                                    <GripVertical className="h-4 w-4 text-muted-foreground/30" />
+                                        <div className="space-y-4">
+                                            {variants.map((variant, vIdx) => (
+                                                <div key={vIdx} className="flex flex-wrap items-center gap-2 bg-white border p-3 rounded-xl shadow-sm relative group/var">
                                                     <Input
-                                                        className="flex-1 min-w-[150px] h-9"
-                                                        placeholder="Name (EN)"
-                                                        value={v.nameEn}
+                                                        className="flex-1 min-w-[140px]"
+                                                        placeholder="Variant Name (EN)"
+                                                        value={variant.nameEn}
                                                         onChange={e => updateVariant(vIdx, { nameEn: e.target.value })}
                                                     />
                                                     <Input
-                                                        className="flex-1 min-w-[150px] h-9"
-                                                        placeholder="Name (MM)"
-                                                        value={v.nameMm}
+                                                        className="flex-1 min-w-[140px]"
+                                                        placeholder="Variant Name (MM)"
+                                                        value={variant.nameMm}
                                                         onChange={e => updateVariant(vIdx, { nameMm: e.target.value })}
                                                     />
                                                     <Input
-                                                        className="flex-1 min-w-[150px] h-9"
-                                                        placeholder="Name (TH)"
-                                                        value={v.nameTh}
+                                                        className="flex-1 min-w-[140px]"
+                                                        placeholder="Variant Name (TH)"
+                                                        value={variant.nameTh}
                                                         onChange={e => updateVariant(vIdx, { nameTh: e.target.value })}
                                                     />
-                                                    <div className="flex items-center gap-2 w-32">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground shrink-0">Price</Label>
+                                                    <div className="flex items-center gap-1 w-32">
+                                                        <span className="text-sm font-medium">Price:</span>
                                                         <Input
                                                             type="number"
-                                                            className="h-9"
                                                             placeholder="0"
-                                                            value={v.price}
+                                                            value={variant.price}
                                                             onChange={e => updateVariant(vIdx, { price: parseFloat(e.target.value) || 0 })}
                                                         />
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 mx-2">
                                                         <Switch
-                                                            checked={v.isAvailable}
+                                                            checked={variant.isAvailable}
                                                             onCheckedChange={val => updateVariant(vIdx, { isAvailable: val })}
+                                                            id={`var-avail-${vIdx}`}
                                                         />
+                                                        <Label htmlFor={`var-avail-${vIdx}`} className="text-xs cursor-pointer">Available</Label>
                                                     </div>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                        className="text-muted-foreground hover:text-destructive"
                                                         onClick={() => removeVariant(vIdx)}
                                                     >
-                                                        <X className="h-4 w-4" />
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             ))}
@@ -855,130 +837,94 @@ export default function CreateMenuItem() {
                             </Card>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                            {/* Main Image */}
-                            <div className="space-y-2">
-                                <Label>Main Image</Label>
-                                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={handleImageChange}
-                                    />
-                                    <div className="text-center space-y-2 pointer-events-none">
-                                        <div className="flex justify-center">
-                                            <Upload className="h-10 w-10 text-muted-foreground" />
-                                        </div>
-                                        <div className="text-sm font-medium">Upload Main Image</div>
-                                        <div className="text-xs text-muted-foreground">PNG, JPG or WebP</div>
-                                    </div>
-                                </div>
-                                {(imagePreview || existingImage) && (
-                                    <div className="relative mt-4 aspect-video rounded-md overflow-hidden border group w-full max-w-xs">
-                                        <img src={imagePreview || existingImage!} className="w-full h-full object-cover" alt="Main" />
-                                        <div className="absolute top-2 right-2 z-20">
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                className="h-8 w-8 shadow-sm"
-                                                onClick={removeImage}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
 
-                            {/* Gallery Photos */}
-                            <div className="space-y-2">
-                                <Label>Gallery Photos</Label>
-                                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={handleGalleryChange}
-                                    />
-                                    <div className="text-center space-y-2 pointer-events-none">
-                                        <div className="flex justify-center">
-                                            <Upload className="h-10 w-10 text-muted-foreground" />
-                                        </div>
-                                        <div className="text-sm font-medium">Upload Gallery Photos</div>
-                                        <div className="text-xs text-muted-foreground">Multiple allowed</div>
+
+                        {/* Images Section */}
+                        <div className="space-y-6 pt-6 border-t font-sans">
+                            <h3 className="text-xl font-bold">Media & Gallery</h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Main Image */}
+                                <div className="space-y-4">
+                                    <Label className="text-base">Main Thumbnail Photo</Label>
+                                    <div className="relative group aspect-square max-w-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all overflow-hidden">
+                                        {imagePreview || existingImage ? (
+                                            <>
+                                                <img src={imagePreview || existingImage || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <Button type="button" variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={removeImage}>
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-10 w-10 text-muted-foreground mb-3 group-hover:scale-110 transition-transform" />
+                                                <span className="text-sm font-medium text-muted-foreground px-4 text-center">Click to upload main image</span>
+                                                <Input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} />
+                                            </>
+                                        )}
                                     </div>
+                                    <p className="text-[11px] text-muted-foreground">This image will be used as the primary display photo in search results and menu listings.</p>
                                 </div>
 
-                                {(existingGalleryImages.length > 0 || galleryPreviews.length > 0) && (
-                                    <div className="grid grid-cols-3 gap-2 mt-4">
-                                        {existingGalleryImages.map((src, idx) => (
-                                            <div key={`existing-${idx}`} className="relative aspect-square rounded-md overflow-hidden border">
-                                                <img src={src} className="w-full h-full object-cover" alt="Gallery Existing" />
-                                                <div className="absolute top-1 right-1 z-20">
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        className="h-6 w-6 rounded-full shadow-sm"
-                                                        onClick={() => removeExistingGalleryImage(src)}
-                                                    >
-                                                        <X className="h-3 w-3" />
+                                {/* Gallery Photos */}
+                                <div className="space-y-4">
+                                    <Label className="text-base">Gallery Photos (Optional)</Label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {existingGalleryImages.map((url, idx) => (
+                                            <div key={`existing-${idx}`} className="relative group aspect-square border rounded-xl overflow-hidden bg-muted">
+                                                <img src={url} alt="Gallery" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => removeExistingGalleryImage(url)}>
+                                                        <X className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>
                                         ))}
-                                        {galleryPreviews.map((src, idx) => (
-                                            <div key={`new-${idx}`} className="relative aspect-square rounded-md overflow-hidden border">
-                                                <img src={src} className="w-full h-full object-cover" alt="Gallery Preview" />
-                                                <div className="absolute top-1 right-1 z-20">
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        className="h-6 w-6 rounded-full shadow-sm"
-                                                        onClick={() => removeGalleryImage(idx)}
-                                                    >
-                                                        <X className="h-3 w-3" />
+
+                                        {galleryPreviews.map((url, idx) => (
+                                            <div key={`new-${idx}`} className="relative group aspect-square border rounded-xl overflow-hidden bg-muted">
+                                                <img src={url} alt="Gallery Preview" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => removeGalleryImage(idx)}>
+                                                        <X className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>
                                         ))}
+
+                                        <div className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer">
+                                            <Plus className="h-6 w-6 text-muted-foreground" />
+                                            <Input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleGalleryChange} />
+                                        </div>
                                     </div>
-                                )}
+                                    <p className="text-[11px] text-muted-foreground">Add more photos to showcase the item from different angles or its preparation.</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center pt-6 border-t">
-                            {isEditMode && (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() => setDeleteDialogOpen(true)}
-                                    disabled={submitting || deleting}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Item
-                                </Button>
-                            )}
-                            <div className="flex gap-3 ml-auto">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => navigate("/menus/items/manage")}
-                                    disabled={submitting}
-                                >
+                        <div className="flex flex-wrap items-center justify-between gap-4 pt-8 border-t px-2">
+                            <div className="flex flex-col">
+                                {isEditMode && (
+                                    <Button type="button" variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 h-11 px-6 rounded-xl" onClick={() => setDeleteDialogOpen(true)} disabled={submitting}>
+                                        <Trash2 className="h-4 w-4" /> Delete Item
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <Button type="button" variant="outline" className="flex-1 sm:flex-initial h-11 px-8 rounded-xl font-medium" onClick={() => navigate("/menus/items/manage")} disabled={submitting}>
                                     Cancel
                                 </Button>
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    disabled={!nameEn || !price || !shopId || !categoryId || submitting}
-                                    className={(!nameEn || !price || !shopId || !categoryId || submitting) ? "bg-gray-400 cursor-not-allowed" : ""}
-                                >
-                                    {submitting ? "Saving..." : isEditMode ? "Update Item" : "Create Item"}
+                                <Button type="submit" className="flex-1 sm:flex-initial h-11 px-10 rounded-xl font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" disabled={submitting}>
+                                    {submitting ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> {isEditMode ? "Saving..." : "Creating..."}
+                                        </div>
+                                    ) : (
+                                        isEditMode ? "Save Changes" : "Create Item"
+                                    )}
                                 </Button>
                             </div>
                         </div>
@@ -987,19 +933,20 @@ export default function CreateMenuItem() {
             </Card>
 
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Delete Menu Item</DialogTitle>
+                        <DialogTitle className="text-destructive">Delete Menu Item</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <strong>{nameEn}</strong>? This action cannot be undone.
+                            Are you sure you want to delete this menu item? This action cannot be undone and will remove it from its shop's menu.
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
+                    <DialogFooter className="gap-2 sm:gap-0">
                         <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
-                            Cancel
+                            No, keep it
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting ? "Deleting..." : "Delete Item"}
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Yes, delete item
                         </Button>
                     </DialogFooter>
                 </DialogContent>
