@@ -12,87 +12,83 @@ export interface UserProfile {
   spicinessPreferenceMm?: string;
 }
 
+export interface UserListItem {
+  id: number | string;
+  username: string;
+  email: string;
+  fullName: string;
+  role: string;
+  active: boolean;
+  createdAt: string;
+  [key: string]: unknown;
+}
+
+export interface UserDetail extends UserListItem {
+  phone?: string;
+  [key: string]: unknown;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface UserLookup {
+  id: number | string;
+  username: string;
+  fullName: string;
+  role?: string;
+}
+
 // Redundant ProfileResponse removed
 
 export const userService = {
-  /**
-   * Get user profile
-   */
   getProfile: async (): Promise<UserProfile> => {
-    return apiClient.get<UserProfile>(
-      config.endpoints.user.profile
-    );
+    return apiClient.get<UserProfile>(config.endpoints.user.profile);
   },
 
-  /**
-   * Update user profile
-   */
   updateProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
-    return apiClient.put<UserProfile>(
-      config.endpoints.user.profile,
-      data
-    );
+    return apiClient.put<UserProfile>(config.endpoints.user.profile, data);
   },
 
-  /**
-   * Get all users (Admin)
-   */
-  getAllUsers: async (page = 0, size = 10, search = ""): Promise<any> => {
+  getAllUsers: async (page = 0, size = 10, search = ""): Promise<PageResponse<UserListItem>> => {
     const endpoint = `${config.endpoints.admin.users.list}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
-    return apiClient.get<any>(endpoint);
+    return apiClient.get<PageResponse<UserListItem>>(endpoint);
   },
 
-  /**
-   * Toggle User Status
-   */
-  toggleUserStatus: async (id: string, active: boolean): Promise<any> => {
-    return apiClient.put<any>(`${config.endpoints.admin.users.status(id)}?active=${active}`, {});
+  toggleUserStatus: async (id: string, active: boolean): Promise<UserListItem> => {
+    return apiClient.put<UserListItem>(`${config.endpoints.admin.users.status(id)}?active=${active}`, {});
   },
 
-  /**
-   * Update User Role
-   */
-  updateUserRole: async (id: string, role: string): Promise<any> => {
-    return apiClient.put<any>(`${config.endpoints.admin.users.role(id)}?role=${role}`, {});
+  updateUserRole: async (id: string, role: string): Promise<UserListItem> => {
+    return apiClient.put<UserListItem>(`${config.endpoints.admin.users.role(id)}?role=${role}`, {});
   },
 
-  /**
-   * Update admin profile
-   */
-  updateAdminProfile: async (data: { username: string; fullName: string }): Promise<any> => {
-    return apiClient.put<any>(config.endpoints.user.profile, data);
+  updateAdminProfile: async (data: { username: string; fullName: string }): Promise<UserProfile> => {
+    return apiClient.put<UserProfile>(config.endpoints.user.profile, data);
   },
 
-  /**
-   * Get user by ID
-   */
-  getUserById: async (id: string | number): Promise<any> => {
-    return apiClient.get<any>(config.endpoints.admin.users.detail(id));
+  getUserById: async (id: string | number): Promise<UserDetail> => {
+    return apiClient.get<UserDetail>(config.endpoints.admin.users.detail(id));
   },
 
-  /**
-   * Get user order history
-   */
-  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<any> => {
+  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<PageResponse<Record<string, unknown>>> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    return apiClient.get<any>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
+    return apiClient.get<PageResponse<Record<string, unknown>>>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
   },
 
-  /**
-   * Get user activity log
-   */
-  getUserActivity: async (id: string | number, page = 0, size = 10): Promise<any> => {
+  getUserActivity: async (id: string | number, page = 0, size = 10): Promise<PageResponse<Record<string, unknown>>> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
-    return apiClient.get<any>(`${config.endpoints.admin.users.activity(id)}?${params.toString()}`);
+    return apiClient.get<PageResponse<Record<string, unknown>>>(`${config.endpoints.admin.users.activity(id)}?${params.toString()}`);
   },
 
-  /**
-   * Lookup users (lightweight search for dropdowns)
-   */
-  lookupUsers: async (search = ''): Promise<any[]> => {
+  lookupUsers: async (search = ''): Promise<UserLookup[]> => {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<any[]>(`${config.endpoints.admin.users.lookup}${query}`);
+    return apiClient.get<UserLookup[]>(`${config.endpoints.admin.users.lookup}${query}`);
   },
 };

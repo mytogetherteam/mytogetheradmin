@@ -135,7 +135,7 @@ export const menuService = {
     // --- Menu SubCategories ---
 
     getMenuSubCategories: async (categoryId: number): Promise<MenuSubCategory[]> => {
-        return apiClient.get<any>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
+        return apiClient.get<MenuSubCategory[]>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
     },
 
     getMenuSubCategory: async (id: number): Promise<MenuSubCategory> => {

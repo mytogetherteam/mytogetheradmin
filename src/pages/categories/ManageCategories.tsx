@@ -50,7 +50,7 @@ export default function ManageCategories() {
     setLoading(true);
     try {
       const res = await ShopService.getAdminCategories(0, 200, searchTerm);
-      const list = res?.data?.content || res?.content || res?.data || res;
+      const list = res?.content || [];
       setCategories(Array.isArray(list) ? list : []);
     } catch (e) {
       console.error(e);

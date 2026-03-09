@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { marketingService, Banner, BannerPlacement, CreateBannerRequest } from "@/services/marketingService";
-import { ShopService } from "@/services/shopService";
+import { ShopService, Shop } from "@/services/shopService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,23 @@ function BannerCard({ banner, onToggle, onDelete }: { banner: Banner; onToggle: 
 }
 
 // ── Shop Detail Sheet ─────────────────────────────────────────────────────────
+const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
+    <div className="flex justify-between items-start gap-4 py-2 border-b border-muted/40 last:border-0">
+        <span className="text-xs font-bold uppercase text-muted-foreground shrink-0">{label}</span>
+        <span className="text-sm text-right">{value ?? "N/A"}</span>
+    </div>
+);
+
+const BoolBadge = ({ value, label }: { value?: boolean; label: string }) => (
+    <div className="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/30 border border-muted/40">
+        <span className="text-[10px] text-muted-foreground uppercase font-bold">{label}</span>
+        {value
+            ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 text-[10px] hover:bg-green-500/10"><CheckCircle2 className="h-3 w-3" /> Yes</Badge>
+            : <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px]"><XCircle className="h-3 w-3" /> No</Badge>
+        }
+    </div>
+);
+
 function ShopDetailSheet({
     shop,
     open,
@@ -87,31 +104,14 @@ function ShopDetailSheet({
     onBoost,
     featuringId,
 }: {
-    shop: any | null;
+    shop: Shop | null;
     open: boolean;
     onClose: () => void;
-    onToggleFeatured: (shop: any) => void;
-    onBoost: (shop: any) => void;
+    onToggleFeatured: (shop: Shop) => void;
+    onBoost: (shop: Shop) => void;
     featuringId: number | null;
 }) {
     if (!shop) return null;
-
-    const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
-        <div className="flex justify-between items-start gap-4 py-2 border-b border-muted/40 last:border-0">
-            <span className="text-xs font-bold uppercase text-muted-foreground shrink-0">{label}</span>
-            <span className="text-sm text-right">{value ?? "N/A"}</span>
-        </div>
-    );
-
-    const BoolBadge = ({ value, label }: { value?: boolean; label: string }) => (
-        <div className="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/30 border border-muted/40">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold">{label}</span>
-            {value
-                ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20 gap-1 text-[10px] hover:bg-green-500/10"><CheckCircle2 className="h-3 w-3" /> Yes</Badge>
-                : <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px]"><XCircle className="h-3 w-3" /> No</Badge>
-            }
-        </div>
-    );
 
     return (
         <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -258,17 +258,17 @@ export default function BannerManagement() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     // Featured Shops state
-    const [shops, setShops] = useState<any[]>([]);
+    const [shops, setShops] = useState<Shop[]>([]);
     const [shopsLoading, setShopsLoading] = useState(false);
     const [shopSearch, setShopSearch] = useState("");
     const [featuringId, setFeaturingId] = useState<number | null>(null);
 
     // Detail Sheet
-    const [selectedShop, setSelectedShop] = useState<any | null>(null);
+    const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
     const [sheetOpen, setSheetOpen] = useState(false);
 
     // Boost Dialog
-    const [boostShop, setBoostShop] = useState<any | null>(null);
+    const [boostShop, setBoostShop] = useState<Shop | null>(null);
     const [boostScore, setBoostScore] = useState("10");
     const [boosting, setBoosting] = useState(false);
 
@@ -330,7 +330,7 @@ export default function BannerManagement() {
         setSaving(true);
         try {
             let data: CreateBannerRequest | FormData;
-            
+
             if (imageFile) {
                 const formData = new FormData();
                 formData.append("title", form.title);
@@ -370,13 +370,13 @@ export default function BannerManagement() {
     };
 
     // Featured actions
-    const handleToggleFeatured = async (shop: any) => {
+    const handleToggleFeatured = async (shop: Shop) => {
         setFeaturingId(shop.id);
         try {
             const newVal = !shop.isFeatured;
             await marketingService.setFeatured(String(shop.id), newVal);
             setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isFeatured: newVal } : s));
-            if (selectedShop?.id === shop.id) setSelectedShop((s: any) => ({ ...s, isFeatured: newVal }));
+            if (selectedShop?.id === shop.id) setSelectedShop((s) => s ? ({ ...s, isFeatured: newVal }) : null);
             toast.success(`Shop ${newVal ? "featured ⭐" : "unfeatured"}`);
         } catch {
             toast.error("Failed to update featured status");
@@ -385,7 +385,7 @@ export default function BannerManagement() {
         }
     };
 
-    const handleOpenBoost = (shop: any) => {
+    const handleOpenBoost = (shop: Shop) => {
         setBoostShop(shop);
         setBoostScore("10");
     };

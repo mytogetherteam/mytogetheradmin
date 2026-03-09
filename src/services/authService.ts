@@ -24,7 +24,7 @@ export interface LoginResponse {
   role: string;
 }
 
-export interface RegisterResponse extends LoginResponse {}
+export type RegisterResponse = LoginResponse;
 
 export interface UserData {
   id: number;
@@ -36,17 +36,9 @@ export interface UserData {
 
 export const authService = {
   /**
-   * Login user with username/email and password
+   * Helper to store authentication data
    */
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    console.log('Login attempt to:', config.endpoints.auth.login);
-    console.log('API Base URL:', config.apiBaseUrl);
-    const response = await apiClient.post<LoginResponse>(
-      config.endpoints.auth.login,
-      credentials
-    );
-
-    // Store token and user data
+  saveAuthData: (response: LoginResponse): void => {
     localStorage.setItem(config.storage.tokenKey, response.token);
     localStorage.setItem(config.storage.refreshTokenKey, response.refreshToken);
     localStorage.setItem(
@@ -59,6 +51,21 @@ export const authService = {
         role: response.role,
       })
     );
+  },
+
+  /**
+   * Login user with username/email and password
+   */
+  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    console.log('Login attempt to:', config.endpoints.auth.login);
+    console.log('API Base URL:', config.apiBaseUrl);
+    const response = await apiClient.post<LoginResponse>(
+      config.endpoints.auth.login,
+      credentials
+    );
+
+    // Store token and user data
+    authService.saveAuthData(response);
 
     return response;
   },
@@ -73,18 +80,7 @@ export const authService = {
     );
 
     // Store token and user data after successful registration
-    localStorage.setItem(config.storage.tokenKey, response.token);
-    localStorage.setItem(config.storage.refreshTokenKey, response.refreshToken);
-    localStorage.setItem(
-      config.storage.userKey,
-      JSON.stringify({
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        fullName: response.fullName,
-        role: response.role,
-      })
-    );
+    authService.saveAuthData(response);
 
     return response;
   },

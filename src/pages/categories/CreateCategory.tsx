@@ -88,8 +88,7 @@ export default function CreateCategory() {
   const loadCategory = async (catId: number) => {
     setLoading(true);
     try {
-      const res = await ShopService.getCategoryById(catId);
-      const cat = res?.data || res;
+      const cat = await ShopService.getCategoryById(catId);
       setName(cat.name || "");
       setNameMm(cat.nameMm || "");
       setNameTh(cat.nameTh || "");
@@ -97,7 +96,7 @@ export default function CreateCategory() {
       setDisplayOrder(cat.displayOrder ?? 1);
       setIsActive(cat.isActive !== false);
       if (cat.imageUrl || cat.image || cat.icon) {
-        setExistingImage(cat.imageUrl || cat.image || cat.icon);
+        setExistingImage(cat.imageUrl || cat.image || cat.icon || null);
       }
     } catch (error) {
       console.error(error);

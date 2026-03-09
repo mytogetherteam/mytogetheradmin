@@ -25,6 +25,8 @@ export interface PageableResponse<T> {
   size: number;
   content: T[];
   number: number;
+  totalElements: number;
+  totalPages: number;
   sort: {
     sorted: boolean;
     unsorted: boolean;
@@ -85,6 +87,13 @@ export interface Shop {
   primaryPhotoUrl?: string;
   ratingAvg?: number;
   ratingCount?: number;
+  isFeatured?: boolean;
+  shopCategory?: ShopCategoryDTO;
+  shopSubCategory?: ShopSubCategoryDTO;
+  latitude?: number;
+  longitude?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DistrictDTO {
@@ -206,17 +215,21 @@ export interface MenuItem {
   isSpicy?: boolean;
   isCombo?: boolean;
   displayOrder?: number;
-  optionGroups?: any[];
-  variants?: any[];
+  optionGroups?: unknown[];
+  variants?: unknown[];
 }
 
 export interface MenuCategory {
   id: number;
   name: string;
   nameMm?: string;
+  nameTh?: string;
   nameEn?: string;
   displayOrder?: number;
   isActive?: boolean;
+  imageUrl?: string;
+  image?: string;
+  icon?: string;
   items?: MenuItem[];
 }
 
@@ -326,7 +339,7 @@ export const ShopService = {
       );
       // We assume it returns an array of categories directly
       // If it returns a paginated response, handle `.content`, though setup endpoints usually return raw arrays
-      return Array.isArray(response) ? response : (response as any).content || [];
+      return Array.isArray(response) ? response : (response as { content?: ShopCategoryDTO[] }).content || [];
     } catch (e) {
       return [];
     }
@@ -341,7 +354,7 @@ export const ShopService = {
       const response = await apiClient.get<ShopSubCategoryDTO[]>(
         config.endpoints.admin.payment.shopSubCategories(categoryId)
       );
-      return Array.isArray(response) ? response : (response as any).content || [];
+      return Array.isArray(response) ? response : (response as { content?: ShopSubCategoryDTO[] }).content || [];
     } catch (e) {
       return [];
     }
@@ -374,25 +387,25 @@ export const ShopService = {
   /**
    * Create a category
    */
-  createCategory: async (shopId: number, categoryData: FormData): Promise<any> => {
+  createCategory: async (shopId: number, categoryData: FormData): Promise<MenuCategory> => {
     const endpoint = config.endpoints.shops.categories.shopCategories(shopId);
-    return apiClient.post<any>(endpoint, categoryData);
+    return apiClient.post<MenuCategory>(endpoint, categoryData);
   },
 
   /**
    * Update a category
    */
-  updateCategory: async (id: number, categoryData: FormData): Promise<any> => {
+  updateCategory: async (id: number, categoryData: FormData): Promise<MenuCategory> => {
     const endpoint = config.endpoints.shops.categories.detail(id);
-    return apiClient.put<any>(endpoint, categoryData);
+    return apiClient.put<MenuCategory>(endpoint, categoryData);
   },
 
   /**
    * Get category by ID
    */
-  getCategoryById: async (id: number): Promise<any> => {
+  getCategoryById: async (id: number): Promise<MenuCategory> => {
     const endpoint = config.endpoints.shops.categories.detail(id);
-    return apiClient.get<any>(endpoint);
+    return apiClient.get<MenuCategory>(endpoint);
   },
   
   /**
@@ -406,11 +419,11 @@ export const ShopService = {
   /**
    * Get all categories (Admin) - optionally filter by shopId
    */
-  getAdminCategories: async (page = 0, size = 100, search = "", shopId?: number): Promise<any> => {
+  getAdminCategories: async (page = 0, size = 100, search = "", shopId?: number): Promise<PageableResponse<MenuCategory>> => {
     let endpoint = `/api/admin/categories?page=${page}&size=${size}`;
     if (search) endpoint += `&search=${encodeURIComponent(search)}`;
     if (shopId !== undefined) endpoint += `&shopId=${shopId}`;
-    return apiClient.get<any>(endpoint);
+    return apiClient.get<PageableResponse<MenuCategory>>(endpoint);
   },
 
   /**
@@ -443,49 +456,49 @@ export const ShopService = {
    * Get shops pending vetting (unverified shops)
    * GET /api/admin/shops/pending-vetting
    */
-  getPendingVettingShops: async (page = 0, size = 20): Promise<any> => {
-    return apiClient.get<any>(`${config.endpoints.shops.pending}?page=${page}&size=${size}`);
+  getPendingVettingShops: async (page = 0, size = 20): Promise<PageableResponse<Shop>> => {
+    return apiClient.get<PageableResponse<Shop>>(`${config.endpoints.shops.pending}?page=${page}&size=${size}`);
   },
 
   /**
    * Get Shop Profile
    */
-  getShopProfile: async (): Promise<any> => {
-    return apiClient.get<any>(config.endpoints.shops.profile.base);
+  getShopProfile: async (): Promise<ShopDetail> => {
+    return apiClient.get<ShopDetail>(config.endpoints.shops.profile.base);
   },
 
   /**
    * Update Shop Profile
    */
-  updateShopProfile: async (profileData: FormData | any): Promise<any> => {
-    return apiClient.put<any>(config.endpoints.shops.profile.base, profileData);
+  updateShopProfile: async (profileData: FormData | Record<string, unknown>): Promise<ShopDetail> => {
+    return apiClient.put<ShopDetail>(config.endpoints.shops.profile.base, profileData);
   },
 
   /**
    * Toggle Shop Open/Closed Status
    */
-  toggleShopOpenStatus: async (isOpen: boolean, shopId?: number): Promise<any> => {
+  toggleShopOpenStatus: async (isOpen: boolean, shopId?: number): Promise<ApiResponse<unknown>> => {
     const baseUrl = shopId 
         ? `/api/admin/shops/${shopId}/open-status` 
         : config.endpoints.shops.profile.status;
-    return apiClient.put<any>(`${baseUrl}?isOpen=${isOpen}`);
+    return apiClient.put<ApiResponse<unknown>>(`${baseUrl}?isOpen=${isOpen}`);
   },
 
   /**
    * Update Operating Hours
    */
-  updateOperatingHours: async (hours: OperatingHourRequest[]): Promise<any> => {
-    return apiClient.put<any>(config.endpoints.shops.profile.operatingHours, hours);
+  updateOperatingHours: async (hours: OperatingHourRequest[]): Promise<ApiResponse<unknown>> => {
+    return apiClient.put<ApiResponse<unknown>>(config.endpoints.shops.profile.operatingHours, hours);
   },
 
   /**
    * Lookup shops (lightweight search for dropdowns)
    */
-  lookupShops: async (search = ''): Promise<any[]> => {
+  lookupShops: async (search = ''): Promise<Shop[]> => {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<any[]>(`${config.endpoints.shops.lookup}${query}`);
+    return apiClient.get<Shop[]>(`${config.endpoints.shops.lookup}${query}`);
   },
 
   /**

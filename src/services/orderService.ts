@@ -38,7 +38,7 @@ export interface Order {
   estimatedDeliveryTime?: string | null;
   isScheduled: boolean;
   scheduledDeliveryTime?: string | null;
-  deliveryAddress?: string | any | null;
+  deliveryAddress?: string | Record<string, unknown> | null;
   deliveryFee: number;
   displayDeliveryFee?: string | null;
   totalAmount: number;
