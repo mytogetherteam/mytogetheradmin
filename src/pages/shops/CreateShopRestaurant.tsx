@@ -424,18 +424,18 @@ export default function CreateShopRestaurant() {
 
             // Append Logo Photo
             if (logoFile) {
-                formData.append("logoPhoto", logoFile);
+                formData.append("logoPhoto", new Blob([logoFile], { type: "application/form-data" }), logoFile.name);
             }
 
             // Append Cover Photo
             if (coverFile) {
-                formData.append("coverPhoto", coverFile);
+                formData.append("coverPhoto", new Blob([coverFile], { type: "application/form-data" }), coverFile.name);
             }
 
             // Append Gallery Photos (only for create)
             if (!isEditMode) {
                 galleryFiles.forEach((file) => {
-                    formData.append("galleryPhotos", file);
+                    formData.append("galleryPhotos", new Blob([file], { type: "application/form-data" }), file.name);
                 });
             }
 

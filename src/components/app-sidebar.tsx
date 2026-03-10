@@ -181,6 +181,14 @@ export function AppSidebar() {
                                                 </Link>
                                             </SidebarMenuSubButton>
                                         </SidebarMenuSubItem>
+                                        <SidebarMenuSubItem>
+                                            <SidebarMenuSubButton asChild isActive={isActive("/import/activity-excel")}>
+                                                <Link to="/import/activity-excel">
+                                                    <FileSpreadsheet className={cn(isActive("/import/activity-excel") && "text-primary")} />
+                                                    <span>Import Activities (Excel)</span>
+                                                </Link>
+                                            </SidebarMenuSubButton>
+                                        </SidebarMenuSubItem>
                                     </SidebarMenuSub>
                                 </CollapsibleContent>
                             </SidebarMenuItem>

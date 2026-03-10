@@ -29,6 +29,7 @@ const ShopOperatingHours = lazy(() => import("@/pages/shops/ShopOperatingHours")
 
 // Import
 const ShopsExcelImport = lazy(() => import("@/pages/import/ShopsExcelImport"));
+const ActivityExcelImport = lazy(() => import("@/pages/import/ActivityExcelImport"));
 
 // Categories
 const CreateCategory = lazy(() => import("@/pages/categories/CreateCategory"));
@@ -139,6 +140,7 @@ function App() {
             <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
             <Route path="/shops/vetting" element={<VettingQueue />} />
             <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
+            <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
 
             {/* Categories */}
             <Route path="/categories/create" element={<CreateCategory />} />

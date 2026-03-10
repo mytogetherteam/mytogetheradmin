@@ -79,9 +79,7 @@ class MarketingService {
     return apiClient.delete<void>(config.endpoints.admin.marketing.banners.detail(id));
   }
 
-  async toggleBanner(id: string, isActive: boolean): Promise<Banner> {
-    return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.toggle(id), { isActive });
-  }
+
 
   async getFeaturedShops(): Promise<FeaturedShop[]> {
     return apiClient.get<FeaturedShop[]>(config.endpoints.admin.marketing.featuredShops);

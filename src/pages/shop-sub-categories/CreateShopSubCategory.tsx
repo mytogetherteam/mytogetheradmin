@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     Select,
@@ -44,13 +44,8 @@ export default function CreateShopSubCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
+    const [slug, setSlug] = useState("");
     const [isActive, setIsActive] = useState(true);
-
-    // Image state
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [existingImage, setExistingImage] = useState<string | null>(null);
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -88,35 +83,18 @@ export default function CreateShopSubCategory() {
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
             setNameEn(subCat.nameEn || "");
-            setDisplayOrder(subCat.displayOrder ?? 1);
+            setSlug(subCat.slug || "");
             setIsActive(subCat.isActive !== false);
-            setSelectedCategoryId(subCat.categoryId?.toString() || "");
-
-            if (subCat.imageUrl) {
-                setExistingImage(subCat.imageUrl);
+            if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
+                setIsActive(Boolean((subCat as Record<string, unknown>).active));
             }
+            setSelectedCategoryId(subCat.categoryId?.toString() || "");
         } catch (error) {
             console.error(error);
             toast.error("Failed to load sub-category");
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => setImagePreview(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const removeImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
-        setExistingImage(null);
     };
 
     const onSubmit = async (e: React.FormEvent) => {
@@ -128,22 +106,15 @@ export default function CreateShopSubCategory() {
 
         setSubmitting(true);
         try {
-            const formData = new FormData();
             const dataObj = {
-                name, nameMm, nameTh, nameEn, displayOrder, isActive
+                name, nameMm, nameTh, nameEn, slug, active: isActive
             };
 
-            formData.append("data", new Blob([JSON.stringify(dataObj)], { type: "application/json" }));
-
-            if (imageFile) {
-                formData.append("image", imageFile);
-            }
-
             if (isEditMode && id) {
-                await ShopCategoryService.updateShopSubCategory(parseInt(id), formData);
+                await ShopCategoryService.updateShopSubCategory(parseInt(id), dataObj);
                 toast.success("Sub-Category updated successfully");
             } else {
-                await ShopCategoryService.createShopSubCategory(parseInt(selectedCategoryId), formData);
+                await ShopCategoryService.createShopSubCategory(parseInt(selectedCategoryId), dataObj);
                 toast.success("Sub-Category created successfully");
             }
             navigate("/shop-sub-categories/manage");
@@ -231,16 +202,12 @@ export default function CreateShopSubCategory() {
                                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="displayOrder">Display Order</Label>
+                                <Label htmlFor="slug">Slug</Label>
                                 <Input
-                                    id="displayOrder"
-                                    type="text"
-                                    value={displayOrder}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
-                                    }}
-                                    placeholder="1"
+                                    id="slug"
+                                    value={slug}
+                                    onChange={(e) => setSlug(e.target.value)}
+                                    placeholder="e.g. fast-food"
                                 />
                             </div>
                         </div>
@@ -269,42 +236,6 @@ export default function CreateShopSubCategory() {
                             <Label htmlFor="isActive" className="cursor-pointer">Active Status</Label>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Sub-Category Image</Label>
-                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-40">
-                                <Input
-                                    type="file"
-                                    accept="image/*"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                    onChange={handleImageChange}
-                                />
-                                {!imagePreview && !existingImage ? (
-                                    <div className="text-center space-y-2 pointer-events-none">
-                                        <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-                                        <div className="text-sm font-medium">Click to upload image</div>
-                                    </div>
-                                ) : (
-                                    <div className="relative h-full aspect-square group">
-                                        <img src={imagePreview || existingImage || ""} alt="Preview" className="h-full w-full object-contain rounded" />
-                                        <div className="absolute top-1 right-1">
-                                            <Button
-                                                type="button"
-                                                size="icon"
-                                                variant="destructive"
-                                                className="h-6 w-6 rounded-full"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    e.preventDefault();
-                                                    removeImage();
-                                                }}
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
 
                         <div className="flex justify-between items-center pt-4 border-t">
                             {isEditMode && (

@@ -30,6 +30,7 @@ export default function CuisineForm() {
         nameEn: "",
         nameMm: "",
         nameTh: "",
+        slug: "",
         isActive: true,
         displayOrder: 1,
     });
@@ -79,6 +80,7 @@ export default function CuisineForm() {
             data.append("nameEn", formData.nameEn || "");
             data.append("nameMm", formData.nameMm || "");
             data.append("nameTh", formData.nameTh || "");
+            data.append("slug", formData.slug || "");
             data.append("isActive", String(formData.isActive));
             data.append("displayOrder", String(formData.displayOrder));
 
@@ -198,6 +200,15 @@ export default function CuisineForm() {
                                     placeholder="อาหารอิตาเลี่ยน"
                                     value={formData.nameTh}
                                     onChange={(e) => setFormData({ ...formData, nameTh: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="slug">Slug</Label>
+                                <Input
+                                    id="slug"
+                                    placeholder="e.g. italian"
+                                    value={formData.slug}
+                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                                 />
                             </div>
                         </div>

@@ -34,6 +34,23 @@ export interface UserData {
   role: string;
 }
 
+const decodeJwtExpiry = (token: string): number | null => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload) as { exp: number };
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
 export const authService = {
   /**
    * Helper to store authentication data
@@ -92,6 +109,9 @@ export const authService = {
     localStorage.removeItem(config.storage.tokenKey);
     localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   },
 
   /**
@@ -120,6 +140,12 @@ export const authService = {
    * Check if user is authenticated
    */
   isAuthenticated: (): boolean => {
-    return !!authService.getToken();
+    const token = authService.getToken();
+    if (!token) return false;
+    
+    const expiry = decodeJwtExpiry(token);
+    if (!expiry) return false;
+    
+    return Date.now() < expiry;
   },
 };

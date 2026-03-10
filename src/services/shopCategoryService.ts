@@ -7,6 +7,7 @@ export interface ShopCategoryDTO {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
+  slug?: string;
   imageUrl?: string;
   displayOrder: number;
   isActive: boolean;
@@ -19,6 +20,7 @@ export interface ShopSubCategoryDTO {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
+  slug?: string;
   imageUrl?: string;
   displayOrder: number;
   isActive: boolean;
@@ -30,6 +32,7 @@ export interface CreateShopCategoryRequest {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
+  slug?: string;
   displayOrder: number;
   isActive: boolean;
 }
@@ -39,8 +42,8 @@ export interface CreateShopSubCategoryRequest {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  displayOrder: number;
-  isActive: boolean;
+  slug?: string;
+  active: boolean;
 }
 
 export const ShopCategoryService = {
@@ -118,14 +121,14 @@ export const ShopCategoryService = {
   /**
    * Create a new shop sub-category
    */
-  createShopSubCategory: async (categoryId: number, data: FormData): Promise<ShopSubCategoryDTO> => {
+  createShopSubCategory: async (categoryId: number, data: CreateShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
     return apiClient.post<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategories(categoryId), data);
   },
 
   /**
    * Update a shop sub-category
    */
-  updateShopSubCategory: async (id: number, data: FormData): Promise<ShopSubCategoryDTO> => {
+  updateShopSubCategory: async (id: number, data: CreateShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
     return apiClient.put<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategory(id), data);
   },
 

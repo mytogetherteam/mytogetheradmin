@@ -122,4 +122,8 @@ export const userService = {
     const query = params.toString() ? `?${params.toString()}` : '';
     return apiClient.get<UserLookup[]>(`${config.endpoints.admin.users.lookup}${query}`);
   },
+
+  getShopOwners: async (page = 0, size = 1000): Promise<PageResponse<UserListItem>> => {
+    return apiClient.get<PageResponse<UserListItem>>(`${config.endpoints.admin.users.shopOwners}?page=${page}&size=${size}`);
+  },
 };
