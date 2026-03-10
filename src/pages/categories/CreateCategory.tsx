@@ -144,7 +144,7 @@ export default function CreateCategory() {
       formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
 
       if (imageFile) {
-        formData.append("image", imageFile);
+        formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
       }
 
       if (isEditMode && id) {

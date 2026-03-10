@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { moderationService, Report, ReportStatus, ReportType } from "@/services/moderationService";
+import { moderationService, UserShopReport } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +12,7 @@ import { ShieldAlert, Pencil } from "lucide-react";
 
 import { toast } from "sonner";
 import {
-    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -20,27 +20,19 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
-type UserShopReportStatus = "OPEN" | "PENDING" | "REVIEWED" | "INVESTIGATING" | "ACTION_TAKEN" | "DISMISSED" | "RESOLVED";
+type UserShopReportStatus = "OPEN" | "PENDING" | "REVIEWED" | "ACTION_TAKEN" | "DISMISSED" | "RESOLVED";
 
 const STATUS_COLORS: Record<string, string> = {
     OPEN: "bg-yellow-100 text-yellow-800",
     PENDING: "bg-orange-100 text-orange-800",
     REVIEWED: "bg-blue-100 text-blue-800",
-    INVESTIGATING: "bg-purple-100 text-purple-800",
     ACTION_TAKEN: "bg-indigo-100 text-indigo-800",
     RESOLVED: "bg-green-100 text-green-800",
     DISMISSED: "bg-gray-100 text-gray-600",
 };
 
-const TYPE_COLORS: Record<ReportType, string> = {
-    POST: "bg-blue-100 text-blue-800",
-    COMMENT: "bg-purple-100 text-purple-800",
-    USER: "bg-red-100 text-red-800",
-    SHOP: "bg-orange-100 text-orange-800",
-};
-
 export default function UserShopReports() {
-    const [reports, setReports] = useState<Report[]>([]);
+    const [reports, setReports] = useState<UserShopReport[]>([]);
     const [loading, setLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +41,8 @@ export default function UserShopReports() {
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Update Status dialog
-    const [editReport, setEditReport] = useState<Report | null>(null);
+    const [editReport, setEditReport] = useState<UserShopReport | null>(null);
+    const [viewReport, setViewReport] = useState<UserShopReport | null>(null);
     const [newStatus, setNewStatus] = useState<UserShopReportStatus>("OPEN");
     const [resolutionNotes, setResolutionNotes] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
@@ -57,7 +50,7 @@ export default function UserShopReports() {
     const fetchReports = useCallback(async () => {
         setLoading(true);
         try {
-            const filterStatus = statusFilter === "ALL" ? undefined : statusFilter as ReportStatus;
+            const filterStatus = statusFilter === "ALL" ? undefined : statusFilter as UserShopReportStatus;
             const data = await moderationService.getUserShopReports(
                 filterStatus,
                 currentPage - 1,
@@ -74,10 +67,10 @@ export default function UserShopReports() {
 
     useEffect(() => { fetchReports(); }, [fetchReports]);
 
-    const openUpdateDialog = (report: Report) => {
+    const openUpdateDialog = (report: UserShopReport) => {
         setEditReport(report);
         setNewStatus(report.status === "PENDING" ? "OPEN" : (report.status as UserShopReportStatus));
-        setResolutionNotes("");
+        setResolutionNotes(report.resolutionNotes || "");
     };
 
     const handleUpdateStatus = async () => {
@@ -118,7 +111,6 @@ export default function UserShopReports() {
                     <TabsTrigger value="OPEN">Open</TabsTrigger>
                     <TabsTrigger value="PENDING">Pending</TabsTrigger>
                     <TabsTrigger value="REVIEWED">Reviewed</TabsTrigger>
-                    <TabsTrigger value="INVESTIGATING">Investigating</TabsTrigger>
                     <TabsTrigger value="ACTION_TAKEN">Action Taken</TabsTrigger>
                     <TabsTrigger value="DISMISSED">Dismissed</TabsTrigger>
                     <TabsTrigger value="RESOLVED">Resolved</TabsTrigger>
@@ -135,12 +127,12 @@ export default function UserShopReports() {
                             <TableHeader>
                                 <TableRow>
                                     <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Type" sortKey="reportType" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Reporter" sortKey="reporterName" sortConfig={sortConfig} onSort={handleSort} />
-                                    <TableHead>Target</TableHead>
-                                    <TableHead>Reason</TableHead>
+                                    <SortableTableHead label="Reporter" sortKey="reporterUserName" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Shop" sortKey="reportedShopName" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Subject</TableHead>
+                                    <TableHead>Description</TableHead>
                                     <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Resolution Notes</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -160,34 +152,31 @@ export default function UserShopReports() {
                                         </TableCell>
                                     </TableRow>
                                 ) : sortedReports.map((r) => (
-                                    <TableRow key={r.id}>
+                                    <TableRow 
+                                        key={r.id} 
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => setViewReport(r)}
+                                    >
                                         <TableCell className="text-xs font-mono text-muted-foreground">
-                                            {r.id.slice(-8)}
+                                            {String(r.id).slice(-8)}
                                         </TableCell>
-                                        <TableCell>
-                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${TYPE_COLORS[r.reportType]}`}>
-                                                {r.reportType}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-sm">{r.reporterName}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">
-                                            {r.targetId?.slice(-8) ?? "—"}
+                                        <TableCell className="text-sm">{r.reporterUserName || "—"}</TableCell>
+                                        <TableCell className="text-sm">{r.reportedShopName || "—"}</TableCell>
+                                        <TableCell className="text-sm max-w-[150px]">
+                                            <p className="truncate">{r.subject}</p>
                                         </TableCell>
                                         <TableCell className="max-w-[200px]">
-                                            <p className="text-sm truncate">{r.reason}</p>
-                                            {r.targetContent && (
-                                                <p className="text-xs text-muted-foreground truncate mt-0.5">"{r.targetContent}"</p>
-                                            )}
+                                            <p className="text-sm truncate">{r.description}</p>
                                         </TableCell>
                                         <TableCell>
                                             <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[r.status] ?? STATUS_COLORS['OPEN']}`}>
                                                 {r.status}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {new Date(r.createdAt).toLocaleDateString()}
+                                        <TableCell className="text-sm text-muted-foreground max-w-[150px]">
+                                            <p className="truncate">{r.resolutionNotes || "—"}</p>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
                                             {r.status !== 'RESOLVED' && (
                                                 <Button
                                                     size="sm" variant="outline"
@@ -215,15 +204,93 @@ export default function UserShopReports() {
                 onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
             />
 
+            {/* View Report Details Dialog */}
+            <Dialog open={!!viewReport} onOpenChange={() => setViewReport(null)}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Report Details</DialogTitle>
+                        <DialogDescription>View full information about this user/shop report.</DialogDescription>
+                    </DialogHeader>
+                    {viewReport && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Report ID</Label>
+                                    <p className="font-mono text-sm">#{viewReport.id}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Status</Label>
+                                    <p>
+                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[viewReport.status]}`}>
+                                            {viewReport.status}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Reporter</Label>
+                                    <p className="text-sm">{viewReport.reporterUserName || `User ID: ${viewReport.reporterUserId}`}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Reported Shop</Label>
+                                    <p className="text-sm">{viewReport.reportedShopName || `Shop ID: ${viewReport.reportedShopId}`}</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <Label className="text-muted-foreground text-xs uppercase">Subject</Label>
+                                    <p className="text-sm font-medium">{viewReport.subject}</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <Label className="text-muted-foreground text-xs uppercase">Description</Label>
+                                    <p className="text-sm whitespace-pre-wrap">{viewReport.description}</p>
+                                </div>
+                                {viewReport.reportedUserId > 0 && (
+                                    <div>
+                                        <Label className="text-muted-foreground text-xs uppercase">Reported User</Label>
+                                        <p className="text-sm">{viewReport.reportedUserName || `User ID: ${viewReport.reportedUserId}`}</p>
+                                    </div>
+                                )}
+                                {viewReport.orderId > 0 && (
+                                    <div>
+                                        <Label className="text-muted-foreground text-xs uppercase">Order ID</Label>
+                                        <p className="text-sm font-mono">#{viewReport.orderId}</p>
+                                    </div>
+                                )}
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Created At</Label>
+                                    <p className="text-sm">{new Date(viewReport.createdAt).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground text-xs uppercase">Updated At</Label>
+                                    <p className="text-sm">{new Date(viewReport.updatedAt).toLocaleString()}</p>
+                                </div>
+                                {viewReport.resolutionNotes && (
+                                    <div className="col-span-2">
+                                        <Label className="text-muted-foreground text-xs uppercase">Resolution Notes</Label>
+                                        <p className="text-sm whitespace-pre-wrap">{viewReport.resolutionNotes}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {viewReport.status !== 'RESOLVED' && (
+                                <div className="flex justify-end pt-4 border-t">
+                                    <Button onClick={() => { setViewReport(null); openUpdateDialog(viewReport); }}>
+                                        <Pencil className="h-4 w-4 mr-2" /> Update Status
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* Update Status Dialog */}
             <Dialog open={!!editReport} onOpenChange={() => setEditReport(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Update Report Status</DialogTitle>
+                        <DialogDescription>Change the status and add resolution notes for this report.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            Report reason: <strong>{editReport?.reason}</strong>
+                            Report subject: <strong>{editReport?.subject}</strong>
                         </p>
 
                         <div className="space-y-2">

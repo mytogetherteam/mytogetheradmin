@@ -17,6 +17,30 @@ export interface Report {
   resolvedAt?: string;
 }
 
+export interface UserShopReport {
+  id: number;
+  reporterUserId: number;
+  reporterUserName: string | null;
+  reportedShopId: number;
+  reportedShopName: string;
+  reportedUserId: number;
+  reportedUserName: string | null;
+  orderId: number;
+  subject: string;
+  description: string;
+  status: string;
+  resolutionNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserShopReportsPage {
+  content: UserShopReport[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+}
+
 export interface ReportsPage {
   content: Report[];
   totalElements: number;
@@ -77,13 +101,13 @@ class ModerationService {
   }
 
   // --- User/Shop Reports ---
-  async getUserShopReports(status?: ReportStatus, page = 0, size = 20): Promise<ReportsPage> {
+  async getUserShopReports(status?: ReportStatus, page = 0, size = 20): Promise<UserShopReportsPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (status) params.append('status', status);
-    return apiClient.get<ReportsPage>(`${config.endpoints.admin.moderation.userShopReports.list}?${params.toString()}`);
+    return apiClient.get<UserShopReportsPage>(`${config.endpoints.admin.moderation.userShopReports.list}?${params.toString()}`);
   }
 
-  async updateUserShopReportStatus(id: string, status: string, resolutionNotes?: string): Promise<void> {
+  async updateUserShopReportStatus(id: number, status: string, resolutionNotes?: string): Promise<void> {
     return apiClient.put<void>(config.endpoints.admin.moderation.userShopReports.status(id), { status, resolutionNotes });
   }
 

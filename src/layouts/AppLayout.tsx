@@ -15,6 +15,7 @@ import { authService } from "@/services/authService"
 import { AdminGlobalSearch } from "@/components/admin-global-search"
 import { BreadcrumbNav } from "@/components/breadcrumb-nav"
 import { Button } from "@/components/ui/button"
+import { AdminLiveAlertToasts } from "@/components/admin-live-alert-toasts"
 
 export default function AppLayout() {
     const navigate = useNavigate()
@@ -27,6 +28,7 @@ export default function AppLayout() {
 
     return (
         <SidebarProvider className="h-screen w-full">
+            <AdminLiveAlertToasts />
             <AppSidebar />
             <SidebarInset className="flex flex-col h-screen overflow-hidden">
                 <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background z-20 sticky top-0 border-sidebar-border shadow-sm">

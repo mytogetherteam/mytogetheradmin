@@ -369,11 +369,11 @@ export default function CreateMenuItem() {
             formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
 
             if (imageFile) {
-                formData.append("photo", imageFile);
+                formData.append("photo", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
             }
 
             galleryFiles.forEach((file) => {
-                formData.append("galleryPhotos", file);
+                formData.append("galleryPhotos", new Blob([file], { type: "application/form-data" }), file.name);
             });
 
             if (isEditMode && id) {
@@ -861,7 +861,7 @@ export default function CreateMenuItem() {
                                             <>
                                                 <Upload className="h-10 w-10 text-muted-foreground mb-3 group-hover:scale-110 transition-transform" />
                                                 <span className="text-sm font-medium text-muted-foreground px-4 text-center">Click to upload main image</span>
-                                                <Input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} />
+                                                <Input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleImageChange} />
                                             </>
                                         )}
                                     </div>
@@ -896,7 +896,7 @@ export default function CreateMenuItem() {
 
                                         <div className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer">
                                             <Plus className="h-6 w-6 text-muted-foreground" />
-                                            <Input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleGalleryChange} />
+                                            <Input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleGalleryChange} />
                                         </div>
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">Add more photos to showcase the item from different angles or its preparation.</p>

@@ -60,7 +60,7 @@ export const config = {
         banUser: (userId: string) => `/api/admin/users/${userId}/ban`,
         userShopReports: {
           list: '/api/admin/reports',
-          status: (id: string) => `/api/admin/reports/${id}/status`,
+          status: (id: number) => `/api/admin/reports/${id}/status`,
         }
       },
       lostFound: {
@@ -153,6 +153,7 @@ export const config = {
         orders: (id: string | number) => `/api/admin/users/${id}/orders`,
         activity: (id: string | number) => `/api/admin/users/${id}/activity`,
         lookup: '/api/admin/users/lookup',
+        shopOwners: '/api/admin/users/shop-owners',
       },
       search: '/api/admin/search',
     },

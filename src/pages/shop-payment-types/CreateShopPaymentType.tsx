@@ -131,7 +131,7 @@ export default function CreateShopPaymentType() {
             formData.append('request', requestBlob);
 
             if (qrImage) {
-                formData.append('qrImage', qrImage);
+                formData.append('qrImage', new Blob([qrImage], { type: "application/form-data" }), qrImage.name);
             }
 
             if (isEdit) {

@@ -27,6 +27,7 @@ export default function CreateShopCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
+    const [slug, setSlug] = useState("");
     const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
 
@@ -49,6 +50,7 @@ export default function CreateShopCategory() {
             setNameMm("");
             setNameTh("");
             setNameEn("");
+            setSlug("");
             setDisplayOrder(0);
             setIsActive(true);
             setExistingImage(null);
@@ -65,6 +67,7 @@ export default function CreateShopCategory() {
             setNameMm(cat.nameMm || "");
             setNameTh(cat.nameTh || "");
             setNameEn(cat.nameEn || "");
+            setSlug(cat.slug || "");
             setDisplayOrder(cat.displayOrder ?? 1);
             setIsActive(cat.isActive !== false);
             if (cat.imageUrl) {
@@ -105,6 +108,7 @@ export default function CreateShopCategory() {
                 nameMm: nameMm || undefined,
                 nameTh: nameTh || undefined,
                 nameEn: nameEn || undefined,
+                slug: slug || undefined,
                 displayOrder,
                 isActive,
             };
@@ -113,7 +117,7 @@ export default function CreateShopCategory() {
             formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
 
             if (imageFile) {
-                formData.append("image", imageFile);
+                formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
             }
 
             if (isEditMode && id) {
@@ -201,6 +205,15 @@ export default function CreateShopCategory() {
                                     value={nameEn}
                                     onChange={(e) => setNameEn(e.target.value)}
                                     placeholder="e.g. Restaurant"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="slug">Slug</Label>
+                                <Input
+                                    id="slug"
+                                    value={slug}
+                                    onChange={(e) => setSlug(e.target.value)}
+                                    placeholder="e.g. restaurant"
                                 />
                             </div>
                             <div className="space-y-2">

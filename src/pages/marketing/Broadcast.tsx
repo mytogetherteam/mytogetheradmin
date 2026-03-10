@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { marketingService } from "@/services/marketingService";
-import { userService } from "@/services/userService";
-import { ShopService } from "@/services/shopService";
+import { marketingService, BroadcastHistoryItem } from "@/services/marketingService";
+import { userService, UserListItem } from "@/services/userService";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
     Table, TableBody, TableCell, TableHeader, TableRow,
@@ -18,9 +17,6 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { BroadcastHistoryItem } from "@/services/marketingService";
-import { UserListItem as User } from "@/services/userService";
-import { Shop } from "@/services/shopService";
 
 export default function Broadcast() {
     const [history, setHistory] = useState<BroadcastHistoryItem[]>([]);
@@ -37,22 +33,22 @@ export default function Broadcast() {
     const [target, setTarget] = useState<"USERS" | "SHOPS" | "SINGLE_USER" | "SINGLE_SHOP">("USERS");
     const [sending, setSending] = useState(false);
 
-    const [shops, setShops] = useState<Shop[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
+    const [shops, setShops] = useState<UserListItem[]>([]);
+    const [users, setUsers] = useState<UserListItem[]>([]);
     const [selectedShopId, setSelectedShopId] = useState<string>("");
     const [selectedUserId, setSelectedUserId] = useState<string>("");
 
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [shopsRes, usersRes] = await Promise.all([
-                    ShopService.getAllShops(0, 1000),
+                const [shopOwnersRes, usersRes] = await Promise.all([
+                    userService.getShopOwners(0, 1000),
                     userService.getAllUsers(0, 1000)
                 ]);
-                setShops(shopsRes?.content || []);
+                setShops(shopOwnersRes?.content || []);
                 setUsers(usersRes?.content || []);
             } catch (error) {
-                console.error("Failed to load users/shops", error);
+                console.error("Failed to load users/shop owners", error);
             }
         };
         loadData();
@@ -171,14 +167,14 @@ export default function Broadcast() {
 
                             {target === "SINGLE_SHOP" && (
                                 <div className="space-y-2">
-                                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select Shop</label>
+                                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select Shop Owner</label>
                                     <SearchableSelect
-                                        data={shops.map(s => ({ label: s.nameEn || s.name, value: String(s.id) }))}
+                                        data={shops.map(s => ({ label: s.fullName || s.email || s.username || `Owner #${s.id}`, value: String(s.id) }))}
                                         value="value"
                                         labelKey="label"
-                                        selectedValue={selectedShopId ? { label: shops.find(s => String(s.id) === selectedShopId)?.nameEn || shops.find(s => String(s.id) === selectedShopId)?.name || "", value: selectedShopId } : undefined}
+                                        selectedValue={selectedShopId ? { label: shops.find(s => String(s.id) === selectedShopId)?.fullName || shops.find(s => String(s.id) === selectedShopId)?.email || shops.find(s => String(s.id) === selectedShopId)?.username || `Owner #${selectedShopId}`, value: selectedShopId } : undefined}
                                         onChange={(item) => setSelectedShopId(item?.value || "")}
-                                        placeholder="Search shop..."
+                                        placeholder="Search shop owner..."
                                     />
                                 </div>
                             )}

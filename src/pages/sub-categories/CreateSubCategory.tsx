@@ -153,7 +153,7 @@ export default function CreateSubCategory() {
             formData.append("data", new Blob([JSON.stringify(dataObj)], { type: "application/json" }));
 
             if (galleryFile) {
-                formData.append("image", galleryFile);
+                formData.append("image", new Blob([galleryFile], { type: "application/form-data" }), galleryFile.name);
             }
 
             // However, the menuService currently defined takes FormData directly.
@@ -242,7 +242,7 @@ export default function CreateSubCategory() {
                                     ) : (
                                         categories.map((cat) => (
                                             <SelectItem key={cat.id} value={cat.id.toString()}>
-                                                {cat.name}
+                                                {cat.nameEn || cat.name || `Category ${cat.id}`}
                                             </SelectItem>
                                         ))
                                     )}

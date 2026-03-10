@@ -32,6 +32,7 @@ class ApiClient {
   private baseUrl: string;
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
+  private refreshPromise: Promise<void> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -90,10 +91,8 @@ class ApiClient {
   }
 
   private async performRefresh(): Promise<void> {
-    if (this.isRefreshing) {
-      return new Promise((resolve) => {
-        this.addRefreshSubscriber(() => resolve());
-      });
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
     }
 
     this.isRefreshing = true;
@@ -105,52 +104,57 @@ class ApiClient {
       return;
     }
 
-    try {
-      const refreshUrl = `${this.baseUrl}${config.endpoints.auth.refresh}`;
-      const refreshResponse = await fetch(refreshUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+    this.refreshPromise = (async () => {
+      try {
+        const refreshUrl = `${this.baseUrl}${config.endpoints.auth.refresh}`;
+        const refreshResponse = await fetch(refreshUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
 
-      if (!refreshResponse.ok) {
-        throw new Error('Refresh failed');
-      }
-
-      const responseData = await refreshResponse.json();
-      const data = responseData.data || responseData;
-      const newToken = data.token;
-      const newRefreshToken = data.refreshToken;
-
-      if (newToken) {
-        localStorage.setItem(config.storage.tokenKey, newToken);
-        if (newRefreshToken) {
-          localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
+        if (!refreshResponse.ok) {
+          throw new Error('Refresh failed');
         }
 
-        // Synchronize user data if present in response
-        if (data.id && data.username) {
-            const userProfile = {
-                id: data.id,
-                username: data.username,
-                email: data.email,
-                fullName: data.fullName,
-                role: data.role
-            };
-            localStorage.setItem(config.storage.userKey, JSON.stringify(userProfile));
+        const responseData = await refreshResponse.json();
+        const data = responseData.data || responseData;
+        const newToken = data.token;
+        const newRefreshToken = data.refreshToken;
+
+        if (newToken) {
+          localStorage.setItem(config.storage.tokenKey, newToken);
+          if (newRefreshToken) {
+            localStorage.setItem(config.storage.refreshTokenKey, newRefreshToken);
+          }
+
+          if (data.id && data.username) {
+              const userProfile = {
+                  id: data.id,
+                  username: data.username,
+                  email: data.email,
+                  fullName: data.fullName,
+                  role: data.role
+              };
+              localStorage.setItem(config.storage.userKey, JSON.stringify(userProfile));
+          }
+          
+          console.log('Token and user data successfully refreshed');
+          this.onRefreshed(newToken);
+        } else {
+          throw new Error('Invalid refresh response');
         }
-        
-        console.log('Token and user data successfully refreshed');
+      } catch {
+        this.handleLogout();
+        this.refreshSubscribers = [];
+        throw new ApiError('Session expired', 401);
+      } finally {
         this.isRefreshing = false;
-        this.onRefreshed(newToken);
-      } else {
-        throw new Error('Invalid refresh response');
+        this.refreshPromise = null;
       }
-    } catch {
-      this.isRefreshing = false;
-      this.handleLogout();
-      throw new ApiError('Session expired', 401);
-    }
+    })();
+
+    return this.refreshPromise;
   }
 
   private async request<T>(
@@ -190,7 +194,7 @@ class ApiClient {
         headers,
       });
 
-      if ((response.status === 401 || response.status === 403) && !endpoint.includes('/refresh')) {
+      if (response.status === 401 && !endpoint.includes('/refresh')) {
         if (!this.isRefreshing) {
           await this.performRefresh();
           // Retry the original request

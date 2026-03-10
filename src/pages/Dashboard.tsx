@@ -24,7 +24,6 @@ import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag,
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
-
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function getDefaultDates() {
@@ -383,7 +382,6 @@ export default function Dashboard() {
                             <Skeleton className="h-8 w-12" />
                         ) : (
                             <span className="text-2xl font-bold text-red-500">
-                                {/* prefer live WS count if available */}
                                 {isLive ? (liveStats.pendingReports ?? openReportsCount) : openReportsCount}
                             </span>
                         )}

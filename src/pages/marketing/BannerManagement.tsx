@@ -43,7 +43,7 @@ const emptyBanner: CreateBannerRequest = {
     endDate: "",
 };
 
-function BannerCard({ banner, onToggle, onDelete }: { banner: Banner; onToggle: (id: string, active: boolean) => void; onDelete: (id: string) => void }) {
+function BannerCard({ banner, onToggle, onEdit, onDelete }: { banner: Banner; onToggle: (id: string, active: boolean) => void; onEdit: (banner: Banner) => void; onDelete: (id: string) => void }) {
     return (
         <Card className="overflow-hidden">
             <div className="h-36 bg-muted flex items-center justify-center relative">
@@ -67,12 +67,20 @@ function BannerCard({ banner, onToggle, onDelete }: { banner: Banner; onToggle: 
                 <p className="text-xs text-muted-foreground">
                     {new Date(banner.startDate).toLocaleDateString()} – {new Date(banner.endDate).toLocaleDateString()}
                 </p>
-                <Button
-                    size="sm" variant="destructive" className="w-full"
-                    onClick={() => onDelete(banner.id)}
-                >
-                    <Trash2 className="h-3 w-3 mr-1" /> Remove
-                </Button>
+                <div className="flex justify-between items-center w-full gap-2">
+                    <Button
+                        size="sm" variant="outline" className="flex-1"
+                        onClick={() => onEdit(banner)}
+                    >
+                        Edit
+                    </Button>
+                    <Button
+                        size="sm" variant="destructive" className="flex-1"
+                        onClick={() => onDelete(banner.id)}
+                    >
+                        <Trash2 className="h-3 w-3 mr-1" /> Remove
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );
@@ -253,6 +261,7 @@ export default function BannerManagement() {
     const [bannersLoading, setBannersLoading] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [form, setForm] = useState<CreateBannerRequest>(emptyBanner);
+    const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -308,7 +317,30 @@ export default function BannerManagement() {
     // Banner actions
     const handleToggle = async (id: string, isActive: boolean) => {
         try {
-            const updated = await marketingService.toggleBanner(id, isActive);
+            const bannerToUpdate = banners.find(b => b.id === id);
+            if (!bannerToUpdate) return;
+
+            const requestObj = {
+                title: bannerToUpdate.title,
+                titleMm: bannerToUpdate.titleMm,
+                titleTh: bannerToUpdate.titleTh,
+                titleEn: bannerToUpdate.titleEn,
+                linkUrl: bannerToUpdate.linkUrl,
+                placement: bannerToUpdate.placement,
+                displayOrder: bannerToUpdate.displayOrder,
+                isActive: isActive,
+                startDate: bannerToUpdate.startDate,
+                endDate: bannerToUpdate.endDate,
+            };
+
+            const formData = new FormData();
+            formData.append("request", new Blob([JSON.stringify(requestObj)], { type: "application/json" }));
+
+            // image Url shouldn't just be ignored since user might want to toggle WITHOUT swapping the image. 
+            // In a multipart request, an empty file object usually passes successfully if it's optional,
+            // or the backend shouldn't require it if the existing image is already there.
+
+            const updated = await marketingService.updateBanner(id, formData);
             setBanners((prev) => prev.map((b) => b.id === id ? updated : b));
             toast.success(`Banner ${isActive ? "activated" : "deactivated"}`);
         } catch {
@@ -326,36 +358,73 @@ export default function BannerManagement() {
         }
     };
 
+    const handleEditClick = (banner: Banner) => {
+        setForm({
+            title: banner.title,
+            titleMm: banner.titleMm || "",
+            titleTh: banner.titleTh || "",
+            titleEn: banner.titleEn || "",
+            imageUrl: banner.imageUrl || "",
+            linkUrl: banner.linkUrl || "",
+            placement: banner.placement,
+            displayOrder: banner.displayOrder || 1,
+            isActive: banner.isActive,
+            startDate: banner.startDate,
+            endDate: banner.endDate,
+        });
+        setEditingBannerId(banner.id);
+        setImagePreview(banner.imageUrl || null);
+        setImageFile(null);
+        setShowCreate(true);
+    };
+
     const handleCreate = async () => {
         setSaving(true);
         try {
-            let data: CreateBannerRequest | FormData;
+            // Data variable removed
+
+            const requestObj = {
+                title: form.title,
+                titleMm: form.titleMm,
+                titleTh: form.titleTh,
+                titleEn: form.titleEn,
+                linkUrl: form.linkUrl,
+                placement: form.placement,
+                displayOrder: form.displayOrder,
+                isActive: form.isActive,
+                startDate: form.startDate,
+                endDate: form.endDate,
+            };
+
+            const formData = new FormData();
+            formData.append("request", new Blob([JSON.stringify(requestObj)], { type: "application/json" }));
 
             if (imageFile) {
-                const formData = new FormData();
-                formData.append("title", form.title);
-                if (form.titleMm) formData.append("titleMm", form.titleMm);
-                if (form.titleTh) formData.append("titleTh", form.titleTh);
-                if (form.titleEn) formData.append("titleEn", form.titleEn);
-                if (form.linkUrl) formData.append("linkUrl", form.linkUrl);
-                formData.append("placement", form.placement);
-                formData.append("displayOrder", String(form.displayOrder));
-                formData.append("isActive", String(form.isActive));
-                formData.append("startDate", form.startDate);
-                formData.append("endDate", form.endDate);
-                formData.append("image", imageFile);
-                data = formData;
-            } else {
-                data = form;
+                formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
             }
 
-            const newBanner = await marketingService.createBanner(data);
-            setBanners((prev) => [...prev, newBanner]);
+            if (editingBannerId) {
+                const updatedBanner = await marketingService.updateBanner(editingBannerId, formData);
+                setBanners((prev) => prev.map((b) => b.id === editingBannerId ? updatedBanner : b));
+                toast.success("Banner updated");
+            } else {
+                if (!imageFile) {
+                    toast.error("An image is required to create a new banner.");
+                    setSaving(false);
+                    return;
+                }
+                const newBanner = await marketingService.createBanner(formData);
+                setBanners((prev) => [...prev, newBanner]);
+                toast.success("Banner created");
+            }
+
             setShowCreate(false);
             setForm(emptyBanner);
             setImageFile(null);
             setImagePreview(null);
-            toast.success("Banner created");
+            setEditingBannerId(null);
+        } catch {
+            toast.error("An error occurred while saving the banner");
         } finally {
             setSaving(false);
         }
@@ -439,7 +508,13 @@ export default function BannerManagement() {
                 {/* ── Banners Tab ────────────────────────────────────────── */}
                 <TabsContent value="banners" className="mt-4 space-y-4">
                     <div className="flex justify-end">
-                        <Button onClick={() => setShowCreate(true)}>
+                        <Button onClick={() => {
+                            setForm(emptyBanner);
+                            setEditingBannerId(null);
+                            setImagePreview(null);
+                            setImageFile(null);
+                            setShowCreate(true);
+                        }}>
                             <Plus className="h-4 w-4 mr-2" /> New Banner
                         </Button>
                     </div>
@@ -455,7 +530,7 @@ export default function BannerManagement() {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {banners.map((b) => (
-                                <BannerCard key={b.id} banner={b} onToggle={handleToggle} onDelete={handleDelete} />
+                                <BannerCard key={b.id} banner={b} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEditClick} />
                             ))}
                         </div>
                     )}
@@ -636,10 +711,18 @@ export default function BannerManagement() {
             </Dialog>
 
             {/* ── Create Banner Dialog ─────────────────────────────────── */}
-            <Dialog open={showCreate} onOpenChange={setShowCreate}>
+            <Dialog open={showCreate} onOpenChange={(o) => {
+                setShowCreate(o);
+                if (!o) {
+                    setEditingBannerId(null);
+                    setForm(emptyBanner);
+                    setImageFile(null);
+                    setImagePreview(null);
+                }
+            }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Create New Banner</DialogTitle>
+                        <DialogTitle>{editingBannerId ? "Edit Banner" : "Create New Banner"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
@@ -767,9 +850,16 @@ export default function BannerManagement() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={!form.title || !imageFile || saving}>
-                            <Plus className="h-4 w-4 mr-2" /> Create Banner
+                        <Button variant="outline" onClick={() => {
+                            setShowCreate(false);
+                            setEditingBannerId(null);
+                            setForm(emptyBanner);
+                            setImageFile(null);
+                            setImagePreview(null);
+                        }}>Cancel</Button>
+                        <Button onClick={handleCreate} disabled={!form.title || (!imagePreview && !imageFile) || saving}>
+                            {editingBannerId ? null : <Plus className="h-4 w-4 mr-2" />}
+                            {editingBannerId ? "Update Banner" : "Create Banner"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

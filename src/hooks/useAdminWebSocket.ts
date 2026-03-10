@@ -9,7 +9,6 @@ export interface SystemStatsDTO {
   totalReviews: number;
   totalOrdersToday: number;
   totalRevenueToday: number;
-  // Optional/Legacy fields (might be missing in newer versions)
   activeUsers24h?: number;
   pendingOrders?: number;
   systemHealth?: string;
@@ -34,7 +33,7 @@ export interface AdminWebSocketState {
 
 /**
  * Manages a STOMP over SockJS connection to the admin WebSocket endpoint.
- * Subscribes to all four admin topics and exposes the latest payload for each.
+ * Subscribes to all admin topics and exposes the latest payload for each.
  */
 export function useAdminWebSocket(): AdminWebSocketState {
   const [connected, setConnected] = useState(false);
@@ -49,17 +48,26 @@ export function useAdminWebSocket(): AdminWebSocketState {
     const token = localStorage.getItem(config.storage.tokenKey);
     if (!token) return;
 
-    const wsUrl = import.meta.env.DEV
-      ? `${window.location.origin}${config.websocket.endpoint}`
-      : `${import.meta.env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app'}${config.websocket.endpoint}`;
+    // In dev mode, use relative path to go through Vite proxy
+    // In prod, connect directly to backend
+    const wsBaseUrl = import.meta.env.DEV 
+      ? '' 
+      : (import.meta.env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app');
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl) as WebSocket,
+      webSocketFactory: () => {
+        const wsUrl = `${wsBaseUrl}${config.websocket.endpoint}`;
+        console.log('[AdminWS] Connecting to:', wsUrl);
+        return new SockJS(wsUrl) as WebSocket;
+      },
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
       reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
       onConnect: () => {
+        console.log('[AdminWS] Connected');
         setConnected(true);
 
         client.subscribe(config.websocket.topics.stats, (msg) => {
@@ -67,32 +75,48 @@ export function useAdminWebSocket(): AdminWebSocketState {
             const stats = JSON.parse(msg.body) as SystemStatsDTO;
             console.log('[AdminWS] Received stats:', stats);
             setSystemStats(stats);
-          } catch { /* ignore malformed */ }
+          } catch (err) {
+            console.error('[AdminWS] Failed to parse stats:', err);
+          }
         });
 
         client.subscribe(config.websocket.topics.reports, (msg) => {
           try {
             setLatestReport({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
-          } catch { /* ignore malformed */ }
+          } catch (err) {
+            console.error('[AdminWS] Failed to parse report:', err);
+          }
         });
 
         client.subscribe(config.websocket.topics.shopRequests, (msg) => {
           try {
             setLatestShopRequest({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
-          } catch { /* ignore malformed */ }
+          } catch (err) {
+            console.error('[AdminWS] Failed to parse shop request:', err);
+          }
         });
 
         client.subscribe(config.websocket.topics.newOrders, (msg) => {
           try {
             setLatestOrder({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
-          } catch { /* ignore malformed */ }
+          } catch (err) {
+            console.error('[AdminWS] Failed to parse order:', err);
+          }
         });
       },
       onDisconnect: () => {
+        console.log('[AdminWS] Disconnected');
         setConnected(false);
       },
       onStompError: (frame) => {
         console.error('[AdminWS] STOMP error:', frame.headers['message']);
+        setConnected(false);
+      },
+      onWebSocketError: (event) => {
+        console.error('[AdminWS] WebSocket error:', event);
+      },
+      onWebSocketClose: (event) => {
+        console.log('[AdminWS] WebSocket closed:', event.code, event.reason);
         setConnected(false);
       },
     });

@@ -130,7 +130,7 @@ export default function PaymentMethodForm() {
             formData.append("data", new Blob([JSON.stringify(requestData)], { type: "application/json" }));
 
             if (iconFile) {
-                formData.append("icon", iconFile);
+                formData.append("icon", new Blob([iconFile], { type: "application/form-data" }), iconFile.name);
             }
 
             if (isEditMode && id) {
