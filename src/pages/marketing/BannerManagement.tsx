@@ -29,7 +29,11 @@ import { toast } from "sonner";
 
 const PLACEMENTS: BannerPlacement[] = ['HOME_TOP', 'FEED_MIDDLE', 'SHOP_DETAIL', 'SEARCH_TOP'];
 
-const emptyBanner: CreateBannerRequest = {
+interface BannerFormState extends Omit<CreateBannerRequest, "displayOrder"> {
+    displayOrder: number | "";
+}
+
+const emptyBanner: BannerFormState = {
     title: "",
     titleMm: "",
     titleTh: "",
@@ -260,7 +264,7 @@ export default function BannerManagement() {
     const [banners, setBanners] = useState<Banner[]>([]);
     const [bannersLoading, setBannersLoading] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
-    const [form, setForm] = useState<CreateBannerRequest>(emptyBanner);
+    const [form, setForm] = useState<BannerFormState>(emptyBanner);
     const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -383,6 +387,10 @@ export default function BannerManagement() {
         try {
             // Data variable removed
 
+            const safeDisplayOrder = form.displayOrder === "" || (typeof form.displayOrder === "number" && form.displayOrder < 1)
+                ? 1
+                : form.displayOrder;
+
             const requestObj = {
                 title: form.title,
                 titleMm: form.titleMm,
@@ -390,7 +398,7 @@ export default function BannerManagement() {
                 titleEn: form.titleEn,
                 linkUrl: form.linkUrl,
                 placement: form.placement,
-                displayOrder: form.displayOrder,
+                displayOrder: safeDisplayOrder as number,
                 isActive: form.isActive,
                 startDate: form.startDate,
                 endDate: form.endDate,
@@ -797,11 +805,23 @@ export default function BannerManagement() {
                                 <label className="text-sm font-medium">Display Order</label>
                                 <Input
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     placeholder="1"
                                     value={form.displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setForm((f) => ({ ...f, displayOrder: val === "" ? 1 : parseInt(val) }));
+                                        if (val === "" || /^\d+$/.test(val)) {
+                                            setForm((f) => ({
+                                                ...f,
+                                                displayOrder: val === "" ? "" : parseInt(val, 10),
+                                            } as typeof f));
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (form.displayOrder === "" || (typeof form.displayOrder === "number" && form.displayOrder < 1)) {
+                                            setForm((f) => ({ ...f, displayOrder: 1 } as typeof f));
+                                        }
                                     }}
                                 />
                             </div>

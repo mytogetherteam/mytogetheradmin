@@ -145,7 +145,12 @@ export default function CreateSubCategory() {
         try {
             const formData = new FormData();
             const dataObj = {
-                name, nameMm, nameTh, nameEn, displayOrder, isActive
+                name,
+                nameMm,
+                nameTh,
+                nameEn,
+                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
+                isActive,
             };
 
             // The API expects 'data' as a JSON string or object, and 'image' as file
@@ -261,10 +266,19 @@ export default function CreateSubCategory() {
                                 <Input
                                     id="displayOrder"
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
+                                        if (val === "" || /^\d+$/.test(val)) {
+                                            setDisplayOrder(val === "" ? "" : parseInt(val, 10));
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (displayOrder === "" || displayOrder < 1) {
+                                            setDisplayOrder(1);
+                                        }
                                     }}
                                     placeholder="1"
                                 />

@@ -1,16 +1,24 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, createContext, useContext, ReactNode } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { config } from '@/config/config';
 
+/**
+ * Reflects the actual live payload from /topic/admin/stats.
+ * Optional fields are planned by the backend spec but not yet sent.
+ */
 export interface SystemStatsDTO {
+  // Currently broadcast
   totalUsers: number;
   totalShops: number;
   totalReviews: number;
   totalOrdersToday: number;
   totalRevenueToday: number;
+  // Future fields (spec-planned, not yet broadcast)
   activeUsers24h?: number;
   pendingOrders?: number;
+  activeShops?: number;
+  revenueToday?: number;
   systemHealth?: string;
   pendingReports?: number;
 }
@@ -31,11 +39,23 @@ export interface AdminWebSocketState {
   latestOrder: AdminAlertPayload | null;
 }
 
+// ─── Context ──────────────────────────────────────────────────────────────────
+
+const AdminWsContext = createContext<AdminWebSocketState>({
+  connected: false,
+  systemStats: null,
+  latestReport: null,
+  latestShopRequest: null,
+  latestOrder: null,
+});
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 /**
- * Manages a STOMP over SockJS connection to the admin WebSocket endpoint.
- * Subscribes to all admin topics and exposes the latest payload for each.
+ * Mount once inside the authenticated layout.
+ * All consumers of `useAdminWebSocket` share the single STOMP connection.
  */
-export function useAdminWebSocket(): AdminWebSocketState {
+export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [systemStats, setSystemStats] = useState<SystemStatsDTO | null>(null);
   const [latestReport, setLatestReport] = useState<AdminAlertPayload | null>(null);
@@ -48,10 +68,8 @@ export function useAdminWebSocket(): AdminWebSocketState {
     const token = localStorage.getItem(config.storage.tokenKey);
     if (!token) return;
 
-    // In dev mode, use relative path to go through Vite proxy
-    // In prod, connect directly to backend
-    const wsBaseUrl = import.meta.env.DEV 
-      ? '' 
+    const wsBaseUrl = import.meta.env.DEV
+      ? ''
       : (import.meta.env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app');
 
     const client = new Client({
@@ -70,35 +88,48 @@ export function useAdminWebSocket(): AdminWebSocketState {
         console.log('[AdminWS] Connected');
         setConnected(true);
 
+        // /topic/admin/stats — broadcast every 10 s
         client.subscribe(config.websocket.topics.stats, (msg) => {
           try {
             const stats = JSON.parse(msg.body) as SystemStatsDTO;
-            console.log('[AdminWS] Received stats:', stats);
+            console.log('[AdminWS] stats:', stats);
             setSystemStats(stats);
           } catch (err) {
             console.error('[AdminWS] Failed to parse stats:', err);
           }
         });
 
+        // /topic/admin/reports
         client.subscribe(config.websocket.topics.reports, (msg) => {
           try {
-            setLatestReport({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
+            setLatestReport({
+              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              timestamp: new Date().toISOString(),
+            });
           } catch (err) {
             console.error('[AdminWS] Failed to parse report:', err);
           }
         });
 
+        // /topic/admin/shop-requests
         client.subscribe(config.websocket.topics.shopRequests, (msg) => {
           try {
-            setLatestShopRequest({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
+            setLatestShopRequest({
+              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              timestamp: new Date().toISOString(),
+            });
           } catch (err) {
             console.error('[AdminWS] Failed to parse shop request:', err);
           }
         });
 
+        // /topic/admin/new-orders
         client.subscribe(config.websocket.topics.newOrders, (msg) => {
           try {
-            setLatestOrder({ ...JSON.parse(msg.body) as AdminAlertPayload, timestamp: new Date().toISOString() });
+            setLatestOrder({
+              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              timestamp: new Date().toISOString(),
+            });
           } catch (err) {
             console.error('[AdminWS] Failed to parse order:', err);
           }
@@ -133,5 +164,22 @@ export function useAdminWebSocket(): AdminWebSocketState {
     };
   }, [connect]);
 
-  return { connected, systemStats, latestReport, latestShopRequest, latestOrder };
+  return (
+    <AdminWsContext.Provider
+      value={{ connected, systemStats, latestReport, latestShopRequest, latestOrder }}
+    >
+      {children}
+    </AdminWsContext.Provider>
+  );
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Consume the shared WebSocket state.
+ * Must be used inside <AdminWebSocketProvider>.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- hook + context intentionally co-located
+export function useAdminWebSocket(): AdminWebSocketState {
+  return useContext(AdminWsContext);
 }

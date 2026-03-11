@@ -44,6 +44,7 @@ const ManageMenuItems = lazy(() => import("@/pages/menus/ManageMenuItems"));
 const CreateMenuItem = lazy(() => import("@/pages/menus/CreateMenuItem"));
 const CreateSubCategory = lazy(() => import("@/pages/sub-categories/CreateSubCategory"));
 const ManageSubCategories = lazy(() => import("@/pages/sub-categories/ManageSubCategories"));
+const MenuApprovals = lazy(() => import("@/pages/menus/MenuApprovals"));
 
 // Orders
 const OrderBoard = lazy(() => import("@/pages/orders/OrderBoard"));
@@ -167,6 +168,9 @@ function App() {
             {/* Sub Categories */}
             <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
             <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
+
+            {/* Approvals */}
+            <Route path="/menus/approvals" element={<MenuApprovals />} />
 
             {/* Orders */}
             <Route path="/orders">

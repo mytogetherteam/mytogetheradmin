@@ -39,7 +39,7 @@ const paymentMethodSchema = z.object({
     name: z.string().min(1, "Name is required"),
     nameMm: z.string().default(""),
     nameTh: z.string().default(""),
-    displayOrder: z.coerce.number().int().min(0, "Display Order cannot be negative").default(1),
+    displayOrder: z.coerce.number().int().min(1, "Display Order must be at least 1").default(1),
     active: z.boolean().default(true),
 });
 
@@ -194,11 +194,21 @@ export default function PaymentMethodForm() {
                                             <FormLabel>Display Order</FormLabel>
                                             <FormControl>
                                                 <Input
-                                                    type="number"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
                                                     {...field}
+                                                    value={field.value ?? ""}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        field.onChange(val === "" ? 1 : (parseInt(val) || 1));
+                                                        if (val === "" || /^\d+$/.test(val)) field.onChange(val === "" ? "" : parseInt(val));
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        const val = e.target.value;
+                                                        const num = val === "" ? NaN : parseInt(val, 10);
+                                                        if (!val || isNaN(num) || num < 1) {
+                                                            field.onChange(1);
+                                                        }
                                                     }}
                                                 />
                                             </FormControl>

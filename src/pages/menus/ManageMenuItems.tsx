@@ -198,7 +198,7 @@ export default function ManageMenuItems() {
                                                         {item.imageUrl || item.imageUrls?.[0] ? (
                                                             <img
                                                                 src={item.imageUrl || item.imageUrls?.[0]}
-                                                                alt={item.name}
+                                                                alt={item.nameEn || item.name}
                                                                 className="h-10 w-10 rounded object-cover border"
                                                             />
                                                         ) : (
@@ -206,8 +206,8 @@ export default function ManageMenuItems() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{item.name}</div>
-                                                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">{item.description}</div>
+                                                        <div className="font-medium">{item.nameEn || item.name}</div>
+                                                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">{item.descriptionEn || item.description}</div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">
                                                         <div>{item.price} <span className="text-[10px] text-muted-foreground">{item.currency}</span></div>

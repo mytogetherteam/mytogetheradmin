@@ -56,31 +56,41 @@ export interface MenuItem {
 }
 
 export interface Option {
+    id?: number;
+    name?: string;
     nameEn: string;
     nameMm?: string;
     nameTh?: string;
     price: number;
+    displayPrice?: string;
     isAvailable: boolean;
+    displayOrder?: number;
+    linkedMenuItemId?: number;
 }
 
 export interface OptionGroup {
     id?: number;
+    name?: string;
     nameEn: string;
     nameMm?: string;
     nameTh?: string;
     isRequired: boolean;
     minSelection: number;
     maxSelection: number;
+    displayOrder?: number;
+    groupType?: "SINGLE_SELECT" | "MULTI_SELECT";
     options: Option[];
 }
 
 export interface Variant {
     id?: number;
+    name?: string;
     nameEn: string;
     nameMm?: string;
     nameTh?: string;
     price: number;
     isAvailable: boolean;
+    displayOrder?: number;
 }
 
 export interface MenuSubCategory {

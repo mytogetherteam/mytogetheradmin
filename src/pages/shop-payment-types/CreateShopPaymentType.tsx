@@ -114,18 +114,22 @@ export default function CreateShopPaymentType() {
             const formData = new FormData();
 
             // Build the JSON request blob
-            const requestData = isEdit ? {
-                accountName,
-                accountNumber,
-                isActive,
-                displayOrder
-            } : {
-                paymentMethodId: parseInt(selectedPaymentMethodId),
-                accountNumber,
-                accountName,
-                isActive,
-                displayOrder
-            };
+            const safeDisplayOrder = displayOrder === "" || displayOrder < 1 ? 1 : displayOrder;
+
+            const requestData = isEdit
+                ? {
+                    accountName,
+                    accountNumber,
+                    isActive,
+                    displayOrder: safeDisplayOrder,
+                }
+                : {
+                    paymentMethodId: parseInt(selectedPaymentMethodId),
+                    accountNumber,
+                    accountName,
+                    isActive,
+                    displayOrder: safeDisplayOrder,
+                };
 
             const requestBlob = new Blob([JSON.stringify(requestData)], { type: 'application/json' });
             formData.append('request', requestBlob);
@@ -277,10 +281,17 @@ export default function CreateShopPaymentType() {
                                         <Input
                                             id="displayOrder"
                                             type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
                                             value={displayOrder}
                                             onChange={(e) => {
                                                 const val = e.target.value;
-                                                if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
+                                                if (val === "" || /^\d+$/.test(val)) {
+                                                    setDisplayOrder(val === "" ? "" : parseInt(val, 10));
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
                                             }}
                                             placeholder="1"
                                         />

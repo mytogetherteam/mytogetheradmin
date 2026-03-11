@@ -102,6 +102,11 @@ export const config = {
           recommended: (id: number) => `/api/admin/items/${id}/recommended`,
           availability: (id: number) => `/api/admin/items/${id}/availability`,
           hotDeal: (id: number) => `/api/admin/items/${id}/hot-deal`,
+        },
+        approvals: {
+          list: '/api/admin/menu/approvals',
+          approve: (id: number) => `/api/admin/menu/approvals/${id}/approve`,
+          reject: (id: number) => `/api/admin/menu/approvals/${id}/reject`,
         }
       },
       announcements: {

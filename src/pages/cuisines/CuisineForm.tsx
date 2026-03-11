@@ -26,7 +26,9 @@ export default function CuisineForm() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
 
-    const [formData, setFormData] = useState<Partial<CuisineDTO>>({
+    type FormDataType = Omit<CuisineDTO, 'id' | 'displayOrder'> & { displayOrder: number | "" };
+
+    const [formData, setFormData] = useState<FormDataType>({
         nameEn: "",
         nameMm: "",
         nameTh: "",
@@ -35,12 +37,27 @@ export default function CuisineForm() {
         displayOrder: 1,
     });
 
+    const generateSlug = (value: string) => {
+        return value
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+    };
+
     useEffect(() => {
         if (isEditMode) {
             const fetchCuisine = async () => {
                 try {
                     const data = await cuisineService.getCuisineById(Number(id));
-                    setFormData(data);
+                    setFormData({
+                        nameEn: data.nameEn ?? "",
+                        nameMm: data.nameMm ?? "",
+                        nameTh: data.nameTh ?? "",
+                        slug: data.slug ?? "",
+                        isActive: data.isActive ?? true,
+                        displayOrder: data.displayOrder ?? 1,
+                    });
                     if (data.imageUrl) setImagePreview(data.imageUrl);
                 } catch (error) {
                     console.error(error);
@@ -180,7 +197,14 @@ export default function CuisineForm() {
                                     id="nameEn"
                                     placeholder="e.g. Italian"
                                     value={formData.nameEn}
-                                    onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            nameEn: value,
+                                            slug: !isEditMode ? generateSlug(value) : prev.slug,
+                                        }));
+                                    }}
                                     required
                                 />
                             </div>
@@ -208,7 +232,8 @@ export default function CuisineForm() {
                                     id="slug"
                                     placeholder="e.g. italian"
                                     value={formData.slug}
-                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                    readOnly
+                                    className="bg-muted"
                                 />
                             </div>
                         </div>
@@ -219,10 +244,23 @@ export default function CuisineForm() {
                                 <Input
                                     id="displayOrder"
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={formData.displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setFormData({ ...formData, displayOrder: val === "" ? 1 : parseInt(val) });
+                                        if (val === "" || /^\d+$/.test(val)) {
+                                            const numeric = val === "" ? "" : parseInt(val);
+                                            setFormData({
+                                                ...formData,
+                                                displayOrder: numeric === "" || (typeof numeric === "number" && numeric < 1) ? numeric : numeric,
+                                            });
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (formData.displayOrder === "" || (typeof formData.displayOrder === "number" && formData.displayOrder < 1)) {
+                                            setFormData({ ...formData, displayOrder: 1 });
+                                        }
                                     }}
                                     placeholder="1"
                                 />
