@@ -161,6 +161,10 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const isAuthEndpoint = endpoint.includes('/auth/login') || 
+                          endpoint.includes('/auth/register') || 
+                          endpoint.includes('/auth/refresh');
+
     // Skip proactive refresh for the refresh endpoint itself
     if (!endpoint.includes('/refresh')) {
       await this.checkAndRefreshToken();
@@ -177,7 +181,8 @@ class ApiClient {
       Object.assign(headers, existingHeaders);
     }
 
-    if (token) {
+    // Only add Authorization header if it's not an auth endpoint
+    if (token && !isAuthEndpoint) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
@@ -194,7 +199,19 @@ class ApiClient {
         headers,
       });
 
-      if (response.status === 401 && !endpoint.includes('/refresh')) {
+      // Handle 401 errors
+      if (response.status === 401) {
+        // If it's an auth endpoint, don't try to refresh, just throw
+        if (isAuthEndpoint) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new ApiError(
+            errorData.message || 'Authentication failed',
+            401,
+            errorData
+          );
+        }
+
+        // For other endpoints, try to refresh
         if (!this.isRefreshing) {
           await this.performRefresh();
           // Retry the original request

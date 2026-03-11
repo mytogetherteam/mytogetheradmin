@@ -73,19 +73,19 @@ function LiveAlertToast({
 
     const action = onAction
       ? {
-          label: actionLabel,
-          onClick: onAction,
-        }
+        label: actionLabel,
+        onClick: onAction,
+      }
       : undefined;
 
     const show =
       variant === "success"
         ? toast.success
         : variant === "warning"
-        ? toast.warning
-        : variant === "info"
-        ? toast
-        : toast.error;
+          ? toast.warning
+          : variant === "info"
+            ? toast
+            : toast.error;
 
     show(title, {
       description,
@@ -130,7 +130,7 @@ export function AdminLiveAlertToasts() {
         }
         actionLabel="Review"
         onAction={() => navigate("/shops/vetting")}
-        variant="error"
+        variant="warning"
       />
 
       <LiveAlertToast
@@ -143,7 +143,7 @@ export function AdminLiveAlertToasts() {
         }
         actionLabel="Open"
         onAction={() => navigate("/orders/board")}
-        variant="error"
+        variant="info"
       />
     </>
   );

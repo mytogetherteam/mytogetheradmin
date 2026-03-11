@@ -56,6 +56,7 @@ export default function ManageShopRestaurant() {
     const [loading, setLoading] = useState(true)
     const [pendingLoading, setPendingLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(20)
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
@@ -73,7 +74,7 @@ export default function ManageShopRestaurant() {
     const loadShops = useCallback(async () => {
         setLoading(true)
         try {
-            const response = await ShopService.getAllShops(0, 200)
+            const response = await ShopService.getAllShops(0, 200, debouncedSearch)
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
         } catch (error) {
@@ -82,7 +83,12 @@ export default function ManageShopRestaurant() {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [debouncedSearch])
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm])
 
     const loadPendingShops = useCallback(async () => {
         setPendingLoading(true)
@@ -161,16 +167,7 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const filteredShops = shops.filter(
-        (shop) =>
-            (shop.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            (shop.nameMm?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            (shop.category?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            (shop.city?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            (shop.district?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    )
-
-    const sortedShops = sortData(filteredShops, sortConfig)
+    const sortedShops = sortData(shops, sortConfig)
 
     const totalItems = sortedShops.length
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))

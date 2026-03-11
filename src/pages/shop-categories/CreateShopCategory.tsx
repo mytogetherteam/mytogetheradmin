@@ -41,23 +41,23 @@ export default function CreateShopCategory() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (isEditMode && id) {
-            loadCategory(parseInt(id));
-        } else {
-            // Reset form for create mode
-            setName("");
-            setNameMm("");
-            setNameTh("");
-            setNameEn("");
-            setSlug("");
-            setDisplayOrder(0);
-            setIsActive(true);
-            setExistingImage(null);
-            setImageFile(null);
-            setImagePreview(null);
+    const generateSlug = (value: string) => {
+        return value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    };
+
+    const handleNameEnChange = (value: string) => {
+        setNameEn(value);
+        if (!isEditMode) {
+            setSlug(generateSlug(value));
         }
-    }, [id, isEditMode]);
+    };
+
+    const handleNameChange = (value: string) => {
+        setName(value);
+        if (!isEditMode && !nameEn) {
+            setSlug(generateSlug(value));
+        }
+    };
 
     const loadCategory = async (catId: number) => {
         setLoading(true);
@@ -80,6 +80,23 @@ export default function CreateShopCategory() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (isEditMode && id) {
+            loadCategory(parseInt(id));
+        } else {
+            setName("");
+            setNameMm("");
+            setNameTh("");
+            setNameEn("");
+            setSlug("");
+            setDisplayOrder(1);
+            setIsActive(true);
+            setExistingImage(null);
+            setImageFile(null);
+            setImagePreview(null);
+        }
+    }, [id, isEditMode]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -109,7 +126,7 @@ export default function CreateShopCategory() {
                 nameTh: nameTh || undefined,
                 nameEn: nameEn || undefined,
                 slug: slug || undefined,
-                displayOrder,
+                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
                 isActive,
             };
 
@@ -184,7 +201,7 @@ export default function CreateShopCategory() {
                                 <Input
                                     id="categoryName"
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => handleNameChange(e.target.value)}
                                     placeholder="e.g. Restaurant"
                                     required
                                 />
@@ -203,7 +220,7 @@ export default function CreateShopCategory() {
                                 <Input
                                     id="categoryNameEn"
                                     value={nameEn}
-                                    onChange={(e) => setNameEn(e.target.value)}
+                                    onChange={(e) => handleNameEnChange(e.target.value)}
                                     placeholder="e.g. Restaurant"
                                 />
                             </div>
@@ -212,7 +229,8 @@ export default function CreateShopCategory() {
                                 <Input
                                     id="slug"
                                     value={slug}
-                                    onChange={(e) => setSlug(e.target.value)}
+                                    readOnly
+                                    className="bg-muted"
                                     placeholder="e.g. restaurant"
                                 />
                             </div>
@@ -230,10 +248,15 @@ export default function CreateShopCategory() {
                                 <Input
                                     id="displayOrder"
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={displayOrder}
                                     onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
+                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? "" : parseInt(val));
+                                    }}
+                                    onBlur={() => {
+                                        if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
                                     }}
                                     placeholder="1"
                                 />

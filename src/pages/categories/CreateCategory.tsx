@@ -63,7 +63,7 @@ export default function CreateCategory() {
       setNameMm("");
       setNameTh("");
       setNameEn("");
-      setDisplayOrder(0);
+      setDisplayOrder(1);
       setIsActive(true);
       setExistingImage(null);
       setImageFile(null);
@@ -274,10 +274,17 @@ export default function CreateCategory() {
                 <Input
                   id="displayOrder"
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={displayOrder}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? 1 : parseInt(val));
+                    if (val === "" || /^\d+$/.test(val)) {
+                      setDisplayOrder(val === "" ? "" : parseInt(val, 10));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
                   }}
                   placeholder="1"
                 />

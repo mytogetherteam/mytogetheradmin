@@ -210,27 +210,27 @@ export default function ManageUsers() {
                                                             {user.active ? "Active" : "Inactive"}
                                                         </Badge>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                         <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                                 <Button variant="ghost" className="h-8 w-8 p-0" disabled={actionLoading}>
                                                                     <span className="sr-only">Open menu</span>
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
+                                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                <DropdownMenuItem onClick={() => navigate(`/users/${user.id}`)}>
+                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/users/${user.id}`); }}>
                                                                     <User className="mr-2 h-4 w-4" />
                                                                     View Details
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}>
                                                                     <Power className="mr-2 h-4 w-4" />
                                                                     {user.active ? 'Deactivate' : 'Activate'}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => handleOpenRoleDialog(user)}>
+                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenRoleDialog(user); }}>
                                                                     <UserCog className="mr-2 h-4 w-4" />
                                                                     Change Role
                                                                 </DropdownMenuItem>

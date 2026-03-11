@@ -3,11 +3,14 @@ import App from './App.tsx'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ThemeProvider } from 'next-themes'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <TooltipProvider delayDuration={200}>
-      <App />
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider delayDuration={200}>
+        <App />
+      </TooltipProvider>
+    </ThemeProvider>
   </BrowserRouter>,
 )

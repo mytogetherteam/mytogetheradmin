@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,44 @@ export default function CreateShopSubCategory() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
+    const generateSlug = (value: string) => {
+        return value
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+    };
+
+    const updateSlugFromNames = (nextName: string, nextNameEn: string) => {
+        if (isEditMode) return;
+        const source = nextNameEn || nextName;
+        setSlug(source ? generateSlug(source) : "");
+    };
+
+    const loadSubCategory = useCallback(async (subId: number) => {
+        setLoading(true);
+        try {
+            const subCat = await ShopCategoryService.getShopSubCategoryById(subId);
+            const nextName = subCat.name || "";
+            const nextNameEn = subCat.nameEn || "";
+            setName(nextName);
+            setNameMm(subCat.nameMm || "");
+            setNameTh(subCat.nameTh || "");
+            setNameEn(nextNameEn);
+            setSlug(subCat.slug || (nextNameEn || nextName ? generateSlug(nextNameEn || nextName) : ""));
+            setIsActive(subCat.isActive !== false);
+            if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
+                setIsActive(Boolean((subCat as Record<string, unknown>).active));
+            }
+            setSelectedCategoryId(subCat.categoryId?.toString() || "");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load sub-category");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         loadCategories();
     }, []);
@@ -58,7 +96,7 @@ export default function CreateShopSubCategory() {
         if (isEditMode && id) {
             loadSubCategory(parseInt(id));
         }
-    }, [id, isEditMode]);
+    }, [id, isEditMode, loadSubCategory]);
 
     const loadCategories = async () => {
         setFetchingCategories(true);
@@ -75,28 +113,6 @@ export default function CreateShopSubCategory() {
         }
     };
 
-    const loadSubCategory = async (subId: number) => {
-        setLoading(true);
-        try {
-            const subCat = await ShopCategoryService.getShopSubCategoryById(subId);
-            setName(subCat.name || "");
-            setNameMm(subCat.nameMm || "");
-            setNameTh(subCat.nameTh || "");
-            setNameEn(subCat.nameEn || "");
-            setSlug(subCat.slug || "");
-            setIsActive(subCat.isActive !== false);
-            if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
-                setIsActive(Boolean((subCat as Record<string, unknown>).active));
-            }
-            setSelectedCategoryId(subCat.categoryId?.toString() || "");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to load sub-category");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedCategoryId && !isEditMode) {
@@ -107,7 +123,12 @@ export default function CreateShopSubCategory() {
         setSubmitting(true);
         try {
             const dataObj = {
-                name, nameMm, nameTh, nameEn, slug, active: isActive
+                name,
+                nameMm,
+                nameTh,
+                nameEn,
+                slug: slug || generateSlug(nameEn || name),
+                active: isActive,
             };
 
             if (isEditMode && id) {
@@ -199,15 +220,24 @@ export default function CreateShopSubCategory() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Name (Default) <span className="text-red-500">*</span></Label>
-                                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                                <Input
+                                    id="name"
+                                    value={name}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setName(value);
+                                        updateSlugFromNames(value, nameEn);
+                                    }}
+                                    required
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="slug">Slug</Label>
                                 <Input
                                     id="slug"
                                     value={slug}
-                                    onChange={(e) => setSlug(e.target.value)}
-                                    placeholder="e.g. fast-food"
+                                    disabled={!isEditMode}
+                                    placeholder="e.g. fast_food"
                                 />
                             </div>
                         </div>
@@ -223,7 +253,15 @@ export default function CreateShopSubCategory() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nameEn">Name (English)</Label>
-                                <Input id="nameEn" value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
+                                <Input
+                                    id="nameEn"
+                                    value={nameEn}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setNameEn(value);
+                                        updateSlugFromNames(name, value);
+                                    }}
+                                />
                             </div>
                         </div>
 

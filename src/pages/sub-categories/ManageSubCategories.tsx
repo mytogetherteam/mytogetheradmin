@@ -186,7 +186,7 @@ export default function ManageSubCategories() {
                                 <SelectContent>
                                     {categories.map((cat) => (
                                         <SelectItem key={cat.id} value={cat.id.toString()}>
-                                            {cat.name}
+                                            {cat.name || cat.nameEn || `Category ${cat.id}`}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

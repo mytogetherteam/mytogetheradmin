@@ -14,6 +14,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PriceInput } from "@/components/ui/PriceInput"
 import { Textarea } from "@/components/ui/textarea"
 import {
     Select,
@@ -48,6 +49,7 @@ const shopFormSchema = z.object({
     nameEn: z.string().min(2, "Name (English) is required."),
     nameMm: z.string().optional(),
     nameTh: z.string().optional(),
+    slug: z.string().optional(),
 
     // Category
     shopCategoryId: z.number().min(1, "Please select a category."),
@@ -139,6 +141,7 @@ export default function CreateShopRestaurant() {
             nameEn: "",
             nameMm: "",
             nameTh: "",
+            slug: "",
             shopCategoryId: 0,
             shopSubCategoryId: null,
             addressEn: "",
@@ -219,6 +222,7 @@ export default function CreateShopRestaurant() {
                 nameEn: shop.nameEn || "",
                 nameMm: shop.nameMm || "",
                 nameTh: shop.nameTh || "",
+                slug: shop.slug || "",
                 shopCategoryId: shop.shopCategory?.id || 0,
                 shopSubCategoryId: shop.shopSubCategory?.id ?? null,
                 addressEn: shop.addressEn || "",
@@ -275,6 +279,16 @@ export default function CreateShopRestaurant() {
                 setExistingGalleryImages(shop.photos.map(p => p.url));
             }
 
+            // Set selectedCityId by finding which city contains the district
+            if (shop.districtId && setupData?.cities) {
+                const city = setupData.cities.find(c =>
+                    c.districts?.some(d => d.id === shop.districtId)
+                );
+                if (city) {
+                    setSelectedCityId(city.id);
+                }
+            }
+
         } catch (error) {
             console.error("Failed to load shop:", error)
             toast.error("Failed to load shop data", {
@@ -284,7 +298,17 @@ export default function CreateShopRestaurant() {
         } finally {
             setLoading(false)
         }
-    }, [form, navigate])
+    }, [form, navigate, setupData])
+
+    useEffect(() => {
+        // Sync districts when city or setupData changes
+        if (selectedCityId && setupData?.cities) {
+            const city = setupData.cities.find(c => c.id === selectedCityId);
+            if (city) {
+                setAvailableDistricts(city.districts || []);
+            }
+        }
+    }, [selectedCityId, setupData])
 
     useEffect(() => {
         loadSetupData()
@@ -376,7 +400,7 @@ export default function CreateShopRestaurant() {
 
             // Prepare the data object (excluding file fields we send separately)
             const {
-                nameEn, nameMm, nameTh,
+                nameEn, nameMm, nameTh, slug,
                 shopCategoryId, shopSubCategoryId,
                 addressEn, addressMm, addressTh,
                 districtId, latitude, longitude,
@@ -389,7 +413,7 @@ export default function CreateShopRestaurant() {
             } = data;
 
             const dataWithoutFiles = {
-                nameEn, nameMm, nameTh,
+                nameEn, nameMm, nameTh, slug,
                 shopCategoryId,
                 shopSubCategoryId,
                 addressEn, addressMm, addressTh,
@@ -527,7 +551,7 @@ export default function CreateShopRestaurant() {
 
     const handleCityChange = async (cityId: number) => {
         setSelectedCityId(cityId)
-        setAvailableDistricts([])
+        // availableDistricts will be updated by the useEffect
         form.setValue("districtId", null as unknown as number)
     }
 
@@ -580,9 +604,38 @@ export default function CreateShopRestaurant() {
                                                 name="nameEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Shop Name (English)</FormLabel>
+                                                        <FormLabel>* Shop Name (English)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="e.g. My Together Cafe" {...field} />
+                                                            <Input 
+                                                                placeholder="e.g. My Together Cafe" 
+                                                                {...field}
+                                                                onChange={(e) => {
+                                                                    field.onChange(e);
+                                                                    if (!isEditMode) {
+                                                                        const slug = e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+                                                                        form.setValue("slug", slug);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <FormField
+                                                control={form.control}
+                                                name="slug"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Slug</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                placeholder="e.g. my_together_cafe"
+                                                                {...field}
+                                                                readOnly
+                                                                className="bg-muted"
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -595,7 +648,7 @@ export default function CreateShopRestaurant() {
                                                     name="nameMm"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Shop Name (Myanmar)</FormLabel>
+                                                            <FormLabel>* Shop Name (Myanmar)</FormLabel>
                                                             <FormControl>
                                                                 <Input placeholder="Enter name in Myanmar" {...field} />
                                                             </FormControl>
@@ -608,7 +661,7 @@ export default function CreateShopRestaurant() {
                                                     name="nameTh"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Shop Name (Thai)</FormLabel>
+                                                            <FormLabel>* Shop Name (Thai)</FormLabel>
                                                             <FormControl>
                                                                 <Input placeholder="Enter name in Thai" {...field} />
                                                             </FormControl>
@@ -624,7 +677,7 @@ export default function CreateShopRestaurant() {
                                                     name="shopCategoryId"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Category</FormLabel>
+                                                            <FormLabel>* Category</FormLabel>
                                                             <FormControl>
                                                                 <SearchableSelect
                                                                     data={shopCategories.map(cat => ({ label: cat.nameEn || `Category ${cat.id}`, value: cat.id }))}
@@ -645,7 +698,7 @@ export default function CreateShopRestaurant() {
                                                     name="shopSubCategoryId"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Subcategory (Optional)</FormLabel>
+                                                            <FormLabel>* Subcategory</FormLabel>
                                                             <FormControl>
                                                                 <SearchableSelect
                                                                     data={shopSubCategories.map(subCat => ({ label: subCat.nameEn || `Subcategory ${subCat.id}`, value: subCat.id }))}
@@ -671,7 +724,7 @@ export default function CreateShopRestaurant() {
                                                     name="descriptionEn"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Description (English)</FormLabel>
+                                                            <FormLabel>* Description (English)</FormLabel>
                                                             <FormControl>
                                                                 <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
                                                             </FormControl>
@@ -686,7 +739,7 @@ export default function CreateShopRestaurant() {
                                                         name="descriptionMm"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel>Description (Myanmar)</FormLabel>
+                                                                <FormLabel>* Description (Myanmar)</FormLabel>
                                                                 <FormControl>
                                                                     <Textarea rows={2} className="resize-none" placeholder="Description in Myanmar..." {...field} />
                                                                 </FormControl>
@@ -699,7 +752,7 @@ export default function CreateShopRestaurant() {
                                                         name="descriptionTh"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel>Description (Thai)</FormLabel>
+                                                                <FormLabel>* Description (Thai)</FormLabel>
                                                                 <FormControl>
                                                                     <Textarea rows={2} className="resize-none" placeholder="Description in Thai..." {...field} />
                                                                 </FormControl>
@@ -719,7 +772,7 @@ export default function CreateShopRestaurant() {
                                                     name="cuisineTypeIds"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Cuisine Types</FormLabel>
+                                                            <FormLabel>* Cuisine Types</FormLabel>
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
                                                                     const cuisine = setupData?.cuisineTypes?.find((c: CuisineTypeDTO) => c.id === id)
@@ -764,7 +817,7 @@ export default function CreateShopRestaurant() {
                                                         render={() => (
                                                             <FormItem>
                                                                 <div className="mb-4">
-                                                                    <FormLabel className="text-base">Meal Types</FormLabel>
+                                                                    <FormLabel className="text-base">* Meal Types</FormLabel>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-4">
                                                                     {["BREAKFAST", "LUNCH", "DINNER"].map((type) => (
@@ -803,7 +856,7 @@ export default function CreateShopRestaurant() {
                                                         render={() => (
                                                             <FormItem>
                                                                 <div className="mb-4">
-                                                                    <FormLabel className="text-base">Delivery Types</FormLabel>
+                                                                    <FormLabel className="text-base">* Delivery Types</FormLabel>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-4">
                                                                     {["PICKUP", "DELIVERY"].map((type) => (
@@ -845,13 +898,12 @@ export default function CreateShopRestaurant() {
                                                         render={() => (
                                                             <FormItem>
                                                                 <div className="mb-4">
-                                                                    <FormLabel className="text-base">Payment Methods</FormLabel>
+                                                                    <FormLabel className="text-base">* Payment Methods</FormLabel>
                                                                     <FormDescription>
                                                                         Select payment methods supported by this shop.
                                                                     </FormDescription>
                                                                 </div>
-                                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                                                    { }
+                                                                <div className="flex flex-wrap gap-4 pt-2">
                                                                     {(paymentMethods || []).map((method: PaymentMethodDTO) => (
                                                                         <FormField
                                                                             key={method.id}
@@ -878,16 +930,16 @@ export default function CreateShopRestaurant() {
                                                                                                 }}
                                                                                             />
                                                                                         </FormControl>
-                                                                                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2">
+                                                                                        <FormLabel className="font-normal cursor-pointer flex items-center gap-2 pr-2">
                                                                                             {method.iconUrl && (
                                                                                                 <img
                                                                                                     src={method.iconUrl}
-                                                                                                    alt={method.name}
-                                                                                                    className="h-5 w-5 object-contain"
+                                                                                                    alt={method.code || method.name}
+                                                                                                    className="h-5 w-5 object-contain flex-shrink-0"
                                                                                                     onError={(e) => (e.currentTarget.style.display = 'none')}
                                                                                                 />
                                                                                             )}
-                                                                                            {method.name}
+                                                                                            <span className="truncate">{method.code || method.name}</span>
                                                                                         </FormLabel>
                                                                                     </FormItem>
                                                                                 );
@@ -903,21 +955,6 @@ export default function CreateShopRestaurant() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="descriptionEn"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop..." {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
                                     </CardContent>
                                 </Card>
 
@@ -933,7 +970,7 @@ export default function CreateShopRestaurant() {
                                                 name="addressEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Address (English)</FormLabel>
+                                                        <FormLabel>* Address (English)</FormLabel>
                                                         <FormControl>
                                                             <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
                                                         </FormControl>
@@ -948,7 +985,7 @@ export default function CreateShopRestaurant() {
                                                     name="addressMm"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Address (Myanmar)</FormLabel>
+                                                            <FormLabel>* Address (Myanmar)</FormLabel>
                                                             <FormControl>
                                                                 <Textarea rows={2} className="resize-none" placeholder="Full address in Myanmar" {...field} />
                                                             </FormControl>
@@ -961,7 +998,7 @@ export default function CreateShopRestaurant() {
                                                     name="addressTh"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>Address (Thai)</FormLabel>
+                                                            <FormLabel>* Address (Thai)</FormLabel>
                                                             <FormControl>
                                                                 <Textarea rows={2} className="resize-none" placeholder="Full address in Thai" {...field} />
                                                             </FormControl>
@@ -975,7 +1012,7 @@ export default function CreateShopRestaurant() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    City
+                                                    * City
                                                 </label>
                                                 <SearchableSelect
                                                     data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
@@ -993,7 +1030,7 @@ export default function CreateShopRestaurant() {
                                                 name="districtId"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>District</FormLabel>
+                                                        <FormLabel>* District</FormLabel>
                                                         <FormControl>
                                                             <SearchableSelect
                                                                 data={availableDistricts.map(d => ({ label: d.nameEn, value: d.id }))}
@@ -1019,7 +1056,7 @@ export default function CreateShopRestaurant() {
                                                 name="phone"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Phone</FormLabel>
+                                                        <FormLabel>* Phone</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="Use commas to add multi phone numbers" {...field} />
                                                         </FormControl>
@@ -1032,7 +1069,7 @@ export default function CreateShopRestaurant() {
                                                 name="email"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Email</FormLabel>
+                                                        <FormLabel>* Email</FormLabel>
                                                         <FormControl>
                                                             <Input type="email" placeholder="contact@shop.com" {...field} />
                                                         </FormControl>
@@ -1048,7 +1085,7 @@ export default function CreateShopRestaurant() {
                                                 name="latitude"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Latitude</FormLabel>
+                                                        <FormLabel>* Latitude</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" step="any" {...field} />
                                                         </FormControl>
@@ -1061,7 +1098,7 @@ export default function CreateShopRestaurant() {
                                                 name="longitude"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Longitude</FormLabel>
+                                                        <FormLabel>* Longitude</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" step="any" {...field} />
                                                         </FormControl>
@@ -1078,7 +1115,7 @@ export default function CreateShopRestaurant() {
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Utensils className="h-5 w-5 text-primary" />
-                                            Operating Hours
+                                            * Operating Hours
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -1161,7 +1198,7 @@ export default function CreateShopRestaurant() {
                                         <div className="space-y-6">
                                             {/* Logo Photo */}
                                             <div className="space-y-2">
-                                                <div className="text-sm font-medium">Logo Photo</div>
+                                                <div className="text-sm font-medium">* Logo Photo</div>
                                                 <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
                                                     <Input
                                                         type="file"
@@ -1197,7 +1234,7 @@ export default function CreateShopRestaurant() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <div className="text-sm font-medium">Cover Photo (Single)</div>
+                                                <div className="text-sm font-medium">* Cover Photo (Single)</div>
                                                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
                                                     <Input
                                                         type="file"
@@ -1234,7 +1271,7 @@ export default function CreateShopRestaurant() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <div className="text-sm font-medium">Gallery Photos (Multiple)</div>
+                                                <div className="text-sm font-medium">* Gallery Photos (Multiple)</div>
                                                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
                                                     <Input
                                                         type="file"
@@ -1327,7 +1364,7 @@ export default function CreateShopRestaurant() {
                                             name="pricePreference"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Price Preference</FormLabel>
+                                                    <FormLabel>* Price Preference</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger>
@@ -1353,9 +1390,13 @@ export default function CreateShopRestaurant() {
                                                 name="minOrderAmount"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Min Order Amount</FormLabel>
+                                                        <FormLabel>* Min Order Amount</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" placeholder="0" {...field} />
+                                                            <PriceInput 
+                                                                placeholder="0" 
+                                                                value={field.value || ""} 
+                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))} 
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1366,9 +1407,13 @@ export default function CreateShopRestaurant() {
                                                 name="baseDeliveryFee"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Base Delivery Fee</FormLabel>
+                                                        <FormLabel>* Base Delivery Fee</FormLabel>
                                                         <FormControl>
-                                                            <Input type="number" placeholder="0" {...field} />
+                                                            <PriceInput 
+                                                                placeholder="0" 
+                                                                value={field.value || ""} 
+                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))} 
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -1379,7 +1424,7 @@ export default function CreateShopRestaurant() {
                                                 name="maxItemQuantityPerOrder"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Max Qty Per Order</FormLabel>
+                                                        <FormLabel>* Max Qty Per Order</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" placeholder="10" {...field} />
                                                         </FormControl>
@@ -1397,7 +1442,7 @@ export default function CreateShopRestaurant() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel>Delivery Enabled</FormLabel>
+                                                        <FormLabel>* Delivery Enabled</FormLabel>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1412,7 +1457,7 @@ export default function CreateShopRestaurant() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel>Enable Stock Check</FormLabel>
+                                                        <FormLabel>* Enable Stock Check</FormLabel>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1430,11 +1475,11 @@ export default function CreateShopRestaurant() {
                                     </CardHeader>
                                     <CardContent className="grid gap-4">
                                         {([
-                                            { name: "hasDelivery", label: "Delivery Available", icon: Truck },
-                                            { name: "hasParking", label: "Parking Available", icon: Car },
-                                            { name: "hasWifi", label: "Free Wifi", icon: Wifi },
-                                            { name: "isHalal", label: "Halal Certified", icon: Utensils },
-                                            { name: "isVegetarian", label: "Vegetarian Friendly", icon: Leaf },
+                                            { name: "hasDelivery", label: "* Delivery Available", icon: Truck },
+                                            { name: "hasParking", label: "* Parking Available", icon: Car },
+                                            { name: "hasWifi", label: "* Free Wifi", icon: Wifi },
+                                            { name: "isHalal", label: "* Halal Certified", icon: Utensils },
+                                            { name: "isVegetarian", label: "* Vegetarian Friendly", icon: Leaf },
                                         ] as const).map((feature) => (
                                             <FormField
                                                 key={feature.name}

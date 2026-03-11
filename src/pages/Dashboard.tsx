@@ -259,25 +259,26 @@ export default function Dashboard() {
     const totalUsers = liveStats.totalUsers ?? stats?.totalUsers ?? 0;
     const isLive = !!systemStats;
 
-    // Server uses totalShops as the primary count in the live feed
-    const activeShops = liveStats.totalShops ?? stats?.totalShops ?? 0;
+    // Backend currently sends totalShops; activeShops is spec-planned but not yet broadcast
+    const activeShops = liveStats.activeShops ?? liveStats.totalShops ?? stats?.totalShops ?? 0;
 
-    const revenueToday = liveStats.totalRevenueToday ?? stats?.totalRevenueToday ?? 0;
+    // Backend currently sends totalRevenueToday; revenueToday is spec-planned
+    const revenueToday = liveStats.revenueToday ?? liveStats.totalRevenueToday ?? stats?.totalRevenueToday ?? 0;
 
-    // If the server provides totalOrdersToday, we use it for a live look at today's volume. 
-    const ordersValue = liveStats.totalOrdersToday ?? 0;
+    // totalOrdersToday is what the server sends right now
+    const ordersValue = liveStats.totalOrdersToday ?? liveStats.pendingOrders ?? 0;
     const ordersLabel = (liveStats.totalOrdersToday !== undefined && isLive) ? "Orders Today" : "Pending Orders";
 
     useEffect(() => {
         if (isLive) {
             console.log('[Dashboard] Data Synced:', {
-                totalShops: liveStats.totalShops,
-                totalRevenueToday: liveStats.totalRevenueToday,
+                activeShops: activeShops,
+                revenueToday: revenueToday,
                 totalOrdersToday: liveStats.totalOrdersToday,
-                displayShops: activeShops
+                pendingOrders: liveStats.pendingOrders,
             });
         }
-    }, [isLive, liveStats, activeShops]);
+    }, [isLive, liveStats, activeShops, revenueToday]);
 
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;

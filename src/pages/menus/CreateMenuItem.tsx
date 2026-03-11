@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PriceInput } from "@/components/ui/PriceInput";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,6 +83,10 @@ export default function CreateMenuItem() {
     const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+    
+    // Refs for file inputs
+    const mainImageRef = useRef<HTMLInputElement>(null);
+    const galleryRef = useRef<HTMLInputElement>(null);
 
     const loadShops = useCallback(async () => {
         try {
@@ -155,15 +160,17 @@ export default function CreateMenuItem() {
         }
     }, []);
 
+    const generateSlug = (value: string) => {
+        return value
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+    };
+
     useEffect(() => {
         if (!isEditMode) {
-            const generatedSlug = (nameEn || "")
-                .toLowerCase()
-                .trim()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-');
-            setSlug(generatedSlug);
+            setSlug(generateSlug(nameEn || ""));
         }
     }, [nameEn, isEditMode]);
 
@@ -258,20 +265,7 @@ export default function CreateMenuItem() {
         setExistingGalleryImages(prev => prev.filter(img => img !== url));
     };
 
-    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-        const rawValue = e.target.value.replace(/,/g, "");
-        if (rawValue === "") {
-            setter("");
-            return;
-        }
-        if (/^[0-9]*\.?[0-9]*$/.test(rawValue)) {
-            const parts = rawValue.split('.');
-            if (parts[0] !== "") {
-                parts[0] = Number(parts[0]).toLocaleString();
-            }
-            setter(parts.join('.'));
-        }
-    };
+    // handlePriceChange removed in favor of PriceInput
 
     const addOptionGroup = () => {
         setOptionGroups([...optionGroups, {
@@ -279,7 +273,9 @@ export default function CreateMenuItem() {
             isRequired: false,
             minSelection: 0,
             maxSelection: 1,
-            options: [{ nameEn: "", price: 0, isAvailable: true }]
+            displayOrder: 1,
+            groupType: "SINGLE_SELECT",
+            options: [{ nameEn: "", price: 0, isAvailable: true, displayOrder: 1 }]
         }]);
     };
 
@@ -295,7 +291,7 @@ export default function CreateMenuItem() {
 
     const addOption = (groupIndex: number) => {
         const newGroups = [...optionGroups];
-        newGroups[groupIndex].options.push({ nameEn: "", price: 0, isAvailable: true });
+        newGroups[groupIndex].options.push({ nameEn: "", price: 0, isAvailable: true, displayOrder: 1 });
         setOptionGroups(newGroups);
     };
 
@@ -312,7 +308,7 @@ export default function CreateMenuItem() {
     };
 
     const addVariant = () => {
-        setVariants([...variants, { nameEn: "", price: 0, isAvailable: true }]);
+        setVariants([...variants, { nameEn: "", price: 0, isAvailable: true, displayOrder: 1 }]);
     };
 
     const removeVariant = (index: number) => {
@@ -339,6 +335,7 @@ export default function CreateMenuItem() {
             const formData = new FormData();
 
             const payload = {
+                name: nameEn,
                 nameMm,
                 nameTh,
                 nameEn,
@@ -361,9 +358,19 @@ export default function CreateMenuItem() {
                 isAvailable,
                 isCombo,
                 isPopular,
-                displayOrder: Number(displayOrder) || 1,
-                optionGroups,
-                variants
+                displayOrder: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
+                optionGroups: optionGroups.map(og => ({
+                    ...og,
+                    name: og.nameEn,
+                    options: og.options.map(opt => ({
+                        ...opt,
+                        name: opt.nameEn
+                    }))
+                })),
+                variants: variants.map(v => ({
+                    ...v,
+                    name: v.nameEn
+                }))
             };
 
             formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
@@ -490,7 +497,7 @@ export default function CreateMenuItem() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Slug</Label>
-                                    <Input value={slug} onChange={e => setSlug(e.target.value)} readOnly className="bg-muted" />
+                                    <Input value={slug} readOnly className="bg-muted" />
                                 </div>
 
                                 <div className="space-y-2 mt-4">
@@ -518,10 +525,20 @@ export default function CreateMenuItem() {
                                         <Label>Display Order</Label>
                                         <Input
                                             type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
                                             value={displayOrder}
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val);
+                                                if (val === "" || /^\d+$/.test(val)) {
+                                                    setDisplayOrder(val);
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "" || val === "0") {
+                                                    setDisplayOrder("1");
+                                                }
                                             }}
                                             placeholder="1"
                                         />
@@ -544,38 +561,34 @@ export default function CreateMenuItem() {
                                 <div className="grid grid-cols-2 gap-4 mt-4">
                                     <div className="space-y-2">
                                         <Label>Base Price*</Label>
-                                        <Input
-                                            type="text"
+                                        <PriceInput
                                             value={price}
-                                            onChange={(e) => handlePriceChange(e, setPrice)}
+                                            onValueChange={setPrice}
                                             required
                                             placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Original Price</Label>
-                                        <Input
-                                            type="text"
+                                        <PriceInput
                                             value={originalPrice}
-                                            onChange={(e) => handlePriceChange(e, setOriginalPrice)}
+                                            onValueChange={setOriginalPrice}
                                             placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Discount Amount</Label>
-                                        <Input
-                                            type="text"
+                                        <PriceInput
                                             value={discountAmount}
-                                            onChange={(e) => handlePriceChange(e, setDiscountAmount)}
+                                            onValueChange={setDiscountAmount}
                                             placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Discount (%)</Label>
-                                        <Input
-                                            type="text"
+                                        <PriceInput
                                             value={discountPercentage}
-                                            onChange={(e) => handlePriceChange(e, setDiscountPercentage)}
+                                            onValueChange={setDiscountPercentage}
                                             placeholder="0"
                                         />
                                     </div>
@@ -667,6 +680,30 @@ export default function CreateMenuItem() {
                                                             />
                                                         </div>
                                                         <div className="space-y-2">
+                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Order</Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={group.displayOrder}
+                                                                onChange={e => updateOptionGroup(gIdx, { displayOrder: parseInt(e.target.value) || 1 })}
+                                                                placeholder="1"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Group Type</Label>
+                                                            <Select 
+                                                                value={group.groupType || "SINGLE_SELECT"} 
+                                                                onValueChange={val => updateOptionGroup(gIdx, { groupType: val as "SINGLE_SELECT" | "MULTI_SELECT" })}
+                                                            >
+                                                                <SelectTrigger className="h-10">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="SINGLE_SELECT">Single Select</SelectItem>
+                                                                    <SelectItem value="MULTI_SELECT">Multi Select</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="space-y-2">
                                                             <Label className="text-xs font-bold uppercase text-muted-foreground">Selection Mode</Label>
                                                             <div className="flex items-center gap-4 h-10">
                                                                 <div className="flex items-center gap-2">
@@ -741,6 +778,26 @@ export default function CreateMenuItem() {
                                                                             onChange={e => updateOption(gIdx, oIdx, { price: parseFloat(e.target.value) || 0 })}
                                                                         />
                                                                     </div>
+                                                                    <PriceInput
+                                                                        className="flex-1 h-8 text-sm"
+                                                                        placeholder="Display Price (e.g. 1,500)"
+                                                                        value={opt.displayPrice || ""}
+                                                                        onValueChange={val => updateOption(gIdx, oIdx, { displayPrice: val })}
+                                                                    />
+                                                                    <Input
+                                                                        className="w-16 h-8 text-sm"
+                                                                        placeholder="Order"
+                                                                        type="number"
+                                                                        value={opt.displayOrder}
+                                                                        onChange={e => updateOption(gIdx, oIdx, { displayOrder: parseInt(e.target.value) || 1 })}
+                                                                    />
+                                                                    <Input
+                                                                        className="w-24 h-8 text-sm"
+                                                                        placeholder="Linked ID"
+                                                                        type="number"
+                                                                        value={opt.linkedMenuItemId}
+                                                                        onChange={e => updateOption(gIdx, oIdx, { linkedMenuItemId: parseInt(e.target.value) || undefined })}
+                                                                    />
                                                                     <Switch
                                                                         checked={opt.isAvailable}
                                                                         onCheckedChange={val => updateOption(gIdx, oIdx, { isAvailable: val })}
@@ -805,11 +862,20 @@ export default function CreateMenuItem() {
                                                     />
                                                     <div className="flex items-center gap-1 w-32">
                                                         <span className="text-sm font-medium">Price:</span>
-                                                        <Input
-                                                            type="number"
+                                                        <PriceInput
                                                             placeholder="0"
                                                             value={variant.price}
-                                                            onChange={e => updateVariant(vIdx, { price: parseFloat(e.target.value) || 0 })}
+                                                            onValueChange={val => updateVariant(vIdx, { price: parseFloat(val) || 0 })}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-1 w-24">
+                                                        <span className="text-sm font-medium">Order:</span>
+                                                        <Input
+                                                            type="number"
+                                                            className="h-9"
+                                                            placeholder="1"
+                                                            value={variant.displayOrder}
+                                                            onChange={e => updateVariant(vIdx, { displayOrder: parseInt(e.target.value) || 1 })}
                                                         />
                                                     </div>
                                                     <div className="flex items-center gap-2 mx-2">
@@ -847,12 +913,15 @@ export default function CreateMenuItem() {
                                 {/* Main Image */}
                                 <div className="space-y-4">
                                     <Label className="text-base">Main Thumbnail Photo</Label>
-                                    <div className="relative group aspect-square max-w-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all overflow-hidden">
+                                    <div 
+                                        onClick={() => mainImageRef.current?.click()}
+                                        className="relative group aspect-square max-w-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all overflow-hidden cursor-pointer"
+                                    >
                                         {imagePreview || existingImage ? (
                                             <>
                                                 <img src={imagePreview || existingImage || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                    <Button type="button" variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={removeImage}>
+                                                    <Button type="button" variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={(e) => { e.stopPropagation(); removeImage(); }}>
                                                         <Trash2 className="h-5 w-5" />
                                                     </Button>
                                                 </div>
@@ -861,9 +930,15 @@ export default function CreateMenuItem() {
                                             <>
                                                 <Upload className="h-10 w-10 text-muted-foreground mb-3 group-hover:scale-110 transition-transform" />
                                                 <span className="text-sm font-medium text-muted-foreground px-4 text-center">Click to upload main image</span>
-                                                <Input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleImageChange} />
                                             </>
                                         )}
+                                        <input 
+                                            type="file" 
+                                            ref={mainImageRef}
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={handleImageChange} 
+                                        />
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">This image will be used as the primary display photo in search results and menu listings.</p>
                                 </div>
@@ -894,9 +969,19 @@ export default function CreateMenuItem() {
                                             </div>
                                         ))}
 
-                                        <div className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer">
+                                        <div 
+                                            onClick={() => galleryRef.current?.click()}
+                                            className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer"
+                                        >
                                             <Plus className="h-6 w-6 text-muted-foreground" />
-                                            <Input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleGalleryChange} />
+                                            <input 
+                                                type="file" 
+                                                ref={galleryRef}
+                                                accept="image/*" 
+                                                multiple 
+                                                className="hidden" 
+                                                onChange={handleGalleryChange} 
+                                            />
                                         </div>
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">Add more photos to showcase the item from different angles or its preparation.</p>
