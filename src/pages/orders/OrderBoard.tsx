@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { useOrderBoardWebSocket } from "@/hooks/useOrderBoardWebSocket";
+import { useAdminWebSocket } from "@/hooks/useAdminWebSocket";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -127,11 +127,20 @@ export default function OrderBoard() {
         });
     }, [fetchOrders]);
 
-    // ── Page-scoped WebSocket (connects on mount, disconnects on unmount) ────
-    const { wsConnected } = useOrderBoardWebSocket({
-        onNewOrder: handleNewOrder,
-        onOrderUpdate: handleOrderUpdate,
-    });
+    // ── Page-scoped WebSocket (Using global connection with demand) ────
+    const { connected: wsConnected, latestOrder, latestOrderUpdate } = useAdminWebSocket({ enabled: true });
+
+    useEffect(() => {
+        if (latestOrder) {
+            handleNewOrder(latestOrder as Parameters<typeof handleNewOrder>[0]);
+        }
+    }, [latestOrder, handleNewOrder]);
+
+    useEffect(() => {
+        if (latestOrderUpdate) {
+            handleOrderUpdate(latestOrderUpdate as Parameters<typeof handleOrderUpdate>[0]);
+        }
+    }, [latestOrderUpdate, handleOrderUpdate]);
 
     // ── Polling fallback: only active when WS is not connected ───────────────
     // Track wsConnected in a ref so the interval closure always reads the

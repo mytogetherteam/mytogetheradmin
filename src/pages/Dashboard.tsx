@@ -20,7 +20,7 @@ import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/se
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { ShopService, PageableResponse, Shop } from "@/services/shopService";
 import { moderationService } from "@/services/moderationService";
-import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag } from "lucide-react";
+import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
@@ -218,8 +218,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // WebSocket live data
-    const { connected, systemStats, latestReport, latestShopRequest, latestOrder } = useAdminWebSocket();
+    // WebSocket live data - enabled: true ensures connection is active on Dashboard
+    const { connected, systemStats, latestReport, latestShopRequest, latestOrder } = useAdminWebSocket({ enabled: true });
 
     // Dismissed alert state
     const [reportDismissed, setReportDismissed] = useState<string | null>(null);
@@ -264,6 +264,8 @@ export default function Dashboard() {
 
     // Backend currently sends totalRevenueToday; revenueToday is spec-planned
     const revenueToday = liveStats.revenueToday ?? liveStats.totalRevenueToday ?? stats?.totalRevenueToday ?? 0;
+
+    const totalReviews = liveStats.totalReviews ?? stats?.totalReviews ?? 0;
 
     // totalOrdersToday is what the server sends right now
     const ordersValue = liveStats.totalOrdersToday ?? liveStats.pendingOrders ?? 0;
@@ -338,9 +340,10 @@ export default function Dashboard() {
             )}
 
             {/* Row 1: KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
                 <StatCard title="Active Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
+                <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} />
                 <StatCard title={ordersLabel} value={ordersValue} icon={ShoppingCart} loading={loading} live={isLive} />
                 <StatCard title="Revenue Today" value={revenueToday} prefix="$" icon={DollarSign} loading={loading} live={isLive} />
             </div>

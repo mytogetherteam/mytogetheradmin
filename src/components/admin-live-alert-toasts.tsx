@@ -103,7 +103,7 @@ function LiveAlertToast({
  */
 export function AdminLiveAlertToasts() {
   const navigate = useNavigate();
-  const { latestReport, latestShopRequest, latestOrder } = useAdminWebSocket();
+  const { latestReport, latestShopRequest, latestOrder, latestOrderUpdate } = useAdminWebSocket();
 
   return (
     <>
@@ -144,6 +144,33 @@ export function AdminLiveAlertToasts() {
         actionLabel="Open"
         onAction={() => navigate("/orders/board")}
         variant="info"
+      />
+
+      <LiveAlertToast
+        payload={latestOrderUpdate}
+        title="Order Updated"
+        fallbackDescription="An order status has changed"
+        formatDescription={(p) => {
+          const msg = p.message as string | undefined;
+          const order = p.order as { id?: string | number; status?: string; statusLabel?: string } | undefined;
+          if (msg) return msg;
+          if (order) {
+            return `Order #${order.id} is now ${order.statusLabel || order.status}`;
+          }
+          return p.id ? `Order #${p.id} status updated` : "An order status has changed";
+        }}
+        actionLabel="View"
+        onAction={() => {
+          const order = latestOrderUpdate?.order as { id?: string | number } | undefined;
+          if (order?.id) {
+            navigate(`/orders/${order.id}`);
+          } else if (latestOrderUpdate?.id) {
+            navigate(`/orders/${latestOrderUpdate.id}`);
+          } else {
+            navigate("/orders/board");
+          }
+        }}
+        variant="success"
       />
     </>
   );

@@ -27,6 +27,8 @@ class WebSocketService {
         Authorization: `Bearer ${token}`,
       },
       reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
       onConnect: () => {
         this.connected = true;
         console.log('[WS] Connected to admin WebSocket');
@@ -39,6 +41,9 @@ class WebSocketService {
       },
       onStompError: (frame) => {
         console.error('[WS] STOMP error:', frame.headers['message']);
+      },
+      onWebSocketError: (event) => {
+        console.error('[WS] WebSocket error:', event);
       },
     });
 
