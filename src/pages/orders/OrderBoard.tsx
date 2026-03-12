@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { orderService, Order, OrderStatus } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +13,12 @@ import {
 import {
     Skeleton
 } from "@/components/ui/skeleton";
-import { RefreshCw, ClipboardList } from "lucide-react";
+import { RefreshCw, ClipboardList, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { useAdminWebSocket } from "@/hooks/useAdminWebSocket";
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -37,6 +38,11 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY'];
+
+/** Statuses that should be removed from the active board once reached */
+const TERMINAL_STATUSES: OrderStatus[] = ['DELIVERED', 'CANCELLED'];
+
+const POLL_INTERVAL_MS = 30_000;
 
 function getElapsedTime(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -63,11 +69,17 @@ export default function OrderBoard() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
+    // ── Ref to track known IDs for O(1) duplicate-guard during WS inserts ──
+    const knownIdsRef = useRef<Set<string | number>>(new Set());
+
+    // ── Initial REST fetch (also used as manual refresh / fallback) ──────────
     const fetchOrders = useCallback(async () => {
         try {
             const data = await orderService.getActiveOrders();
             setOrders(data);
             setLastRefresh(new Date());
+            // Rebuild the known-IDs set from the fresh snapshot
+            knownIdsRef.current = new Set(data.map((o) => o.id));
         } catch {
             toast.error("Failed to fetch active orders");
         } finally {
@@ -75,16 +87,91 @@ export default function OrderBoard() {
         }
     }, []);
 
+    // ── WebSocket callbacks (stable → refs prevent hook re-activation) ───────
+    const handleNewOrder = useCallback((payload: Partial<Order> & { id: string | number; status: OrderStatus }) => {
+        if (knownIdsRef.current.has(payload.id)) return; // duplicate guard
+        knownIdsRef.current.add(payload.id);
+
+        setOrders((prev) => {
+            // Only add if the status is still active (defensive)
+            if (TERMINAL_STATUSES.includes(payload.status)) return prev;
+            return [payload as Order, ...prev];
+        });
+
+        toast.info(`New order #${String(payload.id).slice(-8).toUpperCase()} received!`, {
+            description: payload.shopName ?? undefined,
+        });
+    }, []);
+
+    const handleOrderUpdate = useCallback((payload: { id: string | number; status: OrderStatus; updatedAt?: string; [key: string]: unknown }) => {
+        setOrders((prev) => {
+            const idx = prev.findIndex((o) => String(o.id) === String(payload.id));
+            if (idx === -1) {
+                // Unknown order — trigger a full refresh to pick it up
+                fetchOrders();
+                return prev;
+            }
+
+            // Terminal status: remove from active board
+            if (TERMINAL_STATUSES.includes(payload.status)) {
+                knownIdsRef.current.delete(payload.id);
+                return prev.filter((_, i) => i !== idx);
+            }
+
+            // In-place status patch — only re-create the changed element
+            const updated = { ...prev[idx], status: payload.status };
+            if (payload.updatedAt) updated.updatedAt = payload.updatedAt;
+            const next = [...prev];
+            next[idx] = updated;
+            return next;
+        });
+    }, [fetchOrders]);
+
+    // ── Page-scoped WebSocket (Using global connection with demand) ────
+    const { connected: wsConnected, latestOrder, latestOrderUpdate } = useAdminWebSocket({ enabled: true });
+
     useEffect(() => {
+        if (latestOrder) {
+            handleNewOrder(latestOrder as Parameters<typeof handleNewOrder>[0]);
+        }
+    }, [latestOrder, handleNewOrder]);
+
+    useEffect(() => {
+        if (latestOrderUpdate) {
+            handleOrderUpdate(latestOrderUpdate as Parameters<typeof handleOrderUpdate>[0]);
+        }
+    }, [latestOrderUpdate, handleOrderUpdate]);
+
+    // ── Polling fallback: only active when WS is not connected ───────────────
+    // Track wsConnected in a ref so the interval closure always reads the
+    // latest value without needing to be torn down and re-created.
+    const wsConnectedRef = useRef(wsConnected);
+    useEffect(() => { wsConnectedRef.current = wsConnected; }, [wsConnected]);
+
+    useEffect(() => {
+        // Initial REST fetch regardless of WS state
         fetchOrders();
-        const interval = setInterval(fetchOrders, 30000);
+
+        const interval = setInterval(() => {
+            // Skip polling if WebSocket is healthy
+            if (wsConnectedRef.current) return;
+            fetchOrders();
+        }, POLL_INTERVAL_MS);
+
         return () => clearInterval(interval);
     }, [fetchOrders]);
 
     const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
         try {
             await orderService.updateOrderStatus(orderId, newStatus);
-            setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+            // Optimistic update — WS echo will confirm; terminal statuses drop row
+            setOrders((prev) => {
+                if (TERMINAL_STATUSES.includes(newStatus)) {
+                    knownIdsRef.current.delete(orderId);
+                    return prev.filter((o) => String(o.id) !== orderId);
+                }
+                return prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o);
+            });
             toast.success(`Order status updated to ${newStatus}`);
         } catch {
             toast.error("Failed to update order status");
@@ -95,7 +182,7 @@ export default function OrderBoard() {
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
     const sortedOrders = sortData(orders, sortConfig);
 
-    // Pagination logic
+    // Pagination
     const totalItems = sortedOrders.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const paginatedOrders = sortedOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -108,8 +195,19 @@ export default function OrderBoard() {
                     <div>
                         <h1 className="text-lg font-semibold md:text-2xl">Order Board — Live Monitor</h1>
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                            Auto-refresh every 30s · Last: {lastRefresh.toLocaleTimeString()}
+                            {wsConnected ? (
+                                <>
+                                    <Wifi className="h-3 w-3 text-green-500" />
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                    <span className="text-green-600 font-medium">Live · WebSocket connected</span>
+                                </>
+                            ) : (
+                                <>
+                                    <WifiOff className="h-3 w-3 text-amber-500" />
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                    Auto-refresh every 30s · Last: {lastRefresh.toLocaleTimeString()}
+                                </>
+                            )}
                         </p>
                     </div>
                 </div>

@@ -199,6 +199,7 @@ export const config = {
       reports: '/topic/admin/reports',
       shopRequests: '/topic/admin/shop-requests',
       newOrders: '/topic/admin/new-orders',
+      orderUpdates: '/topic/admin/order-updates',
     },
   },
   storage: {

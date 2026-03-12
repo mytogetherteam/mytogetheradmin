@@ -31,22 +31,58 @@ export interface AdminAlertPayload {
   [key: string]: unknown;
 }
 
-export interface AdminWebSocketState {
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const CACHE_KEYS = {
+  STATS: 'admin_ws_stats',
+  REPORT: 'admin_ws_latest_report',
+  SHOP: 'admin_ws_latest_shop',
+  ORDER: 'admin_ws_latest_order',
+  ORDER_UPDATE: 'admin_ws_latest_order_update',
+};
+
+const getCached = <T,>(key: string): T | null => {
+  const data = localStorage.getItem(key);
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as T;
+  } catch {
+    return null;
+  }
+};
+
+const setCached = (key: string, data: unknown) => {
+  if (data) {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+};
+
+export interface AdminWebSocketState extends AdminWebSocketStateData {
+  // Demand tracking internal - not usually for consumers but here for completeness
+  addDemand: () => void;
+  removeDemand: () => void;
+}
+
+export interface AdminWebSocketStateData {
   connected: boolean;
   systemStats: SystemStatsDTO | null;
   latestReport: AdminAlertPayload | null;
   latestShopRequest: AdminAlertPayload | null;
   latestOrder: AdminAlertPayload | null;
+  latestOrderUpdate: AdminAlertPayload | null;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const AdminWsContext = createContext<AdminWebSocketState>({
   connected: false,
-  systemStats: null,
-  latestReport: null,
-  latestShopRequest: null,
-  latestOrder: null,
+  systemStats: getCached<SystemStatsDTO>(CACHE_KEYS.STATS),
+  latestReport: getCached<AdminAlertPayload>(CACHE_KEYS.REPORT),
+  latestShopRequest: getCached<AdminAlertPayload>(CACHE_KEYS.SHOP),
+  latestOrder: getCached<AdminAlertPayload>(CACHE_KEYS.ORDER),
+  latestOrderUpdate: getCached<AdminAlertPayload>(CACHE_KEYS.ORDER_UPDATE),
+  addDemand: () => {},
+  removeDemand: () => {},
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -57,14 +93,32 @@ const AdminWsContext = createContext<AdminWebSocketState>({
  */
 export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
-  const [systemStats, setSystemStats] = useState<SystemStatsDTO | null>(null);
-  const [latestReport, setLatestReport] = useState<AdminAlertPayload | null>(null);
-  const [latestShopRequest, setLatestShopRequest] = useState<AdminAlertPayload | null>(null);
-  const [latestOrder, setLatestOrder] = useState<AdminAlertPayload | null>(null);
+  const [demandCount, setDemandCount] = useState(0);
+  
+  const [systemStats, setSystemStats] = useState<SystemStatsDTO | null>(() => getCached(CACHE_KEYS.STATS));
+  const [latestReport, setLatestReport] = useState<AdminAlertPayload | null>(() => getCached(CACHE_KEYS.REPORT));
+  const [latestShopRequest, setLatestShopRequest] = useState<AdminAlertPayload | null>(() => getCached(CACHE_KEYS.SHOP));
+  const [latestOrder, setLatestOrder] = useState<AdminAlertPayload | null>(() => getCached(CACHE_KEYS.ORDER));
+  const [latestOrderUpdate, setLatestOrderUpdate] = useState<AdminAlertPayload | null>(() => getCached(CACHE_KEYS.ORDER_UPDATE));
 
   const clientRef = useRef<Client | null>(null);
 
-  const connect = useCallback(() => {
+  const addDemand = useCallback(() => setDemandCount(prev => prev + 1), []);
+  const removeDemand = useCallback(() => setDemandCount(prev => prev - 1), []);
+
+  const deactivate = useCallback(() => {
+    if (clientRef.current) {
+      console.log('[AdminWS] Deactivating due to zero demand');
+      clientRef.current.deactivate();
+      clientRef.current = null;
+      // Wrap in timeout to avoid synchronous setState in effect warning if called during render/effect
+      setTimeout(() => setConnected(false), 0);
+    }
+  }, []);
+
+  const activate = useCallback(() => {
+    if (clientRef.current?.active) return;
+    
     const token = localStorage.getItem(config.storage.tokenKey);
     if (!token) return;
 
@@ -82,18 +136,18 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         Authorization: `Bearer ${token}`,
       },
       reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
       onConnect: () => {
         console.log('[AdminWS] Connected');
         setConnected(true);
 
-        // /topic/admin/stats — broadcast every 10 s
+        // /topic/admin/stats
         client.subscribe(config.websocket.topics.stats, (msg) => {
           try {
             const stats = JSON.parse(msg.body) as SystemStatsDTO;
-            console.log('[AdminWS] stats:', stats);
             setSystemStats(stats);
+            setCached(CACHE_KEYS.STATS, stats);
           } catch (err) {
             console.error('[AdminWS] Failed to parse stats:', err);
           }
@@ -102,10 +156,12 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/reports
         client.subscribe(config.websocket.topics.reports, (msg) => {
           try {
-            setLatestReport({
+            const data = {
               ...(JSON.parse(msg.body) as AdminAlertPayload),
               timestamp: new Date().toISOString(),
-            });
+            };
+            setLatestReport(data);
+            setCached(CACHE_KEYS.REPORT, data);
           } catch (err) {
             console.error('[AdminWS] Failed to parse report:', err);
           }
@@ -114,10 +170,12 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/shop-requests
         client.subscribe(config.websocket.topics.shopRequests, (msg) => {
           try {
-            setLatestShopRequest({
+            const data = {
               ...(JSON.parse(msg.body) as AdminAlertPayload),
               timestamp: new Date().toISOString(),
-            });
+            };
+            setLatestShopRequest(data);
+            setCached(CACHE_KEYS.SHOP, data);
           } catch (err) {
             console.error('[AdminWS] Failed to parse shop request:', err);
           }
@@ -126,12 +184,28 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/new-orders
         client.subscribe(config.websocket.topics.newOrders, (msg) => {
           try {
-            setLatestOrder({
+            const data = {
               ...(JSON.parse(msg.body) as AdminAlertPayload),
               timestamp: new Date().toISOString(),
-            });
+            };
+            setLatestOrder(data);
+            setCached(CACHE_KEYS.ORDER, data);
           } catch (err) {
             console.error('[AdminWS] Failed to parse order:', err);
+          }
+        });
+
+        // /topic/admin/order-updates
+        client.subscribe(config.websocket.topics.orderUpdates, (msg) => {
+          try {
+            const data = {
+              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              timestamp: new Date().toISOString(),
+            };
+            setLatestOrderUpdate(data);
+            setCached(CACHE_KEYS.ORDER_UPDATE, data);
+          } catch (err) {
+            console.error('[AdminWS] Failed to parse order update:', err);
           }
         });
       },
@@ -157,16 +231,47 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    connect();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (demandCount > 0) activate();
+      } else {
+        // Option: we could deactivate on hidden, but maybe keep it for notifications?
+        // User said "Only when you really need them". Background tab usually doesn't need them
+        // unless they are "critical". For now, let's keep it active but maybe slow down heartbeats?
+        // Actually, let's stick to the refcount for now, but ensure we don't reconnect while hidden if it drops.
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [demandCount, activate]);
+
+  useEffect(() => {
+    if (demandCount > 0) {
+      activate();
+    } else {
+      deactivate();
+    }
+  }, [demandCount, activate, deactivate]);
+
+  useEffect(() => {
     return () => {
       clientRef.current?.deactivate();
       clientRef.current = null;
     };
-  }, [connect]);
+  }, []);
 
   return (
     <AdminWsContext.Provider
-      value={{ connected, systemStats, latestReport, latestShopRequest, latestOrder }}
+      value={{
+        connected,
+        systemStats,
+        latestReport,
+        latestShopRequest,
+        latestOrder,
+        latestOrderUpdate,
+        addDemand,
+        removeDemand
+      }}
     >
       {children}
     </AdminWsContext.Provider>
@@ -175,11 +280,27 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
+interface UseAdminWsOptions {
+  enabled?: boolean;
+}
+
 /**
  * Consume the shared WebSocket state.
  * Must be used inside <AdminWebSocketProvider>.
+ * 
+ * @param options.enabled If true, ensures the WebSocket is active while this component is mounted.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- hook + context intentionally co-located
-export function useAdminWebSocket(): AdminWebSocketState {
-  return useContext(AdminWsContext);
+export function useAdminWebSocket(options?: UseAdminWsOptions): AdminWebSocketState {
+  const context = useContext(AdminWsContext);
+  const enabled = !!options?.enabled;
+
+  useEffect(() => {
+    if (enabled) {
+      context.addDemand();
+      return () => context.removeDemand();
+    }
+  }, [enabled, context]);
+
+  return context;
 }

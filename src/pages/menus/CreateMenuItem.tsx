@@ -28,6 +28,64 @@ import {
 } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { OptionGroup, Variant, Option, MenuCategory, MenuSubCategory } from "@/services/menuService";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from "lucide-react";
+
+interface SortableItemProps {
+    id: string;
+    children: React.ReactNode;
+    className?: string;
+}
+
+function SortableItem({ id, children, className }: SortableItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : undefined,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className={className}>
+            <div className="flex items-start gap-2">
+                <div 
+                    {...attributes} 
+                    {...listeners} 
+                    className="mt-3 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-primary transition-colors"
+                >
+                    <GripVertical className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 
 export default function CreateMenuItem() {
@@ -54,7 +112,7 @@ export default function CreateMenuItem() {
     const [originalPrice, setOriginalPrice] = useState("");
     const [discountAmount, setDiscountAmount] = useState("");
     const [discountPercentage, setDiscountPercentage] = useState("");
-    const [currency, setCurrency] = useState("MMK");
+    const [currency, setCurrency] = useState("THB");
     const [shopId, setShopId] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [subCategoryId, setSubCategoryId] = useState("");
@@ -83,10 +141,18 @@ export default function CreateMenuItem() {
     const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
     const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
     const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-    
+
     // Refs for file inputs
     const mainImageRef = useRef<HTMLInputElement>(null);
     const galleryRef = useRef<HTMLInputElement>(null);
+
+    // DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     const loadShops = useCallback(async () => {
         try {
@@ -132,7 +198,7 @@ export default function CreateMenuItem() {
             setOriginalPrice(item.originalPrice ? item.originalPrice.toLocaleString() : "");
             setDiscountAmount(item.discountAmount ? item.discountAmount.toLocaleString() : "");
             setDiscountPercentage(item.discountPercentage ? item.discountPercentage.toLocaleString() : "");
-            setCurrency(item.currency || "MMK");
+            setCurrency(item.currency || "THB");
             setShopId(item.shopId?.toString() || "");
             setCategoryId(item.categoryId?.toString() || "");
             setSubCategoryId(item.subCategoryId?.toString() || "");
@@ -193,7 +259,7 @@ export default function CreateMenuItem() {
             setOriginalPrice("");
             setDiscountAmount("");
             setDiscountPercentage("");
-            setCurrency("MMK");
+            setCurrency("THB");
             setShopId("");
             setCategoryId("");
             setSubCategoryId("");
@@ -273,14 +339,17 @@ export default function CreateMenuItem() {
             isRequired: false,
             minSelection: 0,
             maxSelection: 1,
-            displayOrder: 1,
+            displayOrder: optionGroups.length + 1,
             groupType: "SINGLE_SELECT",
             options: [{ nameEn: "", price: 0, isAvailable: true, displayOrder: 1 }]
         }]);
     };
 
     const removeOptionGroup = (index: number) => {
-        setOptionGroups(optionGroups.filter((_, i) => i !== index));
+        const updated = optionGroups.filter((_, i) => i !== index);
+        // Re-calculate orders
+        const reordered = updated.map((og, i) => ({ ...og, displayOrder: i + 1 }));
+        setOptionGroups(reordered);
     };
 
     const updateOptionGroup = (index: number, updates: Partial<OptionGroup>) => {
@@ -291,13 +360,16 @@ export default function CreateMenuItem() {
 
     const addOption = (groupIndex: number) => {
         const newGroups = [...optionGroups];
-        newGroups[groupIndex].options.push({ nameEn: "", price: 0, isAvailable: true, displayOrder: 1 });
+        const nextOrder = newGroups[groupIndex].options.length + 1;
+        newGroups[groupIndex].options.push({ nameEn: "", price: 0, isAvailable: true, displayOrder: nextOrder });
         setOptionGroups(newGroups);
     };
 
     const removeOption = (groupIndex: number, optionIndex: number) => {
         const newGroups = [...optionGroups];
-        newGroups[groupIndex].options = newGroups[groupIndex].options.filter((_, i) => i !== optionIndex);
+        const updatedOptions = newGroups[groupIndex].options.filter((_, i) => i !== optionIndex);
+        // Re-calculate orders
+        newGroups[groupIndex].options = updatedOptions.map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
         setOptionGroups(newGroups);
     };
 
@@ -308,11 +380,14 @@ export default function CreateMenuItem() {
     };
 
     const addVariant = () => {
-        setVariants([...variants, { nameEn: "", price: 0, isAvailable: true, displayOrder: 1 }]);
+        setVariants([...variants, { nameEn: "", price: 0, isAvailable: true, displayOrder: variants.length + 1 }]);
     };
 
     const removeVariant = (index: number) => {
-        setVariants(variants.filter((_, i) => i !== index));
+        const updated = variants.filter((_, i) => i !== index);
+        // Re-calculate orders
+        const reordered = updated.map((v, i) => ({ ...v, displayOrder: i + 1 }));
+        setVariants(reordered);
     };
 
     const updateVariant = (index: number, updates: Partial<Variant>) => {
@@ -321,7 +396,39 @@ export default function CreateMenuItem() {
         setVariants(newVariants);
     };
 
+    const handleOptionGroupDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = optionGroups.findIndex((_, i) => `og-${i}` === active.id);
+            const newIndex = optionGroups.findIndex((_, i) => `og-${i}` === over.id);
+            const newArray = arrayMove(optionGroups, oldIndex, newIndex);
+            setOptionGroups(newArray.map((og, i) => ({ ...og, displayOrder: i + 1 })));
+        }
+    };
 
+    const handleOptionDragEnd = (groupIndex: number, event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const options = optionGroups[groupIndex].options;
+            const oldIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === active.id);
+            const newIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === over.id);
+            const newArray = arrayMove(options, oldIndex, newIndex);
+            
+            const newGroups = [...optionGroups];
+            newGroups[groupIndex].options = newArray.map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
+            setOptionGroups(newGroups);
+        }
+    };
+
+    const handleVariantDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = variants.findIndex((_, i) => `var-${i}` === active.id);
+            const newIndex = variants.findIndex((_, i) => `var-${i}` === over.id);
+            const newArray = arrayMove(variants, oldIndex, newIndex);
+            setVariants(newArray.map((v, i) => ({ ...v, displayOrder: i + 1 })));
+        }
+    };
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -636,190 +743,200 @@ export default function CreateMenuItem() {
                                     </Button>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    {optionGroups.length === 0 ? (
-                                        <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
-                                            No option groups added.
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {optionGroups.map((group, gIdx) => (
-                                                <div key={gIdx} className="p-4 border rounded-xl bg-white shadow-sm space-y-4 relative group/og">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8"
-                                                        onClick={() => removeOptionGroup(gIdx)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleOptionGroupDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={optionGroups.map((_, i) => `og-${i}`)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {optionGroups.length === 0 ? (
+                                                <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
+                                                    No option groups added.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {optionGroups.map((group, gIdx) => (
+                                                        <SortableItem key={`og-${gIdx}`} id={`og-${gIdx}`}>
+                                                            <div className="p-4 border rounded-xl bg-white shadow-sm space-y-4 relative group/og">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8"
+                                                                    onClick={() => removeOptionGroup(gIdx)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mr-8">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Name (EN)</Label>
-                                                            <Input
-                                                                value={group.nameEn}
-                                                                onChange={e => updateOptionGroup(gIdx, { nameEn: e.target.value })}
-                                                                placeholder="e.g. Toppings"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Name (MM)</Label>
-                                                            <Input
-                                                                value={group.nameMm}
-                                                                onChange={e => updateOptionGroup(gIdx, { nameMm: e.target.value })}
-                                                                placeholder="အပိုဆောင်း"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Name (TH)</Label>
-                                                            <Input
-                                                                value={group.nameTh}
-                                                                onChange={e => updateOptionGroup(gIdx, { nameTh: e.target.value })}
-                                                                placeholder="ท็อปปิ้ง"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Order</Label>
-                                                            <Input
-                                                                type="number"
-                                                                value={group.displayOrder}
-                                                                onChange={e => updateOptionGroup(gIdx, { displayOrder: parseInt(e.target.value) || 1 })}
-                                                                placeholder="1"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Group Type</Label>
-                                                            <Select 
-                                                                value={group.groupType || "SINGLE_SELECT"} 
-                                                                onValueChange={val => updateOptionGroup(gIdx, { groupType: val as "SINGLE_SELECT" | "MULTI_SELECT" })}
-                                                            >
-                                                                <SelectTrigger className="h-10">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="SINGLE_SELECT">Single Select</SelectItem>
-                                                                    <SelectItem value="MULTI_SELECT">Multi Select</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs font-bold uppercase text-muted-foreground">Selection Mode</Label>
-                                                            <div className="flex items-center gap-4 h-10">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Switch
-                                                                        checked={group.isRequired}
-                                                                        onCheckedChange={val => updateOptionGroup(gIdx, { isRequired: val })}
-                                                                        id={`req-${gIdx}`}
-                                                                    />
-                                                                    <Label htmlFor={`req-${gIdx}`} className="text-sm cursor-pointer">Required</Label>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div className="space-y-1">
-                                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Min</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={group.minSelection}
-                                                                    onChange={e => updateOptionGroup(gIdx, { minSelection: parseInt(e.target.value) || 0 })}
-                                                                    className="h-8"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Max</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={group.maxSelection}
-                                                                    onChange={e => updateOptionGroup(gIdx, { maxSelection: parseInt(e.target.value) || 1 })}
-                                                                    className="h-8"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="space-y-2 pl-4 border-l-2 border-primary/20">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-xs font-bold">Options</Label>
-                                                            <Button type="button" variant="ghost" size="sm" onClick={() => addOption(gIdx)} className="h-7 text-xs gap-1 text-primary">
-                                                                <Plus className="h-3 w-3" /> Add Option
-                                                            </Button>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            {group.options.map((opt, oIdx) => (
-                                                                <div key={oIdx} className="flex flex-wrap items-center gap-2 bg-muted/20 p-2 rounded-lg relative group/opt">
-                                                                    <Input
-                                                                        className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                        placeholder="Name (EN)"
-                                                                        value={opt.nameEn}
-                                                                        onChange={e => updateOption(gIdx, oIdx, { nameEn: e.target.value })}
-                                                                    />
-                                                                    <Input
-                                                                        className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                        placeholder="Name (MM)"
-                                                                        value={opt.nameMm}
-                                                                        onChange={e => updateOption(gIdx, oIdx, { nameMm: e.target.value })}
-                                                                    />
-                                                                    <Input
-                                                                        className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                        placeholder="Name (TH)"
-                                                                        value={opt.nameTh}
-                                                                        onChange={e => updateOption(gIdx, oIdx, { nameTh: e.target.value })}
-                                                                    />
-                                                                    <div className="flex items-center gap-1 w-28">
-                                                                        <span className="text-xs text-muted-foreground font-mono">+</span>
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mr-8">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (EN)</Label>
                                                                         <Input
-                                                                            type="number"
-                                                                            className="h-8 text-sm px-1"
-                                                                            placeholder="Price"
-                                                                            value={opt.price}
-                                                                            onChange={e => updateOption(gIdx, oIdx, { price: parseFloat(e.target.value) || 0 })}
+                                                                            value={group.nameEn}
+                                                                            onChange={e => updateOptionGroup(gIdx, { nameEn: e.target.value })}
+                                                                            placeholder="e.g. Toppings"
                                                                         />
                                                                     </div>
-                                                                    <PriceInput
-                                                                        className="flex-1 h-8 text-sm"
-                                                                        placeholder="Display Price (e.g. 1,500)"
-                                                                        value={opt.displayPrice || ""}
-                                                                        onValueChange={val => updateOption(gIdx, oIdx, { displayPrice: val })}
-                                                                    />
-                                                                    <Input
-                                                                        className="w-16 h-8 text-sm"
-                                                                        placeholder="Order"
-                                                                        type="number"
-                                                                        value={opt.displayOrder}
-                                                                        onChange={e => updateOption(gIdx, oIdx, { displayOrder: parseInt(e.target.value) || 1 })}
-                                                                    />
-                                                                    <Input
-                                                                        className="w-24 h-8 text-sm"
-                                                                        placeholder="Linked ID"
-                                                                        type="number"
-                                                                        value={opt.linkedMenuItemId}
-                                                                        onChange={e => updateOption(gIdx, oIdx, { linkedMenuItemId: parseInt(e.target.value) || undefined })}
-                                                                    />
-                                                                    <Switch
-                                                                        checked={opt.isAvailable}
-                                                                        onCheckedChange={val => updateOption(gIdx, oIdx, { isAvailable: val })}
-                                                                    />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                                                        onClick={() => removeOption(gIdx, oIdx)}
-                                                                        disabled={group.options.length <= 1}
-                                                                    >
-                                                                        <X className="h-3 w-3" />
-                                                                    </Button>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (MM)</Label>
+                                                                        <Input
+                                                                            value={group.nameMm}
+                                                                            onChange={e => updateOptionGroup(gIdx, { nameMm: e.target.value })}
+                                                                            placeholder="အပိုဆောင်း"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (TH)</Label>
+                                                                        <Input
+                                                                            value={group.nameTh}
+                                                                            onChange={e => updateOptionGroup(gIdx, { nameTh: e.target.value })}
+                                                                            placeholder="ท็อปปิ้ง"
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Group Type</Label>
+                                                                        <Select
+                                                                            value={group.groupType || "SINGLE_SELECT"}
+                                                                            onValueChange={val => updateOptionGroup(gIdx, { groupType: val as "SINGLE_SELECT" | "MULTI_SELECT" })}
+                                                                        >
+                                                                            <SelectTrigger className="h-10">
+                                                                                <SelectValue />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="SINGLE_SELECT">Single Select</SelectItem>
+                                                                                <SelectItem value="MULTI_SELECT">Multi Select</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Selection Mode</Label>
+                                                                        <div className="flex items-center gap-4 h-10">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Switch
+                                                                                    checked={group.isRequired}
+                                                                                    onCheckedChange={val => updateOptionGroup(gIdx, { isRequired: val })}
+                                                                                    id={`req-${gIdx}`}
+                                                                                />
+                                                                                <Label htmlFor={`req-${gIdx}`} className="text-sm cursor-pointer">Required</Label>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Min Selection</Label>
+                                                                            <Input
+                                                                                type="number"
+                                                                                value={group.minSelection}
+                                                                                onChange={e => updateOptionGroup(gIdx, { minSelection: parseInt(e.target.value) || 0 })}
+                                                                                className="h-8"
+                                                                            />
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Max Selection</Label>
+                                                                            <Input
+                                                                                type="number"
+                                                                                value={group.maxSelection}
+                                                                                onChange={e => updateOptionGroup(gIdx, { maxSelection: parseInt(e.target.value) || 1 })}
+                                                                                className="h-8"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-2 pl-4 border-l-2 border-primary/20">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <Label className="text-xs font-bold">Options</Label>
+                                                                        <Button type="button" variant="ghost" size="sm" onClick={() => addOption(gIdx)} className="h-7 text-xs gap-1 text-primary">
+                                                                            <Plus className="h-3 w-3" /> Add Option
+                                                                        </Button>
+                                                                    </div>
+                                                                    <DndContext
+                                                                        sensors={sensors}
+                                                                        collisionDetection={closestCenter}
+                                                                        onDragEnd={(e) => handleOptionDragEnd(gIdx, e)}
+                                                                    >
+                                                                        <SortableContext
+                                                                            items={group.options.map((_, i) => `opt-${gIdx}-${i}`)}
+                                                                            strategy={verticalListSortingStrategy}
+                                                                        >
+                                                                            <div className="space-y-2">
+                                                                                {group.options.map((opt, oIdx) => (
+                                                                                    <SortableItem key={`opt-${gIdx}-${oIdx}`} id={`opt-${gIdx}-${oIdx}`}>
+                                                                                        <div className="flex flex-wrap items-center gap-2 bg-muted/20 p-2 rounded-lg relative group/opt">
+                                                                                            <Input
+                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
+                                                                                                placeholder="Name (EN)"
+                                                                                                value={opt.nameEn}
+                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameEn: e.target.value })}
+                                                                                            />
+                                                                                            <Input
+                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
+                                                                                                placeholder="Name (MM)"
+                                                                                                value={opt.nameMm}
+                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameMm: e.target.value })}
+                                                                                            />
+                                                                                            <Input
+                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
+                                                                                                placeholder="Name (TH)"
+                                                                                                value={opt.nameTh}
+                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameTh: e.target.value })}
+                                                                                            />
+                                                                                            <div className="flex items-center gap-1 w-28">
+                                                                                                <span className="text-xs text-muted-foreground font-mono">+</span>
+                                                                                                <Input
+                                                                                                    type="number"
+                                                                                                    className="h-8 text-sm px-1"
+                                                                                                    placeholder="Price"
+                                                                                                    value={opt.price}
+                                                                                                    onChange={e => updateOption(gIdx, oIdx, { price: parseFloat(e.target.value) || 0 })}
+                                                                                                />
+                                                                                            </div>
+                                                                                            <PriceInput
+                                                                                                className="flex-1 h-8 text-sm"
+                                                                                                placeholder="Display Price (e.g. 1,500)"
+                                                                                                value={opt.displayPrice || ""}
+                                                                                                onValueChange={val => updateOption(gIdx, oIdx, { displayPrice: val })}
+                                                                                            />
+                                                                                            <Input
+                                                                                                className="w-24 h-8 text-sm"
+                                                                                                placeholder="Linked ID"
+                                                                                                type="number"
+                                                                                                value={opt.linkedMenuItemId}
+                                                                                                onChange={e => updateOption(gIdx, oIdx, { linkedMenuItemId: parseInt(e.target.value) || undefined })}
+                                                                                            />
+                                                                                            <Switch
+                                                                                                checked={opt.isAvailable}
+                                                                                                onCheckedChange={val => updateOption(gIdx, oIdx, { isAvailable: val })}
+                                                                                            />
+                                                                                            <Button
+                                                                                                type="button"
+                                                                                                variant="ghost"
+                                                                                                size="icon"
+                                                                                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                                                                onClick={() => removeOption(gIdx, oIdx)}
+                                                                                                disabled={group.options.length <= 1}
+                                                                                            >
+                                                                                                <X className="h-3 w-3" />
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </SortableItem>
+                                                                                ))}
+                                                                            </div>
+                                                                        </SortableContext>
+                                                                    </DndContext>
+                                                                </div>
+                                                            </div>
+                                                        </SortableItem>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                            )}
+                                        </SortableContext>
+                                    </DndContext>
                                 </CardContent>
                             </Card>
 
@@ -834,71 +951,74 @@ export default function CreateMenuItem() {
                                     </Button>
                                 </CardHeader>
                                 <CardContent>
-                                    {variants.length === 0 ? (
-                                        <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
-                                            No variants added.
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {variants.map((variant, vIdx) => (
-                                                <div key={vIdx} className="flex flex-wrap items-center gap-2 bg-white border p-3 rounded-xl shadow-sm relative group/var">
-                                                    <Input
-                                                        className="flex-1 min-w-[140px]"
-                                                        placeholder="Variant Name (EN)"
-                                                        value={variant.nameEn}
-                                                        onChange={e => updateVariant(vIdx, { nameEn: e.target.value })}
-                                                    />
-                                                    <Input
-                                                        className="flex-1 min-w-[140px]"
-                                                        placeholder="Variant Name (MM)"
-                                                        value={variant.nameMm}
-                                                        onChange={e => updateVariant(vIdx, { nameMm: e.target.value })}
-                                                    />
-                                                    <Input
-                                                        className="flex-1 min-w-[140px]"
-                                                        placeholder="Variant Name (TH)"
-                                                        value={variant.nameTh}
-                                                        onChange={e => updateVariant(vIdx, { nameTh: e.target.value })}
-                                                    />
-                                                    <div className="flex items-center gap-1 w-32">
-                                                        <span className="text-sm font-medium">Price:</span>
-                                                        <PriceInput
-                                                            placeholder="0"
-                                                            value={variant.price}
-                                                            onValueChange={val => updateVariant(vIdx, { price: parseFloat(val) || 0 })}
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-1 w-24">
-                                                        <span className="text-sm font-medium">Order:</span>
-                                                        <Input
-                                                            type="number"
-                                                            className="h-9"
-                                                            placeholder="1"
-                                                            value={variant.displayOrder}
-                                                            onChange={e => updateVariant(vIdx, { displayOrder: parseInt(e.target.value) || 1 })}
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mx-2">
-                                                        <Switch
-                                                            checked={variant.isAvailable}
-                                                            onCheckedChange={val => updateVariant(vIdx, { isAvailable: val })}
-                                                            id={`var-avail-${vIdx}`}
-                                                        />
-                                                        <Label htmlFor={`var-avail-${vIdx}`} className="text-xs cursor-pointer">Available</Label>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-muted-foreground hover:text-destructive"
-                                                        onClick={() => removeVariant(vIdx)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleVariantDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={variants.map((_, i) => `var-${i}`)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {variants.length === 0 ? (
+                                                <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
+                                                    No variants added.
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {variants.map((variant, vIdx) => (
+                                                        <SortableItem key={`var-${vIdx}`} id={`var-${vIdx}`}>
+                                                            <div className="flex flex-wrap items-center gap-2 bg-white border p-3 rounded-xl shadow-sm relative group/var">
+                                                                <Input
+                                                                    className="flex-1 min-w-[140px]"
+                                                                    placeholder="Variant Name (EN)"
+                                                                    value={variant.nameEn}
+                                                                    onChange={e => updateVariant(vIdx, { nameEn: e.target.value })}
+                                                                />
+                                                                <Input
+                                                                    className="flex-1 min-w-[140px]"
+                                                                    placeholder="Variant Name (MM)"
+                                                                    value={variant.nameMm}
+                                                                    onChange={e => updateVariant(vIdx, { nameMm: e.target.value })}
+                                                                />
+                                                                <Input
+                                                                    className="flex-1 min-w-[140px]"
+                                                                    placeholder="Variant Name (TH)"
+                                                                    value={variant.nameTh}
+                                                                    onChange={e => updateVariant(vIdx, { nameTh: e.target.value })}
+                                                                />
+                                                                <div className="flex items-center gap-1 w-32">
+                                                                    <span className="text-sm font-medium">Price:</span>
+                                                                    <PriceInput
+                                                                        placeholder="0"
+                                                                        value={variant.price}
+                                                                        onValueChange={val => updateVariant(vIdx, { price: parseFloat(val) || 0 })}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mx-2">
+                                                                    <Switch
+                                                                        checked={variant.isAvailable}
+                                                                        onCheckedChange={val => updateVariant(vIdx, { isAvailable: val })}
+                                                                        id={`var-avail-${vIdx}`}
+                                                                    />
+                                                                    <Label htmlFor={`var-avail-${vIdx}`} className="text-xs cursor-pointer">Available</Label>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-muted-foreground hover:text-destructive"
+                                                                    onClick={() => removeVariant(vIdx)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </SortableItem>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </SortableContext>
+                                    </DndContext>
                                 </CardContent>
                             </Card>
                         </div>
@@ -913,7 +1033,7 @@ export default function CreateMenuItem() {
                                 {/* Main Image */}
                                 <div className="space-y-4">
                                     <Label className="text-base">Main Thumbnail Photo</Label>
-                                    <div 
+                                    <div
                                         onClick={() => mainImageRef.current?.click()}
                                         className="relative group aspect-square max-w-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all overflow-hidden cursor-pointer"
                                     >
@@ -932,12 +1052,12 @@ export default function CreateMenuItem() {
                                                 <span className="text-sm font-medium text-muted-foreground px-4 text-center">Click to upload main image</span>
                                             </>
                                         )}
-                                        <input 
-                                            type="file" 
+                                        <input
+                                            type="file"
                                             ref={mainImageRef}
-                                            accept="image/*" 
-                                            className="hidden" 
-                                            onChange={handleImageChange} 
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleImageChange}
                                         />
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">This image will be used as the primary display photo in search results and menu listings.</p>
@@ -969,18 +1089,18 @@ export default function CreateMenuItem() {
                                             </div>
                                         ))}
 
-                                        <div 
+                                        <div
                                             onClick={() => galleryRef.current?.click()}
                                             className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer"
                                         >
                                             <Plus className="h-6 w-6 text-muted-foreground" />
-                                            <input 
-                                                type="file" 
+                                            <input
+                                                type="file"
                                                 ref={galleryRef}
-                                                accept="image/*" 
-                                                multiple 
-                                                className="hidden" 
-                                                onChange={handleGalleryChange} 
+                                                accept="image/*"
+                                                multiple
+                                                className="hidden"
+                                                onChange={handleGalleryChange}
                                             />
                                         </div>
                                     </div>
