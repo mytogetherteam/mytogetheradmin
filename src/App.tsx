@@ -34,6 +34,8 @@ const CreateCategory = lazy(() => import("@/pages/categories/CreateCategory"));
 const ManageCategories = lazy(() => import("@/pages/categories/ManageCategories"));
 const ManageShopCategories = lazy(() => import("@/pages/shop-categories/ManageShopCategories"));
 const CreateShopCategory = lazy(() => import("@/pages/shop-categories/CreateShopCategory"));
+const ManageShopSubCategories = lazy(() => import("@/pages/shop-sub-categories/ManageShopSubCategories"));
+const CreateShopSubCategory = lazy(() => import("@/pages/shop-sub-categories/CreateShopSubCategory"));
 
 // Menu
 const ManageMenuItems = lazy(() => import("@/pages/menus/ManageMenuItems"));
@@ -141,6 +143,8 @@ function App() {
                     <Route path="/categories/create" element={<CreateCategory />} />
                     <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
                     <Route path="/shop-categories/create" element={<CreateShopCategory />} />
+                    <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
+                    <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
                     <Route path="/menus/items/manage" element={<ManageMenuItems />} />
                     <Route path="/menus/items/create" element={<CreateMenuItem />} />
                     <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />

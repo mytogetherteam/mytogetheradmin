@@ -28,6 +28,9 @@ export const config = {
         paymentMethod: (id: number) => `/api/admin/setup/payment-methods/${id}`,
         shopCategories: '/api/admin/setup/shop-categories',
         shopCategory: (id: number) => `/api/admin/setup/shop-categories/${id}`,
+        shopSubCategories: '/api/admin/setup/shop-sub-categories',
+        shopSubCategory: (id: number) => `/api/admin/setup/shop-sub-categories/${id}`,
+        shopSubCategoriesByCategory: (catId: number) => `/api/admin/setup/shop-categories/${catId}/sub-categories`,
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
         cuisines: {
