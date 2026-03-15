@@ -26,6 +26,15 @@ export interface ShopSubCategoryDTO {
   displayOrder?: number;
 }
 
+export interface ShopSubCategoryRequest {
+  name: string;
+  nameMm?: string;
+  nameTh?: string;
+  nameEn?: string;
+  slug?: string;
+  active: boolean;
+}
+
 
 export interface CreateShopCategoryRequest {
   name: string;
@@ -149,7 +158,7 @@ export const ShopCategoryService = {
   /**
    * Create a new shop sub-category
    */
-  createShopSubCategory: async (categoryId: number, data: any): Promise<ShopSubCategoryDTO> => {
+  createShopSubCategory: async (categoryId: number, data: ShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
     // Some endpoints might expect categoryId in the path or body
     const url = config.endpoints.admin.payment.shopSubCategoriesByCategory
       ? config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId)
@@ -160,7 +169,7 @@ export const ShopCategoryService = {
   /**
    * Update a shop sub-category
    */
-  updateShopSubCategory: async (id: number, data: any): Promise<ShopSubCategoryDTO> => {
+  updateShopSubCategory: async (id: number, data: ShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
     return apiClient.put<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategory(id), data);
   },
 
