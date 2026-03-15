@@ -1,7 +1,5 @@
 export const config = {
-  apiBaseUrl: import.meta.env.DEV 
-    ? ''  // Use empty string for dev (Vite proxy handles it)
-    : import.meta.env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://mytogetherapi-production.up.railway.app'),
   endpoints: {
     auth: {
       login: '/api/admin/auth/login',
