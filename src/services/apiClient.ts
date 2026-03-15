@@ -134,7 +134,8 @@ class ApiClient {
                   username: data.username,
                   email: data.email,
                   fullName: data.fullName,
-                  role: data.role
+                  role: data.role,
+                  authorities: data.authorities || []
               };
               localStorage.setItem(config.storage.userKey, JSON.stringify(userProfile));
           }
@@ -161,6 +162,10 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const isFormData = (body: unknown): body is FormData => {
+      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
+    };
+
     const isAuthEndpoint = endpoint.includes('/auth/login') || 
                           endpoint.includes('/auth/register') || 
                           endpoint.includes('/auth/refresh');
@@ -171,9 +176,7 @@ class ApiClient {
     }
 
     const token = this.getAuthToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
 
     // Merge with any existing headers from options
     if (options.headers) {
@@ -185,11 +188,17 @@ class ApiClient {
     if (token && !isAuthEndpoint) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    // If body is FormData, let the browser set the Content-Type with boundary
-    if (options.body instanceof FormData) {
-        delete headers['Content-Type'];
+
+    // Set Content-Type based on body type:
+    // - FormData: let browser set it (with boundary)
+    // - JSON body: set application/json
+    // - No body (e.g. DELETE, GET): omit Content-Type entirely
+    if (isFormData(options.body)) {
+      // No Content-Type — browser will set multipart/form-data with boundary
+    } else if (options.body) {
+      headers['Content-Type'] = 'application/json';
     }
+    // else: no body → no Content-Type header
 
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -268,16 +277,22 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
+    const isFormData = (body: unknown): body is FormData => {
+      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
+    };
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
     });
   }
 
   async put<T>(endpoint: string, data?: unknown): Promise<T> {
+    const isFormData = (body: unknown): body is FormData => {
+      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
+    };
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
     });
   }
 

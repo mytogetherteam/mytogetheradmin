@@ -103,6 +103,8 @@ export interface MenuSubCategory {
     isActive?: boolean;
     imageUrl?: string; 
     icon?: string;
+    categoryId?: number;
+    categoryName?: string;
 }
 
 export const menuService = {
@@ -139,8 +141,8 @@ export const menuService = {
         return apiClient.get<MenuItem>(config.endpoints.admin.menu.itemDetail(id));
     },
 
-    createMenuItem: async (categoryId: number, data: FormData): Promise<MenuItem> => {
-        return apiClient.post<MenuItem>(config.endpoints.admin.menu.categoryItems(categoryId), data);
+    createMenuItem: async (data: FormData): Promise<MenuItem> => {
+        return apiClient.post<MenuItem>(config.endpoints.admin.menu.items, data);
     },
 
     updateMenuItem: async (id: number, data: FormData): Promise<MenuItem> => {
@@ -161,8 +163,8 @@ export const menuService = {
         return apiClient.get<MenuSubCategory>(config.endpoints.admin.menu.subCategoryDetail(id));
     },
 
-    createMenuSubCategory: async (categoryId: number, data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.post<MenuSubCategory>(config.endpoints.admin.menu.subCategoryByCategory(categoryId), data);
+    createMenuSubCategory: async (data: FormData): Promise<MenuSubCategory> => {
+        return apiClient.post<MenuSubCategory>('/api/admin/menu-sub-categories', data);
     },
 
     updateMenuSubCategory: async (id: number, data: FormData): Promise<MenuSubCategory> => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Table,
     TableBody,
@@ -16,13 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Store,
     QrCode,
@@ -37,39 +32,48 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPaymentTypeService";
-import { ShopService, Shop } from "@/services/shopService";
+import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
-    const [shops, setShops] = useState<Shop[]>([]);
-    const [selectedShopId, setSelectedShopId] = useState<string>("");
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+    const selectedShopId = selectedShopData?.value || "";
     const [items, setItems] = useState<ShopPaymentTypeDTO[]>([]);
     const [loading, setLoading] = useState(false);
-    const [loadingShops, setLoadingShops] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-    // Initial load: Fetch shops
+    // Initial load: Fetch just one page of shops to get the first shop as default selection
     useEffect(() => {
-        const fetchShops = async () => {
+        const initDefaultShop = async () => {
             try {
-                const response = await ShopService.getAllShops(0, 100);
-                setShops(response.content);
-                // Pre-select first shop if available
-                if (response.content.length > 0) {
-                    setSelectedShopId(response.content[0].id.toString());
+                const response = await ShopService.getAllShops(0, 5);
+                if (response.content.length > 0 && !selectedShopData) {
+                    const firstShop = response.content[0];
+                    setSelectedShopData({
+                        label: firstShop.nameEn || firstShop.name,
+                        value: String(firstShop.id)
+                    });
                 }
             } catch (error) {
-                console.error("Failed to load shops", error);
-                toast.error("Failed to load shops");
-            } finally {
-                setLoadingShops(false);
+                console.error("Failed to init default shop", error);
             }
         };
-        fetchShops();
+        initDefaultShop();
+    }, [selectedShopData]);
+
+    const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await ShopService.getAllShops(page, size, search);
+        return {
+            content: (res?.content || []).map(s => ({
+                label: s.nameEn || s.name || `Shop #${s.id}`,
+                value: String(s.id),
+            })),
+            last: res ? page + 1 >= (res.totalPages ?? 1) : true,
+        };
     }, []);
 
     // Load payment types when shop changes
@@ -79,7 +83,7 @@ export default function ManageShopPaymentTypes() {
         } else {
             setItems([]);
         }
-    }, [selectedShopId]);
+    }, [selectedShopId, selectedShopData]);
 
     const loadItems = async (shopId: number) => {
         setLoading(true);
@@ -122,7 +126,7 @@ export default function ManageShopPaymentTypes() {
                 accountNumber: item.accountNumber,
                 displayOrder: item.displayOrder
             })], { type: 'application/json' });
-            formData.append('request', requestBlob);
+            formData.append('data', requestBlob);
 
             await ShopPaymentTypeService.updateShopPaymentType(item.shopId, item.id, formData);
             setItems(prev => prev.map(i => i.id === item.id ? { ...i, isActive: value } : i));
@@ -160,7 +164,7 @@ export default function ManageShopPaymentTypes() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "ShopPaymentTypes");
 
-        const shopName = shops.find(s => s.id.toString() === selectedShopId)?.name || 'Shop';
+        const shopName = selectedShopData?.label || 'Shop';
         XLSX.writeFile(wb, `PaymentTypes_${shopName}.xlsx`);
     };
 
@@ -191,18 +195,14 @@ export default function ManageShopPaymentTypes() {
                             <div className="text-sm font-medium mb-1.5 flex items-center gap-2">
                                 <Store className="h-4 w-4" /> Select Shop
                             </div>
-                            <Select value={selectedShopId} onValueChange={setSelectedShopId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={loadingShops ? "Loading shops..." : "Choose a shop"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {shops.map((shop) => (
-                                        <SelectItem key={shop.id} value={shop.id.toString()}>
-                                            {shop.nameEn || shop.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <InfiniteSearchableSelect
+                                fetchData={fetchShopData}
+                                valueKey="value"
+                                labelKey="label"
+                                selectedValue={selectedShopData}
+                                onChange={(item) => setSelectedShopData(item as { label: string; value: string } | null)}
+                                placeholder="Choose a shop"
+                            />
                         </div>
                         <div className="flex-1 max-w-md ml-auto">
                             <div className="text-sm font-medium mb-1.5">Search</div>

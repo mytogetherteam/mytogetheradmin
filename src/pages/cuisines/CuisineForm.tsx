@@ -56,7 +56,7 @@ export default function CuisineForm() {
                         nameTh: data.nameTh ?? "",
                         slug: data.slug ?? "",
                         isActive: data.isActive ?? true,
-                        displayOrder: data.displayOrder ?? 1,
+                        displayOrder: data.displayOrder || 1,
                     });
                     if (data.imageUrl) setImagePreview(data.imageUrl);
                 } catch (error) {
@@ -93,23 +93,29 @@ export default function CuisineForm() {
         setLoading(true);
 
         try {
-            const data = new FormData();
-            data.append("nameEn", formData.nameEn || "");
-            data.append("nameMm", formData.nameMm || "");
-            data.append("nameTh", formData.nameTh || "");
-            data.append("slug", formData.slug || "");
-            data.append("isActive", String(formData.isActive));
-            data.append("displayOrder", String(formData.displayOrder));
+            const dtoData = {
+                id: isEditMode ? Number(id) : 0,
+                nameEn: formData.nameEn || "",
+                nameMm: formData.nameMm || "",
+                nameTh: formData.nameTh || "",
+                slug: formData.slug || "",
+                isActive: formData.isActive,
+            };
 
+            const payload = new FormData();
+            // Use 'data' as the key for JSON part, exactly matching Swagger
+            payload.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+
+            // If a new image was uploaded
             if (imageFile) {
-                data.append("image", imageFile);
+                payload.append("image", imageFile);
             }
 
             if (isEditMode) {
-                await cuisineService.updateCuisine(Number(id), data);
+                await cuisineService.updateCuisine(Number(id), payload);
                 toast.success("Cuisine updated successfully");
             } else {
-                await cuisineService.createCuisine(data);
+                await cuisineService.createCuisine(payload);
                 toast.success("Cuisine created successfully");
             }
             navigate("/cuisines/manage");
@@ -232,8 +238,13 @@ export default function CuisineForm() {
                                     id="slug"
                                     placeholder="e.g. italian"
                                     value={formData.slug}
-                                    readOnly
-                                    className="bg-muted"
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            slug: generateSlug(value),
+                                        }));
+                                    }}
                                 />
                             </div>
                         </div>
@@ -250,11 +261,11 @@ export default function CuisineForm() {
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         if (val === "" || /^\d+$/.test(val)) {
-                                            const numeric = val === "" ? "" : parseInt(val);
-                                            setFormData({
-                                                ...formData,
-                                                displayOrder: numeric === "" || (typeof numeric === "number" && numeric < 1) ? numeric : numeric,
-                                            });
+                                            const numeric = val === "" ? "" : parseInt(val, 10);
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                displayOrder: numeric,
+                                            }));
                                         }
                                     }}
                                     onBlur={() => {

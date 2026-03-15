@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Upload, X } from "lucide-react";
 import { PaymentService } from "@/services/paymentService";
+import { PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 
 interface PaymentMethodFormValues {
@@ -71,10 +72,10 @@ export default function PaymentMethodForm() {
             const data = await PaymentService.getPaymentMethodById(paymentId);
             form.reset({
                 code: data.code,
-                name: data.name,
+                name: (data as PaymentMethodDTO & { nameEn?: string }).nameEn || data.name || "",
                 nameMm: data.nameMm || "",
                 nameTh: data.nameTh || "",
-                displayOrder: data.displayOrder ?? 1,
+                displayOrder: data.displayOrder || 1,
                 active: data.active ?? true,
             });
             if (data.iconUrl) {
@@ -115,22 +116,20 @@ export default function PaymentMethodForm() {
     const onSubmit = async (data: PaymentMethodFormValues) => {
         setSubmitting(true);
         try {
-            const formData = new FormData();
-
-            // Build the data object
-            const requestData = {
-                code: data.code,
-                name: data.name,
-                nameMm: data.nameMm,
-                nameTh: data.nameTh,
+            const paymentData = {
+                code: data.code || "",
+                nameEn: data.name || "",
+                nameMm: data.nameMm || "",
+                nameTh: data.nameTh || "",
                 displayOrder: data.displayOrder,
                 active: data.active,
             };
 
-            formData.append("data", new Blob([JSON.stringify(requestData)], { type: "application/json" }));
+            const formData = new FormData();
+            formData.append("data", new Blob([JSON.stringify(paymentData)], { type: "application/json" }));
 
             if (iconFile) {
-                formData.append("icon", new Blob([iconFile], { type: "application/form-data" }), iconFile.name);
+                formData.append("icon", iconFile);
             }
 
             if (isEditMode && id) {

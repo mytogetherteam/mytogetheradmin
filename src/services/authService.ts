@@ -22,6 +22,7 @@ export interface LoginResponse {
   email: string;
   fullName: string;
   role: string;
+  authorities: string[];
 }
 
 export type RegisterResponse = LoginResponse;
@@ -32,6 +33,7 @@ export interface UserData {
   email: string;
   fullName: string;
   role: string;
+  authorities: string[];
 }
 
 const decodeJwtExpiry = (token: string): number | null => {
@@ -66,6 +68,7 @@ export const authService = {
         email: response.email,
         fullName: response.fullName,
         role: response.role,
+        authorities: response.authorities || [],
       })
     );
   },
@@ -105,12 +108,18 @@ export const authService = {
   /**
    * Logout user and clear stored data
    */
-  logout: (): void => {
-    localStorage.removeItem(config.storage.tokenKey);
-    localStorage.removeItem(config.storage.refreshTokenKey);
-    localStorage.removeItem(config.storage.userKey);
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
+  logout: async (): Promise<void> => {
+    try {
+      await apiClient.post(config.endpoints.auth.logout);
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      localStorage.removeItem(config.storage.tokenKey);
+      localStorage.removeItem(config.storage.refreshTokenKey);
+      localStorage.removeItem(config.storage.userKey);
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
   },
 

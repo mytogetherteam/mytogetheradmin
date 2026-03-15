@@ -28,7 +28,6 @@ export default function CreateShopCategory() {
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
     const [slug, setSlug] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
 
     const [loading, setLoading] = useState(false);
@@ -68,7 +67,6 @@ export default function CreateShopCategory() {
             setNameTh(cat.nameTh || "");
             setNameEn(cat.nameEn || "");
             setSlug(cat.slug || "");
-            setDisplayOrder(cat.displayOrder ?? 1);
             setIsActive(cat.isActive !== false);
             if (cat.imageUrl) {
                 setExistingImage(cat.imageUrl);
@@ -90,7 +88,6 @@ export default function CreateShopCategory() {
             setNameTh("");
             setNameEn("");
             setSlug("");
-            setDisplayOrder(1);
             setIsActive(true);
             setExistingImage(null);
             setImageFile(null);
@@ -119,23 +116,21 @@ export default function CreateShopCategory() {
 
         setSubmitting(true);
         try {
-            const formData = new FormData();
-            const data = {
-                name,
-                nameMm: nameMm || undefined,
-                nameTh: nameTh || undefined,
-                nameEn: nameEn || undefined,
-                slug: slug || undefined,
-                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-                isActive,
-            };
+        const dtoData = {
+            name: name,
+            nameMm: nameMm || "",
+            nameTh: nameTh || "",
+            nameEn: nameEn || "",
+            slug: slug || "",
+            isActive: isActive,
+        };
 
-            // Typical implementation for this project
-            formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
+        const formData = new FormData();
+        formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
 
-            if (imageFile) {
-                formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
-            }
+        if (imageFile) {
+            formData.append("image", imageFile);
+        }
 
             if (isEditMode && id) {
                 await ShopCategoryService.updateShopCategory(parseInt(id), formData);
@@ -229,8 +224,7 @@ export default function CreateShopCategory() {
                                 <Input
                                     id="slug"
                                     value={slug}
-                                    readOnly
-                                    className="bg-muted"
+                                    onChange={(e) => setSlug(generateSlug(e.target.value))}
                                     placeholder="e.g. restaurant"
                                 />
                             </div>
@@ -241,24 +235,6 @@ export default function CreateShopCategory() {
                                     value={nameTh}
                                     onChange={(e) => setNameTh(e.target.value)}
                                     placeholder="e.g. ร้านอาหาร"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="displayOrder">Display Order</Label>
-                                <Input
-                                    id="displayOrder"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={displayOrder}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) setDisplayOrder(val === "" ? "" : parseInt(val));
-                                    }}
-                                    onBlur={() => {
-                                        if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
-                                    }}
-                                    placeholder="1"
                                 />
                             </div>
                         </div>

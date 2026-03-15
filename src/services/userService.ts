@@ -81,7 +81,7 @@ export const userService = {
     return apiClient.get<UserProfile>(config.endpoints.user.profile);
   },
 
-  updateProfile: async (data: Partial<UserProfile>): Promise<UserProfile> => {
+  updateProfile: async (data: FormData | Partial<UserProfile>): Promise<UserProfile> => {
     return apiClient.put<UserProfile>(config.endpoints.user.profile, data);
   },
 
@@ -123,7 +123,8 @@ export const userService = {
     return apiClient.get<UserLookup[]>(`${config.endpoints.admin.users.lookup}${query}`);
   },
 
-  getShopOwners: async (page = 0, size = 1000): Promise<PageResponse<UserListItem>> => {
-    return apiClient.get<PageResponse<UserListItem>>(`${config.endpoints.admin.users.shopOwners}?page=${page}&size=${size}`);
+  getShopOwners: async (page = 0, size = 10, search = ""): Promise<PageResponse<UserListItem>> => {
+    const endpoint = `${config.endpoints.admin.users.shopOwners}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
+    return apiClient.get<PageResponse<UserListItem>>(endpoint);
   },
 };

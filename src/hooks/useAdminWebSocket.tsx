@@ -27,6 +27,9 @@ export interface AdminAlertPayload {
   type?: string;
   message?: string;
   id?: string | number;
+  orderId?: number;
+  orderNo?: string;
+  order?: unknown;
   timestamp?: string;
   [key: string]: unknown;
 }
@@ -146,6 +149,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         client.subscribe(config.websocket.topics.stats, (msg) => {
           try {
             const stats = JSON.parse(msg.body) as SystemStatsDTO;
+            console.log('[AdminWS] Received stats:', stats);
             setSystemStats(stats);
             setCached(CACHE_KEYS.STATS, stats);
           } catch (err) {
@@ -156,8 +160,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/reports
         client.subscribe(config.websocket.topics.reports, (msg) => {
           try {
+            const raw = JSON.parse(msg.body);
+            console.log('[AdminWS] Received report:', raw);
             const data = {
-              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              ...(raw as AdminAlertPayload),
               timestamp: new Date().toISOString(),
             };
             setLatestReport(data);
@@ -170,8 +176,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/shop-requests
         client.subscribe(config.websocket.topics.shopRequests, (msg) => {
           try {
+            const raw = JSON.parse(msg.body);
+            console.log('[AdminWS] Received shop request:', raw);
             const data = {
-              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              ...(raw as AdminAlertPayload),
               timestamp: new Date().toISOString(),
             };
             setLatestShopRequest(data);
@@ -184,8 +192,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/new-orders
         client.subscribe(config.websocket.topics.newOrders, (msg) => {
           try {
+            const raw = JSON.parse(msg.body);
+            console.log('[AdminWS] Received new order:', raw);
             const data = {
-              ...(JSON.parse(msg.body) as AdminAlertPayload),
+              ...(raw as AdminAlertPayload),
               timestamp: new Date().toISOString(),
             };
             setLatestOrder(data);
@@ -198,8 +208,13 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         // /topic/admin/order-updates
         client.subscribe(config.websocket.topics.orderUpdates, (msg) => {
           try {
-            const data = {
-              ...(JSON.parse(msg.body) as AdminAlertPayload),
+            const raw = JSON.parse(msg.body);
+            console.log('[AdminWS] Received order update:', raw);
+            const data: AdminAlertPayload = {
+              ...raw,
+              orderId: raw.orderId,
+              orderNo: raw.orderNo,
+              order: raw.order,
               timestamp: new Date().toISOString(),
             };
             setLatestOrderUpdate(data);

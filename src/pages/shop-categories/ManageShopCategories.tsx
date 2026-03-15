@@ -88,7 +88,6 @@ export default function ManageShopCategories() {
             Name: c.name,
             "Name (MM)": c.nameMm || "",
             "Name (EN)": c.nameEn || "",
-            "Display Order": c.displayOrder ?? "",
             "Is Active": c.isActive !== false ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
@@ -167,7 +166,6 @@ export default function ManageShopCategories() {
                                             <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                                             <TableHead>Image</TableHead>
                                             <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
-                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
@@ -189,7 +187,7 @@ export default function ManageShopCategories() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{cat.name}</div>
+                                                        <div className="font-medium">{cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`}</div>
                                                         {(cat.nameMm || cat.nameEn || cat.nameTh) && (
                                                             <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
                                                                 {cat.nameMm && <span>{cat.nameMm}</span>}
@@ -198,7 +196,6 @@ export default function ManageShopCategories() {
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">{cat.displayOrder ?? "—"}</TableCell>
                                                     <TableCell>
                                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                                                             {cat.isActive !== false ? "Active" : "Inactive"}

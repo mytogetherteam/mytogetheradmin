@@ -7,6 +7,7 @@ export const config = {
       login: '/api/admin/auth/login',
       register: '/api/admin/auth/register',
       refresh: '/api/admin/auth/refresh',
+      logout: '/api/admin/auth/logout',
     },
     admin: {
       import: {
@@ -21,19 +22,12 @@ export const config = {
       auditLogs: '/api/admin/audit-logs',
       payment: {
         shopFormData: '/api/admin/setup/shop-form-data',
-        cities: '/api/admin/setup/cities',
-        cityDetail: (id: number) => `/api/admin/setup/cities/${id}`,
-        districts: '/api/admin/setup/districts',
-        districtDetail: (id: number) => `/api/admin/setup/districts/${id}`,
         cuisineTypes: '/api/admin/setup/cuisine-types',
         cuisineTypeDetail: (id: number) => `/api/admin/setup/cuisine-types/${id}`,
         paymentMethods: '/api/admin/setup/payment-methods',
         paymentMethod: (id: number) => `/api/admin/setup/payment-methods/${id}`,
         shopCategories: '/api/admin/setup/shop-categories',
         shopCategory: (id: number) => `/api/admin/setup/shop-categories/${id}`,
-        shopSubCategories: (categoryId: number) => `/api/admin/setup/shop-categories/${categoryId}/sub-categories`,
-        shopSubCategoriesAll: '/api/admin/setup/shop-categories/sub-categories',
-        shopSubCategory: (id: number) => `/api/admin/setup/shop-categories/sub-categories/${id}`,
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
         cuisines: {
@@ -41,13 +35,13 @@ export const config = {
           detail: (id: number) => `/api/admin/cuisines/${id}`,
         }
       },
-      districts: {
-        list: '/api/admin/districts',
-        detail: (id: number) => `/api/admin/districts/${id}`,
-      },
       cities: {
         list: '/api/admin/cities',
         detail: (id: number) => `/api/admin/cities/${id}`,
+      },
+      districts: {
+        list: '/api/admin/districts',
+        detail: (id: number) => `/api/admin/districts/${id}`,
       },
       moderation: {
         reports: '/api/admin/moderation/reports',
@@ -105,6 +99,7 @@ export const config = {
         },
         approvals: {
           list: '/api/admin/menu/approvals',
+          detail: (id: number) => `/api/admin/menu/approvals/${id}`,
           approve: (id: number) => `/api/admin/menu/approvals/${id}/approve`,
           reject: (id: number) => `/api/admin/menu/approvals/${id}/reject`,
         }
@@ -113,7 +108,7 @@ export const config = {
         create: '/api/admin/announcements',
         broadcastUsers: '/api/admin/announcements/broadcast/users',
         broadcastShops: '/api/admin/announcements/broadcast/shops',
-        notifyUser: (id: string | number) => `/api/admin/announcements/notify/user/${id}`,
+        notifyUser: (id: string | number) => `/api/admin/announcements/notify/users/${id}`,
         notifyShop: (id: string | number) => `/api/admin/announcements/notify/shop/${id}`,
         history: '/api/admin/announcements/broadcast/history',
       },
@@ -148,7 +143,33 @@ export const config = {
         deviceDetail: (deviceId: string) => `/api/admin/analytics/device/${deviceId}`,
       },
       system: {
-        dbLatency: '/api/admin/system/db-latency',
+        latency: '/api/admin/system/latency',
+        orderTimeouts: {
+          base: '/api/admin/order-timeouts',
+          status: (status: string) => `/api/admin/order-timeouts/${status}`,
+          init: '/api/admin/order-timeouts/init',
+        },
+        configs: {
+          base: '/api/admin/configs',
+          key: (key: string) => `/api/admin/configs/${key}`,
+          init: '/api/admin/configs/init',
+        },
+        appContent: {
+          base: '/api/admin/app-content',
+          key: (key: string) => `/api/admin/app-content/${key}`,
+          publish: (key: string) => `/api/admin/app-content/${key}/publish`,
+          detail: (id: number | string) => `/api/admin/app-content/${id}`,
+        },
+        appVersions: {
+          base: '/api/admin/app-version',
+          platform: (platform: string) => `/api/admin/app-version/${platform}`,
+        },
+        appManagement: {
+          onboarding: '/api/admin/app-management/onboarding',
+          onboardingDetail: (id: number) => `/api/admin/app-management/onboarding/${id}`,
+          featureFlags: '/api/admin/app-management/flags',
+          featureFlagDetail: (id: number) => `/api/admin/app-management/flags/${id}`,
+        },
       },
       users: {
         list: '/api/admin/users',
@@ -177,10 +198,6 @@ export const config = {
         shopCategories: (shopId: number) => `/api/admin/categories/shop/${shopId}`,
         detail: (id: number) => `/api/admin/categories/${id}`,
         form: '/api/admin/setup/shop-form-data',
-      },
-      riders: {
-        list: '/api/admin/riders',
-        detail: (id: number) => `/api/admin/riders/${id}`,
       },
       profile: {
         base: '/api/admin/shops/profile',

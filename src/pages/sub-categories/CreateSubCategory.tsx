@@ -8,13 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Trash2, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -33,11 +27,8 @@ export default function CreateSubCategory() {
 
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [fetchingCategories, setFetchingCategories] = useState(false);
 
-    // Data State
-    const [categories, setCategories] = useState<MenuCategory[]>([]);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string; value: string } | null>(null);
 
     // Form State
     const [name, setName] = useState("");
@@ -56,7 +47,7 @@ export default function CreateSubCategory() {
     const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
-        loadCategories();
+        // Categories now handled by InfiniteSearchableSelect
     }, []);
 
     useEffect(() => {
@@ -65,34 +56,16 @@ export default function CreateSubCategory() {
         }
     }, [id, isEditMode]);
 
-    const loadCategories = async () => {
-        setFetchingCategories(true);
-        try {
-            // Fetching all categories for selection
-            // Using ShopService as it seems to handle category fetching based on previous analysis
-            const res = await ShopService.getAdminCategories(0, 100, "");
-            if (res && res.content) {
-                setCategories(res.content);
-            } else if (Array.isArray(res)) {
-                setCategories(res);
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to load categories");
-        } finally {
-            setFetchingCategories(false);
-        }
-    };
 
     const loadSubCategory = async (subId: number) => {
         setLoading(true);
         try {
             const subCat = await menuService.getMenuSubCategory(subId);
-            setName(subCat.name || "");
+            setName(subCat.nameEn || subCat.name || "");
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
             setNameEn(subCat.nameEn || "");
-            setDisplayOrder(subCat.displayOrder ?? 1);
+            setDisplayOrder(subCat.displayOrder || 1);
             setIsActive(subCat.isActive !== false);
 
             // Note: The API might return the categoryId in the response, 
@@ -105,6 +78,25 @@ export default function CreateSubCategory() {
 
             if (subCat.imageUrl || subCat.icon) {
                 setExistingImage(subCat.imageUrl || subCat.icon || null);
+            }
+            
+            const menuCategoryId = subCat.categoryId;
+            if (menuCategoryId) {
+                let label = subCat.categoryName || `Category ${menuCategoryId}`;
+                
+                // If we don't have a proper name, try to fetch it
+                if (!subCat.categoryName) {
+                    try {
+                        const cat = await ShopService.getCategoryById(menuCategoryId);
+                        if (cat) {
+                            label = cat.nameEn || cat.name || label;
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch parent category details", e);
+                    }
+                }
+                
+                setSelectedCategoryData({ label, value: String(menuCategoryId) });
             }
         } catch (error) {
             console.error(error);
@@ -136,43 +128,39 @@ export default function CreateSubCategory() {
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCategoryId && !isEditMode) {
+        if (!selectedCategoryData && !isEditMode) {
             toast.error("Please select a parent category");
             return;
         }
 
         setSubmitting(true);
         try {
-            const formData = new FormData();
-            const dataObj = {
-                name,
-                nameMm,
-                nameTh,
-                nameEn,
+            const effectiveName = nameEn || name || "";
+            const dtoData: Record<string, unknown> = {
+                name: effectiveName,
+                nameEn: effectiveName,
+                nameMm: nameMm || "",
+                nameTh: nameTh || "",
                 displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-                isActive,
+                isActive: isActive
             };
 
-            // The API expects 'data' as a JSON string or object, and 'image' as file
-            // Based on typical implementation in this project with multipart/form-data:
-            formData.append("data", new Blob([JSON.stringify(dataObj)], { type: "application/json" }));
-
-            if (galleryFile) {
-                formData.append("image", new Blob([galleryFile], { type: "application/form-data" }), galleryFile.name);
+            if (!isEditMode && selectedCategoryData?.value) {
+                dtoData.menuCategoryId = parseInt(selectedCategoryData.value);
             }
 
-            // However, the menuService currently defined takes FormData directly.
-            // Let's adjust the menuService call to match what we likely need.
-            // Actually, looking at Swagger analysis: 
-            // data (required object): CreateMenuSubCategoryRequest
-            // photos (optional array of files)
-            // So we need to construct FormData correctly.
+            const formData = new FormData();
+            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+
+            if (galleryFile) {
+                formData.append("photo", galleryFile);
+            }
 
             if (isEditMode && id) {
                 await menuService.updateMenuSubCategory(parseInt(id), formData);
                 toast.success("Sub-Category updated successfully");
             } else {
-                await menuService.createMenuSubCategory(parseInt(selectedCategoryId), formData);
+                await menuService.createMenuSubCategory(formData);
                 toast.success("Sub-Category created successfully");
             }
             navigate("/menus/sub-categories/manage");
@@ -231,28 +219,24 @@ export default function CreateSubCategory() {
                         {/* For now keeping it simple: Required on create. */}
                         <div className="space-y-2">
                             <Label>Parent Category {!isEditMode && <span className="text-red-500">*</span>}</Label>
-                            <Select
-                                value={selectedCategoryId}
-                                onValueChange={setSelectedCategoryId}
-                                disabled={isEditMode} // Disable on edit if moving isn't supported easily
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {fetchingCategories ? (
-                                        <div className="flex justify-center p-2">
-                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : (
-                                        categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id.toString()}>
-                                                {cat.nameEn || cat.name || `Category ${cat.id}`}
-                                            </SelectItem>
-                                        ))
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <InfiniteSearchableSelect
+                                placeholder="Select a Category"
+                                selectedValue={selectedCategoryData}
+                                onChange={(val: { label: string; value: string } | null) => setSelectedCategoryData(val)}
+                                disabled={isEditMode}
+                                fetchData={async (page, size, search) => {
+                                    const res = await ShopService.getAdminCategories(page, size, search);
+                                    return {
+                                        content: (res?.content || []).map((cat: MenuCategory) => ({
+                                            label: cat.nameEn || cat.name || `Category ${cat.id}`,
+                                            value: cat.id.toString(),
+                                        })),
+                                        last: !!res?.last,
+                                    };
+                                }}
+                                valueKey="value"
+                                labelKey="label"
+                            />
                             {isEditMode && <p className="text-xs text-muted-foreground">Category cannot be changed during edit.</p>}
                         </div>
 
@@ -373,8 +357,8 @@ export default function CreateSubCategory() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={!name || submitting || (!selectedCategoryId && !isEditMode)}
-                                    className={!name || submitting || (!selectedCategoryId && !isEditMode) ? "bg-gray-400 cursor-not-allowed" : ""}
+                                    disabled={!name || submitting || (!selectedCategoryData && !isEditMode)}
+                                    className={!name || submitting || (!selectedCategoryData && !isEditMode) ? "bg-gray-400 cursor-not-allowed" : ""}
                                 >
                                     {submitting ? "Saving..." : isEditMode ? "Update Sub-Category" : "Create Sub-Category"}
                                 </Button>

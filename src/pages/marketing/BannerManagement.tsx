@@ -185,7 +185,7 @@ function ShopDetailSheet({
                         <InfoRow label="Name (MM)" value={shop.nameMm} />
                         <InfoRow label="Name (TH)" value={shop.nameTh} />
                         <InfoRow label="Category" value={shop.shopCategory?.nameEn || shop.category} />
-                        <InfoRow label="Sub-Category" value={shop.shopSubCategory?.nameEn || shop.subCategory} />
+
                         <InfoRow label="Price Preference" value={shop.pricePreference} />
                     </div>
 
@@ -337,14 +337,7 @@ export default function BannerManagement() {
                 endDate: bannerToUpdate.endDate,
             };
 
-            const formData = new FormData();
-            formData.append("request", new Blob([JSON.stringify(requestObj)], { type: "application/json" }));
-
-            // image Url shouldn't just be ignored since user might want to toggle WITHOUT swapping the image. 
-            // In a multipart request, an empty file object usually passes successfully if it's optional,
-            // or the backend shouldn't require it if the existing image is already there.
-
-            const updated = await marketingService.updateBanner(id, formData);
+            const updated = await marketingService.updateBanner(id, requestObj);
             setBanners((prev) => prev.map((b) => b.id === id ? updated : b));
             toast.success(`Banner ${isActive ? "activated" : "deactivated"}`);
         } catch {
@@ -404,15 +397,8 @@ export default function BannerManagement() {
                 endDate: form.endDate,
             };
 
-            const formData = new FormData();
-            formData.append("request", new Blob([JSON.stringify(requestObj)], { type: "application/json" }));
-
-            if (imageFile) {
-                formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
-            }
-
             if (editingBannerId) {
-                const updatedBanner = await marketingService.updateBanner(editingBannerId, formData);
+                const updatedBanner = await marketingService.updateBanner(editingBannerId, requestObj, imageFile || undefined);
                 setBanners((prev) => prev.map((b) => b.id === editingBannerId ? updatedBanner : b));
                 toast.success("Banner updated");
             } else {
@@ -421,7 +407,7 @@ export default function BannerManagement() {
                     setSaving(false);
                     return;
                 }
-                const newBanner = await marketingService.createBanner(formData);
+                const newBanner = await marketingService.createBanner(requestObj, imageFile);
                 setBanners((prev) => [...prev, newBanner]);
                 toast.success("Banner created");
             }

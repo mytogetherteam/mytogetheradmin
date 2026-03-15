@@ -27,6 +27,7 @@ export interface CreateDistrictRequest {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
+  slug?: string;
   latitude?: number;
   longitude?: number;
   active?: boolean;

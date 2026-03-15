@@ -22,8 +22,8 @@ export default function AppLayout() {
     const navigate = useNavigate()
     const userData = authService.getUserData()
 
-    const handleLogout = () => {
-        authService.logout()
+    const handleLogout = async () => {
+        await authService.logout()
         navigate("/login")
     }
 

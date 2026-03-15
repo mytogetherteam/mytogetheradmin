@@ -22,8 +22,6 @@ const UserDetail = lazy(() => import("@/pages/users/UserDetail"));
 const ManageShopRestaurant = lazy(() => import("@/pages/shops/ManageShopRestaurant"));
 const CreateShopRestaurant = lazy(() => import("@/pages/shops/CreateShopRestaurant"));
 const VettingQueue = lazy(() => import("@/pages/shops/VettingQueue"));
-const ManageRiders = lazy(() => import("@/pages/shops/ManageRiders"));
-const CreateRider = lazy(() => import("@/pages/shops/CreateRider"));
 const ShopProfileSettings = lazy(() => import("@/pages/shops/ShopProfileSettings"));
 const ShopOperatingHours = lazy(() => import("@/pages/shops/ShopOperatingHours"));
 
@@ -36,8 +34,6 @@ const CreateCategory = lazy(() => import("@/pages/categories/CreateCategory"));
 const ManageCategories = lazy(() => import("@/pages/categories/ManageCategories"));
 const ManageShopCategories = lazy(() => import("@/pages/shop-categories/ManageShopCategories"));
 const CreateShopCategory = lazy(() => import("@/pages/shop-categories/CreateShopCategory"));
-const ManageShopSubCategories = lazy(() => import("@/pages/shop-sub-categories/ManageShopSubCategories"));
-const CreateShopSubCategory = lazy(() => import("@/pages/shop-sub-categories/CreateShopSubCategory"));
 
 // Menu
 const ManageMenuItems = lazy(() => import("@/pages/menus/ManageMenuItems"));
@@ -59,6 +55,7 @@ const ReviewDetail = lazy(() => import("@/pages/review/ReviewDetail"));
 
 // Community
 const CommunityMgt = lazy(() => import("@/pages/community/CommunityMgt"));
+const PostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
 const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
 const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 
@@ -71,6 +68,13 @@ const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashb
 
 // System
 const AuditLogs = lazy(() => import("@/pages/system/AuditLogs"));
+const OrderTimeoutManagement = lazy(() => import("@/pages/system/OrderTimeoutManagement"));
+const SystemConfigManagement = lazy(() => import("@/pages/system/SystemConfigManagement"));
+const AppContentManagement = lazy(() => import("@/pages/system/AppContentManagement"));
+const AppVersionManagement = lazy(() => import("@/pages/system/AppVersionManagement"));
+const OnboardingManagement = lazy(() => import("@/pages/system/OnboardingManagement"));
+const FeatureFlags = lazy(() => import("@/pages/system/FeatureFlags"));
+const SystemHealth = lazy(() => import("@/pages/system/SystemHealth"));
 
 // Payment
 const PaymentMethods = lazy(() => import("@/pages/payment/PaymentMethods"));
@@ -119,104 +123,86 @@ function App() {
           <Route path="/manage-shops" element={<LegacyRedirect to="/shops/manage" />} />
           <Route path="/create-shop" element={<LegacyRedirect to="/shops/create" />} />
 
-          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            {/* Core */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin/profile" element={<AdminProfile />} />
+            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                {/* Core (Anyone authenticated) */}
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/admin/profile" element={<AdminProfile />} />
 
-            {/* Analytics */}
-            <Route path="/analytics" element={<AnalyticalDashboard />} />
+                {/* OPS Routes */}
+                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_OPS"]}><Outlet /></ProtectedRoute>}>
+                    <Route path="/shops/create" element={<CreateShopRestaurant />} />
+                    <Route path="/shops/manage" element={<ManageShopRestaurant />} />
+                    <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
+                    <Route path="/shops/vetting" element={<VettingQueue />} />
+                    <Route path="/users/manage" element={<ManageUsers />} />
+                    <Route path="/users/:id" element={<UserDetail />} />
+                    <Route path="/categories/manage" element={<ManageCategories />} />
+                    <Route path="/categories/create" element={<CreateCategory />} />
+                    <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
+                    <Route path="/shop-categories/create" element={<CreateShopCategory />} />
+                    <Route path="/menus/items/manage" element={<ManageMenuItems />} />
+                    <Route path="/menus/items/create" element={<CreateMenuItem />} />
+                    <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
+                    <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
+                    <Route path="/menus/approvals" element={<MenuApprovals />} />
+                    <Route path="/orders/board" element={<OrderBoard />} />
+                    <Route path="/orders/:id" element={<OrderDetail />} />
+                    <Route path="/moderation/content" element={<ContentReports />} />
+                    <Route path="/moderation/user-shop" element={<UserShopReports />} />
+                    <Route path="/review/reviews" element={<Reviews />} />
+                    <Route path="/review/:type/:id" element={<ReviewDetail />} />
+                    <Route path="/community/posts" element={<CommunityMgt />} />
+                    <Route path="/community/posts/:id" element={<PostDetailPage />} />
+                    <Route path="/community/comments" element={<CommentBoard />} />
+                    <Route path="/lostfound" element={<LostFound />} />
+                    <Route path="/cuisines/manage" element={<ManageCuisines />} />
+                    <Route path="/cuisines/create" element={<CuisineForm />} />
+                    <Route path="/cuisines/edit/:id" element={<CuisineForm />} />
+                    {/* Locations (OPS/SETUP) */}
+                    <Route path="/cities/manage" element={<ManageCities />} />
+                    <Route path="/cities/create" element={<CreateCity />} />
+                    <Route path="/cities/edit/:id" element={<CreateCity />} />
+                    <Route path="/districts/manage" element={<ManageDistricts />} />
+                    <Route path="/districts/create" element={<CreateDistrict />} />
+                    <Route path="/districts/edit/:id" element={<CreateDistrict />} />
+                </Route>
 
-            {/* Users */}
-            <Route path="/users/manage" element={<ManageUsers />} />
-            <Route path="/users/:id" element={<UserDetail />} />
+                {/* FINANCE Routes */}
+                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_FINANCE"]}><Outlet /></ProtectedRoute>}>
+                    <Route path="/orders/history" element={<OrderHistory />} />
+                    <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
+                    <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
+                    <Route path="/payment/methods" element={<PaymentMethods />} />
+                    <Route path="/payment/methods/create" element={<PaymentMethodForm />} />
+                    <Route path="/payment/methods/edit/:id" element={<PaymentMethodForm />} />
+                    <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
+                    <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
+                    <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
+                    <Route path="/system/order-timeouts" element={<OrderTimeoutManagement />} />
+                </Route>
 
-            {/* Shops */}
-            <Route path="/shops/manage" element={<ManageShopRestaurant />} />
-            <Route path="/shops/create" element={<CreateShopRestaurant />} />
-            <Route path="/shops/riders/manage" element={<ManageRiders />} />
-            <Route path="/shops/riders/create" element={<CreateRider />} />
-            <Route path="/shops/profile/settings" element={<ShopProfileSettings />} />
-            <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
-            <Route path="/shops/vetting" element={<VettingQueue />} />
-            <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
-            <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
+                {/* SETUP Routes */}
+                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_SETUP"]}><Outlet /></ProtectedRoute>}>
+                    <Route path="/marketing/banners" element={<BannerManagement />} />
+                    <Route path="/marketing/broadcast" element={<Broadcast />} />
+                    <Route path="/system/app-content" element={<AppContentManagement />} />
+                    <Route path="/system/app-versions" element={<AppVersionManagement />} />
+                    <Route path="/system/onboarding" element={<OnboardingManagement />} />
+                    <Route path="/system/feature-flags" element={<FeatureFlags />} />
+                    <Route path="/system/configs" element={<SystemConfigManagement />} />
+                </Route>
 
-            {/* Categories */}
-            <Route path="/categories/create" element={<CreateCategory />} />
-            <Route path="/categories/manage" element={<ManageCategories />} />
+                {/* MASTER_ADMIN Routes */}
+                <Route element={<ProtectedRoute requiredAuthorities={["MASTER_ADMIN"]}><Outlet /></ProtectedRoute>}>
+                    <Route path="/system/audit-logs" element={<AuditLogs />} />
+                    <Route path="/system/health" element={<SystemHealth />} />
+                    <Route path="/analytics" element={<AnalyticalDashboard />} />
+                </Route>
 
-            {/* Shop Categories */}
-            <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
-            <Route path="/shop-categories/create" element={<CreateShopCategory />} />
-
-            {/* Shop Sub Categories */}
-            <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
-            <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
-            <Route path="/shop-sub-categories/edit/:subId" element={<CreateShopSubCategory />} />
-
-            {/* Shop Payment Types */}
-            <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
-            <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
-            <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
-
-            {/* Menu Items */}
-            <Route path="/menus/items/manage" element={<ManageMenuItems />} />
-            <Route path="/menus/items/create" element={<CreateMenuItem />} />
-
-            {/* Sub Categories */}
-            <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
-            <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
-
-            {/* Approvals */}
-            <Route path="/menus/approvals" element={<MenuApprovals />} />
-
-            {/* Orders */}
-            <Route path="/orders">
-              <Route path="board" element={<OrderBoard />} />
-              <Route path="history" element={<OrderHistory />} />
-              <Route path=":id" element={<OrderDetail />} />
+                {/* Shared/Uncategorized */}
+                <Route path="/shops/profile/settings" element={<ShopProfileSettings />} />
             </Route>
-
-            {/* Moderation & Review */}
-            <Route path="/moderation/content" element={<ContentReports />} />
-            <Route path="/moderation/user-shop" element={<UserShopReports />} />
-            <Route path="/review/reviews" element={<Reviews />} />
-            <Route path="/review/:type/:id" element={<ReviewDetail />} />
-
-            {/* Community */}
-            <Route path="/community/posts" element={<CommunityMgt />} />
-            <Route path="/community/comments" element={<CommentBoard />} />
-            <Route path="/lostfound" element={<LostFound />} />
-
-            {/* Marketing */}
-            <Route path="/marketing/banners" element={<BannerManagement />} />
-            <Route path="/marketing/broadcast" element={<Broadcast />} />
-
-            {/* System */}
-            <Route path="/system/audit-logs" element={<AuditLogs />} />
-
-            {/* Cities */}
-            <Route path="/cities/manage" element={<ManageCities />} />
-            <Route path="/cities/create" element={<CreateCity />} />
-            <Route path="/cities/edit/:id" element={<CreateCity />} />
-
-            {/* Districts */}
-            <Route path="/districts/manage" element={<ManageDistricts />} />
-            <Route path="/districts/create" element={<CreateDistrict />} />
-            <Route path="/districts/edit/:id" element={<CreateDistrict />} />
-
-            {/* Cuisines */}
-            <Route path="/cuisines/manage" element={<ManageCuisines />} />
-            <Route path="/cuisines/create" element={<CuisineForm />} />
-            <Route path="/cuisines/edit/:id" element={<CuisineForm />} />
-
-            {/* Payment */}
-            <Route path="/payment/methods" element={<PaymentMethods />} />
-            <Route path="/payment/methods/create" element={<PaymentMethodForm />} />
-            <Route path="/payment/methods/edit/:id" element={<PaymentMethodForm />} />
-          </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

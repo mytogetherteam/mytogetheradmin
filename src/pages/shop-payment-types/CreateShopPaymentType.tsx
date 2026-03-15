@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
     Card,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Select,
     SelectContent,
@@ -29,7 +30,7 @@ import {
     Wallet
 } from "lucide-react";
 import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
-import { ShopService, Shop, PaymentMethodDTO } from "@/services/shopService";
+import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { PaymentService } from "@/services/paymentService";
 import { toast } from "sonner";
 
@@ -40,7 +41,9 @@ export default function CreateShopPaymentType() {
     const isEdit = !!id;
 
     // Form State
-    const [selectedShopId, setSelectedShopId] = useState<string>(paramShopId || searchParams.get("shopId") || "");
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+    const selectedShopId = selectedShopData?.value || paramShopId || searchParams.get("shopId") || "";
+    
     const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>("");
     const [accountName, setAccountName] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
@@ -51,20 +54,35 @@ export default function CreateShopPaymentType() {
     const [existingQrUrl, setExistingQrUrl] = useState<string | null>(null);
 
     // Data State
-    const [shops, setShops] = useState<Shop[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDTO[]>([]);
+    const [filteredMethods, setFilteredMethods] = useState<PaymentMethodDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
+    const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await ShopService.getAllShops(page, size, search);
+        return {
+            content: (res?.content || []).map(s => ({
+                label: s.nameEn || s.name || `Shop #${s.id}`,
+                value: String(s.id),
+            })),
+            last: res ? page + 1 >= (res.totalPages ?? 1) : true,
+        };
+    }, []);
+
     useEffect(() => {
+        // Init selected shop data from params
+        const initShopId = paramShopId || searchParams.get("shopId");
+        if (initShopId && !selectedShopData) {
+            ShopService.getShopById(parseInt(initShopId)).then(shop => {
+                setSelectedShopData({ label: shop.nameEn || shop.name, value: String(shop.id) });
+            }).catch(e => console.error("Failed to fetch initial shop details", e));
+        }
+
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [shopsRes, paymentMethodsRes] = await Promise.all([
-                    ShopService.getAllShops(0, 500),
-                    PaymentService.getPaymentMethods({ page: 0, size: 100 })
-                ]);
-                setShops(shopsRes.content);
+                const paymentMethodsRes = await PaymentService.getPaymentMethods({ page: 0, size: 100 });
                 setPaymentMethods(paymentMethodsRes.content);
 
                 if (isEdit && paramShopId && id) {
@@ -72,11 +90,11 @@ export default function CreateShopPaymentType() {
                         parseInt(paramShopId),
                         parseInt(id)
                     );
-                    setSelectedShopId(existing.shopId.toString());
+                    // Selected shop has already been set via getShopById above, or can just be updated here
                     setSelectedPaymentMethodId(existing.paymentMethodId.toString());
                     setAccountName(existing.accountName || "");
                     setAccountNumber(existing.accountNumber || "");
-                    setDisplayOrder(existing.displayOrder ?? 1);
+                    setDisplayOrder(existing.displayOrder || 1);
                     setIsActive(existing.isActive);
                     if (existing.qrImageUrl) {
                         setExistingQrUrl(existing.qrImageUrl);
@@ -90,7 +108,34 @@ export default function CreateShopPaymentType() {
             }
         };
         fetchData();
-    }, [isEdit, paramShopId, id]);
+    }, [isEdit, paramShopId, id, searchParams, selectedShopData]);
+
+    // Filter payment methods based on selected shop
+    useEffect(() => {
+        if (!selectedShopId || paymentMethods.length === 0) {
+            setFilteredMethods([]);
+            return;
+        }
+
+        const filterMethods = async () => {
+            try {
+                const shop = await ShopService.getShopById(parseInt(selectedShopId));
+                const supportedIds = shop.paymentMethodIds || [];
+                const filtered = paymentMethods.filter(m => supportedIds.includes(m.id));
+                setFilteredMethods(filtered);
+
+                // Clear selected payment method if it's not supported by the new shop
+                // Only if not in edit mode (where it's disabled anyway)
+                if (!isEdit && selectedPaymentMethodId && !supportedIds.includes(parseInt(selectedPaymentMethodId))) {
+                    setSelectedPaymentMethodId("");
+                }
+            } catch (error) {
+                console.error("Failed to filter payment methods", error);
+            }
+        };
+
+        filterMethods();
+    }, [selectedShopId, paymentMethods, isEdit, selectedPaymentMethodId]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -132,7 +177,7 @@ export default function CreateShopPaymentType() {
                 };
 
             const requestBlob = new Blob([JSON.stringify(requestData)], { type: 'application/json' });
-            formData.append('request', requestBlob);
+            formData.append('data', requestBlob);
 
             if (qrImage) {
                 formData.append('qrImage', new Blob([qrImage], { type: "application/form-data" }), qrImage.name);
@@ -205,22 +250,15 @@ export default function CreateShopPaymentType() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="shop">Shop / Restaurant</Label>
-                                    <Select
-                                        value={selectedShopId}
-                                        onValueChange={setSelectedShopId}
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchShopData}
+                                        valueKey="value"
+                                        labelKey="label"
+                                        selectedValue={selectedShopData}
+                                        onChange={(item) => setSelectedShopData(item as { label: string; value: string } | null)}
+                                        placeholder="Search shop..."
                                         disabled={isEdit} // Usually shop shouldn't be changed after creation
-                                    >
-                                        <SelectTrigger id="shop">
-                                            <SelectValue placeholder="Select a shop" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {shops.map(shop => (
-                                                <SelectItem key={shop.id} value={shop.id.toString()}>
-                                                    {shop.nameEn || shop.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
@@ -234,11 +272,16 @@ export default function CreateShopPaymentType() {
                                             <SelectValue placeholder="Select payment method (e.g. KPay)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {paymentMethods.map(method => (
+                                            {filteredMethods.map(method => (
                                                 <SelectItem key={method.id} value={method.id.toString()}>
                                                     {method.name} ({method.code})
                                                 </SelectItem>
                                             ))}
+                                            {filteredMethods.length === 0 && selectedShopId && (
+                                                <div className="p-2 text-xs text-center text-muted-foreground">
+                                                    No supported payment methods found for this shop.
+                                                </div>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                     {isEdit && <p className="text-[10px] text-muted-foreground">Payment method cannot be changed once created.</p>}

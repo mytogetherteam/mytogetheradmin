@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService } from "@/services/menuService";
-import { ShopService, Shop } from "@/services/shopService";
+import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import {
     Dialog,
@@ -26,8 +26,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { OptionGroup, Variant, Option, MenuCategory, MenuSubCategory } from "@/services/menuService";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
+import { OptionGroup, Variant, Option, MenuSubCategory } from "@/services/menuService";
 import {
     DndContext,
     closestCenter,
@@ -113,9 +113,10 @@ export default function CreateMenuItem() {
     const [discountAmount, setDiscountAmount] = useState("");
     const [discountPercentage, setDiscountPercentage] = useState("");
     const [currency, setCurrency] = useState("THB");
-    const [shopId, setShopId] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [subCategoryId, setSubCategoryId] = useState("");
+    const [shopId, setShopId] = useState("");
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
     const [isVegetarian, setIsVegetarian] = useState(false);
     const [isSpicy, setIsSpicy] = useState(false);
 
@@ -125,11 +126,12 @@ export default function CreateMenuItem() {
     const [displayOrder, setDisplayOrder] = useState<string>("1");
 
     // Data for dropdowns
-    const [shops, setShops] = useState<Shop[]>([]);
-    const [categories, setCategories] = useState<MenuCategory[]>([]);
-    const [subCategories, setSubCategories] = useState<MenuSubCategory[]>([]);
     const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
     const [variants, setVariants] = useState<Variant[]>([]);
+
+    // Selected items full data for InfiniteSearchableSelect display
+    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(null);
+    const [selectedSubCategoryData, setSelectedSubCategoryData] = useState<{ label: string, value: string } | null>(null);
 
 
     // Main Image
@@ -137,14 +139,10 @@ export default function CreateMenuItem() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
 
-    // Gallery Photos
-    const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
-    const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-    const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+    // Gallery Photos removed
 
     // Refs for file inputs
     const mainImageRef = useRef<HTMLInputElement>(null);
-    const galleryRef = useRef<HTMLInputElement>(null);
 
     // DnD Sensors
     const sensors = useSensors(
@@ -154,32 +152,53 @@ export default function CreateMenuItem() {
         })
     );
 
-    const loadShops = useCallback(async () => {
-        try {
-            const res = await ShopService.getAllShops(0, 100);
-            setShops(res.content || []);
-        } catch (e) {
-            console.error(e);
-        }
-    }, []);
-
-    const loadCategories = useCallback(async () => {
-        try {
-            const res = await ShopService.getAdminCategories(0, 100);
-            setCategories(res.content || []);
-        } catch (e) {
-            console.error(e);
-        }
-    }, []);
 
     const loadSubCategories = useCallback(async (catId: number) => {
         try {
             const res = await menuService.getMenuSubCategories(catId);
-            setSubCategories(res || []);
+            // If we have a subCategoryId, make sure we have its label
+            if (subCategoryId) {
+                const sub = res?.find((s: MenuSubCategory) => String(s.id) === subCategoryId);
+                if (sub) {
+                    setSelectedSubCategoryData({ label: sub.nameEn || sub.name || "", value: subCategoryId });
+                }
+            }
         } catch (e) {
             console.error(e);
         }
+    }, [subCategoryId]);
+    
+
+    const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await ShopService.getAllShops(page, size, search);
+        return {
+            content: res.content.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+            last: res.last
+        };
     }, []);
+
+    const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await ShopService.getAdminCategories(page, size, search);
+        return {
+            content: res.content.map(cat => ({ label: cat.nameEn || cat.name, value: String(cat.id) })),
+            last: res.last
+        };
+    }, []);
+
+    const fetchSubCategoryData = useCallback(async (page: number, size: number, search: string) => {
+        if (!categoryId) return { content: [], last: true };
+        const res = await menuService.getMenuSubCategories(parseInt(categoryId));
+        const filtered = search 
+            ? res.filter(s => (s.nameEn || s.name || "").toLowerCase().includes(search.toLowerCase()))
+            : res;
+        
+        const start = page * size;
+        const end = start + size;
+        return {
+            content: filtered.slice(start, end).map(sub => ({ label: sub.nameEn || sub.name, value: String(sub.id) })),
+            last: end >= filtered.length
+        };
+    }, [categoryId]);
 
     const loadItem = useCallback(async (itemId: number) => {
         setLoading(true);
@@ -199,24 +218,29 @@ export default function CreateMenuItem() {
             setDiscountAmount(item.discountAmount ? item.discountAmount.toLocaleString() : "");
             setDiscountPercentage(item.discountPercentage ? item.discountPercentage.toLocaleString() : "");
             setCurrency(item.currency || "THB");
-            setShopId(item.shopId?.toString() || "");
-            setCategoryId(item.categoryId?.toString() || "");
-            setSubCategoryId(item.subCategoryId?.toString() || "");
+            if (item.shopId) {
+                setShopId(item.shopId.toString());
+                setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
+            }
+
+            if (item.categoryId) {
+                setCategoryId(item.categoryId.toString());
+                setSelectedCategoryData({ label: item.categoryName || "Selected Category", value: item.categoryId.toString() });
+            }
+            // Subcategory name is not directly on item, it will be loaded via loadSubCategories
+            
             setIsVegetarian(item.isVegetarian || false);
             setIsSpicy(item.isSpicy || false);
 
             setIsAvailable(item.isAvailable !== false);
             setIsCombo(item.isCombo || false);
             setIsPopular(item.isPopular || false);
-            setDisplayOrder(String(item.displayOrder ?? 1));
+            setDisplayOrder(String(item.displayOrder || 1));
             setOptionGroups(item.optionGroups || []);
             setVariants(item.variants || []);
 
             if (item.imageUrl) {
                 setExistingImage(item.imageUrl);
-            }
-            if (item.imageUrls && Array.isArray(item.imageUrls)) {
-                setExistingGalleryImages(item.imageUrls);
             }
         } catch (e) {
             console.error(e);
@@ -241,8 +265,6 @@ export default function CreateMenuItem() {
     }, [nameEn, isEditMode]);
 
     useEffect(() => {
-        loadShops();
-        loadCategories();
         if (isEditMode && id) {
             loadItem(parseInt(id));
         } else {
@@ -260,9 +282,12 @@ export default function CreateMenuItem() {
             setDiscountAmount("");
             setDiscountPercentage("");
             setCurrency("THB");
-            setShopId("");
             setCategoryId("");
             setSubCategoryId("");
+            setShopId("");
+            setSelectedShopData(null);
+            setSelectedCategoryData(null);
+            setSelectedSubCategoryData(null);
             setIsVegetarian(false);
             setIsSpicy(false);
 
@@ -273,19 +298,17 @@ export default function CreateMenuItem() {
             setImageFile(null);
             setImagePreview(null);
             setExistingImage(null);
-            setExistingGalleryImages([]);
-            setGalleryFiles([]);
-            setGalleryPreviews([]);
             setOptionGroups([]);
             setVariants([]);
+            setSelectedCategoryData(null);
+            setSelectedSubCategoryData(null);
         }
-    }, [id, isEditMode, loadShops, loadCategories, loadItem]);
+    }, [id, isEditMode, loadItem]);
 
     useEffect(() => {
         if (categoryId) {
             loadSubCategories(parseInt(categoryId));
         } else {
-            setSubCategories([]);
             setSubCategoryId("");
         }
     }, [categoryId, loadSubCategories]);
@@ -306,30 +329,6 @@ export default function CreateMenuItem() {
         setExistingImage(null);
     };
 
-    const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        const newFiles = Array.from(files);
-        setGalleryFiles(prev => [...prev, ...newFiles]);
-
-        newFiles.forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setGalleryPreviews(prev => [...prev, reader.result as string]);
-            };
-            reader.readAsDataURL(file);
-        });
-    };
-
-    const removeGalleryImage = (index: number) => {
-        setGalleryFiles(prev => prev.filter((_, i) => i !== index));
-        setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const removeExistingGalleryImage = (url: string) => {
-        setExistingGalleryImages(prev => prev.filter(img => img !== url));
-    };
 
     // handlePriceChange removed in favor of PriceInput
 
@@ -432,39 +431,32 @@ export default function CreateMenuItem() {
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!shopId) {
-            toast.error("Please select a shop");
-            return;
-        }
 
         setSubmitting(true);
         try {
-            const formData = new FormData();
-
-            const payload = {
+            const dtoData = {
                 name: nameEn,
-                nameMm,
-                nameTh,
-                nameEn,
-                slug,
-                description,
-                descriptionMm,
-                descriptionTh,
-                descriptionEn,
+                nameEn: nameEn,
+                nameMm: nameMm || "",
+                nameTh: nameTh || "",
+                slug: slug || "",
+                description: description || "",
+                descriptionMm: descriptionMm || "",
+                descriptionTh: descriptionTh || "",
+                descriptionEn: descriptionEn || "",
                 price: Number(price.replace(/,/g, "")) || 0,
                 originalPrice: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
                 discountAmount: discountAmount ? Number(discountAmount.replace(/,/g, "")) : 0,
                 discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
-                currency,
+                currency: currency || "THB",
                 shopId: Number(shopId),
                 categoryId: Number(categoryId),
                 subCategoryId: subCategoryId ? Number(subCategoryId) : 0,
-                isVegetarian,
-                isSpicy,
-
-                isAvailable,
-                isCombo,
-                isPopular,
+                isVegetarian: isVegetarian,
+                isSpicy: isSpicy,
+                isAvailable: isAvailable,
+                isCombo: isCombo,
+                isPopular: isPopular,
                 displayOrder: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
                 optionGroups: optionGroups.map(og => ({
                     ...og,
@@ -480,25 +472,28 @@ export default function CreateMenuItem() {
                 }))
             };
 
-            formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+            const formData = new FormData();
+            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
 
             if (imageFile) {
-                formData.append("photo", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
+                formData.append("image", imageFile);
             }
 
-            galleryFiles.forEach((file) => {
-                formData.append("galleryPhotos", new Blob([file], { type: "application/form-data" }), file.name);
-            });
+
 
             if (isEditMode && id) {
                 await menuService.updateMenuItem(parseInt(id), formData);
                 toast.success("Item updated successfully");
             } else {
+                if (!shopId) {
+                    toast.error("Please select a shop");
+                    return;
+                }
                 if (!categoryId) {
                     toast.error("Please select a category");
                     return;
                 }
-                await menuService.createMenuItem(parseInt(categoryId), formData);
+                await menuService.createMenuItem(formData);
                 toast.success("Item created successfully");
             }
             navigate("/menus/items/manage");
@@ -548,13 +543,16 @@ export default function CreateMenuItem() {
                     <form className="space-y-6" onSubmit={onSubmit}>
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Shop</Label>
-                                <SearchableSelect
-                                    data={shops.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) }))}
-                                    value="value"
+                                <Label>Shop / Restaurant</Label>
+                                <InfiniteSearchableSelect
+                                    fetchData={fetchShopData}
+                                    valueKey="value"
                                     labelKey="label"
-                                    selectedValue={shopId ? { label: shops.find(s => String(s.id) === shopId)?.nameEn || shops.find(s => String(s.id) === shopId)?.name || "", value: shopId } : undefined}
-                                    onChange={(item) => setShopId(item?.value || "")}
+                                    selectedValue={selectedShopData}
+                                    onChange={(item) => {
+                                        setShopId(item?.value || "");
+                                        setSelectedShopData(item);
+                                    }}
                                     placeholder="Select Shop"
                                 />
                             </div>
@@ -562,23 +560,31 @@ export default function CreateMenuItem() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Category</Label>
-                                    <SearchableSelect
-                                        data={categories.map(cat => ({ label: cat.nameEn || cat.name, value: String(cat.id) }))}
-                                        value="value"
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchCategoryData}
+                                        valueKey="value"
                                         labelKey="label"
-                                        selectedValue={categoryId ? { label: categories.find(c => String(c.id) === categoryId)?.nameEn || categories.find(c => String(c.id) === categoryId)?.name || "", value: categoryId } : undefined}
-                                        onChange={(item) => setCategoryId(item?.value || "")}
+                                        selectedValue={selectedCategoryData}
+                                        onChange={(item) => {
+                                            setCategoryId(item?.value || "");
+                                            setSelectedCategoryData(item);
+                                            setSubCategoryId("");
+                                            setSelectedSubCategoryData(null);
+                                        }}
                                         placeholder="Select Category"
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Sub Category</Label>
-                                    <SearchableSelect
-                                        data={subCategories.map(sub => ({ label: sub.nameEn || sub.name, value: String(sub.id) }))}
-                                        value="value"
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchSubCategoryData}
+                                        valueKey="value"
                                         labelKey="label"
-                                        selectedValue={subCategoryId ? { label: subCategories.find(s => String(s.id) === subCategoryId)?.nameEn || subCategories.find(s => String(s.id) === subCategoryId)?.name || "", value: subCategoryId } : undefined}
-                                        onChange={(item) => setSubCategoryId(item?.value || "")}
+                                        selectedValue={selectedSubCategoryData}
+                                        onChange={(item) => {
+                                            setSubCategoryId(item?.value || "");
+                                            setSelectedSubCategoryData(item);
+                                        }}
                                         placeholder={categoryId ? "Select Sub Category" : "First select Category"}
                                         disabled={!categoryId}
                                     />
@@ -604,7 +610,10 @@ export default function CreateMenuItem() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Slug</Label>
-                                    <Input value={slug} readOnly className="bg-muted" />
+                                    <Input 
+                                        value={slug} 
+                                        onChange={(e) => setSlug(generateSlug(e.target.value))} 
+                                    />
                                 </div>
 
                                 <div className="space-y-2 mt-4">
@@ -1027,30 +1036,33 @@ export default function CreateMenuItem() {
 
                         {/* Images Section */}
                         <div className="space-y-6 pt-6 border-t font-sans">
-                            <h3 className="text-xl font-bold">Media & Gallery</h3>
+                            <h3 className="text-xl font-bold">Media</h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="w-full">
                                 {/* Main Image */}
                                 <div className="space-y-4">
                                     <Label className="text-base">Main Thumbnail Photo</Label>
                                     <div
                                         onClick={() => mainImageRef.current?.click()}
-                                        className="relative group aspect-square max-w-[240px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all overflow-hidden cursor-pointer"
+                                        className="relative group w-full aspect-[21/9] border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center bg-muted/5 hover:bg-muted/10 transition-all overflow-hidden cursor-pointer border-muted-foreground/20 hover:border-primary/50"
                                     >
                                         {imagePreview || existingImage ? (
                                             <>
                                                 <img src={imagePreview || existingImage || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                    <Button type="button" variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={(e) => { e.stopPropagation(); removeImage(); }}>
-                                                        <Trash2 className="h-5 w-5" />
+                                                    <Button type="button" variant="destructive" size="icon" className="h-12 w-12 rounded-full shadow-xl hover:scale-110 transition-transform" onClick={(e) => { e.stopPropagation(); removeImage(); }}>
+                                                        <Trash2 className="h-6 w-6" />
                                                     </Button>
                                                 </div>
                                             </>
                                         ) : (
-                                            <>
-                                                <Upload className="h-10 w-10 text-muted-foreground mb-3 group-hover:scale-110 transition-transform" />
-                                                <span className="text-sm font-medium text-muted-foreground px-4 text-center">Click to upload main image</span>
-                                            </>
+                                            <div className="flex flex-col items-center text-center p-6">
+                                                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                                    <Upload className="h-8 w-8 text-primary" />
+                                                </div>
+                                                <span className="text-lg font-semibold text-foreground/80">Click to upload main image</span>
+                                                <p className="text-sm text-muted-foreground mt-1 text-balance max-w-xs">Drag and drop or click to browse files</p>
+                                            </div>
                                         )}
                                         <input
                                             type="file"
@@ -1062,51 +1074,9 @@ export default function CreateMenuItem() {
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">This image will be used as the primary display photo in search results and menu listings.</p>
                                 </div>
-
-                                {/* Gallery Photos */}
-                                <div className="space-y-4">
-                                    <Label className="text-base">Gallery Photos (Optional)</Label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {existingGalleryImages.map((url, idx) => (
-                                            <div key={`existing-${idx}`} className="relative group aspect-square border rounded-xl overflow-hidden bg-muted">
-                                                <img src={url} alt="Gallery" className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => removeExistingGalleryImage(url)}>
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {galleryPreviews.map((url, idx) => (
-                                            <div key={`new-${idx}`} className="relative group aspect-square border rounded-xl overflow-hidden bg-muted">
-                                                <img src={url} alt="Gallery Preview" className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => removeGalleryImage(idx)}>
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        <div
-                                            onClick={() => galleryRef.current?.click()}
-                                            className="relative group aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer"
-                                        >
-                                            <Plus className="h-6 w-6 text-muted-foreground" />
-                                            <input
-                                                type="file"
-                                                ref={galleryRef}
-                                                accept="image/*"
-                                                multiple
-                                                className="hidden"
-                                                onChange={handleGalleryChange}
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground">Add more photos to showcase the item from different angles or its preparation.</p>
-                                </div>
                             </div>
+
+                            {/* Gallery section removed for Edit Mode per API instructions */}
                         </div>
 
                         <div className="flex flex-wrap items-center justify-between gap-4 pt-8 border-t px-2">

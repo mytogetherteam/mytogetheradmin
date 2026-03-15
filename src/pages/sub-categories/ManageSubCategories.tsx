@@ -9,13 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Loader2,
     Plus,
@@ -33,12 +27,11 @@ import { Label } from "@/components/ui/label";
 
 export default function ManageSubCategories() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string; value: string } | null>(null);
 
     const [subCategories, setSubCategories] = useState<MenuSubCategory[]>([]);
     const [loading, setLoading] = useState(false);
-    const [fetchingCategories, setFetchingCategories] = useState(false);
 
     const [sortConfig, setSortConfig] = useState<{ key: keyof MenuSubCategory; direction: "asc" | "desc" } | null>(null);
 
@@ -57,19 +50,17 @@ export default function ManageSubCategories() {
     }, [selectedCategoryId]);
 
     const loadCategories = async () => {
-        setFetchingCategories(true);
         try {
-            const res = await ShopService.getAdminCategories(0, 100, "");
+            const res = await ShopService.getAdminCategories(0, 1, "");
             const content = res.content || [];
-            setCategories(content);
             if (content.length > 0) {
-                setSelectedCategoryId(content[0].id.toString());
+                const first = content[0];
+                const data = { label: first.nameEn || first.name || `Category ${first.id}`, value: first.id.toString() };
+                setSelectedCategoryData(data);
+                setSelectedCategoryId(data.value);
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load categories");
-        } finally {
-            setFetchingCategories(false);
         }
     };
 
@@ -178,20 +169,27 @@ export default function ManageSubCategories() {
                     {/* Filter Section */}
                     <div className="mb-6 p-4 border rounded-lg bg-muted/20">
                         <Label className="mb-2 block">Select Menu Category</Label>
-                        <div className="flex gap-4 items-center">
-                            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                                <SelectTrigger className="w-full md:w-[300px]">
-                                    <SelectValue placeholder="Select a Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((cat) => (
-                                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                                            {cat.name || cat.nameEn || `Category ${cat.id}`}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {fetchingCategories && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        <div className="flex gap-4 items-center max-w-md">
+                            <InfiniteSearchableSelect
+                                placeholder="Select a Category"
+                                selectedValue={selectedCategoryData}
+                                onChange={(val) => {
+                                    setSelectedCategoryData(val);
+                                    setSelectedCategoryId(val?.value || "");
+                                }}
+                                fetchData={async (page, size, search) => {
+                                    const res = await ShopService.getAdminCategories(page, size, search);
+                                    return {
+                                        content: (res?.content || []).map((cat: MenuCategory) => ({
+                                            label: cat.nameEn || cat.name || `Category ${cat.id}`,
+                                            value: cat.id.toString(),
+                                        })),
+                                        last: !!res?.last,
+                                    };
+                                }}
+                                valueKey="value"
+                                labelKey="label"
+                            />
                         </div>
                     </div>
 
