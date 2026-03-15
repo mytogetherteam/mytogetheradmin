@@ -13,6 +13,10 @@ import { districtService, CreateDistrictRequest } from "@/services/districtServi
 import { cityService, CityDTO } from "@/services/cityService";
 import { toast } from "sonner";
 
+export interface CreateDistrictFormData extends CreateDistrictRequest {
+    slug?: string;
+}
+
 export default function CreateDistrict() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -23,6 +27,7 @@ export default function CreateDistrict() {
     const [nameEn, setNameEn] = useState("");
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
+    const [slug, setSlug] = useState("");
     const [latitude, setLatitude] = useState("");
     const [longitude, setLongitude] = useState("");
     const [active, setActive] = useState(true);
@@ -33,6 +38,20 @@ export default function CreateDistrict() {
         cityService.getCities(0, 500).then((res) => setCities(res.content || [])).catch(() => { });
     }, []);
 
+    const generateSlug = (value: string) => {
+        return value
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+    };
+
+    useEffect(() => {
+        if (!isEdit && nameEn) {
+            setSlug(generateSlug(nameEn));
+        }
+    }, [nameEn, isEdit]);
+
     useEffect(() => {
         if (isEdit) {
             setLoading(true);
@@ -42,6 +61,7 @@ export default function CreateDistrict() {
                     setNameEn(d.nameEn);
                     setNameMm(d.nameMm);
                     setNameTh(d.nameTh || "");
+                    setSlug(d.slug || "");
                     setLatitude(d.latitude ? String(d.latitude) : "");
                     setLongitude(d.longitude ? String(d.longitude) : "");
                     setActive(d.active);
@@ -58,11 +78,12 @@ export default function CreateDistrict() {
 
         setSubmitting(true);
         try {
-            const data: CreateDistrictRequest = {
+            const data: CreateDistrictFormData = {
                 cityId,
                 nameEn: nameEn.trim(),
                 nameMm: nameMm.trim(),
                 nameTh: nameTh.trim() || undefined,
+                slug: slug.trim() || undefined,
                 latitude: latitude ? parseFloat(latitude) : undefined,
                 longitude: longitude ? parseFloat(longitude) : undefined,
                 active,
@@ -114,16 +135,38 @@ export default function CreateDistrict() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="nameEn">Name (English) *</Label>
-                                <Input id="nameEn" placeholder="e.g. Kamayut" value={nameEn} onChange={(e) => setNameEn(e.target.value)} required />
+                                <Input 
+                                    id="nameEn" 
+                                    placeholder="e.g. Kamayut" 
+                                    value={nameEn} 
+                                    onChange={(e) => {
+                                        setNameEn(e.target.value);
+                                        if (!isEdit) {
+                                            setSlug(generateSlug(e.target.value));
+                                        }
+                                    }} 
+                                    required 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nameMm">Name (Myanmar) *</Label>
                                 <Input id="nameMm" placeholder="e.g. ကမာရွတ်" value={nameMm} onChange={(e) => setNameMm(e.target.value)} required />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="nameTh">Name (Thai)</Label>
-                            <Input id="nameTh" placeholder="Optional" value={nameTh} onChange={(e) => setNameTh(e.target.value)} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="nameTh">Name (Thai)</Label>
+                                <Input id="nameTh" placeholder="Optional" value={nameTh} onChange={(e) => setNameTh(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="slug">Slug</Label>
+                                <Input 
+                                    id="slug" 
+                                    placeholder="e.g. kamayut" 
+                                    value={slug} 
+                                    onChange={(e) => setSlug(generateSlug(e.target.value))}
+                                />
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">

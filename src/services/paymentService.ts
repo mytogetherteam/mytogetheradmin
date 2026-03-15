@@ -38,14 +38,14 @@ export const PaymentService = {
    * Get all cities
    */
   getCities: async (): Promise<CityDTO[]> => {
-    return apiClient.get<CityDTO[]>(config.endpoints.admin.payment.cities);
+    return apiClient.get<CityDTO[]>(config.endpoints.admin.cities.list);
   },
 
   /**
    * Get all districts
    */
   getDistricts: async (): Promise<DistrictDTO[]> => {
-    return apiClient.get<DistrictDTO[]>(config.endpoints.admin.payment.districts);
+    return apiClient.get<DistrictDTO[]>(config.endpoints.admin.districts.list);
   },
 
   /**
@@ -82,6 +82,7 @@ export const PaymentService = {
 
   /**
    * Create a new payment method
+   * @param data FormData containing iconFile, qrFile and other fields
    */
   createPaymentMethod: async (data: FormData | CreatePaymentMethodRequest): Promise<PaymentMethodDTO> => {
     return apiClient.post<PaymentMethodDTO>(config.endpoints.admin.payment.paymentMethods, data);
@@ -89,6 +90,8 @@ export const PaymentService = {
 
   /**
    * Update a payment method
+   * @param id payment method ID
+   * @param data FormData containing iconFile, qrFile and other fields
    */
   updatePaymentMethod: async (id: number, data: FormData | UpdatePaymentMethodRequest): Promise<PaymentMethodDTO> => {
     return apiClient.put<PaymentMethodDTO>(config.endpoints.admin.payment.paymentMethod(id), data);

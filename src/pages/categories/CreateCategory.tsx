@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShopService, Shop } from "@/services/shopService";
+import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 export default function CreateCategory() {
@@ -37,10 +30,6 @@ export default function CreateCategory() {
   const [displayOrder, setDisplayOrder] = useState<number | "">(1);
   const [isActive, setIsActive] = useState<boolean>(true);
 
-  // Shop selector state (for create mode)
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [selectedShopId, setSelectedShopId] = useState<string>("");
-  const [loadingShops, setLoadingShops] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +42,7 @@ export default function CreateCategory() {
   const [existingImage, setExistingImage] = useState<string | null>(null);
 
   // Gallery state removed
+
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -68,32 +58,19 @@ export default function CreateCategory() {
       setExistingImage(null);
       setImageFile(null);
       setImagePreview(null);
-      loadShops();
     }
   }, [id, isEditMode]);
 
-  const loadShops = async () => {
-    setLoadingShops(true);
-    try {
-      const res = await ShopService.getAllShops(0, 200);
-      const list = res?.content || [];
-      setShops(Array.isArray(list) ? list : []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingShops(false);
-    }
-  };
 
   const loadCategory = async (catId: number) => {
     setLoading(true);
     try {
       const cat = await ShopService.getCategoryById(catId);
-      setName(cat.name || "");
+      setName(cat.nameEn || cat.name || "");
       setNameMm(cat.nameMm || "");
       setNameTh(cat.nameTh || "");
       setNameEn(cat.nameEn || "");
-      setDisplayOrder(cat.displayOrder ?? 1);
+      setDisplayOrder(cat.displayOrder || 1);
       setIsActive(cat.isActive !== false);
       if (cat.imageUrl || cat.image || cat.icon) {
         setExistingImage(cat.imageUrl || cat.image || cat.icon || null);
@@ -125,33 +102,30 @@ export default function CreateCategory() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isEditMode && !selectedShopId) {
-      toast.error("Please select a shop first");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      const data = {
-        name,
-        nameMm: nameMm || undefined,
-        nameTh: nameTh || undefined,
-        nameEn: nameEn || undefined,
-        displayOrder,
-        isActive,
+      const dtoData: Record<string, unknown> = {
+        nameEn: name || nameEn || "",
+        nameMm: nameMm || "",
+        nameTh: nameTh || "",
+        displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
+        isActive: isActive
       };
-      formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
+
+
+      const formData = new FormData();
+      formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
 
       if (imageFile) {
-        formData.append("image", new Blob([imageFile], { type: "application/form-data" }), imageFile.name);
+        formData.append("image", imageFile);
       }
 
       if (isEditMode && id) {
         await ShopService.updateCategory(parseInt(id), formData);
         toast.success("Menu category updated successfully");
       } else {
-        await ShopService.createCategory(parseInt(selectedShopId), formData);
+        await ShopService.createCategory(formData);
         toast.success("Menu category created successfully");
       }
       navigate("/categories/manage");
@@ -206,30 +180,6 @@ export default function CreateCategory() {
         <CardContent>
           <form className="space-y-6" onSubmit={onSubmit}>
 
-            {/* Shop selector — create mode only */}
-            {!isEditMode && (
-              <div className="space-y-2">
-                <Label htmlFor="shopSelect">Shop <span className="text-red-500">*</span></Label>
-                {loadingShops ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading shops...
-                  </div>
-                ) : (
-                  <Select value={selectedShopId} onValueChange={setSelectedShopId}>
-                    <SelectTrigger id="shopSelect">
-                      <SelectValue placeholder="Select a shop" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {shops.map((shop) => (
-                        <SelectItem key={shop.id} value={shop.id.toString()}>
-                          {shop.nameEn || shop.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2 md:col-span-3">
@@ -363,7 +313,7 @@ export default function CreateCategory() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!name || submitting || (!isEditMode && !selectedShopId)}
+                  disabled={!name || submitting}
                 >
                   {submitting ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>

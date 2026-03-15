@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { ShopService, PageableResponse, Shop } from "@/services/shopService";
+import { authService } from "@/services/authService";
 import { moderationService } from "@/services/moderationService";
 import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -203,6 +204,9 @@ function WsStatusBadge({ connected }: { connected: boolean }) {
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const userData = authService.getUserData();
+    const isMasterAdmin = userData?.role === "MASTER_ADMIN" || userData?.authorities?.includes("MASTER_ADMIN");
+
     const defaults = getDefaultDates();
     const [startDate, setStartDate] = useState(defaults.start);
     const [endDate, setEndDate] = useState(defaults.end);
@@ -236,7 +240,7 @@ export default function Dashboard() {
                     orderService.getOrdersHealth().catch(() => ({})),
                     ShopService.getPendingVettingShops(0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<Shop>)),
                     moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<unknown>)),
-                    analyticsService.getSystemHealth().catch(() => null),
+                    isMasterAdmin ? analyticsService.getSystemHealth().catch(() => null) : Promise.resolve(null),
                 ]);
                 setStats(statsData);
                 setRevenue(revenueData);
@@ -252,7 +256,7 @@ export default function Dashboard() {
             }
         }
         load();
-    }, [startDate, endDate]);
+    }, [startDate, endDate, isMasterAdmin]);
 
     // Derived: prefer live WS stats where available, fall back to REST baseline
     const liveStats: Partial<SystemStatsDTO> = useMemo(() => systemStats ?? {}, [systemStats]);
@@ -342,7 +346,7 @@ export default function Dashboard() {
             {/* Row 1: KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
-                <StatCard title="Active Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
+                <StatCard title="Total Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
                 <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} />
                 <StatCard title={ordersLabel} value={ordersValue} icon={ShoppingCart} loading={loading} live={isLive} />
                 <StatCard title="Revenue Today" value={revenueToday} prefix="$" icon={DollarSign} loading={loading} live={isLive} />

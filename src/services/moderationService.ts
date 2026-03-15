@@ -139,6 +139,10 @@ class ModerationService {
     return apiClient.put<Post>(config.endpoints.admin.moderation.hidePost(id), {});
   }
 
+  async getPostDetail(id: string): Promise<Post> {
+    return apiClient.get<Post>(config.endpoints.admin.moderation.postDetail(id));
+  }
+
   async deletePost(id: string): Promise<void> {
     return apiClient.delete<void>(config.endpoints.admin.moderation.postDetail(id));
   }

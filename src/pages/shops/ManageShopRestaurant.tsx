@@ -185,7 +185,7 @@ export default function ManageShopRestaurant() {
             Name: shop.name,
             NameMM: shop.nameMm || "",
             Category: shop.category,
-            SubCategory: shop.subCategory || "",
+            SubCategory: shop.category || "",
             Address: shop.address,
             District: shop.district || "",
             City: shop.city || "",

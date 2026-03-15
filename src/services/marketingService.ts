@@ -33,7 +33,7 @@ export interface CreateBannerRequest {
   titleMm?: string;
   titleTh?: string;
   titleEn?: string;
-  imageUrl: string;
+  imageUrl?: string;
   linkUrl?: string;
   placement: BannerPlacement;
   displayOrder?: number;
@@ -67,11 +67,24 @@ class MarketingService {
     return apiClient.get<Banner[]>(config.endpoints.admin.marketing.banners.base);
   }
 
-  async createBanner(data: CreateBannerRequest | FormData): Promise<Banner> {
+  async createBanner(data: CreateBannerRequest, imageFile?: File): Promise<Banner> {
+    if (imageFile) {
+        const formData = new FormData();
+        // Backend expects 'request' as a JSON Part
+        formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+        formData.append('image', imageFile);
+        return apiClient.post<Banner>(config.endpoints.admin.marketing.banners.base, formData);
+    }
     return apiClient.post<Banner>(config.endpoints.admin.marketing.banners.base, data);
   }
 
-  async updateBanner(id: string, data: Partial<CreateBannerRequest> | FormData): Promise<Banner> {
+  async updateBanner(id: string, data: Partial<CreateBannerRequest>, imageFile?: File): Promise<Banner> {
+    if (imageFile) {
+        const formData = new FormData();
+        formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+        formData.append('image', imageFile);
+        return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.detail(id), formData);
+    }
     return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.detail(id), data);
   }
 

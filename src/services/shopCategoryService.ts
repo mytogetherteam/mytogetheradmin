@@ -9,23 +9,9 @@ export interface ShopCategoryDTO {
   nameEn?: string;
   slug?: string;
   imageUrl?: string;
-  displayOrder: number;
   isActive: boolean;
-  subCategories?: ShopSubCategoryDTO[];
 }
 
-export interface ShopSubCategoryDTO {
-  id: number;
-  name: string;
-  nameMm?: string;
-  nameTh?: string;
-  nameEn?: string;
-  slug?: string;
-  imageUrl?: string;
-  displayOrder: number;
-  isActive: boolean;
-  categoryId?: number;
-}
 
 export interface CreateShopCategoryRequest {
   name: string;
@@ -33,18 +19,9 @@ export interface CreateShopCategoryRequest {
   nameTh?: string;
   nameEn?: string;
   slug?: string;
-  displayOrder: number;
   isActive: boolean;
 }
 
-export interface CreateShopSubCategoryRequest {
-  name: string;
-  nameMm?: string;
-  nameTh?: string;
-  nameEn?: string;
-  slug?: string;
-  active: boolean;
-}
 
 export const ShopCategoryService = {
   /**
@@ -62,7 +39,26 @@ export const ShopCategoryService = {
     if (queryString) {
       url += `?${queryString}`;
     }
-    return apiClient.get(url);
+    const response = await apiClient.get<ShopCategoryDTO[] | { content: ShopCategoryDTO[]; totalElements: number; totalPages: number }>(url);
+    
+    // Handle both paginated and flat array responses
+    if (Array.isArray(response)) {
+      return {
+        content: response,
+        totalElements: response.length,
+        totalPages: 1
+      };
+    }
+    
+    if (response && response.content) {
+      return response;
+    }
+    
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0
+    };
   },
 
   /**
@@ -93,56 +89,4 @@ export const ShopCategoryService = {
     return apiClient.delete<void>(config.endpoints.admin.payment.shopCategory(id));
   },
 
-  /**
-   * Get sub-categories by category ID
-   */
-  getShopSubCategories: async (categoryId: number): Promise<ShopSubCategoryDTO[]> => {
-    return apiClient.get<ShopSubCategoryDTO[]>(config.endpoints.admin.payment.shopSubCategories(categoryId));
-  },
-
-  /**
-   * Get all shop sub-categories with pagination and search
-   */
-  getShopSubCategoriesPaginated: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: ShopSubCategoryDTO[]; totalElements: number; totalPages: number }> => {
-    let url = config.endpoints.admin.payment.shopSubCategoriesAll;
-    const queryParams = new URLSearchParams();
-    if (params) {
-      if (params.page !== undefined) queryParams.append('page', params.page.toString());
-      if (params.size !== undefined) queryParams.append('size', params.size.toString());
-      if (params.search !== undefined) queryParams.append('search', params.search);
-    }
-    const queryString = queryParams.toString();
-    if (queryString) {
-      url += `?${queryString}`;
-    }
-    return apiClient.get(url);
-  },
-
-  /**
-   * Create a new shop sub-category
-   */
-  createShopSubCategory: async (categoryId: number, data: CreateShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
-    return apiClient.post<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategories(categoryId), data);
-  },
-
-  /**
-   * Update a shop sub-category
-   */
-  updateShopSubCategory: async (id: number, data: CreateShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
-    return apiClient.put<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategory(id), data);
-  },
-
-  /**
-   * Get shop sub-category by ID
-   */
-  getShopSubCategoryById: async (id: number): Promise<ShopSubCategoryDTO> => {
-    return apiClient.get<ShopSubCategoryDTO>(config.endpoints.admin.payment.shopSubCategory(id));
-  },
-
-  /**
-   * Delete a shop sub-category
-   */
-  deleteShopSubCategory: async (id: number): Promise<void> => {
-    return apiClient.delete<void>(config.endpoints.admin.payment.shopSubCategory(id));
-  },
 };

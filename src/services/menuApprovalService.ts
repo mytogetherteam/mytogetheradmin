@@ -58,6 +58,13 @@ export const menuApprovalService = {
   },
 
   /**
+   * Get a specific menu item change request by ID
+   */
+  getApprovalById: async (id: number): Promise<MenuApprovalDTO> => {
+    return apiClient.get<MenuApprovalDTO>(config.endpoints.admin.menu.approvals.detail(id));
+  },
+
+  /**
    * Approve a menu item change request
    */
   approveRequest: async (requestId: number): Promise<void> => {

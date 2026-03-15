@@ -47,10 +47,7 @@ export interface Shop {
   categoryMm?: string;
   categoryTh?: string;
   categoryEn?: string;
-  subCategory?: string;
-  subCategoryMm?: string;
-  subCategoryTh?: string;
-  subCategoryEn?: string;
+
   address: string;
   addressMm?: string;
   addressTh?: string;
@@ -89,7 +86,6 @@ export interface Shop {
   ratingCount?: number;
   isFeatured?: boolean;
   shopCategory?: ShopCategoryDTO;
-  shopSubCategory?: ShopSubCategoryDTO;
   latitude?: number;
   longitude?: number;
   createdAt?: string;
@@ -144,6 +140,7 @@ export interface PaymentMethodDTO {
   nameMm?: string;
   nameTh?: string;
   iconUrl?: string;
+  qrUrl?: string;
   active: boolean;
   displayOrder: number;
 }
@@ -158,15 +155,7 @@ export interface ShopCategoryDTO {
   active: boolean;
 }
 
-export interface ShopSubCategoryDTO {
-  id: number;
-  categoryId: number;
-  nameEn: string;
-  nameMm: string;
-  nameTh?: string;
-  slug: string;
-  active: boolean;
-}
+
 
 export interface ShopFormDataDTO {
   cities: CityDTO[];
@@ -232,7 +221,9 @@ export interface MenuCategory {
   imageUrl?: string;
   image?: string;
   icon?: string;
-  items?: MenuItem[];
+  items?: MenuCategory[];
+  shopId?: number;
+  shopName?: string;
 }
 
 export interface Review {
@@ -252,13 +243,13 @@ export interface OperatingHour {
   dayOfWeek: number;
   openTime?: string;
   closeTime?: string;
-  openingTime?: {
+  openingTime?: string | {
     hour: number;
     minute: number;
     second: number;
     nano: number;
   };
-  closingTime?: {
+  closingTime?: string | {
     hour: number;
     minute: number;
     second: number;
@@ -278,7 +269,6 @@ export interface ShopDetail extends Shop {
   latitude: number;
   longitude: number;
   shopCategory?: ShopCategoryDTO;
-  shopSubCategory?: ShopSubCategoryDTO;
   photos?: Photo[];
   menuCategories?: MenuCategory[];
   recentReviews?: Review[];
@@ -334,29 +324,22 @@ export const ShopService = {
   /**
    * Get all shop categories
    */
-  getCategories: async (): Promise<ShopCategoryDTO[]> => {
+  getCategories: async (params?: { page?: number; size?: number; search?: string }): Promise<ShopCategoryDTO[]> => {
     try {
-      const response = await apiClient.get<ShopCategoryDTO[]>(
-        config.endpoints.admin.payment.shopCategories
-      );
-      // We assume it returns an array of categories directly
-      // If it returns a paginated response, handle `.content`, though setup endpoints usually return raw arrays
+      let url = config.endpoints.admin.payment.shopCategories;
+      const queryParams = new URLSearchParams();
+      if (params) {
+        if (params.page !== undefined) queryParams.append('page', params.page.toString());
+        if (params.size !== undefined) queryParams.append('size', params.size.toString());
+        if (params.search !== undefined) queryParams.append('search', params.search);
+      }
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+      
+      const response = await apiClient.get<ShopCategoryDTO[] | { content: ShopCategoryDTO[] }>(url);
       return Array.isArray(response) ? response : (response as { content?: ShopCategoryDTO[] }).content || [];
-    } catch {
-      return [];
-    }
-  },
-
-  /**
-   * Get all sub-categories for a shop category
-   */
-  getSubCategories: async (categoryId: number): Promise<ShopSubCategoryDTO[]> => {
-    try {
-      if (!categoryId) return [];
-      const response = await apiClient.get<ShopSubCategoryDTO[]>(
-        config.endpoints.admin.payment.shopSubCategories(categoryId)
-      );
-      return Array.isArray(response) ? response : (response as { content?: ShopSubCategoryDTO[] }).content || [];
     } catch {
       return [];
     }
@@ -389,8 +372,8 @@ export const ShopService = {
   /**
    * Create a category
    */
-  createCategory: async (shopId: number, categoryData: FormData): Promise<MenuCategory> => {
-    const endpoint = config.endpoints.shops.categories.shopCategories(shopId);
+  createCategory: async (categoryData: FormData): Promise<MenuCategory> => {
+    const endpoint = config.endpoints.admin.menu.categories;
     return apiClient.post<MenuCategory>(endpoint, categoryData);
   },
 

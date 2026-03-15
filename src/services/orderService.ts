@@ -67,6 +67,7 @@ export interface OrderFilters {
   endDate?: string;
   shopId?: string;
   search?: string;
+  lastOrderNo?: string;
   status?: OrderStatus;
   page?: number;
   size?: number;
@@ -106,6 +107,7 @@ class OrderService {
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.shopId) params.append('shopId', filters.shopId);
     if (filters.search) params.append('search', filters.search);
+    if (filters.lastOrderNo) params.append('lastOrderNo', filters.lastOrderNo);
     if (filters.status) params.append('status', filters.status);
     params.append('page', String(filters.page ?? 0));
     params.append('size', String(filters.size ?? 20));

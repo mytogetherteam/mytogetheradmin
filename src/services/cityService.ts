@@ -36,11 +36,11 @@ class CityService {
     return apiClient.get<CityDTO>(config.endpoints.admin.cities.detail(id));
   }
 
-  async createCity(data: CreateCityRequest): Promise<CityDTO> {
+  async createCity(data: Partial<CityDTO>): Promise<CityDTO> {
     return apiClient.post<CityDTO>(config.endpoints.admin.cities.list, data);
   }
 
-  async updateCity(id: number, data: Partial<CreateCityRequest>): Promise<CityDTO> {
+  async updateCity(id: number, data: Partial<CityDTO>): Promise<CityDTO> {
     return apiClient.put<CityDTO>(config.endpoints.admin.cities.detail(id), data);
   }
 

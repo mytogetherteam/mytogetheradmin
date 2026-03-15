@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { moderationService, Post, Comment } from "@/services/moderationService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Search, User, EyeOff, Shield, Users } from "lucide-react";
+import { Trash2, Search, User, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function CommunityMgt() {
+    const navigate = useNavigate();
     const [posts, setPosts] = useState<Post[]>([]);
 
     const [comments, setComments] = useState<Comment[]>([]);
@@ -98,15 +99,7 @@ export default function CommunityMgt() {
         }
     };
 
-    const handleHidePost = async (id: string) => {
-        try {
-            await moderationService.hidePost(id);
-            setPosts(prev => prev.map(p => p.id === id ? { ...p, isHidden: !p.isHidden } : p));
-            toast.success("Post visibility toggled");
-        } catch {
-            toast.error("Failed to hide post");
-        }
-    };
+
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
     const sortedPosts = sortData(posts, sortConfig);
@@ -186,8 +179,12 @@ export default function CommunityMgt() {
                                             </TableCell>
                                         </TableRow>
                                     ) : sortedPosts.map((p) => (
-                                        <TableRow key={p.id}>
-                                            <TableCell>
+                                        <TableRow 
+                                            key={p.id} 
+                                            className="cursor-pointer hover:bg-muted/50"
+                                            onClick={() => navigate(`/community/posts/${p.id}`)}
+                                        >
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-2">
                                                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -220,17 +217,10 @@ export default function CommunityMgt() {
                                             <TableCell className="text-xs text-muted-foreground">
                                                 {new Date(p.createdAt).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <TooltipProvider>
                                                     <div className="flex gap-1">
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button size="sm" variant="ghost" onClick={() => handleHidePost(p.id)}>
-                                                                    <EyeOff className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Toggle post visibility</TooltipContent>
-                                                        </Tooltip>
+
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button

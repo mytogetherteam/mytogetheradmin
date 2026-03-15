@@ -27,6 +27,19 @@ export interface DbLatencyResponse {
   performance?: string;
 }
 
+export interface OrderTimeoutRule {
+  status: string;
+  timeoutMinutes: number;
+  alertTarget: 'SHOP' | 'USER' | 'ADMIN' | 'ALL';
+  enabled: boolean;
+}
+
+export interface SystemConfig {
+  configKey: string;
+  configValue: string;
+  description?: string;
+}
+
 class SystemService {
   async getAuditLogs(page = 0, size = 20, search = '', adminId?: string): Promise<AuditLogPage> {
     const params = new URLSearchParams({ 
@@ -39,7 +52,35 @@ class SystemService {
   }
 
   async getDbLatency(): Promise<DbLatencyResponse> {
-    return apiClient.get<DbLatencyResponse>(config.endpoints.admin.system.dbLatency);
+    return apiClient.get<DbLatencyResponse>(config.endpoints.admin.system.latency);
+  }
+
+  // --- Order Timeout Management ---
+
+  async getOrderTimeouts(): Promise<OrderTimeoutRule[]> {
+    return apiClient.get<OrderTimeoutRule[]>(config.endpoints.admin.system.orderTimeouts.base);
+  }
+
+  async updateOrderTimeout(status: string, data: Partial<OrderTimeoutRule>): Promise<OrderTimeoutRule> {
+    return apiClient.put<OrderTimeoutRule>(config.endpoints.admin.system.orderTimeouts.status(status), data);
+  }
+
+  async initOrderTimeouts(): Promise<void> {
+    return apiClient.post(config.endpoints.admin.system.orderTimeouts.init);
+  }
+
+  // --- System Configuration Management ---
+
+  async getConfigs(): Promise<SystemConfig[]> {
+    return apiClient.get<SystemConfig[]>(config.endpoints.admin.system.configs.base);
+  }
+
+  async updateConfig(key: string, value: string, description?: string): Promise<SystemConfig> {
+    return apiClient.put<SystemConfig>(config.endpoints.admin.system.configs.key(key), { configValue: value, description });
+  }
+
+  async initConfigs(): Promise<void> {
+    return apiClient.post(config.endpoints.admin.system.configs.init);
   }
 }
 

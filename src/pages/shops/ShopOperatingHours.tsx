@@ -85,15 +85,21 @@ export default function ShopOperatingHours() {
     }
 
 
-    const formatTimeObj = (timeObj: { hour: number, minute: number }) => {
-        if (!timeObj) return ""
+    const formatTimeObj = (timeVal: string | { hour: number; minute: number } | undefined) => {
+        if (!timeVal) return ""
+        if (typeof timeVal === 'string') return timeVal.slice(0, 5); // From "HH:mm:ss" to "HH:mm"
+        
         const pad = (num: number) => String(num).padStart(2, '0')
-        return `${pad(timeObj.hour)}:${pad(timeObj.minute)}`
+        // Check if it has hour/minute structure
+        if (typeof timeVal.hour === 'number' && typeof timeVal.minute === 'number') {
+            return `${pad(timeVal.hour)}:${pad(timeVal.minute)}`
+        }
+        return String(timeVal)
     }
 
-    const formatTime = (timeStr: string | undefined, timeObj: { hour: number, minute: number } | undefined) => {
+    const formatTime = (timeStr: string | undefined, timeValue: string | { hour: number; minute: number } | undefined) => {
         if (timeStr) return timeStr;
-        if (timeObj) return formatTimeObj(timeObj);
+        if (timeValue) return formatTimeObj(timeValue);
         return "";
     }
 

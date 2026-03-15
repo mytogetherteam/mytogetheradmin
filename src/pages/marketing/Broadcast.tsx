@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { marketingService, BroadcastHistoryItem } from "@/services/marketingService";
-import { userService, UserListItem } from "@/services/userService";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { userService } from "@/services/userService";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Table, TableBody, TableCell, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -33,26 +33,35 @@ export default function Broadcast() {
     const [target, setTarget] = useState<"USERS" | "SHOPS" | "SINGLE_USER" | "SINGLE_SHOP">("USERS");
     const [sending, setSending] = useState(false);
 
-    const [shops, setShops] = useState<UserListItem[]>([]);
-    const [users, setUsers] = useState<UserListItem[]>([]);
-    const [selectedShopId, setSelectedShopId] = useState<string>("");
-    const [selectedUserId, setSelectedUserId] = useState<string>("");
+    // Selected targets for single-send - store full object for display
+    const [selectedUserData, setSelectedUserData] = useState<{ label: string; value: string } | null>(null);
+    const [selectedShopOwnerData, setSelectedShopOwnerData] = useState<{ label: string; value: string } | null>(null);
+    const selectedUserId = selectedUserData?.value || "";
+    const selectedShopId = selectedShopOwnerData?.value || "";
 
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [shopOwnersRes, usersRes] = await Promise.all([
-                    userService.getShopOwners(0, 1000),
-                    userService.getAllUsers(0, 1000)
-                ]);
-                setShops(shopOwnersRes?.content || []);
-                setUsers(usersRes?.content || []);
-            } catch (error) {
-                console.error("Failed to load users/shop owners", error);
-            }
+    const fetchUserData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await userService.getAllUsers(page, size, search);
+        return {
+            content: (res?.content || []).map(u => ({
+                label: u.fullName || u.email || u.username || `User #${u.id}`,
+                value: String(u.id),
+            })),
+            last: res ? page + 1 >= (res.totalPages ?? 1) : true,
         };
-        loadData();
     }, []);
+
+    const fetchShopOwnerData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await userService.getShopOwners(page, size, search);
+        return {
+            content: (res?.content || []).map(u => ({
+                label: u.fullName || u.email || u.username || `Owner #${u.id}`,
+                value: String(u.id),
+            })),
+            last: res ? page + 1 >= (res.totalPages ?? 1) : true,
+        };
+    }, []);
+
+
 
     const fetchHistory = useCallback(async () => {
         setLoading(true);
@@ -154,12 +163,12 @@ export default function Broadcast() {
                             {target === "SINGLE_USER" && (
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select User</label>
-                                    <SearchableSelect
-                                        data={users.map(u => ({ label: u.fullName || u.email || u.username || `User #${u.id}`, value: String(u.id) }))}
-                                        value="value"
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchUserData}
+                                        valueKey="value"
                                         labelKey="label"
-                                        selectedValue={selectedUserId ? { label: users.find(u => String(u.id) === selectedUserId)?.fullName || users.find(u => String(u.id) === selectedUserId)?.email || users.find(u => String(u.id) === selectedUserId)?.username || `User #${selectedUserId}`, value: selectedUserId } : undefined}
-                                        onChange={(item) => setSelectedUserId(item?.value || "")}
+                                        selectedValue={selectedUserData}
+                                        onChange={(item) => setSelectedUserData(item as { label: string; value: string } | null)}
                                         placeholder="Search user..."
                                     />
                                 </div>
@@ -168,16 +177,17 @@ export default function Broadcast() {
                             {target === "SINGLE_SHOP" && (
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Select Shop Owner</label>
-                                    <SearchableSelect
-                                        data={shops.map(s => ({ label: s.fullName || s.email || s.username || `Owner #${s.id}`, value: String(s.id) }))}
-                                        value="value"
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchShopOwnerData}
+                                        valueKey="value"
                                         labelKey="label"
-                                        selectedValue={selectedShopId ? { label: shops.find(s => String(s.id) === selectedShopId)?.fullName || shops.find(s => String(s.id) === selectedShopId)?.email || shops.find(s => String(s.id) === selectedShopId)?.username || `Owner #${selectedShopId}`, value: selectedShopId } : undefined}
-                                        onChange={(item) => setSelectedShopId(item?.value || "")}
+                                        selectedValue={selectedShopOwnerData}
+                                        onChange={(item) => setSelectedShopOwnerData(item as { label: string; value: string } | null)}
                                         placeholder="Search shop owner..."
                                     />
                                 </div>
                             )}
+
 
                             <div className="space-y-2">
                                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Notification Title</label>

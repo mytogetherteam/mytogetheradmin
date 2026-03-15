@@ -73,10 +73,14 @@ export default function ShopProfileSettings() {
         try {
             // Convert profile back to FormData if necessary, or send as object
             // Use updateShop since it's the admin way to update shop details
+            const profileData = {
+                name: profile?.name || "",
+                phone: profile?.phone || "",
+                address: profile?.address || "",
+            };
+
             const formData = new FormData();
-            formData.append('name', profile?.name || "");
-            if (profile?.phone) formData.append('phone', profile.phone);
-            if (profile?.address) formData.append('address', profile.address);
+            formData.append("data", new Blob([JSON.stringify(profileData)], { type: "application/json" }));
 
             await ShopService.updateShop(parseInt(selectedShopId), formData);
             toast.success("Shop profile updated successfully");
