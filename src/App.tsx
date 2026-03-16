@@ -114,7 +114,7 @@ function App() {
   return (
     <ExcelImportProvider>
       <Toaster />
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>}>
         <Routes>
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<Login />} />

@@ -23,7 +23,6 @@ export default function CreateShopCategory() {
     const id = searchParams.get("id");
     const isEditMode = !!id;
 
-    const [name, setName] = useState("");
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
@@ -51,18 +50,10 @@ export default function CreateShopCategory() {
         }
     };
 
-    const handleNameChange = (value: string) => {
-        setName(value);
-        if (!isEditMode && !nameEn) {
-            setSlug(generateSlug(value));
-        }
-    };
-
     const loadCategory = async (catId: number) => {
         setLoading(true);
         try {
             const cat = await ShopCategoryService.getShopCategoryById(catId);
-            setName(cat.name || "");
             setNameMm(cat.nameMm || "");
             setNameTh(cat.nameTh || "");
             setNameEn(cat.nameEn || "");
@@ -83,7 +74,6 @@ export default function CreateShopCategory() {
         if (isEditMode && id) {
             loadCategory(parseInt(id));
         } else {
-            setName("");
             setNameMm("");
             setNameTh("");
             setNameEn("");
@@ -117,12 +107,11 @@ export default function CreateShopCategory() {
         setSubmitting(true);
         try {
         const dtoData = {
-            name: name,
             nameMm: nameMm || "",
             nameTh: nameTh || "",
             nameEn: nameEn || "",
             slug: slug || "",
-            isActive: isActive,
+            active: isActive,
         };
 
         const formData = new FormData();
@@ -191,12 +180,12 @@ export default function CreateShopCategory() {
                 <CardContent>
                     <form className="space-y-6" onSubmit={onSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="categoryName">Name <span className="text-red-500">*</span></Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="categoryNameEn">Name (English) <span className="text-red-500">*</span></Label>
                                 <Input
-                                    id="categoryName"
-                                    value={name}
-                                    onChange={(e) => handleNameChange(e.target.value)}
+                                    id="categoryNameEn"
+                                    value={nameEn}
+                                    onChange={(e) => handleNameEnChange(e.target.value)}
                                     placeholder="e.g. Restaurant"
                                     required
                                 />
@@ -208,15 +197,6 @@ export default function CreateShopCategory() {
                                     value={nameMm}
                                     onChange={(e) => setNameMm(e.target.value)}
                                     placeholder="e.g. စားသောက်ဆိုင်"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="categoryNameEn">Name (English)</Label>
-                                <Input
-                                    id="categoryNameEn"
-                                    value={nameEn}
-                                    onChange={(e) => handleNameEnChange(e.target.value)}
-                                    placeholder="e.g. Restaurant"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -307,7 +287,7 @@ export default function CreateShopCategory() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={!name || submitting}
+                                    disabled={!nameEn || submitting}
                                 >
                                     {submitting ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
@@ -325,7 +305,7 @@ export default function CreateShopCategory() {
                         <DialogTitle>Are you absolutely sure?</DialogTitle>
                         <DialogDescription>
                             This action cannot be undone. This will permanently delete the shop category
-                            <strong> {name}</strong>.
+                            <strong> {nameEn || nameMm || "this category"}</strong>.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

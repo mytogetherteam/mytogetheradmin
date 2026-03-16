@@ -223,11 +223,14 @@ export default function CreateMenuItem() {
                 setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
             }
 
-            if (item.categoryId) {
-                setCategoryId(item.categoryId.toString());
-                setSelectedCategoryData({ label: item.categoryName || "Selected Category", value: item.categoryId.toString() });
+            if (item.menuCategoryId) {
+                setCategoryId(item.menuCategoryId.toString());
+                setSelectedCategoryData({ label: item.categoryName || "Selected Category", value: item.menuCategoryId.toString() });
             }
-            // Subcategory name is not directly on item, it will be loaded via loadSubCategories
+            if (item.menuSubCategoryId) {
+                setSubCategoryId(item.menuSubCategoryId.toString());
+                // We'll trust the loadSubCategories useEffect to set the label if needed
+            }
             
             setIsVegetarian(item.isVegetarian || false);
             setIsSpicy(item.isSpicy || false);
@@ -449,9 +452,9 @@ export default function CreateMenuItem() {
                 discountAmount: discountAmount ? Number(discountAmount.replace(/,/g, "")) : 0,
                 discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
                 currency: currency || "THB",
+                menuCategoryId: Number(categoryId),
+                menuSubCategoryId: subCategoryId ? Number(subCategoryId) : 0,
                 shopId: Number(shopId),
-                categoryId: Number(categoryId),
-                subCategoryId: subCategoryId ? Number(subCategoryId) : 0,
                 isVegetarian: isVegetarian,
                 isSpicy: isSpicy,
                 isAvailable: isAvailable,
@@ -497,9 +500,24 @@ export default function CreateMenuItem() {
                 toast.success("Item created successfully");
             }
             navigate("/menus/items/manage");
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(isEditMode ? "Failed to update item" : "Failed to create item");
+            const err = error as { data?: { errors?: Record<string, string>; message?: string } };
+            let errorMessage = isEditMode ? "Failed to update item" : "Failed to create item";
+            
+            if (err?.data?.errors) {
+                const errors = err.data.errors;
+                const fieldErrors = Object.entries(errors)
+                    .map(([field, msg]) => `${field}: ${msg}`)
+                    .join(", ");
+                if (fieldErrors) {
+                    errorMessage = `Validation Failed: ${fieldErrors}`;
+                }
+            } else if (err?.data?.message) {
+                errorMessage = err.data.message;
+            }
+
+            toast.error(errorMessage);
         } finally {
             setSubmitting(false);
         }

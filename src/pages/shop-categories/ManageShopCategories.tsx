@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
+import { TableImage } from "@/components/TableImage";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     Dialog,
@@ -70,7 +71,7 @@ export default function ManageShopCategories() {
             loadCategories();
         }, 500);
         return () => clearTimeout(timer);
-    }, [loadCategories]);
+    }, [searchTerm, loadCategories]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -180,11 +181,7 @@ export default function ManageShopCategories() {
                                                 >
                                                     <TableCell className="font-mono text-xs">{cat.id}</TableCell>
                                                     <TableCell>
-                                                        {cat.imageUrl ? (
-                                                            <img src={cat.imageUrl} className="h-8 w-8 rounded object-cover border" alt={cat.name} />
-                                                        ) : (
-                                                            <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">None</div>
-                                                        )}
+                                                        <TableImage src={cat.imageUrl} alt={cat.name} size="sm" />
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`}</div>

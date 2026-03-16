@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
 import { ShopService, PaymentMethodDTO } from "@/services/shopService";
-import { PaymentService } from "@/services/paymentService";
 import { toast } from "sonner";
 
 export default function CreateShopPaymentType() {
@@ -54,7 +53,6 @@ export default function CreateShopPaymentType() {
     const [existingQrUrl, setExistingQrUrl] = useState<string | null>(null);
 
     // Data State
-    const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDTO[]>([]);
     const [filteredMethods, setFilteredMethods] = useState<PaymentMethodDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -82,9 +80,6 @@ export default function CreateShopPaymentType() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const paymentMethodsRes = await PaymentService.getPaymentMethods({ page: 0, size: 100 });
-                setPaymentMethods(paymentMethodsRes.content);
-
                 if (isEdit && paramShopId && id) {
                     const existing = await ShopPaymentTypeService.getShopPaymentTypeById(
                         parseInt(paramShopId),
@@ -110,32 +105,30 @@ export default function CreateShopPaymentType() {
         fetchData();
     }, [isEdit, paramShopId, id, searchParams, selectedShopData]);
 
-    // Filter payment methods based on selected shop
+    // Fetch payment methods based on selected shop
     useEffect(() => {
-        if (!selectedShopId || paymentMethods.length === 0) {
+        if (!selectedShopId) {
             setFilteredMethods([]);
             return;
         }
 
-        const filterMethods = async () => {
+        const fetchMethods = async () => {
             try {
-                const shop = await ShopService.getShopById(parseInt(selectedShopId));
-                const supportedIds = shop.paymentMethodIds || [];
-                const filtered = paymentMethods.filter(m => supportedIds.includes(m.id));
-                setFilteredMethods(filtered);
+                const results = await ShopService.getShopPaymentMethods(parseInt(selectedShopId));
+                setFilteredMethods(results);
 
                 // Clear selected payment method if it's not supported by the new shop
                 // Only if not in edit mode (where it's disabled anyway)
-                if (!isEdit && selectedPaymentMethodId && !supportedIds.includes(parseInt(selectedPaymentMethodId))) {
+                if (!isEdit && selectedPaymentMethodId && !results.some(m => m.id === parseInt(selectedPaymentMethodId))) {
                     setSelectedPaymentMethodId("");
                 }
             } catch (error) {
-                console.error("Failed to filter payment methods", error);
+                console.error("Failed to fetch shop payment methods", error);
             }
         };
 
-        filterMethods();
-    }, [selectedShopId, paymentMethods, isEdit, selectedPaymentMethodId]);
+        fetchMethods();
+    }, [selectedShopId, isEdit, selectedPaymentMethodId]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -272,7 +265,7 @@ export default function CreateShopPaymentType() {
                                             <SelectValue placeholder="Select payment method (e.g. KPay)" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {filteredMethods.map(method => (
+                                            {filteredMethods.filter(m => m.id !== undefined).map(method => (
                                                 <SelectItem key={method.id} value={method.id.toString()}>
                                                     {method.name} ({method.code})
                                                 </SelectItem>

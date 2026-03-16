@@ -32,6 +32,7 @@ import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryDTO } from "@/serv
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Label } from "@/components/ui/label";
+import { TableImage } from "@/components/TableImage";
 
 export default function ManageShopSubCategories() {
     const navigate = useNavigate();
@@ -222,9 +223,7 @@ export default function ManageShopSubCategories() {
                                                 >
                                                     <TableCell className="font-mono text-xs">{sub.id}</TableCell>
                                                     <TableCell>
-                                                        {sub.imageUrl ? (
-                                                            <img src={sub.imageUrl} className="h-8 w-8 rounded object-cover border" alt={sub.name} />
-                                                        ) : <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">None</div>}
+                                                        <TableImage src={sub.imageUrl} alt={sub.name} size="sm" />
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{sub.name}</div>
@@ -237,14 +236,14 @@ export default function ManageShopSubCategories() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>{sub.displayOrder}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                                                             }`}>
                                                             {sub.isActive !== false ? "Active" : "Inactive"}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
+                                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"

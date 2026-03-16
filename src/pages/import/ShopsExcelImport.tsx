@@ -314,26 +314,7 @@ export default function ShopsExcelImport() {
             </div>
           </div>
 
-          {/* Sheet selector */}
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(SHEET_CONFIG) as SheetKey[]).map((k) => {
-              const count = workbookData[k]?.rows.length ?? 0;
-              const active = selectedSheet === k;
-              return (
-                <Button
-                  key={k}
-                  variant={active ? "default" : "outline"}
-                  onClick={() => {
-                    setSelectedSheet(k);
-                    setCurrentPage(1);
-                    setSortConfig(null);
-                  }}
-                >
-                  {SHEET_CONFIG[k].title} ({count})
-                </Button>
-              );
-            })}
-          </div>
+          {/* removed sheet selector */}
 
           <div className="rounded-md border overflow-x-auto relative">
             {validating && (

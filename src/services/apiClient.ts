@@ -33,6 +33,7 @@ class ApiClient {
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
   private refreshPromise: Promise<void> | null = null;
+  private tokenExpiryCache: number | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -56,6 +57,7 @@ class ApiClient {
   }
 
   private decodeJwtExpiry(token: string): number | null {
+    if (this.tokenExpiryCache) return this.tokenExpiryCache;
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -66,9 +68,10 @@ class ApiClient {
           .join('')
       );
       const payload = JSON.parse(jsonPayload) as JwtPayload;
-      return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
-    } catch (error) {
-      console.error('Failed to decode JWT:', error);
+      const expiry = payload.exp ? payload.exp * 1000 : null;
+      this.tokenExpiryCache = expiry;
+      return expiry;
+    } catch {
       return null;
     }
   }
@@ -141,6 +144,7 @@ class ApiClient {
           }
           
           console.log('Token and user data successfully refreshed');
+          this.tokenExpiryCache = null; // Clear cache for new token
           this.onRefreshed(newToken);
         } else {
           throw new Error('Invalid refresh response');
@@ -263,6 +267,7 @@ class ApiClient {
   }
 
   private handleLogout() {
+    this.tokenExpiryCache = null;
     localStorage.removeItem(config.storage.tokenKey);
     localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);

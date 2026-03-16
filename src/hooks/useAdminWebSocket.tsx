@@ -235,8 +235,8 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       onWebSocketError: (event) => {
         console.error('[AdminWS] WebSocket error:', event);
       },
-      onWebSocketClose: (event) => {
-        console.log('[AdminWS] WebSocket closed:', event.code, event.reason);
+      onWebSocketClose: () => {
+        console.log('[AdminWS] WebSocket closed');
         setConnected(false);
       },
     });

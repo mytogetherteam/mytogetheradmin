@@ -5,7 +5,6 @@ export type BannerPlacement = 'HOME_TOP' | 'FEED_MIDDLE' | 'SHOP_DETAIL' | 'SEAR
 
 export interface Banner {
   id: string;
-  title: string;
   titleMm?: string;
   titleTh?: string;
   titleEn?: string;
@@ -29,7 +28,6 @@ export interface FeaturedShop {
 }
 
 export interface CreateBannerRequest {
-  title: string;
   titleMm?: string;
   titleTh?: string;
   titleEn?: string;

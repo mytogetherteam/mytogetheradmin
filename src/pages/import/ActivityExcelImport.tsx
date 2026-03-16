@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminImportService } from "@/services/adminImportService";
-import { Download, FileUp, Trash2 } from "lucide-react";
+import { ArrowUpDown, Download, FileUp, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader } from "@/components/ui/loader";
 
 type SheetKey = "Activities";
 
@@ -80,6 +82,49 @@ export default function ActivityExcelImport() {
   const [parsed, setParsed] = useState<{ headers: string[]; rows: ParsedRow[] } | null>(null);
   const [validating, setValidating] = useState(false);
   const [backendResult, setBackendResult] = useState<unknown>(null);
+  const [showOnlyNullRows, setShowOnlyNullRows] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  const headers = useMemo(() => parsed?.headers ?? [], [parsed]);
+  const rows = useMemo(() => parsed?.rows ?? [], [parsed]);
+
+  const visibleRows = useMemo(() => {
+    if (!parsed) return [];
+    const filtered = showOnlyNullRows ? rows.filter((r) => headers.some((h) => isBlank(r[h]))) : rows;
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (!sortConfig) return 0;
+      const { key, direction } = sortConfig;
+
+      const aVal = key === "__excelRow" ? a.__excelRow : a[key];
+      const bVal = key === "__excelRow" ? b.__excelRow : b[key];
+
+      const aComp = typeof aVal === "string" ? aVal.toLowerCase() : (aVal as number | boolean | null);
+      const bComp = typeof bVal === "string" ? bVal.toLowerCase() : (bVal as number | boolean | null);
+
+      if (aComp === null || aComp === undefined) return 1;
+      if (bComp === null || bComp === undefined) return -1;
+      if (aComp === bComp) return 0;
+      if (aComp! < bComp!) return direction === "asc" ? -1 : 1;
+      return direction === "asc" ? 1 : -1;
+    });
+
+    return sorted;
+  }, [parsed, rows, headers, showOnlyNullRows, sortConfig]);
+
+  const totalItems = visibleRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pagedRows = visibleRows.slice(startIndex, endIndex);
+
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
+    setSortConfig({ key, direction });
+  };
 
   const onPickFile = async (f: File | null) => {
     if (!f) return;
@@ -139,8 +184,8 @@ export default function ActivityExcelImport() {
 
   const hasErrors = useMemo(() => {
     if (!parsed?.rows.length) return false;
-    return parsed.rows.some((row) => Object.values(row).some((v) => isBlank(v)));
-  }, [parsed]);
+    return parsed.rows.some((row) => headers.some((h) => isBlank(row[h])));
+  }, [parsed, headers]);
 
   return (
     <div className="container mx-auto py-10 max-w-7xl">
@@ -193,53 +238,121 @@ export default function ActivityExcelImport() {
                 </div>
               )}
             </div>
+
+            <div className="flex flex-col gap-3 md:items-end">
+              <div className="flex items-center gap-3">
+                <div className="text-sm">Show only rows with NULL</div>
+                <Switch
+                  checked={showOnlyNullRows}
+                  onCheckedChange={(v) => {
+                    setShowOnlyNullRows(v);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">Rows per page</div>
+                <Input
+                  className="w-20"
+                  type="number"
+                  min={5}
+                  max={200}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Math.max(5, Number(e.target.value || 20)));
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
-          {parsed && parsed.rows.length > 0 && (
-            <div className="border rounded-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      {parsed.headers.map((h) => (
-                        <TableHead key={h} className="min-w-[120px]">
-                          <div className="flex items-center gap-1">
-                            {h}
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {parsed.rows.slice(0, 50).map((row) => (
-                      <TableRow key={row.__excelRow} className={Object.values(row).some((v) => isBlank(v) && typeof v !== "number") ? "bg-destructive/10" : ""}>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{row.__excelRow}</TableCell>
-                        {parsed.headers.map((h) => (
-                          <TableCell key={h} className="max-w-[200px] truncate">
-                            {row[h] === null || row[h] === undefined ? (
-                              <span className="text-destructive italic">null</span>
-                            ) : (
-                              String(row[h])
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              {parsed.rows.length > 50 && (
-                <div className="p-3 text-center text-sm text-muted-foreground border-t">
-                  Showing first 50 of {parsed.rows.length} rows
+          <div className="rounded-md border overflow-x-auto relative">
+            {validating && (
+              <div className="absolute inset-0 z-20 bg-background/70 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <Loader />
+                  <div className="text-sm font-medium">Importing to backend…</div>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {parsed && parsed.rows.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">No data found in the Excel file</div>
-          )}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[90px] cursor-pointer" onClick={() => handleSort("__excelRow")}>
+                    <div className="flex items-center gap-2">
+                      No. <ArrowUpDown className="h-3 w-3" />
+                    </div>
+                  </TableHead>
+                  {headers.map((h) => (
+                    <TableHead key={h} className="cursor-pointer whitespace-nowrap" onClick={() => handleSort(h)}>
+                      <div className="flex items-center gap-2">
+                        {h} <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pagedRows.length ? (
+                  pagedRows.map((r, idx) => (
+                    <TableRow key={`${r.__excelRow}-${idx}`}>
+                      <TableCell className="font-mono text-xs">{r.__excelRow}</TableCell>
+                      {headers.map((h) => {
+                        const v = r[h];
+                        const blank = isBlank(v);
+                        return (
+                          <TableCell key={h} className={blank ? "bg-red-50 text-red-700 font-semibold" : ""}>
+                            {blank ? "NULL" : String(v)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={headers.length + 1} className="h-24 text-center text-muted-foreground">
+                      {file ? "No rows to display (try turning off “Show only rows with NULL”)." : "Upload an Excel file to preview."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing {totalItems ? startIndex + 1 : 0} to {endIndex} of {totalItems} entries
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </Button>
+              <div className="text-sm">
+                Page {currentPage} / {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
+                Last
+              </Button>
+            </div>
+          </div>
 
           {backendResult !== null && (
             <Card>

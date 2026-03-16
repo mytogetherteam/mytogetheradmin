@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Card,
@@ -49,7 +49,7 @@ const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: strin
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-function StatCard({
+const StatCard = React.memo(({
     title,
     value,
     prefix = "",
@@ -63,13 +63,12 @@ function StatCard({
     icon: React.ElementType;
     loading?: boolean;
     live?: boolean;
-}) {
+}) => {
     const [flash, setFlash] = useState(false);
     const prevVal = useRef(value);
 
     useEffect(() => {
         if (live && prevVal.current !== value) {
-            // Use timeout to ensure it happens after render to avoid cascading render warning
             const timer = setTimeout(() => setFlash(true), 0);
             const t = setTimeout(() => setFlash(false), 1200);
             prevVal.current = value;
@@ -108,7 +107,9 @@ function StatCard({
             </CardContent>
         </Card>
     );
-}
+});
+
+StatCard.displayName = "StatCard";
 
 /** Dismissable alert banner shown when a new WS alert arrives */
 function AlertBanner({

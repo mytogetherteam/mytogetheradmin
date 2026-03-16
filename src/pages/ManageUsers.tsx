@@ -93,7 +93,7 @@ export default function ManageUsers() {
             loadUsers();
         }, 300);
         return () => clearTimeout(timer);
-    }, [loadUsers]);
+    }, [currentPage, pageSize, searchTerm, loadUsers]);
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));

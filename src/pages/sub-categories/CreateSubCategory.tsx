@@ -80,7 +80,7 @@ export default function CreateSubCategory() {
                 setExistingImage(subCat.imageUrl || subCat.icon || null);
             }
             
-            const menuCategoryId = subCat.categoryId;
+            const menuCategoryId = subCat.menuCategoryId;
             if (menuCategoryId) {
                 let label = subCat.categoryName || `Category ${menuCategoryId}`;
                 

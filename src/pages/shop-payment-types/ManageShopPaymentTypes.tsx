@@ -35,6 +35,7 @@ import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPayme
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
+import { TableImage } from "@/components/TableImage";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
@@ -49,9 +50,10 @@ export default function ManageShopPaymentTypes() {
     // Initial load: Fetch just one page of shops to get the first shop as default selection
     useEffect(() => {
         const initDefaultShop = async () => {
+            if (selectedShopData) return;
             try {
                 const response = await ShopService.getAllShops(0, 5);
-                if (response.content.length > 0 && !selectedShopData) {
+                if (response.content.length > 0) {
                     const firstShop = response.content[0];
                     setSelectedShopData({
                         label: firstShop.nameEn || firstShop.name,
@@ -63,7 +65,7 @@ export default function ManageShopPaymentTypes() {
             }
         };
         initDefaultShop();
-    }, [selectedShopData]);
+    }, [selectedShopData]); // Only on mount or if selectedShopData is missing
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -76,16 +78,7 @@ export default function ManageShopPaymentTypes() {
         };
     }, []);
 
-    // Load payment types when shop changes
-    useEffect(() => {
-        if (selectedShopId) {
-            loadItems(parseInt(selectedShopId));
-        } else {
-            setItems([]);
-        }
-    }, [selectedShopId, selectedShopData]);
-
-    const loadItems = async (shopId: number) => {
+    const loadItems = useCallback(async (shopId: number) => {
         setLoading(true);
         try {
             const data = await ShopPaymentTypeService.getShopPaymentTypes(shopId);
@@ -96,7 +89,16 @@ export default function ManageShopPaymentTypes() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // Load payment types when shop changes
+    useEffect(() => {
+        if (selectedShopId) {
+            loadItems(parseInt(selectedShopId));
+        } else {
+            setItems([]);
+        }
+    }, [selectedShopId, loadItems]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -249,17 +251,19 @@ export default function ManageShopPaymentTypes() {
                                     <TableBody>
                                         {currentItems.length > 0 ? (
                                             currentItems.map((item) => (
-                                                <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                                                <TableRow 
+                                                    key={item.id} 
+                                                    className="hover:bg-muted/50 transition-colors cursor-pointer"
+                                                    onClick={() => navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`)}
+                                                >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded border bg-white flex items-center justify-center overflow-hidden shrink-0">
-                                                                {item.qrImageUrl ? (
-                                                                    <img src={item.qrImageUrl} alt="QR" className="h-full w-full object-contain" />
-                                                                ) : (
-                                                                    <QrCode className="h-5 w-5 text-muted-foreground opacity-30" />
-                                                                )}
-                                                            </div>
+                                                            <TableImage 
+                                                                src={item.qrImageUrl} 
+                                                                alt="QR" 
+                                                                fallbackIcon={<QrCode className="h-5 w-5 text-muted-foreground opacity-30" />}
+                                                            />
                                                             <div>
                                                                 <div className="font-medium">{item.paymentMethodName}</div>
                                                                 <Badge variant="outline" className="text-[10px] h-4">{item.paymentMethodCode}</Badge>
@@ -269,13 +273,13 @@ export default function ManageShopPaymentTypes() {
                                                     <TableCell>{item.accountName || '-'}</TableCell>
                                                     <TableCell className="font-mono text-sm">{item.accountNumber || '-'}</TableCell>
                                                     <TableCell>{item.displayOrder}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <Switch
                                                             checked={item.isActive}
                                                             onCheckedChange={(val) => handleToggleActive(item, val)}
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex justify-end gap-1">
                                                             <Button
                                                                 variant="ghost"

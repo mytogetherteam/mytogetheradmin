@@ -195,6 +195,7 @@ export const config = {
       photos: (id: number) => `/api/admin/shops/${id}/photos`,
       photoDetail: (id: number, photoId: number) => `/api/admin/shops/${id}/photos/${photoId}`,
       operatingHours: (id: number) => `/api/admin/shops/${id}/operating-hours`,
+      paymentMethods: (id: number) => `/api/admin/shops/${id}/payment-methods`,
       categories: {
         shopCategories: (shopId: number) => `/api/admin/categories/shop/${shopId}`,
         detail: (id: number) => `/api/admin/categories/${id}`,
