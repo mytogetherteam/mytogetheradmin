@@ -105,6 +105,8 @@ export interface MenuSubCategory {
     icon?: string;
     menuCategoryId?: number;
     categoryName?: string;
+    masterMenuSubCategoryId?: number;
+    masterMenuSubCategoryName?: string;
 }
 
 export const menuService = {
@@ -164,7 +166,7 @@ export const menuService = {
     },
 
     createMenuSubCategory: async (data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.post<MenuSubCategory>('/api/admin/menu-sub-categories', data);
+        return apiClient.post<MenuSubCategory>(config.endpoints.admin.menu.subCategories, data);
     },
 
     updateMenuSubCategory: async (id: number, data: FormData): Promise<MenuSubCategory> => {

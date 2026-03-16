@@ -10,6 +10,8 @@ export interface CuisineDTO {
   isActive: boolean;
   imageUrl?: string;
   displayOrder?: number;
+  regionId?: number;
+  regionName?: string;
 }
 
 export interface CuisinePage {

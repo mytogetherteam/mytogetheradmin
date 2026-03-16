@@ -44,6 +44,14 @@ export const config = {
         list: '/api/admin/districts',
         detail: (id: number) => `/api/admin/districts/${id}`,
       },
+      regions: {
+        list: '/api/admin/regions',
+        detail: (id: number) => `/api/admin/regions/${id}`,
+      },
+      masterMenuSubCategories: {
+        list: '/api/admin/master-menu-sub-categories',
+        detail: (id: number) => `/api/admin/master-menu-sub-categories/${id}`,
+      },
       moderation: {
         reports: '/api/admin/moderation/reports',
         resolveReport: (id: string) => `/api/admin/moderation/reports/${id}/resolve`,
@@ -92,6 +100,7 @@ export const config = {
         itemDetail: (id: number) => `/api/admin/items/${id}`,
         categoryItems: (catId: number) => `/api/admin/items/categories/${catId}`,
         subCategoryDetail: (id: number) => `/api/admin/menu-sub-categories/${id}`,
+        subCategories: '/api/admin/menu-sub-categories',
         subCategoryByCategory: (catId: number) => `/api/admin/menu-sub-categories/category/${catId}`,
         itemActions: {
           recommended: (id: number) => `/api/admin/items/${id}/recommended`,

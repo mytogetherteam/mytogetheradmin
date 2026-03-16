@@ -50,24 +50,16 @@ import {
 import { Link, useLocation } from "react-router-dom"
 import { authService } from "@/services/authService"
 import { cn } from "@/lib/utils"
+import { hasAccess, AdminRole } from "@/utils/rbac"
 
 export function AppSidebar() {
     const location = useLocation();
 
     const userData = authService.getUserData();
-    const userAuthorities = userData?.authorities || [];
-    const userRole = userData?.role || "";
+    const userRole = userData?.role;
 
-    const canAccess = (allowedAuthorities: string[]) => {
-        if (userAuthorities.includes("MASTER_ADMIN") || userRole === "MASTER_ADMIN") return true;
-        
-        // Legacy ADMIN role support: maps to OPS, FINANCE, SETUP
-        const effectiveAuthorities = [...userAuthorities];
-        if (userRole === "ADMIN") {
-            effectiveAuthorities.push("ADMIN_OPS", "ADMIN_FINANCE", "ADMIN_SETUP");
-        }
-
-        return allowedAuthorities.some(auth => effectiveAuthorities.includes(auth));
+    const canSee = (requiredRole: AdminRole | AdminRole[]) => {
+        return hasAccess(userRole, requiredRole);
     };
 
     const isActive = (path: string) => {
@@ -104,23 +96,25 @@ export function AppSidebar() {
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Analytics" isActive={isActive("/analytics")}>
-                                <Link to="/analytics">
-                                    <BarChart2 className={cn(isActive("/analytics") && "text-primary")} />
-                                    <span>Analytics</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
+                        {canSee(AdminRole.ADMIN_FINANCE) && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip="Analytics" isActive={isActive("/analytics")}>
+                                    <Link to="/analytics">
+                                        <BarChart2 className={cn(isActive("/analytics") && "text-primary")} />
+                                        <span>Analytics</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
                     </SidebarMenu>
                 </SidebarGroup>
 
                 {/* Orders */}
-                {canAccess(["ADMIN_OPS", "ADMIN_FINANCE"]) && (
+                {canSee([AdminRole.ADMIN_OPS, AdminRole.ADMIN_FINANCE]) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Orders</SidebarGroupLabel>
                         <SidebarMenu>
-                            {canAccess(["ADMIN_OPS"]) && (
+                            {canSee(AdminRole.ADMIN_OPS) && (
                                 <SidebarMenuItem>
                                     <SidebarMenuButton asChild tooltip="Order Board" isActive={isActive("/orders/board")}>
                                         <Link to="/orders/board">
@@ -130,7 +124,7 @@ export function AppSidebar() {
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             )}
-                            {canAccess(["ADMIN_FINANCE"]) && (
+                            {canSee(AdminRole.ADMIN_FINANCE) && (
                                 <SidebarMenuItem>
                                     <SidebarMenuButton asChild tooltip="Order History" isActive={isActive("/orders/history")}>
                                         <Link to="/orders/history">
@@ -145,7 +139,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Shop / Restaurant */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_OPS) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Shop / Restaurant</SidebarGroupLabel>
                         <SidebarMenu>
@@ -178,9 +172,9 @@ export function AppSidebar() {
                 )}
 
                 {/* Menu */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_OPS) && (
                     <SidebarGroup>
-                        <SidebarGroupLabel>Menu</SidebarGroupLabel>
+                        <SidebarGroupLabel>Menu Management</SidebarGroupLabel>
                         <SidebarMenu>
                             {/* Food Items */}
                             <Collapsible asChild className="group/collapsible">
@@ -219,9 +213,9 @@ export function AppSidebar() {
                 )}
 
                 {/* Menu Approvals */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_OPS) && (
                     <SidebarGroup>
-                        <SidebarGroupLabel>Menu Approvals</SidebarGroupLabel>
+                        <SidebarGroupLabel>Approvals</SidebarGroupLabel>
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip="Menu Approvals" isActive={isActive("/menus/approvals")}>
@@ -236,9 +230,9 @@ export function AppSidebar() {
                 )}
 
                 {/* Shop Category */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_SETUP) && (
                     <SidebarGroup>
-                        <SidebarGroupLabel>Shop Category</SidebarGroupLabel>
+                        <SidebarGroupLabel>Shop Tags</SidebarGroupLabel>
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild isActive={isActive("/shop-categories/create")} tooltip="Create Shop Category">
@@ -261,7 +255,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Payment Methods */}
-                {canAccess(["ADMIN_FINANCE"]) && (
+                {canSee(AdminRole.ADMIN) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Payment Methods</SidebarGroupLabel>
                         <SidebarMenu>
@@ -286,7 +280,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Shop Payment Types */}
-                {canAccess(["ADMIN_FINANCE"]) && (
+                {canSee(AdminRole.ADMIN) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Shop Payment Types</SidebarGroupLabel>
                         <SidebarMenu>
@@ -311,7 +305,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Menu Category */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_SETUP) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Menu Category</SidebarGroupLabel>
                         <SidebarMenu>
@@ -385,7 +379,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Moderation & Review */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_OPS) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Review & Moderation</SidebarGroupLabel>
                         <SidebarMenu>
@@ -418,57 +412,61 @@ export function AppSidebar() {
                 )}
 
                 {/* Community */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_SETUP) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Community</SidebarGroupLabel>
                         <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Posts & Comments" isActive={isActive("/community/posts")}>
-                                    <Link to="/community/posts">
-                                        <List className={cn(isActive("/community/posts") && "text-primary")} />
-                                        <span>Posts & Comments</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Lost & Found" isActive={isActive("/lostfound")}>
-                                    <Link to="/lostfound">
-                                        <Package className={cn(isActive("/lostfound") && "text-primary")} />
-                                        <span>Lost & Found</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip="Posts & Comments" isActive={isActive("/community/posts")}>
+                                        <Link to="/community/posts">
+                                            <List className={cn(isActive("/community/posts") && "text-primary")} />
+                                            <span>Posts & Comments</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip="Lost & Found" isActive={isActive("/lostfound")}>
+                                        <Link to="/lostfound">
+                                            <Package className={cn(isActive("/lostfound") && "text-primary")} />
+                                            <span>Lost & Found</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroup>
                 )}
 
                 {/* Marketing & Comms */}
-                {canAccess(["ADMIN_SETUP"]) && (
+                {canSee([AdminRole.ADMIN, AdminRole.ADMIN_SETUP]) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Marketing & Comms</SidebarGroupLabel>
                         <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Banners" isActive={isActive("/marketing/banners")}>
-                                    <Link to="/marketing/banners">
-                                        <ImageIcon className={cn(isActive("/marketing/banners") && "text-primary")} />
-                                        <span>Banners & Featured</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="Broadcast" isActive={isActive("/marketing/broadcast")}>
-                                    <Link to="/marketing/broadcast">
-                                        <Megaphone className={cn(isActive("/marketing/broadcast") && "text-primary")} />
-                                        <span>Push Broadcast</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            {canSee(AdminRole.ADMIN) && (
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip="Banners" isActive={isActive("/marketing/banners")}>
+                                        <Link to="/marketing/banners">
+                                            <ImageIcon className={cn(isActive("/marketing/banners") && "text-primary")} />
+                                            <span>Banners & Featured</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            )}
+                            {canSee(AdminRole.ADMIN_SETUP) && (
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip="Broadcast" isActive={isActive("/marketing/broadcast")}>
+                                        <Link to="/marketing/broadcast">
+                                            <Megaphone className={cn(isActive("/marketing/broadcast") && "text-primary")} />
+                                            <span>Push Broadcast</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            )}
                         </SidebarMenu>
                     </SidebarGroup>
                 )}
 
                 {/* User Management */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_OPS) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Users</SidebarGroupLabel>
                         <SidebarMenu>
@@ -486,7 +484,7 @@ export function AppSidebar() {
 
 
                 {/* Cuisines */}
-                {canAccess(["ADMIN_OPS"]) && (
+                {canSee(AdminRole.ADMIN_SETUP) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Cuisines</SidebarGroupLabel>
                         <SidebarMenu>
@@ -511,10 +509,42 @@ export function AppSidebar() {
                 )}
 
                 {/* Location Management */}
-                {canAccess(["ADMIN_OPS", "ADMIN_SETUP"]) && (
+                {canSee(AdminRole.ADMIN_SETUP) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Location</SidebarGroupLabel>
                         <SidebarMenu>
+                            <Collapsible className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton tooltip="Region">
+                                            <MapPin />
+                                            <span>Region</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/regions/create")}>
+                                                    <Link to="/regions/create">
+                                                        <Plus className={cn(isActive("/regions/create") && "text-primary")} />
+                                                        <span>Create Region</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/regions/manage")}>
+                                                    <Link to="/regions/manage">
+                                                        <List className={cn(isActive("/regions/manage") && "text-primary")} />
+                                                        <span>Manage Regions</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
+
                             <Collapsible className="group/collapsible">
                                 <SidebarMenuItem>
                                     <CollapsibleTrigger asChild>
@@ -583,7 +613,7 @@ export function AppSidebar() {
                 )}
 
                 {/* Data Import */}
-                {canAccess(["ADMIN_FINANCE"]) && (
+                {canSee(AdminRole.ADMIN) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Data Import</SidebarGroupLabel>
                         <SidebarMenu>
@@ -608,12 +638,11 @@ export function AppSidebar() {
                 )}
 
                 {/* System / Administration */}
-                {(canAccess(["ADMIN_SETUP"]) || userRole === "MASTER_ADMIN" || userAuthorities.includes("MASTER_ADMIN")) && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Administration</SidebarGroupLabel>
-                        <SidebarMenu>
-                            {/* System Logs / Audit - MASTER Only */}
-                            {(userRole === "MASTER_ADMIN" || userAuthorities.includes("MASTER_ADMIN")) && (
+                <SidebarGroup>
+                    <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                    <SidebarMenu>
+                            {/* System Logs / Audit - SUPER ADMIN Only */}
+                            {canSee(AdminRole.ADMIN) && (
                                 <SidebarMenuItem>
                                     <SidebarMenuButton asChild tooltip="Audit Logs" isActive={isActive("/system/audit-logs")}>
                                         <Link to="/system/audit-logs">
@@ -625,7 +654,7 @@ export function AppSidebar() {
                             )}
 
                             {/* Order Timeouts - FINANCE */}
-                            {canAccess(["ADMIN_FINANCE"]) && (
+                            {canSee(AdminRole.ADMIN_FINANCE) && (
                                 <SidebarMenuItem>
                                     <SidebarMenuButton asChild tooltip="Order Timeouts" isActive={isActive("/system/order-timeouts")}>
                                         <Link to="/system/order-timeouts">
@@ -638,7 +667,7 @@ export function AppSidebar() {
 
 
                             {/* App Content & Versions - SETUP */}
-                            {canAccess(["ADMIN_SETUP"]) && (
+                            {canSee(AdminRole.ADMIN_SETUP) && (
                                 <>
                                     <SidebarMenuItem>
                                         <SidebarMenuButton asChild tooltip="Onboarding" isActive={isActive("/system/onboarding")}>
@@ -691,15 +720,16 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
+                        {canSee(AdminRole.ADMIN) && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Settings">
                                     <Settings />
                                     <span>Settings</span>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarGroup>
-                )}
+                        )}
+                    </SidebarMenu>
+                </SidebarGroup>
             </SidebarContent>
             <SidebarRail />
         </Sidebar>

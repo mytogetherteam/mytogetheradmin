@@ -116,6 +116,27 @@ export interface CityDTO {
   districts?: DistrictDTO[];
 }
 
+export interface RegionDTO {
+  id: number;
+  nameMm: string;
+  nameEn: string;
+  nameTh: string;
+  slug: string;
+  displayOrder: number;
+  isActive: boolean;
+  imageUrl?: string;
+}
+
+export interface MasterMenuSubCategoryDTO {
+  id: number;
+  nameMm: string;
+  nameEn: string;
+  nameTh: string;
+  slug: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
 export interface CuisineTypeDTO {
   id: number;
   name?: string;
@@ -124,6 +145,8 @@ export interface CuisineTypeDTO {
   nameEn?: string;
   slug: string;
   imageUrl?: string;
+  regionId?: number;
+  regionName?: string;
 }
 
 export interface EnumOptionDTO {
@@ -173,6 +196,8 @@ export interface ShopFormDataDTO {
   mealTypes: EnumOptionDTO[];
   deliveryTypes: EnumOptionDTO[];
   shopCategories?: ShopCategoryDTO[];
+  regions: RegionDTO[];
+  masterMenuSubCategories: MasterMenuSubCategoryDTO[];
 }
 
 export interface Photo {
