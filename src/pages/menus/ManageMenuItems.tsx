@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
+import { TableImage } from "@/components/TableImage";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { menuService, MenuItem } from "@/services/menuService";
@@ -70,7 +71,7 @@ export default function ManageMenuItems() {
             loadItems();
         }, 300);
         return () => clearTimeout(timer);
-    }, [loadItems]);
+    }, [currentPage, pageSize, searchTerm, loadItems]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -195,15 +196,10 @@ export default function ManageMenuItems() {
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
-                                                        {item.imageUrl || item.imageUrls?.[0] ? (
-                                                            <img
-                                                                src={item.imageUrl || item.imageUrls?.[0]}
-                                                                alt={item.nameEn || item.name}
-                                                                className="h-10 w-10 rounded object-cover border"
-                                                            />
-                                                        ) : (
-                                                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">No Img</div>
-                                                        )}
+                                                        <TableImage 
+                                                            src={item.imageUrl || item.imageUrls?.[0]} 
+                                                            alt={item.nameEn || item.name} 
+                                                        />
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{item.nameEn || item.name}</div>

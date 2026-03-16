@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
+import { TableImage } from "@/components/TableImage";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopService, MenuCategory } from "@/services/shopService";
@@ -66,7 +67,7 @@ export default function ManageCategories() {
       loadCategories();
     }, 500);
     return () => clearTimeout(timer);
-  }, [loadCategories]);
+  }, [searchTerm, loadCategories]);
 
   const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -178,11 +179,7 @@ export default function ManageCategories() {
                         >
                           <TableCell className="font-mono text-xs">{cat.id}</TableCell>
                           <TableCell>
-                            {cat.imageUrl || cat.image || cat.icon ? (
-                              <img src={cat.imageUrl || cat.image || cat.icon} className="h-8 w-8 rounded object-cover border" alt={cat.name} />
-                            ) : (
-                              <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">None</div>
-                            )}
+                            <TableImage src={cat.imageUrl || cat.image || cat.icon} alt={cat.name} size="sm" />
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">{cat.name}</div>
@@ -195,7 +192,7 @@ export default function ManageCategories() {
                             )}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{cat.displayOrder ?? "—"}</TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                               {cat.isActive !== false ? "Active" : "Inactive"}
                             </span>

@@ -1,4 +1,4 @@
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useMemo, useCallback } from "react";
 
 import {
     ExcelImportContext,
@@ -11,24 +11,24 @@ export function ExcelImportProvider({ children }: { children: ReactNode }) {
     const [workbookData, setWorkbookData] = useState<WorkbookData>({});
     const [selectedSheet, setSelectedSheet] = useState<SheetKey>("Shops");
 
-    const clearData = () => {
+    const clearData = useCallback(() => {
         setFile(null);
         setWorkbookData({});
         setSelectedSheet("Shops");
-    };
+    }, []);
+
+    const value = useMemo(() => ({
+        file,
+        setFile,
+        workbookData,
+        setWorkbookData,
+        selectedSheet,
+        setSelectedSheet,
+        clearData,
+    }), [file, workbookData, selectedSheet, clearData]);
 
     return (
-        <ExcelImportContext.Provider
-            value={{
-                file,
-                setFile,
-                workbookData,
-                setWorkbookData,
-                selectedSheet,
-                setSelectedSheet,
-                clearData,
-            }}
-        >
+        <ExcelImportContext.Provider value={value}>
             {children}
         </ExcelImportContext.Provider>
     );

@@ -9,6 +9,7 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table";
+import { TableImage } from "@/components/TableImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +68,7 @@ export default function ManageCuisines() {
 
     useEffect(() => {
         fetchCuisines();
-    }, [fetchCuisines]);
+    }, [page, searchTerm, fetchCuisines]);
 
     const handleDelete = async () => {
         if (!deleteId) return;
@@ -150,28 +151,26 @@ export default function ManageCuisines() {
                                     ))
                                 ) : cuisines.length > 0 ? (
                                     cuisines.map((cuisine) => (
-                                        <TableRow key={cuisine.id}>
+                                        <TableRow 
+                                            key={cuisine.id}
+                                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                            onClick={() => navigate(`/cuisines/edit/${cuisine.id}`)}
+                                        >
                                             <TableCell>
-                                                {cuisine.imageUrl ? (
-                                                    <img src={cuisine.imageUrl} alt={cuisine.nameEn} className="h-10 w-10 rounded object-cover border" />
-                                                ) : (
-                                                    <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                                                        <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
-                                                    </div>
-                                                )}
+                                                <TableImage src={cuisine.imageUrl} alt={cuisine.nameEn} />
                                             </TableCell>
                                             <TableCell className="font-medium">{cuisine.nameEn}</TableCell>
                                             <TableCell>{cuisine.nameMm}</TableCell>
                                             <TableCell>{cuisine.nameTh}</TableCell>
-                                            <TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <Badge variant={cuisine.isActive ? "default" : "secondary"} className={cuisine.isActive ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
                                                     {cuisine.isActive ? "Active" : "Inactive"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>{cuisine.displayOrder}</TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
+                                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                         <Button variant="ghost" size="icon">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
@@ -179,14 +178,14 @@ export default function ManageCuisines() {
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => navigate(`/cuisines/edit/${cuisine.id}`)}>
+                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/cuisines/edit/${cuisine.id}`); }}>
                                                             <Edit className="mr-2 h-4 w-4" />
                                                             Edit
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
                                                             className="text-destructive focus:text-destructive"
-                                                            onClick={() => setDeleteId(cuisine.id)}
+                                                            onClick={(e) => { e.stopPropagation(); setDeleteId(cuisine.id); }}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Delete

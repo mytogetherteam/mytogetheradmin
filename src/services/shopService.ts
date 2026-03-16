@@ -145,6 +145,14 @@ export interface PaymentMethodDTO {
   displayOrder: number;
 }
 
+interface ShopPaymentMethodResponse {
+  paymentMethodId: number;
+  paymentMethodCode: string;
+  paymentMethodName: string;
+  isActive?: boolean;
+  displayOrder?: number;
+}
+
 export interface ShopCategoryDTO {
   id: number;
   nameEn: string;
@@ -196,8 +204,8 @@ export interface MenuItem {
   discountPercentage?: number;
   currency?: string;
   shopId?: number;
-  categoryId?: number;
-  subCategoryId?: number;
+  menuCategoryId?: number;
+  menuSubCategoryId?: number;
   imageUrl?: string;
   imageUrls?: string[];
   isAvailable?: boolean;
@@ -301,7 +309,8 @@ export const ShopService = {
     page: number = 0,
     size: number = 20,
     search: string = "",
-    active?: boolean
+    active?: boolean,
+    sort: string = ""
   ): Promise<PageableResponse<Shop>> => {
     let endpoint = `${config.endpoints.shops.list}?page=${page}&size=${size}`;
     if (search) {
@@ -309,6 +318,9 @@ export const ShopService = {
     }
     if (active !== undefined) {
       endpoint += `&active=${active}`;
+    }
+    if (sort) {
+      endpoint += `&sort=${encodeURIComponent(sort)}`;
     }
     return apiClient.get<PageableResponse<Shop>>(endpoint);
   },
@@ -513,5 +525,24 @@ export const ShopService = {
    */
   getShopOperatingHours: async (shopId: number): Promise<OperatingHour[]> => {
     return apiClient.get<OperatingHour[]>(config.endpoints.shops.operatingHours(shopId));
+  },
+
+  /**
+   * Get payment methods for a specific shop
+   * GET /api/admin/shops/{id}/payment-methods
+   */
+  getShopPaymentMethods: async (shopId: number): Promise<PaymentMethodDTO[]> => {
+    const endpoint = config.endpoints.shops.paymentMethods(shopId);
+    const response = await apiClient.get<ShopPaymentMethodResponse[]>(endpoint);
+    
+    // Map the specific backend response fields to the standard PaymentMethodDTO
+    return (response || []).map(m => ({
+      id: m.paymentMethodId,
+      code: m.paymentMethodCode,
+      name: m.paymentMethodName,
+      active: m.isActive ?? false,
+      // Default other required fields if missing
+      displayOrder: m.displayOrder || 1
+    }));
   },
 };

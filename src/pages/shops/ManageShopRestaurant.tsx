@@ -17,6 +17,7 @@ import { Loader } from "@/components/ui/loader"
 import { Input } from "@/components/ui/input"
 import { DataTablePagination } from "@/components/DataTablePagination"
 import { SortableTableHead } from "@/components/SortableTableHead"
+import { TableImage } from "@/components/TableImage"
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils"
 import {
     Select,
@@ -48,7 +49,7 @@ import {
     X,
 } from "lucide-react"
 import { toast } from "sonner"
-import * as XLSX from "xlsx"
+// import * as XLSX from "xlsx" // Removed for dynamic import
 
 export default function ManageShopRestaurant() {
     const [shops, setShops] = useState<Shop[]>([])
@@ -62,6 +63,7 @@ export default function ManageShopRestaurant() {
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
     const [pendingCurrentPage, setPendingCurrentPage] = useState(1)
     const [pendingPageSize, setPendingPageSize] = useState(20)
+    const [totalElements, setTotalElements] = useState(0)
     const [pendingTotalElements, setPendingTotalElements] = useState(0)
     const [activeTab, setActiveTab] = useState("all")
     const navigate = useNavigate()
@@ -74,21 +76,28 @@ export default function ManageShopRestaurant() {
     const loadShops = useCallback(async () => {
         setLoading(true)
         try {
-            const response = await ShopService.getAllShops(0, 200, debouncedSearch)
+            // Include sort if needed, but ShopService sort param format might vary. 
+            // For now, let's keep it simple with page, size, and search.
+            const response = await ShopService.getAllShops(currentPage - 1, pageSize, debouncedSearch)
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
+            setTotalElements(response?.totalElements ?? list.length)
         } catch (error) {
             console.error("Failed to load shops:", error)
             toast.error("Failed to load shops")
         } finally {
             setLoading(false)
         }
-    }, [debouncedSearch])
+    }, [debouncedSearch, currentPage, pageSize])
 
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+        const timer = setTimeout(() => {
+            if (searchTerm !== debouncedSearch) {
+                setDebouncedSearch(searchTerm)
+            }
+        }, 300)
         return () => clearTimeout(timer)
-    }, [searchTerm])
+    }, [searchTerm, debouncedSearch])
 
     const loadPendingShops = useCallback(async () => {
         setPendingLoading(true)
@@ -106,11 +115,11 @@ export default function ManageShopRestaurant() {
 
     useEffect(() => {
         loadShops()
-    }, [loadShops])
+    }, [loadShops]) // Only trigger when debounced search or pagination actually changes
 
     useEffect(() => {
         loadPendingShops()
-    }, [loadPendingShops])
+    }, [loadPendingShops]) // Only trigger when pending pagination changes
 
     const handleToggleStatus = async (e: React.MouseEvent, shop: Shop) => {
         e.stopPropagation()
@@ -168,37 +177,43 @@ export default function ManageShopRestaurant() {
     }
 
     const sortedShops = sortData(shops, sortConfig)
-
-    const totalItems = sortedShops.length
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    const currentShops = sortedShops // No longer slicing in-memory
+    const totalPages = Math.max(1, Math.ceil(totalElements / pageSize))
     const startIndex = (currentPage - 1) * pageSize
-    const endIndex = Math.min(startIndex + pageSize, totalItems)
-    const currentShops = sortedShops.slice(startIndex, endIndex)
+    const endIndex = Math.min(startIndex + pageSize, totalElements)
 
-    if (currentPage > totalPages && totalPages > 0) setCurrentPage(1)
+    if (currentPage > totalPages && totalPages > 0) {
+        setCurrentPage(1)
+    }
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key))
 
-    const exportToExcel = () => {
-        const data = sortedShops.map((shop) => ({
-            ID: shop.id,
-            Name: shop.name,
-            NameMM: shop.nameMm || "",
-            Category: shop.category,
-            SubCategory: shop.category || "",
-            Address: shop.address,
-            District: shop.district || "",
-            City: shop.city || "",
-            Phone: shop.phone || "",
-            Rating: shop.ratingAvg || 0,
-            ReviewCount: shop.ratingCount || 0,
-            Verified: shop.isVerified ? "Yes" : "No",
-            Active: shop.isActive ? "Yes" : "No",
-        }))
-        const ws = XLSX.utils.json_to_sheet(data)
-        const wb = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(wb, ws, "Shops")
-        XLSX.writeFile(wb, "Shops.xlsx")
+    const exportToExcel = async () => {
+        try {
+            const XLSX = await import("xlsx")
+            const data = sortedShops.map((shop) => ({
+                ID: shop.id,
+                Name: shop.name,
+                NameMM: shop.nameMm || "",
+                Category: shop.category,
+                SubCategory: shop.category || "",
+                Address: shop.address,
+                District: shop.district || "",
+                City: shop.city || "",
+                Phone: shop.phone || "",
+                Rating: shop.ratingAvg || 0,
+                ReviewCount: shop.ratingCount || 0,
+                Verified: shop.isVerified ? "Yes" : "No",
+                Active: shop.isActive ? "Yes" : "No",
+            }))
+            const ws = XLSX.utils.json_to_sheet(data)
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, "Shops")
+            XLSX.writeFile(wb, "Shops.xlsx")
+        } catch (error) {
+            console.error("Export failed:", error)
+            toast.error("Failed to export to Excel")
+        }
     }
 
     const ShopTable = ({ shopList, isLoading }: { shopList: Shop[]; isLoading: boolean }) => (
@@ -229,17 +244,10 @@ export default function ManageShopRestaurant() {
                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                                 >
                                     <TableCell>
-                                        <div className="w-10 h-10 rounded-md overflow-hidden border bg-muted shrink-0">
-                                            {shop.logoUrl ? (
-                                                <img
-                                                    src={shop.logoUrl}
-                                                    alt={shop.nameEn || shop.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">N/A</div>
-                                            )}
-                                        </div>
+                                        <TableImage 
+                                            src={shop.logoUrl} 
+                                            alt={shop.nameEn || shop.name} 
+                                        />
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                     <TableCell className="font-medium">
@@ -379,7 +387,7 @@ export default function ManageShopRestaurant() {
                                     {/* Pagination */}
                                     <div className="flex flex-col items-center gap-4 py-4 md:flex-row md:justify-between px-2">
                                         <div className="text-sm text-muted-foreground">
-                                            Showing {totalItems ? startIndex + 1 : 0} to {endIndex} of {totalItems} entries
+                                            Showing {totalElements ? startIndex + 1 : 0} to {endIndex} of {totalElements} entries
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Button variant="outline" className="h-8 w-8 p-0" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>

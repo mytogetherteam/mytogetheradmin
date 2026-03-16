@@ -40,7 +40,6 @@ export default function CreateShopSubCategory() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categoryIdFromUrl || "");
 
     // Form State
-    const [name, setName] = useState("");
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
@@ -58,9 +57,9 @@ export default function CreateShopSubCategory() {
             .replace(/[^a-z0-9_]/g, "");
     };
 
-    const updateSlugFromNames = (nextName: string, nextNameEn: string) => {
+    const updateSlugFromNames = (nextNameEn: string) => {
         if (isEditMode) return;
-        const source = nextNameEn || nextName;
+        const source = nextNameEn;
         setSlug(source ? generateSlug(source) : "");
     };
 
@@ -68,13 +67,10 @@ export default function CreateShopSubCategory() {
         setLoading(true);
         try {
             const subCat = await ShopCategoryService.getShopSubCategoryById(subId);
-            const nextName = subCat.name || "";
-            const nextNameEn = subCat.nameEn || "";
-            setName(nextName);
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
-            setNameEn(nextNameEn);
-            setSlug(subCat.slug || (nextNameEn || nextName ? generateSlug(nextNameEn || nextName) : ""));
+            setNameEn(subCat.nameEn || "");
+            setSlug(subCat.slug || (subCat.nameEn ? generateSlug(subCat.nameEn) : ""));
             setIsActive(subCat.isActive !== false);
             if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
                 setIsActive(Boolean((subCat as Record<string, unknown>).active));
@@ -123,11 +119,11 @@ export default function CreateShopSubCategory() {
         setSubmitting(true);
         try {
             const dataObj = {
-                name,
+                name: nameEn,
                 nameMm,
                 nameTh,
                 nameEn,
-                slug: slug || generateSlug(nameEn || name),
+                slug: slug || generateSlug(nameEn),
                 active: isActive,
             };
 
@@ -219,14 +215,14 @@ export default function CreateShopSubCategory() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name (Default) <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="nameEn">Name (English) <span className="text-red-500">*</span></Label>
                                 <Input
-                                    id="name"
-                                    value={name}
+                                    id="nameEn"
+                                    value={nameEn}
                                     onChange={(e) => {
                                         const value = e.target.value;
-                                        setName(value);
-                                        updateSlugFromNames(value, nameEn);
+                                        setNameEn(value);
+                                        updateSlugFromNames(value);
                                     }}
                                     required
                                 />
@@ -242,7 +238,7 @@ export default function CreateShopSubCategory() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="nameMm">Name (Myanmar)</Label>
                                 <Input id="nameMm" value={nameMm} onChange={(e) => setNameMm(e.target.value)} />
@@ -250,18 +246,6 @@ export default function CreateShopSubCategory() {
                             <div className="space-y-2">
                                 <Label htmlFor="nameTh">Name (Thai)</Label>
                                 <Input id="nameTh" value={nameTh} onChange={(e) => setNameTh(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="nameEn">Name (English)</Label>
-                                <Input
-                                    id="nameEn"
-                                    value={nameEn}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setNameEn(value);
-                                        updateSlugFromNames(name, value);
-                                    }}
-                                />
                             </div>
                         </div>
 
@@ -298,7 +282,7 @@ export default function CreateShopSubCategory() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={!name || submitting || (!selectedCategoryId && !isEditMode)}
+                                    disabled={!nameEn || submitting || (!selectedCategoryId && !isEditMode)}
                                 >
                                     {submitting ? "Saving..." : isEditMode ? "Update Sub-Category" : "Create Sub-Category"}
                                 </Button>
@@ -314,7 +298,7 @@ export default function CreateShopSubCategory() {
                         <DialogTitle>Are you absolutely sure?</DialogTitle>
                         <DialogDescription>
                             This action cannot be undone. This will permanently delete the sub-category
-                            <strong> {name}</strong>.
+                            <strong> {nameEn}</strong>.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

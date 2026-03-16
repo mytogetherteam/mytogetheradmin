@@ -26,6 +26,9 @@ import {
     ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DataTablePagination } from "@/components/DataTablePagination";
+import { SortableTableHead, SortConfig } from "@/components/SortableTableHead";
+import { TableImage } from "@/components/TableImage";
 
 const PLACEMENTS: BannerPlacement[] = ['HOME_TOP', 'FEED_MIDDLE', 'SHOP_DETAIL', 'SEARCH_TOP'];
 
@@ -34,7 +37,6 @@ interface BannerFormState extends Omit<CreateBannerRequest, "displayOrder"> {
 }
 
 const emptyBanner: BannerFormState = {
-    title: "",
     titleMm: "",
     titleTh: "",
     titleEn: "",
@@ -51,18 +53,14 @@ function BannerCard({ banner, onToggle, onEdit, onDelete }: { banner: Banner; on
     return (
         <Card className="overflow-hidden">
             <div className="h-36 bg-muted flex items-center justify-center relative">
-                {banner.imageUrl ? (
-                    <img src={banner.imageUrl} alt={banner.title} className="w-full h-full object-cover" />
-                ) : (
-                    <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                )}
+                <TableImage src={banner.imageUrl} alt={banner.titleEn || banner.titleMm || "Banner"} className="w-full h-full object-cover rounded-none" />
                 <Badge className="absolute top-2 right-2" variant={banner.isActive ? "default" : "secondary"}>
                     {banner.placement?.replace("_", " ")}
                 </Badge>
             </div>
             <CardContent className="pt-3 space-y-2">
                 <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm truncate">{banner.title}</p>
+                    <p className="font-medium text-sm truncate">{banner.titleEn || banner.titleMm || "Untitled Banner"}</p>
                     <Switch
                         checked={banner.isActive}
                         onCheckedChange={(checked) => onToggle(banner.id, checked)}
@@ -276,6 +274,13 @@ export default function BannerManagement() {
     const [shopSearch, setShopSearch] = useState("");
     const [featuringId, setFeaturingId] = useState<number | null>(null);
 
+    // Pagination & Sorting state
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalElements, setTotalElements] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: "createdAt", direction: "desc" });
+
     // Detail Sheet
     const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
     const [sheetOpen, setSheetOpen] = useState(false);
@@ -304,19 +309,47 @@ export default function BannerManagement() {
     const loadShops = useCallback(async () => {
         setShopsLoading(true);
         try {
-            const data = await ShopService.getAllShops(0, 200);
+            const sortStr = sortConfig ? `${sortConfig.key},${sortConfig.direction}` : "";
+            const data = await ShopService.getAllShops(page - 1, pageSize, shopSearch, undefined, sortStr);
             setShops(data.content || []);
+            setTotalElements(data.totalElements || 0);
+            setTotalPages(data.totalPages || 0);
         } catch {
             toast.error("Failed to load shops");
         } finally {
             setShopsLoading(false);
         }
-    }, []);
+    }, [page, pageSize, shopSearch, sortConfig]);
+
+    const handleSort = (key: string) => {
+        setSortConfig((prev) => {
+            if (prev?.key === key) {
+                return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+            }
+            return { key, direction: "asc" };
+        });
+        setPage(1); // Reset to first page on sort
+    };
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (activeTab === "featured") {
+                setPage(1); // Reset to first page on search
+                loadShops();
+            }
+        }, 500); // Debounce search
+        return () => clearTimeout(timeoutId);
+    }, [shopSearch, activeTab, loadShops]);
+
+    useEffect(() => {
+        if (activeTab === "featured") {
+            loadShops();
+        }
+    }, [page, pageSize, sortConfig, activeTab, loadShops]);
 
     useEffect(() => {
         if (activeTab === "banners") loadBanners();
-        else if (activeTab === "featured") loadShops();
-    }, [activeTab, loadBanners, loadShops]);
+    }, [activeTab, loadBanners]);
 
     // Banner actions
     const handleToggle = async (id: string, isActive: boolean) => {
@@ -325,7 +358,6 @@ export default function BannerManagement() {
             if (!bannerToUpdate) return;
 
             const requestObj = {
-                title: bannerToUpdate.title,
                 titleMm: bannerToUpdate.titleMm,
                 titleTh: bannerToUpdate.titleTh,
                 titleEn: bannerToUpdate.titleEn,
@@ -357,7 +389,6 @@ export default function BannerManagement() {
 
     const handleEditClick = (banner: Banner) => {
         setForm({
-            title: banner.title,
             titleMm: banner.titleMm || "",
             titleTh: banner.titleTh || "",
             titleEn: banner.titleEn || "",
@@ -385,7 +416,6 @@ export default function BannerManagement() {
                 : form.displayOrder;
 
             const requestObj = {
-                title: form.title,
                 titleMm: form.titleMm,
                 titleTh: form.titleTh,
                 titleEn: form.titleEn,
@@ -472,15 +502,6 @@ export default function BannerManagement() {
         }
     };
 
-    const filteredShops = shops.filter(s => {
-        const q = shopSearch.toLowerCase();
-        return (
-            (s.nameEn || "").toLowerCase().includes(q) ||
-            (s.nameMm || "").toLowerCase().includes(q) ||
-            (s.phone || "").toLowerCase().includes(q) ||
-            (s.category || s.shopCategory?.nameEn || "").toLowerCase().includes(q)
-        );
-    });
 
     return (
         <div className="flex flex-col gap-6">
@@ -551,7 +572,7 @@ export default function BannerManagement() {
                                     All Shops
                                 </div>
                                 <Badge variant="secondary" className="rounded-full px-3">
-                                    {filteredShops.length} shops
+                                    {totalElements} shops
                                 </Badge>
                             </CardTitle>
                             <CardDescription>
@@ -562,10 +583,26 @@ export default function BannerManagement() {
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/30">
-                                            <TableHead className="py-3">Shop</TableHead>
-                                            <TableHead>Category</TableHead>
-                                            <TableHead>Status</TableHead>
+                                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                            <SortableTableHead
+                                                label="Shop"
+                                                sortKey="nameEn"
+                                                sortConfig={sortConfig}
+                                                onSort={handleSort}
+                                                className="py-3"
+                                            />
+                                            <SortableTableHead
+                                                label="Category"
+                                                sortKey="category"
+                                                sortConfig={sortConfig}
+                                                onSort={handleSort}
+                                            />
+                                            <SortableTableHead
+                                                label="Status"
+                                                sortKey="isActive"
+                                                sortConfig={sortConfig}
+                                                onSort={handleSort}
+                                            />
                                             <TableHead>Featured</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
@@ -579,25 +616,19 @@ export default function BannerManagement() {
                                                     ))}
                                                 </TableRow>
                                             ))
-                                        ) : filteredShops.length === 0 ? (
+                                        ) : shops.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                                                     {shopSearch ? "No shops matching your search." : "No shops found."}
                                                 </TableCell>
                                             </TableRow>
-                                        ) : filteredShops.map((shop) => (
+                                        ) : shops.map((shop) => (
                                             <TableRow key={shop.id} className="hover:bg-muted/20 transition-colors">
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
-                                                        {shop.logoUrl ? (
-                                                            <img src={shop.logoUrl} className="h-9 w-9 rounded-lg object-cover border" alt="" />
-                                                        ) : (
-                                                            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                                                <Store className="h-4 w-4 text-muted-foreground" />
-                                                            </div>
-                                                        )}
+                                                        <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.nameMm} size="sm" />
                                                         <div>
-                                                            <p className="font-medium text-sm leading-tight">{shop.nameEn || shop.nameMm}</p>
+                                                           <p className="font-medium text-sm leading-tight">{shop.nameEn || shop.nameMm}</p>
                                                             <p className="text-[10px] text-muted-foreground font-mono">ID: {shop.id}</p>
                                                         </div>
                                                     </div>
@@ -651,6 +682,14 @@ export default function BannerManagement() {
                             </div>
                         </CardContent>
                     </Card>
+                    <DataTablePagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={totalElements}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={setPageSize}
+                    />
                 </TabsContent>
             </Tabs>
 
@@ -721,11 +760,12 @@ export default function BannerManagement() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium">Title (Default)</label>
+                                <label className="text-sm font-medium">Title (English) <span className="text-red-500">*</span></label>
                                 <Input
-                                    placeholder="Banner title"
-                                    value={form.title}
-                                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                                    placeholder="English Title"
+                                    value={form.titleEn}
+                                    onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))}
+                                    required
                                 />
                             </div>
                             <div>
@@ -744,14 +784,6 @@ export default function BannerManagement() {
                                     placeholder="ชื่อหัวข้อภาษาไทย"
                                     value={form.titleTh}
                                     onChange={(e) => setForm((f) => ({ ...f, titleTh: e.target.value }))}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Title (English)</label>
-                                <Input
-                                    placeholder="English Title"
-                                    value={form.titleEn}
-                                    onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))}
                                 />
                             </div>
                         </div>
@@ -863,7 +895,7 @@ export default function BannerManagement() {
                             setImageFile(null);
                             setImagePreview(null);
                         }}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={!form.title || (!imagePreview && !imageFile) || saving}>
+                        <Button onClick={handleCreate} disabled={!form.titleEn || (!imagePreview && !imageFile) || saving}>
                             {editingBannerId ? null : <Plus className="h-4 w-4 mr-2" />}
                             {editingBannerId ? "Update Banner" : "Create Banner"}
                         </Button>

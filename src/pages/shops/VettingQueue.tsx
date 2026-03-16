@@ -16,9 +16,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+import { useNavigate } from "react-router-dom";
+import { TableImage } from "@/components/TableImage";
 
 export default function VettingQueue() {
-
+    const navigate = useNavigate();
     const [shops, setShops] = useState<Shop[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -94,6 +96,7 @@ export default function VettingQueue() {
                             <TableHeader>
                                 <TableRow>
                                     <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                    <TableHead className="w-[60px]">Photo</TableHead>
                                     <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead>Owner</TableHead>
                                     <SortableTableHead label="Category" sortKey="category" sortConfig={sortConfig} onSort={handleSort} />
@@ -119,8 +122,15 @@ export default function VettingQueue() {
                                         </TableCell>
                                     </TableRow>
                                 ) : sortedShops.map((shop: Shop) => (
-                                    <TableRow key={shop.id}>
+                                    <TableRow 
+                                        key={shop.id}
+                                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                        onClick={() => navigate(`/shops/create?id=${shop.id}`)}
+                                    >
                                         <TableCell className="font-mono text-xs">{shop.id}</TableCell>
+                                        <TableCell>
+                                            <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.name} size="sm" />
+                                        </TableCell>
                                         <TableCell className="font-medium">{shop.nameEn || shop.name}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{shop.ownerName ?? "—"}</TableCell>
                                         <TableCell className="text-sm">{shop.category}</TableCell>
@@ -128,15 +138,15 @@ export default function VettingQueue() {
                                             {shop.createdAt ? new Date(shop.createdAt).toLocaleDateString() : "—"}
                                         </TableCell>
                                         <TableCell className="text-sm">{shop.phone ?? "—"}</TableCell>
-                                        <TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
                                             <TooltipProvider>
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                                                     <Tooltip>
-                                                        <TooltipTrigger asChild>
+                                                        <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                             <Button
                                                                 size="sm" variant="outline"
                                                                 className="text-green-600 border-green-200 hover:bg-green-50"
-                                                                onClick={() => handleApprove(shop.id)}
+                                                                onClick={(e) => { e.stopPropagation(); handleApprove(shop.id); }}
                                                             >
                                                                 <Check className="h-3 w-3 mr-1" /> Approve
                                                             </Button>
@@ -144,11 +154,11 @@ export default function VettingQueue() {
                                                         <TooltipContent>Approve shop listing</TooltipContent>
                                                     </Tooltip>
                                                     <Tooltip>
-                                                        <TooltipTrigger asChild>
+                                                        <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                             <Button
                                                                 size="sm" variant="outline"
                                                                 className="text-red-600 border-red-200 hover:bg-red-50"
-                                                                onClick={() => setRejectShop(shop)}
+                                                                onClick={(e) => { e.stopPropagation(); setRejectShop(shop); }}
                                                             >
                                                                 <X className="h-3 w-3 mr-1" /> Reject
                                                             </Button>

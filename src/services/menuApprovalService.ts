@@ -11,7 +11,7 @@ export interface MenuItemLightDTO {
 
 export interface MenuApprovalDTO {
   id: number;
-  categoryId: number;
+  menuCategoryId: number;
   shopId: number;
   nameEn: string;
   nameMm: string;

@@ -37,12 +37,11 @@ export interface ShopSubCategoryRequest {
 
 
 export interface CreateShopCategoryRequest {
-  name: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
   slug?: string;
-  isActive: boolean;
+  active: boolean;
 }
 
 

@@ -36,8 +36,8 @@ export interface MenuItem {
     mediumPrice?: number;
     largePrice?: number;
     currency: string;
-    categoryId?: number;
-    subCategoryId?: number;
+    menuCategoryId?: number;
+    menuSubCategoryId?: number;
     shopId: number;
     imageUrl?: string;
     imageUrls?: string[]; // Multiple images support
@@ -103,7 +103,7 @@ export interface MenuSubCategory {
     isActive?: boolean;
     imageUrl?: string; 
     icon?: string;
-    categoryId?: number;
+    menuCategoryId?: number;
     categoryName?: string;
 }
 
