@@ -5,6 +5,7 @@ import AppLayout from "@/layouts/AppLayout";
 import { authService } from "@/services/authService";
 import { ProtectedRoute } from "@/middleware/authMiddleware";
 import { ExcelImportProvider } from "@/context/ExcelImportContext";
+import { AdminRole } from "@/utils/rbac";
 
 // ─── Eager (tiny, always needed) ────────────────────────────────────────────
 import Login from "@/pages/auth/Login";
@@ -94,6 +95,10 @@ const CreateDistrict = lazy(() => import("@/pages/districts/CreateDistrict"));
 const ManageCuisines = lazy(() => import("@/pages/cuisines/ManageCuisines"));
 const CuisineForm = lazy(() => import("@/pages/cuisines/CuisineForm"));
 
+// Regions
+const ManageRegions = lazy(() => import("@/pages/regions/ManageRegions"));
+const RegionForm = lazy(() => import("@/pages/regions/RegionForm"));
+
 // ─── Route guards ────────────────────────────────────────────────────────────
 
 function PublicOnlyRoute() {
@@ -132,30 +137,34 @@ function App() {
                 <Route path="/admin/profile" element={<AdminProfile />} />
 
                 {/* OPS Routes */}
-                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_OPS"]}><Outlet /></ProtectedRoute>}>
+                <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN_OPS}><Outlet /></ProtectedRoute>}>
                     <Route path="/shops/create" element={<CreateShopRestaurant />} />
                     <Route path="/shops/manage" element={<ManageShopRestaurant />} />
                     <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
                     <Route path="/shops/vetting" element={<VettingQueue />} />
                     <Route path="/users/manage" element={<ManageUsers />} />
                     <Route path="/users/:id" element={<UserDetail />} />
-                    <Route path="/categories/manage" element={<ManageCategories />} />
-                    <Route path="/categories/create" element={<CreateCategory />} />
-                    <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
-                    <Route path="/shop-categories/create" element={<CreateShopCategory />} />
-                    <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
-                    <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
+                    <Route path="/menus/approvals" element={<MenuApprovals />} />
                     <Route path="/menus/items/manage" element={<ManageMenuItems />} />
                     <Route path="/menus/items/create" element={<CreateMenuItem />} />
-                    <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
-                    <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
-                    <Route path="/menus/approvals" element={<MenuApprovals />} />
                     <Route path="/orders/board" element={<OrderBoard />} />
                     <Route path="/orders/:id" element={<OrderDetail />} />
                     <Route path="/moderation/content" element={<ContentReports />} />
                     <Route path="/moderation/user-shop" element={<UserShopReports />} />
                     <Route path="/review/reviews" element={<Reviews />} />
                     <Route path="/review/:type/:id" element={<ReviewDetail />} />
+                </Route>
+
+                {/* SETUP Routes */}
+                <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN_SETUP}><Outlet /></ProtectedRoute>}>
+                    <Route path="/categories/manage" element={<ManageCategories />} />
+                    <Route path="/categories/create" element={<CreateCategory />} />
+                    <Route path="/shop-categories/manage" element={<ManageShopCategories />} />
+                    <Route path="/shop-categories/create" element={<CreateShopCategory />} />
+                    <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
+                    <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
+                    <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
+                    <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
                     <Route path="/community/posts" element={<CommunityMgt />} />
                     <Route path="/community/posts/:id" element={<PostDetailPage />} />
                     <Route path="/community/comments" element={<CommentBoard />} />
@@ -163,6 +172,10 @@ function App() {
                     <Route path="/cuisines/manage" element={<ManageCuisines />} />
                     <Route path="/cuisines/create" element={<CuisineForm />} />
                     <Route path="/cuisines/edit/:id" element={<CuisineForm />} />
+                    {/* Regions */}
+                    <Route path="/regions/manage" element={<ManageRegions />} />
+                    <Route path="/regions/create" element={<RegionForm />} />
+                    <Route path="/regions/edit/:id" element={<RegionForm />} />
                     {/* Locations (OPS/SETUP) */}
                     <Route path="/cities/manage" element={<ManageCities />} />
                     <Route path="/cities/create" element={<CreateCity />} />
@@ -170,11 +183,20 @@ function App() {
                     <Route path="/districts/manage" element={<ManageDistricts />} />
                     <Route path="/districts/create" element={<CreateDistrict />} />
                     <Route path="/districts/edit/:id" element={<CreateDistrict />} />
+                    <Route path="/system/app-content" element={<AppContentManagement />} />
+                    <Route path="/system/app-versions" element={<AppVersionManagement />} />
+                    <Route path="/system/onboarding" element={<OnboardingManagement />} />
                 </Route>
 
                 {/* FINANCE Routes */}
-                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_FINANCE"]}><Outlet /></ProtectedRoute>}>
+                <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN_FINANCE}><Outlet /></ProtectedRoute>}>
+                    <Route path="/analytics" element={<AnalyticalDashboard />} />
                     <Route path="/orders/history" element={<OrderHistory />} />
+                    <Route path="/system/order-timeouts" element={<OrderTimeoutManagement />} />
+                </Route>
+
+                {/* SUPER ADMIN Routes */}
+                <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
                     <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                     <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
                     <Route path="/payment/methods" element={<PaymentMethods />} />
@@ -183,25 +205,12 @@ function App() {
                     <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
                     <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                     <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
-                    <Route path="/system/order-timeouts" element={<OrderTimeoutManagement />} />
-                </Route>
-
-                {/* SETUP Routes */}
-                <Route element={<ProtectedRoute requiredAuthorities={["ADMIN_SETUP"]}><Outlet /></ProtectedRoute>}>
                     <Route path="/marketing/banners" element={<BannerManagement />} />
                     <Route path="/marketing/broadcast" element={<Broadcast />} />
-                    <Route path="/system/app-content" element={<AppContentManagement />} />
-                    <Route path="/system/app-versions" element={<AppVersionManagement />} />
-                    <Route path="/system/onboarding" element={<OnboardingManagement />} />
                     <Route path="/system/feature-flags" element={<FeatureFlags />} />
                     <Route path="/system/configs" element={<SystemConfigManagement />} />
-                </Route>
-
-                {/* MASTER_ADMIN Routes */}
-                <Route element={<ProtectedRoute requiredAuthorities={["MASTER_ADMIN"]}><Outlet /></ProtectedRoute>}>
                     <Route path="/system/audit-logs" element={<AuditLogs />} />
                     <Route path="/system/health" element={<SystemHealth />} />
-                    <Route path="/analytics" element={<AnalyticalDashboard />} />
                 </Route>
 
                 {/* Shared/Uncategorized */}
