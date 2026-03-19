@@ -61,8 +61,10 @@ export interface BroadcastHistoryPage {
 }
 
 class MarketingService {
-  async getBanners(): Promise<Banner[]> {
-    return apiClient.get<Banner[]>(config.endpoints.admin.marketing.banners.base);
+  async getBanners(page = 0, size = 100): Promise<Banner[]> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const response = await apiClient.get<{ content: Banner[] } | Banner[]>(`${config.endpoints.admin.marketing.banners.base}?${params.toString()}`);
+    return Array.isArray(response) ? response : response.content || [];
   }
 
   async createBanner(data: CreateBannerRequest, imageFile?: File): Promise<Banner> {
@@ -92,8 +94,10 @@ class MarketingService {
 
 
 
-  async getFeaturedShops(): Promise<FeaturedShop[]> {
-    return apiClient.get<FeaturedShop[]>(config.endpoints.admin.marketing.featuredShops);
+  async getFeaturedShops(page = 0, size = 100): Promise<FeaturedShop[]> {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const response = await apiClient.get<{ content: FeaturedShop[] } | FeaturedShop[]>(`${config.endpoints.admin.marketing.featuredShops}?${params.toString()}`);
+    return Array.isArray(response) ? response : response.content || [];
   }
 
   async boostShop(shopId: string, boostScore: number): Promise<void> {

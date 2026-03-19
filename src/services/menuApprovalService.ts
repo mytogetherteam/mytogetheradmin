@@ -41,20 +41,25 @@ export const menuApprovalService = {
   /**
    * Get all pending menu item changes/approvals
    */
-  getPendingApprovals: async (): Promise<MenuApprovalDTO[]> => {
-    // Some endpoints wrap in data layer, checking generic apiClient behavior
-    // If it requires extraction from data, apiClient usually does it if type matches
-    const response = await apiClient.get<MenuApprovalDTO[] | { data: MenuApprovalDTO[] }>(config.endpoints.admin.menu.approvals.list);
+  getPendingApprovals: async (page = 0, size = 20, search = ""): Promise<MenuApprovalDTO[]> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (search) params.append('search', search);
+
+    const response = await apiClient.get<MenuApprovalDTO[] | { content: MenuApprovalDTO[] } | { data: { content: MenuApprovalDTO[] } }>(
+      `${config.endpoints.admin.menu.approvals.list}?${params.toString()}`
+    );
     
-    // Handle both direct array and nested { data: [...] } formats based on apiClient config
-    if (Array.isArray(response)) {
-        return response;
-    } else if (response && 'data' in response && Array.isArray(response.data)) {
-        return response.data;
+    // Handle standard paginated response
+    if (response && typeof response === 'object') {
+        if ('data' in response && response.data && 'content' in (response.data as any)) {
+            return (response.data as any).content;
+        }
+        if ('content' in response) {
+            return (response as any).content;
+        }
     }
     
-    // Fallback if data is returned raw inside a response object (our sample provided)
-    return (response as { data?: MenuApprovalDTO[] }).data || [];
+    return Array.isArray(response) ? response : [];
   },
 
   /**
