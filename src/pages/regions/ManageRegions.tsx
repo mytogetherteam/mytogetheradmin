@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Link, useNavigate } from "react-router-dom";
 import { regionService } from "@/services/regionService";
 import { RegionDTO } from "@/services/shopService";
@@ -49,6 +50,7 @@ export default function ManageRegions() {
     const [regions, setRegions] = useState<RegionDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebounce(searchTerm, 500);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -56,7 +58,7 @@ export default function ManageRegions() {
     const fetchRegions = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await regionService.getRegions(page, 10, searchTerm);
+            const data = await regionService.getRegions(page, 10, debouncedSearch);
             setRegions(data.content);
             setTotalPages(data.totalPages);
         } catch (error) {
@@ -65,11 +67,11 @@ export default function ManageRegions() {
         } finally {
             setLoading(false);
         }
-    }, [page, searchTerm]);
+    }, [page, debouncedSearch]);
 
     useEffect(() => {
         fetchRegions();
-    }, [page, searchTerm, fetchRegions]);
+    }, [fetchRegions]);
 
     const handleDelete = async () => {
         if (!deleteId) return;
@@ -115,7 +117,7 @@ export default function ManageRegions() {
                                 placeholder="Search regions..."
                                 className="pl-10"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
                             />
                         </div>
                     </div>
@@ -160,9 +162,9 @@ export default function ManageRegions() {
                                             <TableCell>
                                                 <TableImage src={region.imageUrl} alt={region.nameEn} />
                                             </TableCell>
-                                            <TableCell className="font-medium">{region.nameEn}</TableCell>
-                                            <TableCell>{region.nameMm}</TableCell>
-                                            <TableCell>{region.nameTh}</TableCell>
+                                            <TableCell className="font-medium">{region.nameEn || region.nameMm || '—'}</TableCell>
+                                            <TableCell>{region.nameMm || '—'}</TableCell>
+                                            <TableCell>{region.nameTh || '—'}</TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <Badge variant={region.isActive ? "default" : "secondary"} className={region.isActive ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
                                                     {region.isActive ? "Active" : "Inactive"}

@@ -242,13 +242,13 @@ export default function UserShopReports() {
                                     <Label className="text-muted-foreground text-xs uppercase">Description</Label>
                                     <p className="text-sm whitespace-pre-wrap">{viewReport.description}</p>
                                 </div>
-                                {viewReport.reportedUserId > 0 && (
+                                {viewReport.reportedUserId !== undefined && viewReport.reportedUserId > 0 && (
                                     <div>
                                         <Label className="text-muted-foreground text-xs uppercase">Reported User</Label>
                                         <p className="text-sm">{viewReport.reportedUserName || `User ID: ${viewReport.reportedUserId}`}</p>
                                     </div>
                                 )}
-                                {viewReport.orderId > 0 && (
+                                {viewReport.orderId !== undefined && viewReport.orderId > 0 && (
                                     <div>
                                         <Label className="text-muted-foreground text-xs uppercase">Order ID</Label>
                                         <p className="text-sm font-mono">#{viewReport.orderId}</p>

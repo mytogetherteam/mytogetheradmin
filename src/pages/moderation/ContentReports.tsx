@@ -33,6 +33,9 @@ const TYPE_COLORS: Record<ReportType, string> = {
     COMMENT: "bg-purple-100 text-purple-800",
     USER: "bg-red-100 text-red-800",
     SHOP: "bg-orange-100 text-orange-800",
+    ORDER: "bg-green-100 text-green-800",
+    BUG_TECHNICAL: "bg-red-100 text-red-800",
+    OTHER: "bg-gray-100 text-gray-800",
 };
 
 export default function ContentReports() {

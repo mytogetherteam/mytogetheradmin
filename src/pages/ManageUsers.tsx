@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
     Table,
     TableBody,
@@ -55,6 +56,7 @@ export default function ManageUsers() {
     const [users, setUsers] = useState<UserListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebounce(searchTerm, 300);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [totalItems, setTotalItems] = useState(0);
@@ -70,7 +72,7 @@ export default function ManageUsers() {
     const loadUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await userService.getAllUsers(currentPage - 1, pageSize, searchTerm);
+            const response = await userService.getAllUsers(currentPage - 1, pageSize, debouncedSearch);
             if (response && response.content) {
                 setUsers(response.content);
                 setTotalPages(response.totalPages);
@@ -86,14 +88,11 @@ export default function ManageUsers() {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, pageSize, searchTerm]);
+    }, [currentPage, pageSize, debouncedSearch]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            loadUsers();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [currentPage, pageSize, searchTerm, loadUsers]);
+        loadUsers();
+    }, [loadUsers]);
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));

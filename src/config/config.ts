@@ -37,12 +37,12 @@ export const config = {
         }
       },
       cities: {
-        list: '/api/admin/cities',
-        detail: (id: number) => `/api/admin/cities/${id}`,
+        list: '/api/admin/setup/cities',
+        detail: (id: number) => `/api/admin/setup/cities/${id}`,
       },
       districts: {
-        list: '/api/admin/districts',
-        detail: (id: number) => `/api/admin/districts/${id}`,
+        list: '/api/admin/setup/districts',
+        detail: (id: number) => `/api/admin/setup/districts/${id}`,
       },
       regions: {
         list: '/api/admin/regions',

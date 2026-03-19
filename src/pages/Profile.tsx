@@ -34,7 +34,7 @@ const profileFormSchema = z.object({
     isVegetarian: z.boolean(),
     isHalal: z.boolean(),
     pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]),
-    spicinessPreference: z.enum(["MILD", "MEDIUM", "HOT"]),
+    spicinessPreference: z.enum(["MILD", "MEDIUM", "SPICY"]),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -251,7 +251,7 @@ export default function Profile() {
                                                 <SelectContent>
                                                     <SelectItem value="MILD">Mild 🌶️</SelectItem>
                                                     <SelectItem value="MEDIUM">Medium 🌶️🌶️</SelectItem>
-                                                    <SelectItem value="HOT">Hot 🌶️🌶️🌶️</SelectItem>
+                                                    <SelectItem value="SPICY">Spicy 🌶️🌶️🌶️</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormDescription>

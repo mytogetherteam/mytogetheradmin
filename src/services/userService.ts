@@ -8,7 +8,7 @@ export interface UserProfile {
   isHalal: boolean;
   pricePreference: 'LOW' | 'MEDIUM' | 'HIGH';
   pricePreferenceMm?: string;
-  spicinessPreference: 'MILD' | 'MEDIUM' | 'HOT';
+  spicinessPreference: 'MILD' | 'MEDIUM' | 'SPICY';
   spicinessPreferenceMm?: string;
 }
 
