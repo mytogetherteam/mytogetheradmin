@@ -106,8 +106,9 @@ export const userService = {
     return apiClient.get<UserDetail>(config.endpoints.admin.users.detail(id));
   },
 
-  getUserOrders: async (id: string | number, page = 0, size = 10): Promise<PageResponse<OrderHistoryItem>> => {
+  getUserOrders: async (id: string | number, page = 0, size = 10, search = ""): Promise<PageResponse<OrderHistoryItem>> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (search) params.append('search', search);
     return apiClient.get<PageResponse<OrderHistoryItem>>(`${config.endpoints.admin.users.orders(id)}?${params.toString()}`);
   },
 

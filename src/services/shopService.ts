@@ -478,8 +478,12 @@ export const ShopService = {
    * Get shops pending vetting (unverified shops)
    * GET /api/admin/shops/pending-vetting
    */
-  getPendingVettingShops: async (page = 0, size = 20): Promise<PageableResponse<Shop>> => {
-    return apiClient.get<PageableResponse<Shop>>(`${config.endpoints.shops.pending}?page=${page}&size=${size}`);
+  getPendingVettingShops: async (page = 0, size = 20, search = ""): Promise<PageableResponse<Shop>> => {
+    let url = `${config.endpoints.shops.pending}?page=${page}&size=${size}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    return apiClient.get<PageableResponse<Shop>>(url);
   },
 
   /**

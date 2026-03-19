@@ -1,7 +1,8 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
-export type ReportType = 'POST' | 'COMMENT' | 'USER' | 'SHOP';
+export type ReportType = 'SHOP' | 'USER' | 'ORDER' | 'POST' | 'COMMENT' | 'BUG_TECHNICAL' | 'OTHER';
+export type ReportCategory = 'SPAM' | 'FRAUD_SCAM' | 'HARASSMENT' | 'INAPPROPRIATE_CONTENT' | 'TECHNICAL_ISSUE' | 'OTHER';
 export type ReportStatus = 'OPEN' | 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN' | 'RESOLVED';
 
 export interface Report {
@@ -19,15 +20,19 @@ export interface Report {
 
 export interface UserShopReport {
   id: number;
+  targetType: ReportType;
+  targetId: number | string;
+  category: ReportCategory;
   reporterUserId: number;
   reporterUserName: string | null;
-  reportedShopId: number;
-  reportedShopName: string;
-  reportedUserId: number;
-  reportedUserName: string | null;
-  orderId: number;
+  reportedShopId?: number;
+  reportedShopName?: string;
+  reportedUserId?: number;
+  reportedUserName?: string | null;
+  orderId?: number;
   subject: string;
   description: string;
+  contentSnippet?: string;
   status: string;
   resolutionNotes: string | null;
   createdAt: string;
@@ -39,6 +44,7 @@ export interface UserShopReportsPage {
   totalElements: number;
   totalPages: number;
   number: number;
+  size: number;
 }
 
 export interface ReportsPage {
@@ -100,10 +106,20 @@ class ModerationService {
     return apiClient.put<void>(`${config.endpoints.admin.moderation.resolveReport(id)}?status=DISMISSED`, {});
   }
 
-  // --- User/Shop Reports ---
-  async getUserShopReports(status?: ReportStatus, page = 0, size = 20): Promise<UserShopReportsPage> {
+  // --- User/Shop/Unified Reports ---
+  async getUserShopReports(
+    status?: string, 
+    page = 0, 
+    size = 20, 
+    targetType?: ReportType, 
+    category?: ReportCategory,
+    search?: string
+  ): Promise<UserShopReportsPage> {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (status) params.append('status', status);
+    if (targetType) params.append('targetType', targetType);
+    if (category) params.append('category', category);
+    if (search) params.append('search', search);
     return apiClient.get<UserShopReportsPage>(`${config.endpoints.admin.moderation.userShopReports.list}?${params.toString()}`);
   }
 
