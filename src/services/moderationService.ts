@@ -2,7 +2,7 @@ import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
 export type ReportType = 'SHOP' | 'USER' | 'ORDER' | 'POST' | 'COMMENT' | 'BUG_TECHNICAL' | 'OTHER';
-export type ReportCategory = 'SPAM' | 'FRAUD_SCAM' | 'HARASSMENT' | 'INAPPROPRIATE_CONTENT' | 'TECHNICAL_ISSUE' | 'OTHER';
+export type ReportCategory = 'SPAM' | 'FRAUD_SCAM' | 'HARASSMENT' | 'INAPPROPRIATE_CONTENT' | 'TECHNICAL_ISSUE' | 'MISINFORMATION' | 'POOR_SERVICE' | 'OTHER';
 export type ReportStatus = 'OPEN' | 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN' | 'RESOLVED';
 
 export interface Report {

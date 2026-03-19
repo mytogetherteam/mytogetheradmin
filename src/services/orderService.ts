@@ -48,6 +48,7 @@ export interface Order {
   paymentSlipUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  queueNo?: number;
   
   // Backward compatibility fields if any
   customerName?: string;

@@ -92,6 +92,12 @@ export interface Shop {
   updatedAt?: string;
   ownerName?: string;
   isOpen?: boolean;
+  adminDisabled?: boolean;
+  specialties?: string;
+  menuCategoryCount?: number;
+  menuItemCount?: number;
+  subCategoryMm?: string;
+  subCategoryTh?: string;
 }
 
 export interface DistrictDTO {
@@ -241,6 +247,11 @@ export interface MenuItem {
   displayOrder?: number;
   optionGroups?: unknown[];
   variants?: unknown[];
+  displayPrice?: string;
+  rating?: number;
+  reviewCount?: number;
+  components?: string;
+  photos?: Photo[];
 }
 
 export interface MenuCategory {

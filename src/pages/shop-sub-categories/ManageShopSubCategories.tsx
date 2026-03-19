@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
     Table,
     TableBody,
@@ -43,6 +44,7 @@ export default function ManageShopSubCategories() {
     const [loading, setLoading] = useState(false);
     const [fetchingCategories, setFetchingCategories] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebounce(searchTerm, 500);
 
     const [totalElements, setTotalElements] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
@@ -75,7 +77,7 @@ export default function ManageShopSubCategories() {
             const res = await ShopCategoryService.getShopSubCategoriesPaginated({
                 page: currentPage - 1,
                 size: pageSize,
-                search: searchTerm
+                search: debouncedSearch
             });
             if (res && res.content) {
                 setSubCategories(res.content);
@@ -90,7 +92,7 @@ export default function ManageShopSubCategories() {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, pageSize, searchTerm]);
+    }, [currentPage, pageSize, debouncedSearch]);
 
     // Replace loadSubCategories usage
     useEffect(() => {
@@ -226,7 +228,7 @@ export default function ManageShopSubCategories() {
                                                         <TableImage src={sub.imageUrl} alt={sub.name} size="sm" />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{sub.name}</div>
+                                                        <div className="font-medium">{sub.name || sub.nameEn || sub.nameMm || '—'}</div>
                                                         {(sub.nameMm || sub.nameEn || sub.nameTh) && (
                                                             <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
                                                                 {sub.nameMm && <span>{sub.nameMm}</span>}

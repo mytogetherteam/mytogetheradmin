@@ -30,11 +30,17 @@ export interface MenuApprovalDTO {
 // Keep the array format as per standard MyTogether API patterns, or unwrap directly
 // If you use standard pagination later, it might be wrapped in standard PaginatedResponse.
 // We'll return just the array for now as specified by your JSON sample structure.
+export interface PaginatedResponse<T> {
+    content: T[];
+    totalElements?: number;
+    totalPages?: number;
+}
+
 export interface MenuApprovalResponse {
     success: boolean;
     message: string;
     details: string;
-    data: MenuApprovalDTO[];
+    data: MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO>;
 }
 
 export const menuApprovalService = {
@@ -45,21 +51,24 @@ export const menuApprovalService = {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (search) params.append('search', search);
 
-    const response = await apiClient.get<MenuApprovalDTO[] | { content: MenuApprovalDTO[] } | { data: { content: MenuApprovalDTO[] } }>(
+    const response = await apiClient.get<MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO> | { data: PaginatedResponse<MenuApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.list}?${params.toString()}`
     );
     
-    // Handle standard paginated response
+    if (Array.isArray(response)) {
+        return response;
+    }
+
     if (response && typeof response === 'object') {
-        if ('data' in response && response.data && 'content' in (response.data as any)) {
-            return (response.data as any).content;
+        if ('data' in response && response.data && 'content' in response.data) {
+            return response.data.content;
         }
         if ('content' in response) {
-            return (response as any).content;
+            return response.content;
         }
     }
     
-    return Array.isArray(response) ? response : [];
+    return [];
   },
 
   /**

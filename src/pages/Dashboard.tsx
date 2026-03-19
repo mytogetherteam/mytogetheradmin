@@ -276,16 +276,7 @@ export default function Dashboard() {
     const ordersValue = liveStats.totalOrdersToday ?? liveStats.pendingOrders ?? 0;
     const ordersLabel = (liveStats.totalOrdersToday !== undefined && isLive) ? "Orders Today" : "Pending Orders";
 
-    useEffect(() => {
-        if (isLive) {
-            console.log('[Dashboard] Data Synced:', {
-                activeShops: activeShops,
-                revenueToday: revenueToday,
-                totalOrdersToday: liveStats.totalOrdersToday,
-                pendingOrders: liveStats.pendingOrders,
-            });
-        }
-    }, [isLive, liveStats, activeShops, revenueToday]);
+
 
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;
