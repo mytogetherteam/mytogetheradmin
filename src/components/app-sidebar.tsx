@@ -234,22 +234,71 @@ export function AppSidebar() {
                     <SidebarGroup>
                         <SidebarGroupLabel>Shop Tags</SidebarGroupLabel>
                         <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild isActive={isActive("/shop-categories/create")} tooltip="Create Shop Category">
-                                    <Link to="/shop-categories/create">
-                                        <Plus className={cn(isActive("/shop-categories/create") && "text-primary")} />
-                                        <span>Create Category</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild isActive={isActive("/shop-categories/manage")} tooltip="Manage Shop Categories">
-                                    <Link to="/shop-categories/manage">
-                                        <Settings2 className={cn(isActive("/shop-categories/manage") && "text-primary")} />
-                                        <span>Manage Categories</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            {/* Shop Categories */}
+                            <Collapsible asChild className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton tooltip="Shop Categories">
+                                            <Tags />
+                                            <span>Shop Categories</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/shop-categories/create")}>
+                                                    <Link to="/shop-categories/create">
+                                                        <Plus className={cn(isActive("/shop-categories/create") && "text-primary")} />
+                                                        <span>Create Shop Category</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/shop-categories/manage")}>
+                                                    <Link to="/shop-categories/manage">
+                                                        <Settings2 className={cn(isActive("/shop-categories/manage") && "text-primary")} />
+                                                        <span>Manage Shop Categories</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
+
+                            {/* Shop Sub Categories */}
+                            <Collapsible asChild className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton tooltip="Shop Sub-Categories">
+                                            <Tags />
+                                            <span>Shop Sub-Categories</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/shop-sub-categories/create")}>
+                                                    <Link to="/shop-sub-categories/create">
+                                                        <Plus className={cn(isActive("/shop-sub-categories/create") && "text-primary")} />
+                                                        <span>Create Sub-Category</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild isActive={isActive("/shop-sub-categories/manage")}>
+                                                    <Link to="/shop-sub-categories/manage">
+                                                        <List className={cn(isActive("/shop-sub-categories/manage") && "text-primary")} />
+                                                        <span>Manage Sub-Categories</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
                         </SidebarMenu>
                     </SidebarGroup>
                 )}

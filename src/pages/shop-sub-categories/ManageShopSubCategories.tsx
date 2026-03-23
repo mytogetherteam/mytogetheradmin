@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { useDebounce } from "@/hooks/use-debounce";
+import { useState, useEffect } from "react";
 import {
     Table,
     TableBody,
@@ -10,81 +9,69 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Loader2,
     Plus,
     FileSpreadsheet,
-    Trash2,
+    ArrowUpDown,
     Edit,
+    Trash2
 } from "lucide-react";
-import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead } from "@/components/SortableTableHead";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryDTO } from "@/services/shopCategoryService";
+import { TableImage } from "@/components/TableImage";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Label } from "@/components/ui/label";
-import { TableImage } from "@/components/TableImage";
 
 export default function ManageShopSubCategories() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<ShopCategoryDTO[]>([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string; value: string } | null>(null);
 
     const [subCategories, setSubCategories] = useState<ShopSubCategoryDTO[]>([]);
     const [loading, setLoading] = useState(false);
-    const [fetchingCategories, setFetchingCategories] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-    const debouncedSearch = useDebounce(searchTerm, 500);
 
-    const [totalElements, setTotalElements] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-
-    const loadCategories = useCallback(async () => {
-        setFetchingCategories(true);
-        try {
-            const res = await ShopCategoryService.getShopCategories({ page: 0, size: 100 });
-            if (res && res.content) {
-                setCategories(res.content);
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to load shop categories");
-        } finally {
-            setFetchingCategories(false);
-        }
-    }, []);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof ShopSubCategoryDTO; direction: "asc" | "desc" } | null>(null);
 
     // Load Categories on Mount
     useEffect(() => {
         loadCategories();
-    }, [loadCategories]);
+    }, []);
 
-    const fetchSubCategories = useCallback(async () => {
+    // Load SubCategories when Category Select Changes
+    useEffect(() => {
+        if (selectedCategoryId) {
+            fetchSubCategories(parseInt(selectedCategoryId));
+        } else {
+            setSubCategories([]);
+        }
+    }, [selectedCategoryId]);
+
+    const loadCategories = async () => {
+        try {
+            const res = await ShopCategoryService.getShopCategories({ page: 0, size: 1 });
+            const content = res.content || [];
+            if (content.length > 0) {
+                const first = content[0];
+                const data = { label: first.nameEn || first.name || `Category ${first.id}`, value: first.id.toString() };
+                setSelectedCategoryData(data);
+                setSelectedCategoryId(data.value);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const fetchSubCategories = async (catId: number) => {
         setLoading(true);
         try {
-            const res = await ShopCategoryService.getShopSubCategoriesPaginated({
-                page: currentPage - 1,
-                size: pageSize,
-                search: debouncedSearch
-            });
-            if (res && res.content) {
-                setSubCategories(res.content);
-                setTotalElements(res.totalElements);
+            const data = await ShopCategoryService.getShopSubCategoriesByCategory(catId);
+            if (Array.isArray(data)) {
+                setSubCategories(data);
             } else {
                 setSubCategories([]);
-                setTotalElements(0);
             }
         } catch (error) {
             console.error(error);
@@ -92,20 +79,33 @@ export default function ManageShopSubCategories() {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, pageSize, debouncedSearch]);
+    };
 
-    // Replace loadSubCategories usage
-    useEffect(() => {
-        fetchSubCategories();
-    }, [fetchSubCategories]);
+    const handleSort = (key: keyof ShopSubCategoryDTO) => {
+        let direction: "asc" | "desc" = "asc";
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
 
-    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
+    const sortedSubCategories = [...subCategories].sort((a, b) => {
+        if (!sortConfig) return 0;
+        const { key, direction } = sortConfig;
+        let aVal = a[key];
+        let bVal = b[key];
 
-    const sortedSubCategories = sortData(subCategories, sortConfig);
+        // Handle undefined values
+        if (aVal === undefined) aVal = "";
+        if (bVal === undefined) bVal = "";
 
-    const totalItems = totalElements;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const currentSubCategories = sortedSubCategories;
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+        if (aVal < bVal) return direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return direction === "asc" ? 1 : -1;
+        return 0;
+    });
 
     const exportToExcel = () => {
         if (subCategories.length === 0) {
@@ -114,7 +114,7 @@ export default function ManageShopSubCategories() {
         }
         const data = sortedSubCategories.map(c => ({
             ID: c.id,
-            Name: c.name,
+            Name: c.nameEn || c.name || `Sub-Category ${c.id}`,
             "Name (MM)": c.nameMm || "",
             "Name (EN)": c.nameEn || "",
             "Display Order": c.displayOrder,
@@ -132,7 +132,9 @@ export default function ManageShopSubCategories() {
         try {
             await ShopCategoryService.deleteShopSubCategory(id);
             toast.success("Deleted successfully");
-            fetchSubCategories();
+            if (selectedCategoryId) {
+                fetchSubCategories(parseInt(selectedCategoryId));
+            }
         } catch (error) {
             console.error(error);
             toast.error("Failed to delete shop sub-category");
@@ -156,7 +158,7 @@ export default function ManageShopSubCategories() {
                                 <FileSpreadsheet className="h-4 w-4" />
                                 Export
                             </Button>
-                            <Button onClick={() => navigate("/shop-sub-categories/create")}>
+                            <Button onClick={() => navigate(`/shop-sub-categories/create${selectedCategoryId ? `?categoryId=${selectedCategoryId}` : ""}`)}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>
@@ -164,37 +166,31 @@ export default function ManageShopSubCategories() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* Search Section */}
-                    <div className="mb-6 flex flex-col md:flex-row gap-4 items-end">
-                        <div className="flex-1 space-y-2">
-                            <Label htmlFor="search">Search Sub-Categories</Label>
-                            <Input
-                                id="search"
-                                placeholder="Search by name..."
-                                value={searchTerm}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1);
+                    {/* Filter Section */}
+                    <div className="mb-6 p-4 border rounded-lg bg-muted/20">
+                        <Label className="mb-2 block">Select Shop Category</Label>
+                        <div className="flex gap-4 items-center max-w-md">
+                            <InfiniteSearchableSelect
+                                placeholder="Select a Category"
+                                selectedValue={selectedCategoryData}
+                                onChange={(val) => {
+                                    setSelectedCategoryData(val);
+                                    setSelectedCategoryId(val?.value || "");
                                 }}
+                                fetchData={async (page, size, search) => {
+                                    const res = await ShopCategoryService.getShopCategories({ page, size, search });
+                                    return {
+                                        content: (res?.content || []).map((cat: ShopCategoryDTO) => ({
+                                            label: cat.nameEn || cat.name || `Category ${cat.id}`,
+                                            value: cat.id.toString(),
+                                        })),
+                                        last: res?.totalPages ? (page + 1 >= res.totalPages) : true,
+                                    };
+                                }}
+                                valueKey="value"
+                                labelKey="label"
                             />
                         </div>
-                        <div className="w-full md:w-[300px] space-y-2">
-                            <Label className="block">Filter by Category</Label>
-                            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    {categories.map((cat) => (
-                                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                                            {cat.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        {fetchingCategories && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mb-3" />}
                     </div>
 
                     {loading ? (
@@ -207,17 +203,31 @@ export default function ManageShopSubCategories() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                            <TableHead className="w-[80px] cursor-pointer" onClick={() => handleSort("id")}>
+                                                <div className="flex items-center gap-2">
+                                                    ID <ArrowUpDown className="h-3 w-3" />
+                                                </div>
+                                            </TableHead>
                                             <TableHead>Image</TableHead>
-                                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
-                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
-                                            <TableHead>Status</TableHead>
+                                            <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
+                                                <div className="flex items-center gap-2">
+                                                    Name <ArrowUpDown className="h-3 w-3" />
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="cursor-pointer" onClick={() => handleSort("displayOrder")}>
+                                                <div className="flex items-center gap-2">
+                                                    Order <ArrowUpDown className="h-3 w-3" />
+                                                </div>
+                                            </TableHead>
+                                            <TableHead className="cursor-pointer" onClick={() => handleSort("isActive")}>
+                                                Status
+                                            </TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currentSubCategories.length > 0 ? (
-                                            currentSubCategories.map((sub) => (
+                                        {sortedSubCategories.length > 0 ? (
+                                            sortedSubCategories.map((sub) => (
                                                 <TableRow
                                                     key={sub.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -225,15 +235,19 @@ export default function ManageShopSubCategories() {
                                                 >
                                                     <TableCell className="font-mono text-xs">{sub.id}</TableCell>
                                                     <TableCell>
-                                                        <TableImage src={sub.imageUrl} alt={sub.name} size="sm" />
+                                                        <TableImage 
+                                                            src={sub.imageUrl} 
+                                                            alt={sub.nameEn || sub.name || "Sub-Category"} 
+                                                            size="sm" 
+                                                        />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{sub.name || sub.nameEn || sub.nameMm || '—'}</div>
+                                                        <div className="font-medium">{sub.nameEn || sub.name || `Sub-Category ${sub.id}`}</div>
                                                         {(sub.nameMm || sub.nameEn || sub.nameTh) && (
-                                                            <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                                                {sub.nameMm && <span>{sub.nameMm}</span>}
-                                                                {sub.nameTh && <span>• {sub.nameTh}</span>}
-                                                                {sub.nameEn && <span>• {sub.nameEn}</span>}
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {sub.nameMm && <span className="mr-2">{sub.nameMm}</span>}
+                                                                {sub.nameEn && <span className="mr-2">{sub.nameEn}</span>}
+                                                                {sub.nameTh && <span>{sub.nameTh}</span>}
                                                             </div>
                                                         )}
                                                     </TableCell>
@@ -271,23 +285,12 @@ export default function ManageShopSubCategories() {
                                         ) : (
                                             <TableRow>
                                                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                    No sub-categories found.
+                                                    {selectedCategoryId ? "No sub-categories found for this category." : "Please select a category above."}
                                                 </TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
-                            </div>
-
-                            <div className="mt-4">
-                                <DataTablePagination
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    pageSize={pageSize}
-                                    totalItems={totalItems}
-                                    onPageChange={setCurrentPage}
-                                    onPageSizeChange={setPageSize}
-                                />
                             </div>
                         </>
                     )}

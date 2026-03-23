@@ -3,7 +3,7 @@ import { config } from '@/config/config';
 
 export interface ShopCategoryDTO {
   id: number;
-  name: string;
+  name?: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
@@ -14,36 +14,26 @@ export interface ShopCategoryDTO {
 
 export interface ShopSubCategoryDTO {
   id: number;
-  name: string;
+  name?: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
   slug?: string;
   imageUrl?: string;
   isActive: boolean;
-  categoryId?: number;
-  categoryName?: string;
+  categoryId: number;
   displayOrder?: number;
 }
 
 export interface ShopSubCategoryRequest {
-  name: string;
+  name?: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
   slug?: string;
   active: boolean;
+  categoryId?: number;
 }
-
-
-export interface CreateShopCategoryRequest {
-  nameMm?: string;
-  nameTh?: string;
-  nameEn?: string;
-  slug?: string;
-  active: boolean;
-}
-
 
 export const ShopCategoryService = {
   /**
@@ -148,6 +138,15 @@ export const ShopCategoryService = {
   },
 
   /**
+   * Get shop sub-categories by category ID
+   */
+  getShopSubCategoriesByCategory: async (categoryId: number): Promise<ShopSubCategoryDTO[]> => {
+    const url = config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId);
+    const response = await apiClient.get<ShopSubCategoryDTO[]>(url);
+    return Array.isArray(response) ? response : [];
+  },
+
+  /**
    * Get shop sub-category by ID
    */
   getShopSubCategoryById: async (id: number): Promise<ShopSubCategoryDTO> => {
@@ -158,11 +157,10 @@ export const ShopCategoryService = {
    * Create a new shop sub-category
    */
   createShopSubCategory: async (categoryId: number, data: ShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
-    // Some endpoints might expect categoryId in the path or body
-    const url = config.endpoints.admin.payment.shopSubCategoriesByCategory
-      ? config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId)
-      : config.endpoints.admin.payment.shopSubCategories;
-    return apiClient.post<ShopSubCategoryDTO>(url, data);
+    const url = config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId);
+    // Ensure categoryId is in the body if requested by user
+    const payload = { ...data, categoryId };
+    return apiClient.post<ShopSubCategoryDTO>(url, payload);
   },
 
   /**

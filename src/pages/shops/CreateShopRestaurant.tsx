@@ -56,7 +56,6 @@ export interface ShopFormValues {
     nameEn: string;
     nameMm?: string;
     nameTh?: string;
-    slug?: string;
     shopCategoryId: number;
     addressEn: string;
     addressMm?: string;
@@ -93,7 +92,6 @@ const shopFormSchema = z.object({
     nameEn: z.string().min(1, "Name is required"),
     nameMm: z.string().optional().or(z.literal("")),
     nameTh: z.string().optional().or(z.literal("")),
-    slug: z.string().optional().or(z.literal("")),
     shopCategoryId: z.number().min(1, "Category is required"),
     addressEn: z.string().min(1, "Address is required"),
     addressMm: z.string().optional().or(z.literal("")),
@@ -161,9 +159,7 @@ export default function CreateShopRestaurant() {
     const [shopCategories, setShopCategories] = useState<ShopCategoryDTO[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(false)
 
-    const generateSlug = (value: string) => {
-        return value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    };
+
 
     const form = useForm<ShopFormValues>({
         resolver: zodResolver(shopFormSchema) as Resolver<ShopFormValues>,
@@ -172,7 +168,6 @@ export default function CreateShopRestaurant() {
             nameEn: "",
             nameMm: "",
             nameTh: "",
-            slug: "",
             shopCategoryId: 0,
             addressEn: "",
             addressMm: "",
@@ -277,7 +272,6 @@ export default function CreateShopRestaurant() {
                 nameEn: shop.nameEn || "",
                 nameMm: shop.nameMm || "",
                 nameTh: shop.nameTh || "",
-                slug: shop.slug || "",
                 shopCategoryId: shop.shopCategory?.id || 0,
                 addressEn: shop.addressEn || "",
                 addressMm: shop.addressMm || "",
@@ -386,7 +380,6 @@ export default function CreateShopRestaurant() {
                 nameEn: "",
                 nameMm: "",
                 nameTh: "",
-                slug: "",
                 shopCategoryId: 0,
                 addressEn: "",
                 addressMm: "",
@@ -446,7 +439,6 @@ export default function CreateShopRestaurant() {
                 nameEn: data.nameEn,
                 nameMm: data.nameMm || "",
                 nameTh: data.nameTh || "",
-                slug: data.slug || "",
                 shopCategoryId: data.shopCategoryId,
                 addressEn: data.addressEn,
                 addressMm: data.addressMm || "",
@@ -629,50 +621,22 @@ export default function CreateShopRestaurant() {
                                         <CardTitle>Basic Information</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid gap-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="nameEn"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>* Shop Name (English)</FormLabel>
-                                                        <FormControl>
-                                                            <Input 
-                                                                placeholder="e.g. My Together Cafe" 
-                                                                {...field}
-                                                                onChange={(e) => {
-                                                                    field.onChange(e);
-                                                                    if (!isEditMode) {
-                                                                        form.setValue("slug", generateSlug(e.target.value));
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <FormField
-                                                control={form.control}
-                                                name="slug"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Slug</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="e.g. my_together_cafe"
-                                                                {...field}
-                                                                onChange={(e) => {
-                                                                    field.onChange(generateSlug(e.target.value));
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="nameEn"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>* Shop Name (English)</FormLabel>
+                                                    <FormControl>
+                                                        <Input 
+                                                            placeholder="e.g. My Together Cafe" 
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField

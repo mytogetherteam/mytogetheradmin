@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
+import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryRequest } from "@/services/shopCategoryService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +69,7 @@ export default function CreateShopSubCategory() {
             const subCat = await ShopCategoryService.getShopSubCategoryById(subId);
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
-            setNameEn(subCat.nameEn || "");
+            setNameEn(subCat.nameEn || subCat.name || "");
             setSlug(subCat.slug || (subCat.nameEn ? generateSlug(subCat.nameEn) : ""));
             setIsActive(subCat.isActive !== false);
             if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
@@ -111,27 +111,29 @@ export default function CreateShopSubCategory() {
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCategoryId && !isEditMode) {
+        const catId = parseInt(selectedCategoryId);
+        if (!catId && !isEditMode) {
             toast.error("Please select a parent category");
             return;
         }
 
         setSubmitting(true);
         try {
-            const dataObj = {
+            const dataObj: ShopSubCategoryRequest = {
                 name: nameEn,
                 nameMm,
                 nameTh,
                 nameEn,
                 slug: slug || generateSlug(nameEn),
                 active: isActive,
+                categoryId: catId || undefined
             };
 
             if (isEditMode && id) {
                 await ShopCategoryService.updateShopSubCategory(parseInt(id), dataObj);
                 toast.success("Sub-Category updated successfully");
             } else {
-                await ShopCategoryService.createShopSubCategory(parseInt(selectedCategoryId), dataObj);
+                await ShopCategoryService.createShopSubCategory(catId, dataObj);
                 toast.success("Sub-Category created successfully");
             }
             navigate("/shop-sub-categories/manage");
@@ -204,7 +206,7 @@ export default function CreateShopSubCategory() {
                                     ) : (
                                         categories.map((cat) => (
                                             <SelectItem key={cat.id} value={cat.id.toString()}>
-                                                {cat.name}
+                                                {cat.nameEn || cat.name || `Category ${cat.id}`}
                                             </SelectItem>
                                         ))
                                     )}
