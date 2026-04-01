@@ -626,15 +626,15 @@ export default function BannerManagement() {
                                             <TableRow key={shop.id} className="hover:bg-muted/20 transition-colors">
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
-                                                        <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.nameMm} size="sm" />
+                                                        <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.nameMm || shop.name} size="sm" />
                                                         <div>
-                                                           <p className="font-medium text-sm leading-tight">{shop.nameEn || shop.nameMm}</p>
+                                                           <p className="font-medium text-sm leading-tight">{shop.nameEn || shop.nameMm || shop.name}</p>
                                                             <p className="text-[10px] text-muted-foreground font-mono">ID: {shop.id}</p>
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
-                                                    {shop.shopCategory?.nameEn || shop.category || "—"}
+                                                    {shop.shopCategory?.nameEn || shop.shopCategory?.nameMm || shop.category || "—"}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={shop.isActive ? "default" : "secondary"} className="text-[10px]">
@@ -760,7 +760,7 @@ export default function BannerManagement() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium">Title (English) <span className="text-red-500">*</span></label>
+                                <label className="text-sm font-medium">Title (English)</label>
                                 <Input
                                     placeholder="English Title"
                                     value={form.titleEn}

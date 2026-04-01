@@ -6,7 +6,6 @@ export interface CuisineDTO {
   nameEn: string;
   nameMm: string;
   nameTh: string;
-  slug?: string;
   isActive: boolean;
   imageUrl?: string;
   displayOrder?: number;

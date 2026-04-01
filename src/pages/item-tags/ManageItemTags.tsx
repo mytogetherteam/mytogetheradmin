@@ -17,7 +17,7 @@ import {
     Search,
     FileSpreadsheet,
     Trash2,
-    Pencil, // Changed from Edit to Pencil as per instruction
+    Pencil,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
@@ -32,13 +32,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
+import { ItemTagService, ItemTagDTO } from "@/services/itemTagService";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
-export default function ManageShopCategories() {
+export default function ManageItemTags() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<ShopCategoryDTO[]>([]);
+    const [tags, setTags] = useState<ItemTagDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,18 +49,18 @@ export default function ManageShopCategories() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCategories = useCallback(async () => {
+    const loadTags = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await ShopCategoryService.getShopCategories({
-                page: 0,
+            const res = await ItemTagService.getItemTags({
+                page: 0, // Since frontend sorting is used, load a larger set or adjust API
                 size: 200,
                 search: searchTerm
             });
-            setCategories(res.content || []);
+            setTags(res.content || []);
         } catch (e) {
             console.error(e);
-            toast.error("Failed to load shop categories");
+            toast.error("Failed to load item tags");
         } finally {
             setLoading(false);
         }
@@ -68,33 +68,35 @@ export default function ManageShopCategories() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadCategories();
+            loadTags();
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm, loadCategories]);
+    }, [searchTerm, loadTags]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-    const sortedCategories = sortData(categories, sortConfig);
+    const sortedTags = sortData(tags, sortConfig);
 
-    const totalItems = sortedCategories.length;
+    const totalItems = sortedTags.length;
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentCategories = sortedCategories.slice(startIndex, endIndex);
+    const currentTags = sortedTags.slice(startIndex, endIndex);
 
     const exportToExcel = () => {
-        const data = sortedCategories.map((c) => ({
-            ID: c.id,
-            Name: c.name,
-            "Name (MM)": c.nameMm || "",
-            "Name (EN)": c.nameEn || "",
-            "Is Active": c.active !== false ? "Yes" : "No",
+        const data = sortedTags.map((t) => ({
+            ID: t.id,
+            "Name (EN)": t.nameEn || "",
+            "Name (MM)": t.nameMm || "",
+            "Name (TH)": t.nameTh || "",
+            "Tag Type": t.tagType || "",
+            "Color Code": t.colorCode || "",
+            "Is Active": t.isActive !== false ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Shop Categories");
-        XLSX.writeFile(wb, "ShopCategories.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Item Tags");
+        XLSX.writeFile(wb, "ItemTags.xlsx");
     };
 
     const handleDeleteClick = (e: React.MouseEvent, id: number, name: string) => {
@@ -105,13 +107,13 @@ export default function ManageShopCategories() {
     const handleDeleteConfirm = async () => {
         setDeleting(true);
         try {
-            await ShopCategoryService.deleteShopCategory(deleteDialog.id);
-            toast.success("Shop category deleted successfully");
+            await ItemTagService.deleteItemTag(deleteDialog.id);
+            toast.success("Item tag deleted successfully");
             setDeleteDialog({ open: false, id: 0, name: "" });
-            loadCategories();
+            loadTags();
         } catch (e) {
             console.error(e);
-            toast.error("Failed to delete shop category");
+            toast.error("Failed to delete item tag");
         } finally {
             setDeleting(false);
         }
@@ -123,9 +125,9 @@ export default function ManageShopCategories() {
                 <CardHeader>
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
-                            <CardTitle className="leading-tight">Manage Shop Categories</CardTitle>
+                            <CardTitle className="leading-tight">Manage Item Discovery Tags</CardTitle>
                             <CardDescription className="line-clamp-2 md:line-clamp-none">
-                                Global classification management for shops and restaurants.
+                                Global discovery tags for items (e.g., Mala, Keto, Halal).
                             </CardDescription>
                         </div>
 
@@ -133,7 +135,7 @@ export default function ManageShopCategories() {
                             <div className="relative w-full sm:w-auto">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search..."
+                                    placeholder="Search tags..."
                                     className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
                                     value={searchTerm}
                                     onChange={(e) => {
@@ -146,7 +148,7 @@ export default function ManageShopCategories() {
                                 <FileSpreadsheet className="h-4 w-4" />
                                 Export
                             </Button>
-                            <Button onClick={() => navigate("/shop-categories/create")}>
+                            <Button onClick={() => navigate("/item-tags/create")}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>
@@ -165,37 +167,53 @@ export default function ManageShopCategories() {
                                     <TableHeader>
                                         <TableRow>
                                             <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
-                                            <TableHead>Image</TableHead>
-                                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Icon</TableHead>
+                                            <SortableTableHead label="Name" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Tag Type</TableHead>
+                                            <TableHead>Color</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currentCategories.length > 0 ? (
-                                            currentCategories.map((cat) => (
+                                        {currentTags.length > 0 ? (
+                                            currentTags.map((tag) => (
                                                 <TableRow
-                                                    key={cat.id}
+                                                    key={tag.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/shop-categories/create?id=${cat.id}`)}
+                                                    onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
                                                 >
-                                                    <TableCell className="font-mono text-xs">{cat.id}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{tag.id}</TableCell>
                                                     <TableCell>
-                                                        <TableImage src={cat.imageUrl} alt={cat.name} size="sm" />
+                                                        <TableImage src={tag.iconUrl} alt={tag.nameEn || "Tag"} size="sm" />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`}</div>
-                                                        {(cat.nameMm || cat.nameEn || cat.nameTh) && (
+                                                        <div className="font-medium">{tag.nameEn || tag.nameMm || tag.nameTh || `Tag ${tag.id}`}</div>
+                                                        {(tag.nameMm || tag.nameTh) && (
                                                             <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                                                {cat.nameMm && <span>{cat.nameMm}</span>}
-                                                                {cat.nameTh && <span>• {cat.nameTh}</span>}
-                                                                {cat.nameEn && <span>• {cat.nameEn}</span>}
+                                                                {tag.nameMm && <span>{tag.nameMm}</span>}
+                                                                {tag.nameTh && <span>• {tag.nameTh}</span>}
                                                             </div>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                            {cat.active !== false ? "Active" : "Inactive"}
+                                                        <span className="text-sm border px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
+                                                            {tag.tagType || "Default"}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {tag.colorCode ? (
+                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                                                                <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: tag.colorCode }}></div>
+                                                                {tag.colorCode}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tag.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                                            {tag.isActive !== false ? "Active" : "Inactive"}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-right">
@@ -207,12 +225,12 @@ export default function ManageShopCategories() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-8 w-8 p-0"
-                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/shop-categories/create?id=${cat.id}`); }}
+                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/item-tags/create?id=${tag.id}`); }}
                                                                         >
                                                                             <Pencil className="h-4 w-4" />
                                                                         </Button>
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent>Edit Category</TooltipContent>
+                                                                    <TooltipContent>Edit Tag</TooltipContent>
                                                                 </Tooltip>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
@@ -220,12 +238,12 @@ export default function ManageShopCategories() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-8 w-8 p-0 text-destructive"
-                                                                            onClick={(e) => handleDeleteClick(e, cat.id, cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`)}
+                                                                            onClick={(e) => handleDeleteClick(e, tag.id, tag.nameEn || tag.nameMm || tag.nameTh || `Tag ${tag.id}`)}
                                                                         >
                                                                             <Trash2 className="h-4 w-4" />
                                                                         </Button>
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent>Delete Category</TooltipContent>
+                                                                    <TooltipContent>Delete Tag</TooltipContent>
                                                                 </Tooltip>
                                                             </div>
                                                         </TooltipProvider>
@@ -234,8 +252,8 @@ export default function ManageShopCategories() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                    No shop categories found.
+                                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                                    No item tags found.
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -261,7 +279,7 @@ export default function ManageShopCategories() {
             <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Shop Category?</DialogTitle>
+                        <DialogTitle>Delete Item Tag?</DialogTitle>
                         <DialogDescription>
                             This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
                         </DialogDescription>

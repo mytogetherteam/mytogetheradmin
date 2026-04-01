@@ -13,6 +13,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService } from "@/services/menuService";
@@ -27,7 +29,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
-import { OptionGroup, Variant, Option, MenuSubCategory } from "@/services/menuService";
+import { OptionGroup, Variant, Option, MenuSubCategory, ItemTag, ComboComponent } from "@/services/menuService";
 import {
     DndContext,
     closestCenter,
@@ -103,7 +105,6 @@ export default function CreateMenuItem() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [slug, setSlug] = useState("");
     const [description, setDescription] = useState("");
     const [descriptionMm, setDescriptionMm] = useState("");
     const [descriptionTh, setDescriptionTh] = useState("");
@@ -123,7 +124,25 @@ export default function CreateMenuItem() {
     const [isAvailable, setIsAvailable] = useState(true);
     const [isCombo, setIsCombo] = useState(false);
     const [isPopular, setIsPopular] = useState(false);
+    const [isHotDeal, setIsHotDeal] = useState(false);
+    const [isRecommended, setIsRecommended] = useState(false);
     const [displayOrder, setDisplayOrder] = useState<string>("1");
+
+    // Meal Types
+    const [mealTypes, setMealTypes] = useState<string[]>([]);
+
+    // Tags
+    const [availableTags, setAvailableTags] = useState<ItemTag[]>([]);
+    const [tagIds, setTagIds] = useState<number[]>([]);
+
+    // Master Item / Category linking
+    const [masterItemId, setMasterItemId] = useState<string>("");
+    const [selectedMasterItemData, setSelectedMasterItemData] = useState<{ label: string, value: string } | null>(null);
+    const [masterCategoryId, setMasterCategoryId] = useState<string>("");
+    const [selectedMasterCategoryData, setSelectedMasterCategoryData] = useState<{ label: string, value: string } | null>(null);
+
+    // Combo Components
+    const [comboComponents, setComboComponents] = useState<ComboComponent[]>([]);
 
     // Data for dropdowns
     const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
@@ -185,6 +204,66 @@ export default function CreateMenuItem() {
         };
     }, []);
 
+    // Fetch item tags on mount
+    useEffect(() => {
+        menuService.getAllItemTags().then(setAvailableTags).catch(console.error);
+    }, []);
+
+    const fetchMasterItemData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await menuService.searchMasterItems(search, page, size);
+        return {
+            content: res.content.map(item => ({ label: item.nameEn || item.name, value: String(item.id) })),
+            last: res.last
+        };
+    }, []);
+
+    const fetchMasterCategoryData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await menuService.getAllMasterMenuCategories(page, size);
+        const filtered = search
+            ? res.content.filter(c => (c.nameEn || c.name || "").toLowerCase().includes(search.toLowerCase()))
+            : res.content;
+        return {
+            content: filtered.map(c => ({ label: c.nameEn || c.name, value: String(c.id) })),
+            last: res.last
+        };
+    }, []);
+
+    const fetchComboItemData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await menuService.getAllMenuItems(page, size, search);
+        return {
+            content: res.content.map(item => ({ label: item.nameEn || item.name, value: String(item.id) })),
+            last: res.last
+        };
+    }, []);
+
+    const toggleMealType = (type: string) => {
+        setMealTypes(prev =>
+            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+        );
+    };
+
+    const toggleTag = (tagId: number) => {
+        setTagIds(prev =>
+            prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+        );
+    };
+
+    const addComboComponent = () => {
+        setComboComponents(prev => [...prev, { includedItemId: 0, quantity: 1, displayOrder: prev.length + 1 }]);
+    };
+
+    const removeComboComponent = (index: number) => {
+        setComboComponents(prev => prev.filter((_, i) => i !== index).map((c, i) => ({ ...c, displayOrder: i + 1 })));
+    };
+
+    const updateComboComponent = (index: number, updates: Partial<ComboComponent>) => {
+        setComboComponents(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], ...updates };
+            return next;
+        });
+    };
+
     const fetchSubCategoryData = useCallback(async (page: number, size: number, search: string) => {
         if (!categoryId) return { content: [], last: true };
         const res = await menuService.getMenuSubCategories(parseInt(categoryId));
@@ -207,7 +286,6 @@ export default function CreateMenuItem() {
             setNameMm(item.nameMm || "");
             setNameTh(item.nameTh || "");
             setNameEn(item.nameEn || "");
-            setSlug(item.slug || "");
             setDescription(item.description || "");
             setDescriptionMm(item.descriptionMm || "");
             setDescriptionTh(item.descriptionTh || "");
@@ -234,11 +312,23 @@ export default function CreateMenuItem() {
             
             setIsVegetarian(item.isVegetarian || false);
             setIsSpicy(item.isSpicy || false);
-
             setIsAvailable(item.isAvailable !== false);
             setIsCombo(item.isCombo || false);
             setIsPopular(item.isPopular || false);
+            setIsHotDeal(item.isHotDeal || false);
+            setIsRecommended(item.isRecommended || false);
             setDisplayOrder(String(item.displayOrder || 1));
+            setMealTypes(item.mealTypes || []);
+            setTagIds(item.tagIds || (item.tags ? item.tags.map(t => t.id) : []));
+            if (item.masterItemId) {
+                setMasterItemId(String(item.masterItemId));
+                setSelectedMasterItemData({ label: `Master Item #${item.masterItemId}`, value: String(item.masterItemId) });
+            }
+            if (item.masterCategoryId) {
+                setMasterCategoryId(String(item.masterCategoryId));
+                setSelectedMasterCategoryData({ label: `Master Category #${item.masterCategoryId}`, value: String(item.masterCategoryId) });
+            }
+            setComboComponents(item.components || []);
             setOptionGroups(item.optionGroups || []);
             setVariants(item.variants || []);
 
@@ -253,20 +343,6 @@ export default function CreateMenuItem() {
         }
     }, []);
 
-    const generateSlug = (value: string) => {
-        return value
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-    };
-
-    useEffect(() => {
-        if (!isEditMode) {
-            setSlug(generateSlug(nameEn || ""));
-        }
-    }, [nameEn, isEditMode]);
-
     useEffect(() => {
         if (isEditMode && id) {
             loadItem(parseInt(id));
@@ -275,7 +351,6 @@ export default function CreateMenuItem() {
             setNameMm("");
             setNameTh("");
             setNameEn("");
-            setSlug("");
             setDescription("");
             setDescriptionMm("");
             setDescriptionTh("");
@@ -297,7 +372,16 @@ export default function CreateMenuItem() {
             setIsAvailable(true);
             setIsCombo(false);
             setIsPopular(false);
+            setIsHotDeal(false);
+            setIsRecommended(false);
             setDisplayOrder("1");
+            setMealTypes([]);
+            setTagIds([]);
+            setMasterItemId("");
+            setSelectedMasterItemData(null);
+            setMasterCategoryId("");
+            setSelectedMasterCategoryData(null);
+            setComboComponents([]);
             setImageFile(null);
             setImagePreview(null);
             setExistingImage(null);
@@ -442,7 +526,6 @@ export default function CreateMenuItem() {
                 nameEn: nameEn,
                 nameMm: nameMm || "",
                 nameTh: nameTh || "",
-                slug: slug || "",
                 description: description || "",
                 descriptionMm: descriptionMm || "",
                 descriptionTh: descriptionTh || "",
@@ -460,7 +543,14 @@ export default function CreateMenuItem() {
                 isAvailable: isAvailable,
                 isCombo: isCombo,
                 isPopular: isPopular,
+                isHotDeal: isHotDeal,
+                isRecommended: isRecommended,
                 displayOrder: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
+                mealTypes: mealTypes,
+                tagIds: tagIds,
+                masterItemId: masterItemId ? Number(masterItemId) : undefined,
+                masterCategoryId: masterCategoryId ? Number(masterCategoryId) : undefined,
+                components: isCombo ? comboComponents.map((c, i) => ({ ...c, displayOrder: i + 1 })) : [],
                 optionGroups: optionGroups.map(og => ({
                     ...og,
                     name: og.nameEn,
@@ -623,17 +713,9 @@ export default function CreateMenuItem() {
                                     <Input value={nameTh} onChange={e => setNameTh(e.target.value)} placeholder="e.g. ชีสเบอร์เกอร์" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Name (English) / Default*</Label>
+                                    <Label>Name (English) / Default</Label>
                                     <Input value={nameEn} onChange={e => setNameEn(e.target.value)} required placeholder="e.g. Cheese Burger" />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Slug</Label>
-                                    <Input 
-                                        value={slug} 
-                                        onChange={(e) => setSlug(generateSlug(e.target.value))} 
-                                    />
-                                </div>
-
                                 <div className="space-y-2 mt-4">
                                     <Label>Description (Default)</Label>
                                     <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ingredients, taste, etc." rows={2} />
@@ -694,7 +776,7 @@ export default function CreateMenuItem() {
 
                                 <div className="grid grid-cols-2 gap-4 mt-4">
                                     <div className="space-y-2">
-                                        <Label>Base Price*</Label>
+                                        <Label>Base Price</Label>
                                         <PriceInput
                                             value={price}
                                             onValueChange={setPrice}
@@ -743,15 +825,161 @@ export default function CreateMenuItem() {
                                         <Label htmlFor="spicy" className="font-medium cursor-pointer">Spicy / Hot</Label>
                                     </div>
                                     <div className="flex items-center space-x-3">
-                                        <Switch checked={isCombo} onCheckedChange={setIsCombo} id="combo" />
+                                        <Switch checked={isCombo} onCheckedChange={(val) => { setIsCombo(val); if (!val) setComboComponents([]); }} id="combo" />
                                         <Label htmlFor="combo" className="font-medium cursor-pointer">Combo Meal</Label>
                                     </div>
                                     <div className="flex items-center space-x-3">
                                         <Switch checked={isPopular} onCheckedChange={setIsPopular} id="popular" />
                                         <Label htmlFor="popular" className="font-medium cursor-pointer">Popular Item</Label>
                                     </div>
+                                    <div className="flex items-center space-x-3">
+                                        <Switch checked={isHotDeal} onCheckedChange={setIsHotDeal} id="hotdeal" />
+                                        <Label htmlFor="hotdeal" className="font-medium cursor-pointer">Hot Deal</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                        <Switch checked={isRecommended} onCheckedChange={setIsRecommended} id="recommended" />
+                                        <Label htmlFor="recommended" className="font-medium cursor-pointer">Recommended</Label>
+                                    </div>
+                                </div>
+
+                                {/* Meal Types */}
+                                <div className="space-y-2 mt-4">
+                                    <Label className="text-sm font-medium">Meal Types</Label>
+                                    <div className="flex gap-6 p-3 bg-muted/20 rounded-lg">
+                                        {[{ value: 'BREAKFAST', label: 'Breakfast' }, { value: 'LUNCH', label: 'Lunch' }, { value: 'DINNER', label: 'Dinner' }].map(mt => (
+                                            <div key={mt.value} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`meal-${mt.value}`}
+                                                    checked={mealTypes.includes(mt.value)}
+                                                    onCheckedChange={() => toggleMealType(mt.value)}
+                                                />
+                                                <Label htmlFor={`meal-${mt.value}`} className="cursor-pointer text-sm font-medium">{mt.label}</Label>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="space-y-6 pt-6 border-t font-sans">
+                            {/* Tags Section */}
+                            <div className="space-y-3">
+                                <h3 className="text-xl font-bold">Item Tags</h3>
+                                <p className="text-sm text-muted-foreground">Select discovery tags to help users find this item.</p>
+                                {availableTags.length === 0 ? (
+                                    <div className="text-sm text-muted-foreground italic">No tags available.</div>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/10">
+                                        {availableTags.map(tag => {
+                                            const selected = tagIds.includes(tag.id);
+                                            return (
+                                                <Badge
+                                                    key={tag.id}
+                                                    variant={selected ? "default" : "outline"}
+                                                    className="cursor-pointer select-none transition-all"
+                                                    onClick={() => toggleTag(tag.id)}
+                                                >
+                                                    {tag.nameEn || tag.name}
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Master Links */}
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-bold">Master Catalogue Links</h3>
+                                <p className="text-sm text-muted-foreground">Optionally link this item to a global master item and master category for better discoverability.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Master Item</Label>
+                                        <InfiniteSearchableSelect
+                                            fetchData={fetchMasterItemData}
+                                            valueKey="value"
+                                            labelKey="label"
+                                            selectedValue={selectedMasterItemData}
+                                            onChange={(item) => {
+                                                setMasterItemId(item?.value || "");
+                                                setSelectedMasterItemData(item);
+                                            }}
+                                            placeholder="Search master items..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Master Category</Label>
+                                        <InfiniteSearchableSelect
+                                            fetchData={fetchMasterCategoryData}
+                                            valueKey="value"
+                                            labelKey="label"
+                                            selectedValue={selectedMasterCategoryData}
+                                            onChange={(item) => {
+                                                setMasterCategoryId(item?.value || "");
+                                                setSelectedMasterCategoryData(item);
+                                            }}
+                                            placeholder="Search master categories..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Combo Components Section - only visible when isCombo is true */}
+                            {isCombo && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-bold">Combo Components</h3>
+                                            <p className="text-sm text-muted-foreground">Define the items included in this combo meal.</p>
+                                        </div>
+                                        <Button type="button" variant="outline" size="sm" onClick={addComboComponent} className="gap-2">
+                                            <Plus className="h-4 w-4" /> Add Item
+                                        </Button>
+                                    </div>
+                                    <Card className="border-dashed bg-muted/5">
+                                        <CardContent className="pt-4 space-y-3">
+                                            {comboComponents.length === 0 ? (
+                                                <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
+                                                    No combo items added. Click "Add Item" to include items in this combo.
+                                                </div>
+                                            ) : (
+                                                comboComponents.map((comp, cIdx) => (
+                                                    <div key={cIdx} className="flex flex-wrap items-center gap-3 p-3 border rounded-xl bg-white shadow-sm">
+                                                        <div className="flex-1 min-w-[200px]">
+                                                            <InfiniteSearchableSelect
+                                                                fetchData={fetchComboItemData}
+                                                                valueKey="value"
+                                                                labelKey="label"
+                                                                selectedValue={comp.includedItemId ? { label: comp.itemName || `Item #${comp.includedItemId}`, value: String(comp.includedItemId) } : null}
+                                                                onChange={(item) => updateComboComponent(cIdx, { includedItemId: item ? Number(item.value) : 0, itemName: item?.label })}
+                                                                placeholder="Search included item..."
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2 w-32">
+                                                            <Label className="text-xs whitespace-nowrap">Qty:</Label>
+                                                            <Input
+                                                                type="number"
+                                                                min={1}
+                                                                value={comp.quantity}
+                                                                onChange={e => updateComboComponent(cIdx, { quantity: parseInt(e.target.value) || 1 })}
+                                                                className="h-9 w-20 text-sm"
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-muted-foreground hover:text-destructive"
+                                                            onClick={() => removeComboComponent(cIdx)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-6 pt-6 border-t font-sans">

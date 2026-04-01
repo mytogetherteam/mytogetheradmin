@@ -32,18 +32,9 @@ export default function CuisineForm() {
         nameEn: "",
         nameMm: "",
         nameTh: "",
-        slug: "",
         isActive: true,
         displayOrder: 1,
     });
-
-    const generateSlug = (value: string) => {
-        return value
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-    };
 
     useEffect(() => {
         if (isEditMode) {
@@ -54,7 +45,6 @@ export default function CuisineForm() {
                         nameEn: data.nameEn ?? "",
                         nameMm: data.nameMm ?? "",
                         nameTh: data.nameTh ?? "",
-                        slug: data.slug ?? "",
                         isActive: data.isActive ?? true,
                         displayOrder: data.displayOrder || 1,
                     });
@@ -98,7 +88,6 @@ export default function CuisineForm() {
                 nameEn: formData.nameEn || "",
                 nameMm: formData.nameMm || "",
                 nameTh: formData.nameTh || "",
-                slug: formData.slug || "",
                 isActive: formData.isActive,
             };
 
@@ -208,7 +197,6 @@ export default function CuisineForm() {
                                         setFormData((prev) => ({
                                             ...prev,
                                             nameEn: value,
-                                            slug: !isEditMode ? generateSlug(value) : prev.slug,
                                         }));
                                     }}
                                     required
@@ -230,21 +218,6 @@ export default function CuisineForm() {
                                     placeholder="อาหารอิตาเลี่ยน"
                                     value={formData.nameTh}
                                     onChange={(e) => setFormData({ ...formData, nameTh: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="slug">Slug</Label>
-                                <Input
-                                    id="slug"
-                                    placeholder="e.g. italian"
-                                    value={formData.slug}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            slug: generateSlug(value),
-                                        }));
-                                    }}
                                 />
                             </div>
                         </div>

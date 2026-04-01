@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShopCategoryService } from "@/services/shopCategoryService";
+import { MasterItemService } from "@/services/masterItemService";
+import { MasterMenuCategoryService, MasterMenuCategoryDTO } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +17,9 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
-export default function CreateShopCategory() {
+export default function CreateMasterItem() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const id = searchParams.get("id");
@@ -28,7 +30,9 @@ export default function CreateShopCategory() {
     const [nameEn, setNameEn] = useState("");
     const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
+    const [masterCategoryId, setMasterCategoryId] = useState<string>("");
 
+    const [categories, setCategories] = useState<MasterMenuCategoryDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -39,45 +43,50 @@ export default function CreateShopCategory() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
 
-
-
-    const handleNameEnChange = (value: string) => {
-        setNameEn(value);
-    };
-
-    const loadCategory = async (catId: number) => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const cat = await ShopCategoryService.getShopCategoryById(catId);
-            setNameMm(cat.nameMm || "");
-            setNameTh(cat.nameTh || "");
-            setNameEn(cat.nameEn || "");
-                setDisplayOrder(cat.displayOrder || 1);
-            setIsActive(cat.active !== false);
-            if (cat.imageUrl) {
-                setExistingImage(cat.imageUrl);
+            // Load Categories for dropdown
+            const catRes = await MasterMenuCategoryService.getMasterMenuCategories({ page: 0, size: 500 });
+            setCategories(catRes.content || []);
+
+            // If edit mode, load Master Item
+            if (isEditMode && id) {
+                const item = await MasterItemService.getMasterItemById(parseInt(id));
+                setNameMm(item.nameMm || "");
+                setNameTh(item.nameTh || "");
+                setNameEn(item.nameEn || "");
+                setDisplayOrder(item.displayOrder || 1);
+                setIsActive(item.isActive !== false);
+                if (item.masterCategoryId) {
+                    setMasterCategoryId(item.masterCategoryId.toString());
+                }
+                if (item.imageUrl) {
+                    setExistingImage(item.imageUrl);
+                }
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load shop category");
+            toast.error("Failed to load necessary data");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (isEditMode && id) {
-            loadCategory(parseInt(id));
-        } else {
+        loadData();
+        if (!isEditMode) {
             setNameMm("");
             setNameTh("");
             setNameEn("");
             setDisplayOrder(1);
             setIsActive(true);
+            setMasterCategoryId("");
             setExistingImage(null);
             setImageFile(null);
             setImagePreview(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, isEditMode]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,32 +110,33 @@ export default function CreateShopCategory() {
 
         setSubmitting(true);
         try {
-        const dtoData = {
-            nameMm: nameMm || "",
-            nameTh: nameTh || "",
-            nameEn: nameEn || "",
-            displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-            active: isActive,
-        };
+            const dtoData = {
+                nameMm: nameMm || "",
+                nameTh: nameTh || "",
+                nameEn: nameEn || "",
+                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
+                isActive: isActive,
+                masterCategoryId: masterCategoryId ? parseInt(masterCategoryId) : undefined,
+            };
 
-        const formData = new FormData();
-        formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+            const formData = new FormData();
+            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
 
-        if (imageFile) {
-            formData.append("image", imageFile);
-        }
+            if (imageFile) {
+                formData.append("image", imageFile);
+            }
 
             if (isEditMode && id) {
-                await ShopCategoryService.updateShopCategory(parseInt(id), formData);
-                toast.success("Shop category updated successfully");
+                await MasterItemService.updateMasterItem(parseInt(id), formData);
+                toast.success("Master item updated successfully");
             } else {
-                await ShopCategoryService.createShopCategory(formData);
-                toast.success("Shop category created successfully");
+                await MasterItemService.createMasterItem(formData);
+                toast.success("Master item created successfully");
             }
-            navigate("/shop-categories/manage");
+            navigate("/master-items/manage");
         } catch (error) {
             console.error(error);
-            toast.error(isEditMode ? "Failed to update shop category" : "Failed to create shop category");
+            toast.error(isEditMode ? "Failed to update master item" : "Failed to create master item");
         } finally {
             setSubmitting(false);
         }
@@ -136,17 +146,23 @@ export default function CreateShopCategory() {
         if (!id) return;
         setDeleting(true);
         try {
-            await ShopCategoryService.deleteShopCategory(parseInt(id));
-            toast.success("Shop category deleted successfully");
-            navigate("/shop-categories/manage");
+            await MasterItemService.deleteMasterItem(parseInt(id));
+            toast.success("Master item deleted successfully");
+            navigate("/master-items/manage");
         } catch (error) {
             console.error(error);
-            toast.error("Failed to delete shop category");
+            toast.error("Failed to delete master item");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
         }
     };
+    const selectableCategories = categories.map((c) => ({
+        ...c,
+        displayLabel: c.nameEn || c.nameMm || `Category ${c.id}`
+    }));
+    
+    const selectedCategory = selectableCategories.find(c => c.id.toString() === masterCategoryId);
 
     if (loading) {
         return (
@@ -160,38 +176,59 @@ export default function CreateShopCategory() {
         <div className="container mx-auto py-10 max-w-4xl">
             <div className="mb-8">
                 <h2 className="text-3xl font-bold tracking-tight">
-                    {isEditMode ? "Edit Shop Category" : "Create Shop Category"}
+                    {isEditMode ? "Edit Master Menu Item" : "Create Master Menu Item"}
                 </h2>
                 <p className="text-muted-foreground">
-                    {isEditMode ? "Update global shop category details." : "Add a new global shop category."}
+                    {isEditMode ? "Update global dish dictionary entry details." : "Add a new global dish dictionary entry."}
                 </p>
             </div>
 
             <Card className="border-solid">
                 <CardHeader>
-                    <CardTitle>Shop Category Details</CardTitle>
-                    <CardDescription>Enter the category information and upload representative media.</CardDescription>
+                    <CardTitle>Master Item Details</CardTitle>
+                    <CardDescription>Enter the item information, assign a category, and upload an image.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form className="space-y-6" onSubmit={onSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="categoryNameEn">Name (English)</Label>
+                                <Label htmlFor="nameEn">Name (English) <span className="text-destructive">*</span></Label>
                                 <Input
-                                    id="categoryNameEn"
+                                    id="nameEn"
                                     value={nameEn}
-                                    onChange={(e) => handleNameEnChange(e.target.value)}
-                                    placeholder="e.g. Restaurant"
+                                    onChange={(e) => setNameEn(e.target.value)}
+                                    placeholder="e.g. Pad Thai"
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="categoryNameMm">Name (Myanmar)</Label>
+                                <Label htmlFor="nameMm">Name (Myanmar)</Label>
                                 <Input
-                                    id="categoryNameMm"
+                                    id="nameMm"
                                     value={nameMm}
                                     onChange={(e) => setNameMm(e.target.value)}
-                                    placeholder="e.g. စားသောက်ဆိုင်"
+                                    placeholder="e.g. ဖက်ထိုင်း"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="nameTh">Name (Thai)</Label>
+                                <Input
+                                    id="nameTh"
+                                    value={nameTh}
+                                    onChange={(e) => setNameTh(e.target.value)}
+                                    placeholder="e.g. ผัดไทย"
+                                />
+                            </div>
+                            <div className="space-y-2 flex flex-col">
+                                <Label htmlFor="masterCategoryId" className="mb-1 block">Master Category</Label>
+                                <SearchableSelect
+                                    data={selectableCategories}
+                                    value="id"
+                                    labelKey="displayLabel"
+                                    selectedValue={selectedCategory}
+                                    onChange={(item: MasterMenuCategoryDTO | null) => setMasterCategoryId(item ? item.id.toString() : "")}
+                                    placeholder="Select a category"
+                                    className="font-normal text-left px-3"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -214,15 +251,6 @@ export default function CreateShopCategory() {
                                     placeholder="1"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="categoryNameTh">Name (Thai)</Label>
-                                <Input
-                                    id="categoryNameTh"
-                                    value={nameTh}
-                                    onChange={(e) => setNameTh(e.target.value)}
-                                    placeholder="e.g. ร้านอาหาร"
-                                />
-                            </div>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -235,8 +263,8 @@ export default function CreateShopCategory() {
                         </div>
 
                         <div className="space-y-2 pt-4 border-t">
-                            <Label>Category Icon/Image</Label>
-                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-48">
+                            <Label>Item Image</Label>
+                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-64 md:w-2/3 mx-auto">
                                 <Input
                                     type="file"
                                     accept="image/*"
@@ -248,21 +276,21 @@ export default function CreateShopCategory() {
                                         <div className="flex justify-center">
                                             <Upload className="h-10 w-10 text-muted-foreground" />
                                         </div>
-                                        <div className="text-sm font-medium">Upload Category Image</div>
-                                        <div className="text-xs text-muted-foreground">PNG, JPG or WebP</div>
+                                        <div className="text-sm font-medium">Upload Master Item Image</div>
+                                        <div className="text-xs text-muted-foreground">PNG, JPG or WEBP</div>
                                     </div>
                                 ) : (
-                                    <div className="relative h-full aspect-square group">
-                                        <img src={imagePreview || existingImage!} className="h-full w-full object-contain rounded" alt="Main" />
-                                        <div className="absolute top-1 right-1 z-20">
+                                    <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
+                                        <img src={imagePreview || existingImage!} className="h-full w-full object-cover" alt="Item Preview" />
+                                        <div className="absolute top-2 right-2 z-20">
                                             <Button
                                                 type="button"
                                                 variant="destructive"
                                                 size="icon"
-                                                className="h-6 w-6 rounded-full shadow-sm"
+                                                className="h-8 w-8 rounded-full shadow-sm"
                                                 onClick={removeImage}
                                             >
-                                                <X className="h-3 w-3" />
+                                                <X className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </div>
@@ -286,7 +314,7 @@ export default function CreateShopCategory() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate("/shop-categories/manage")}
+                                    onClick={() => navigate("/master-items/manage")}
                                     disabled={submitting}
                                 >
                                     Cancel
@@ -297,7 +325,7 @@ export default function CreateShopCategory() {
                                 >
                                     {submitting ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
-                                    ) : isEditMode ? "Update Category" : "Create Category"}
+                                    ) : isEditMode ? "Update Item" : "Create Item"}
                                 </Button>
                             </div>
                         </div>
@@ -310,8 +338,8 @@ export default function CreateShopCategory() {
                     <DialogHeader>
                         <DialogTitle>Are you absolutely sure?</DialogTitle>
                         <DialogDescription>
-                            This action cannot be undone. This will permanently delete the shop category
-                            <strong> {nameEn || nameMm || "this category"}</strong>.
+                            This action cannot be undone. This will permanently delete the master item
+                            <strong> {nameEn || nameMm || "this item"}</strong>.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -319,7 +347,7 @@ export default function CreateShopCategory() {
                             Cancel
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting ? "Deleting..." : "Delete Shop Category"}
+                            {deleting ? "Deleting..." : "Delete Master Item"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

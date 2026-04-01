@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useForm, SubmitHandler, Resolver, Control } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -27,7 +27,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
 import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
@@ -57,6 +57,7 @@ export interface ShopFormValues {
     nameMm?: string;
     nameTh?: string;
     shopCategoryId: number;
+    shopSubCategoryId?: number;
     addressEn: string;
     addressMm?: string;
     addressTh?: string;
@@ -89,19 +90,20 @@ export interface ShopFormValues {
 }
 
 const shopFormSchema = z.object({
-    nameEn: z.string().min(1, "Name is required"),
+    nameEn: z.string().optional(),
     nameMm: z.string().optional().or(z.literal("")),
     nameTh: z.string().optional().or(z.literal("")),
-    shopCategoryId: z.number().min(1, "Category is required"),
-    addressEn: z.string().min(1, "Address is required"),
+    shopCategoryId: z.number().optional().nullable(),
+    shopSubCategoryId: z.number().optional().nullable(),
+    addressEn: z.string().optional(),
     addressMm: z.string().optional().or(z.literal("")),
     addressTh: z.string().optional().or(z.literal("")),
-    districtId: z.number().min(1, "District is required"),
-    latitude: z.coerce.number({ message: "Latitude must be a valid number" }),
-    longitude: z.coerce.number({ message: "Longitude must be a valid number" }),
-    phone: z.string().min(1, "Phone is required"),
-    email: z.string().email().optional().or(z.literal("")),
-    descriptionEn: z.string().min(1, "Description is required"),
+    districtId: z.number().optional().nullable(),
+    latitude: z.coerce.number().optional(),
+    longitude: z.coerce.number().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional().or(z.literal("")),
+    descriptionEn: z.string().optional(),
     descriptionMm: z.string().optional().or(z.literal("")),
     descriptionTh: z.string().optional().or(z.literal("")),
     hasDelivery: z.boolean().default(false),
@@ -115,8 +117,8 @@ const shopFormSchema = z.object({
     pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
     enableStockCheck: z.boolean().default(false),
     maxItemQuantityPerOrder: z.number().default(10),
-    minOrderAmount: z.coerce.number().min(1, "Min Order Amount must be at least 1").default(1),
-    baseDeliveryFee: z.coerce.number().min(0, "Base Delivery Fee is required").default(0),
+    minOrderAmount: z.coerce.number().default(1),
+    baseDeliveryFee: z.coerce.number().default(0),
     cuisineTypeIds: z.array(z.number()).default([]),
     mealTypes: z.array(z.string()).default([]),
     supportedDeliveryTypes: z.array(z.string()).default([]),
@@ -158,6 +160,14 @@ export default function CreateShopRestaurant() {
     // Categories
     const [shopCategories, setShopCategories] = useState<ShopCategoryDTO[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(false)
+    const [shopSubCategories, setShopSubCategories] = useState<ShopSubCategoryDTO[]>([])
+
+    // Error Dialog
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+    const [backendErrors, setBackendErrors] = useState<Record<string, string>>({})
+
+    // Ref to prevent double API calls
+    const shopDataLoadedRef = useRef(false)
 
 
 
@@ -168,13 +178,14 @@ export default function CreateShopRestaurant() {
             nameEn: "",
             nameMm: "",
             nameTh: "",
-            shopCategoryId: 0,
+            shopCategoryId: undefined,
+            shopSubCategoryId: undefined,
             addressEn: "",
             addressMm: "",
             addressTh: "",
-            districtId: 0,
-            latitude: 0,
-            longitude: 0,
+            districtId: undefined,
+            latitude: undefined,
+            longitude: undefined,
             phone: "",
             email: "",
             descriptionEn: "",
@@ -213,14 +224,15 @@ export default function CreateShopRestaurant() {
         setSetupLoading(true)
         setCategoriesLoading(true)
         try {
-            const [data, categories, paymentData] = await Promise.all([
+            const [setupData, categories, subCategories] = await Promise.all([
                 PaymentService.getShopFormData(),
                 ShopService.getCategories(),
-                PaymentService.getPaymentMethods({ size: 100 })
+                ShopService.getSubCategories()
             ])
-            setSetupData(data)
+            setSetupData(setupData)
             setShopCategories(categories)
-            setPaymentMethods(paymentData.content || [])
+            setShopSubCategories(subCategories)
+            setPaymentMethods(setupData.paymentMethods || [])
         } catch (error) {
             console.error("Failed to load setup data:", error)
             toast.error("Failed to load necessary form data")
@@ -255,7 +267,33 @@ export default function CreateShopRestaurant() {
         };
     }, [shopCategories]);
 
+    const fetchSubCategoryData = useCallback(async (page: number, size: number, search: string) => {
+        if (search) {
+            const results = await ShopService.getSubCategories({ page, size, search });
+            return {
+                content: results.map(s => ({ label: s.nameEn || `SubCategory ${s.id}`, value: s.id })),
+                last: results.length < size,
+            };
+        }
+
+        let subCategories = shopSubCategories;
+        if (subCategories.length === 0) {
+            subCategories = await ShopService.getSubCategories();
+            setShopSubCategories(subCategories);
+        }
+
+        const start = page * size;
+        const slice = subCategories.slice(start, start + size);
+        return {
+            content: slice.map(s => ({ label: s.nameEn || `SubCategory ${s.id}`, value: s.id })),
+            last: start + size >= subCategories.length,
+        };
+    }, [shopSubCategories]);
+
     const loadShopData = useCallback(async (id: string) => {
+        if (shopDataLoadedRef.current) return;
+        shopDataLoadedRef.current = true;
+        
         setLoading(true)
         try {
             const shopId = parseInt(id, 10)
@@ -265,20 +303,25 @@ export default function CreateShopRestaurant() {
                 return
             }
 
-            const shop = await ShopService.getShopById(shopId)
+            const [shop, shopPaymentMethods, shopOperatingHours] = await Promise.all([
+                ShopService.getShopById(shopId),
+                ShopService.getShopPaymentMethods(shopId),
+                ShopService.getShopOperatingHours(shopId)
+            ])
 
             // Map API response to form structure
             form.reset({
-                nameEn: shop.nameEn || "",
-                nameMm: shop.nameMm || "",
+                nameEn: shop.nameEn || shop.nameMm || "",
+                nameMm: shop.nameMm || shop.nameEn || "",
                 nameTh: shop.nameTh || "",
-                shopCategoryId: shop.shopCategory?.id || 0,
-                addressEn: shop.addressEn || "",
-                addressMm: shop.addressMm || "",
+                shopCategoryId: shop.shopCategoryId || undefined,
+                shopSubCategoryId: shop.shopSubCategoryId || undefined,
+                addressEn: shop.address || shop.addressEn || shop.addressMm || "",
+                addressMm: shop.addressMm || shop.address || "",
                 addressTh: shop.addressTh || "",
-                districtId: shop.districtId || 0,
-                latitude: shop.latitude || 0,
-                longitude: shop.longitude || 0,
+                districtId: shop.districtId || undefined,
+                latitude: shop.latitude || undefined,
+                longitude: shop.longitude || undefined,
                 phone: shop.phone || "",
                 email: shop.email || "",
                 descriptionEn: shop.descriptionEn || "",
@@ -300,12 +343,12 @@ export default function CreateShopRestaurant() {
                 cuisineTypeIds: shop.cuisineTypes ? shop.cuisineTypes.map((c: CuisineTypeDTO) => c.id) : [],
                 mealTypes: shop.mealTypes || [],
                 supportedDeliveryTypes: shop.supportedDeliveryTypes || [],
-                paymentMethodIds: shop.paymentMethodIds || [],
-                operatingHours: shop.operatingHours && shop.operatingHours.length > 0
-                    ? shop.operatingHours.map((oh) => ({
+                paymentMethodIds: shopPaymentMethods.map(pm => pm.id),
+                operatingHours: shopOperatingHours && shopOperatingHours.length > 0
+                    ? shopOperatingHours.map((oh) => ({
                         dayOfWeek: oh.dayOfWeek,
-                        openTime: oh.openTime || "09:00",
-                        closeTime: oh.closeTime || "21:00",
+                        openTime: typeof oh.openingTime === 'string' ? oh.openingTime.substring(0, 5) : (oh.openTime || "09:00"),
+                        closeTime: typeof oh.closingTime === 'string' ? oh.closingTime.substring(0, 5) : (oh.closeTime || "21:00"),
                         isClosed: oh.isClosed ?? false
                     }))
                     : [
@@ -337,10 +380,35 @@ export default function CreateShopRestaurant() {
             }
 
             // Set selectedCityId by finding which city contains the district
-            if (shop.districtId && setupData?.cities) {
-                const city = setupData.cities.find(c =>
-                    c.districts?.some(d => d.id === shop.districtId)
-                );
+            if (setupData?.cities) {
+                let city = null;
+                
+                // First try by districtId
+                if (shop.districtId) {
+                    city = setupData.cities.find(c =>
+                        c.districts?.some(d => d.id === shop.districtId)
+                    );
+                }
+                
+                // If no city found by districtId, try matching by district name
+                if (!city && shop.district) {
+                    const districtName = shop.district;
+                    city = setupData.cities.find(c =>
+                        c.districts?.some(d => 
+                            d.nameEn === districtName || 
+                            d.nameMm === districtName
+                        )
+                    );
+                }
+                
+                // If still no city, try by city name
+                if (!city && shop.city) {
+                    const cityName = shop.city;
+                    city = setupData.cities.find(c =>
+                        c.nameEn === cityName || c.nameMm === cityName
+                    );
+                }
+                
                 if (city) {
                     setSelectedCityId(city.id);
                 }
@@ -372,6 +440,10 @@ export default function CreateShopRestaurant() {
     }, [loadSetupData])
 
     useEffect(() => {
+        shopDataLoadedRef.current = false;
+    }, [shopId])
+
+    useEffect(() => {
         if (isEditMode && shopId) {
             loadShopData(shopId)
         } else {
@@ -380,7 +452,8 @@ export default function CreateShopRestaurant() {
                 nameEn: "",
                 nameMm: "",
                 nameTh: "",
-                shopCategoryId: 0,
+                shopCategoryId: undefined,
+                shopSubCategoryId: undefined,
                 addressEn: "",
                 addressMm: "",
                 addressTh: "",
@@ -440,6 +513,7 @@ export default function CreateShopRestaurant() {
                 nameMm: data.nameMm || "",
                 nameTh: data.nameTh || "",
                 shopCategoryId: data.shopCategoryId,
+                shopSubCategoryId: data.shopSubCategoryId || null,
                 addressEn: data.addressEn,
                 addressMm: data.addressMm || "",
                 addressTh: data.addressTh || "",
@@ -499,12 +573,35 @@ export default function CreateShopRestaurant() {
                 toast.success("Shop created successfully!")
             }
             navigate("/shops/manage")
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Failed to save shop:", error)
-            const errorMessage = error instanceof Error ? error.message : "An error occurred"
-            toast.error(isEditMode ? "Failed to update shop" : "Failed to create shop", {
-                description: errorMessage
-            })
+            
+            // Try to parse backend validation errors
+            let validationErrors: Record<string, string> = {}
+            let generalMessage = "An error occurred"
+            
+            const axiosError = error as { response?: { data?: { errors?: Record<string, string>; message?: string } } };
+            
+            if (axiosError?.response?.data?.errors) {
+                validationErrors = axiosError.response.data.errors
+                const errorValues = Object.values(validationErrors)
+                if (errorValues.length > 0) {
+                    generalMessage = errorValues.join(", ")
+                }
+            } else if (axiosError?.response?.data?.message) {
+                generalMessage = axiosError.response.data.message
+            } else if (error instanceof Error) {
+                generalMessage = error.message
+            }
+            
+            if (Object.keys(validationErrors).length > 0) {
+                setBackendErrors(validationErrors)
+                setErrorDialogOpen(true)
+            } else {
+                toast.error(isEditMode ? "Failed to update shop" : "Failed to create shop", {
+                    description: generalMessage
+                })
+            }
         } finally {
             setSubmitting(false)
         }
@@ -626,7 +723,7 @@ export default function CreateShopRestaurant() {
                                             name="nameEn"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>* Shop Name (English)</FormLabel>
+                                                    <FormLabel>Shop Name (English)</FormLabel>
                                                     <FormControl>
                                                         <Input 
                                                             placeholder="e.g. My Together Cafe" 
@@ -672,7 +769,7 @@ export default function CreateShopRestaurant() {
                                             name="shopCategoryId"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>* Category</FormLabel>
+                                                    <FormLabel>Category</FormLabel>
                                                     <FormControl>
                                                         <InfiniteSearchableSelect
                                                             fetchData={fetchCategoryData}
@@ -694,6 +791,31 @@ export default function CreateShopRestaurant() {
                                             )}
                                         />
 
+                                        <FormField
+                                            control={form.control}
+                                            name="shopSubCategoryId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Sub Category</FormLabel>
+                                                    <FormControl>
+                                                        <InfiniteSearchableSelect
+                                                            fetchData={fetchSubCategoryData}
+                                                            valueKey="value"
+                                                            labelKey="label"
+                                                            selectedValue={field.value ? { 
+                                                                label: shopSubCategories.find(s => Number(s.id) === Number(field.value))?.nameEn || "Selected", 
+                                                                value: field.value 
+                                                            } : null}
+                                                            onChange={(item) => field.onChange(item ? (item as { label: string; value: number }).value : undefined)}
+                                                            placeholder="Select Sub Category (Optional)"
+                                                            disabled={false}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
                                         <Separator className="my-2" />
 
                                         <div className="space-y-4">
@@ -702,7 +824,7 @@ export default function CreateShopRestaurant() {
                                                 name="descriptionEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Description (English)</FormLabel>
+                                                        <FormLabel>Description (English)</FormLabel>
                                                         <FormControl>
                                                             <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
                                                         </FormControl>
@@ -753,7 +875,7 @@ export default function CreateShopRestaurant() {
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
                                                                     const cuisine = setupData?.cuisineTypes?.find((c: CuisineTypeDTO) => c.id === id)
-                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name || cuisine.slug || `Cuisine ${id}`) : null
+                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name || `Cuisine ${id}`) : null
                                                                     return cuisine ? (
                                                                         <Badge key={id} variant="secondary" className="gap-1">
                                                                             {label}
@@ -768,7 +890,7 @@ export default function CreateShopRestaurant() {
                                                             <FormControl>
                                                                 <SearchableSelect
                                                                     data={setupData?.cuisineTypes?.map((c: CuisineTypeDTO) => ({
-                                                                        label: c.nameEn || c.name || c.slug || `Cuisine ${c.id}`,
+                                                                        label: c.nameEn || c.name || `Cuisine ${c.id}`,
                                                                         value: c.id
                                                                     })) || []}
                                                                     value="value"
@@ -947,7 +1069,7 @@ export default function CreateShopRestaurant() {
                                                 name="addressEn"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Address (English)</FormLabel>
+                                                        <FormLabel>Address (English)</FormLabel>
                                                         <FormControl>
                                                             <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
                                                         </FormControl>
@@ -989,7 +1111,7 @@ export default function CreateShopRestaurant() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    * City
+                                                    City
                                                 </label>
                                                 <SearchableSelect
                                                     data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
@@ -1007,13 +1129,13 @@ export default function CreateShopRestaurant() {
                                                 name="districtId"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* District</FormLabel>
+                                                        <FormLabel>District</FormLabel>
                                                         <FormControl>
                                                             <SearchableSelect
-                                                                data={availableDistricts.map(d => ({ label: d.nameEn, value: d.id }))}
+                                                                data={availableDistricts.map(d => ({ label: d.nameEn || d.nameMm || d.name || `District ${d.id}`, value: d.id }))}
                                                                 value="value"
                                                                 labelKey="label"
-                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || "", value: field.value } : undefined}
+                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || availableDistricts.find(d => d.id === field.value)?.nameMm || "", value: field.value } : undefined}
                                                                 onChange={(item) => item && handleDistrictChange(item.value)}
                                                                 placeholder="Select District"
                                                                 disabled={!selectedCityId}
@@ -1033,7 +1155,7 @@ export default function CreateShopRestaurant() {
                                                 name="phone"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Phone</FormLabel>
+                                                        <FormLabel>Phone</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="Use commas to add multi phone numbers" {...field} />
                                                         </FormControl>
@@ -1062,7 +1184,7 @@ export default function CreateShopRestaurant() {
                                                 name="latitude"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Latitude</FormLabel>
+                                                        <FormLabel>Latitude</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" step="any" {...field} />
                                                         </FormControl>
@@ -1075,7 +1197,7 @@ export default function CreateShopRestaurant() {
                                                 name="longitude"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Longitude</FormLabel>
+                                                        <FormLabel>Longitude</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" step="any" {...field} />
                                                         </FormControl>
@@ -1092,7 +1214,7 @@ export default function CreateShopRestaurant() {
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Utensils className="h-5 w-5 text-primary" />
-                                            * Operating Hours
+                                            Operating Hours
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -1175,7 +1297,7 @@ export default function CreateShopRestaurant() {
                                         <div className="space-y-6">
                                             {/* Logo Photo */}
                                             <div className="space-y-2">
-                                                <div className="text-sm font-medium">* Logo Photo</div>
+                                                <div className="text-sm font-medium">Logo Photo</div>
                                                 <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
                                                     <Input
                                                         type="file"
@@ -1211,7 +1333,7 @@ export default function CreateShopRestaurant() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <div className="text-sm font-medium">* Cover Photo (Single)</div>
+                                                <div className="text-sm font-medium">Cover Photo (Single)</div>
                                                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
                                                     <Input
                                                         type="file"
@@ -1337,7 +1459,7 @@ export default function CreateShopRestaurant() {
                                             name="pricePreference"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>* Price Preference</FormLabel>
+                                                    <FormLabel>Price Preference</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger>
@@ -1363,7 +1485,7 @@ export default function CreateShopRestaurant() {
                                                 name="minOrderAmount"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Min Order Amount</FormLabel>
+                                                        <FormLabel>Min Order Amount</FormLabel>
                                                         <FormControl>
                                                             <PriceInput 
                                                                 placeholder="0" 
@@ -1380,7 +1502,7 @@ export default function CreateShopRestaurant() {
                                                 name="baseDeliveryFee"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>* Base Delivery Fee</FormLabel>
+                                                        <FormLabel>Base Delivery Fee</FormLabel>
                                                         <FormControl>
                                                             <PriceInput 
                                                                 placeholder="0" 
@@ -1530,6 +1652,37 @@ export default function CreateShopRestaurant() {
                             disabled={deleting}
                         >
                             {deleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Backend Validation Errors Dialog */}
+            <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Validation Errors</DialogTitle>
+                        <DialogDescription>
+                            Please fix the following errors and try again:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {Object.entries(backendErrors).map(([field, message]) => (
+                                <div key={field} className="flex items-start gap-2 p-2 bg-destructive/10 rounded-md">
+                                    <div className="min-w-0">
+                                        <span className="font-medium text-sm text-destructive capitalize">
+                                            {field.replace(/([A-Z])/g, ' $1').trim()}:
+                                        </span>
+                                        <span className="text-sm ml-1">{message}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setErrorDialogOpen(false)}>
+                            Close
                         </Button>
                     </DialogFooter>
                 </DialogContent>

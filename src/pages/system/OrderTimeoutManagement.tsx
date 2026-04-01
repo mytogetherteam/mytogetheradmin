@@ -56,7 +56,8 @@ export default function OrderTimeoutManagement() {
         }
     }, []);
 
-    useEffect(() => { fetchTimeouts(); }, [fetchTimeouts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchTimeouts(); }, []);
 
     const handleEdit = (timeout: OrderTimeoutRule) => {
         setIsAddMode(false);

@@ -149,7 +149,7 @@ export default function ShopOperatingHours() {
                                 <SelectContent className="max-h-[300px]">
                                     {shops.map(shop => (
                                         <SelectItem key={shop.id} value={`${shop.id}`}>
-                                            {shop.nameEn || shop.name} {shop.city ? `- ${shop.city}` : ""}
+                                            {shop.nameEn || shop.nameMm || shop.name} {shop.city || shop.cityMm ? `- ${shop.city || shop.cityMm}` : ""}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -166,10 +166,10 @@ export default function ShopOperatingHours() {
                                     )}
                                 </div>
                                 <div className="flex flex-col justify-center">
-                                    <h3 className="font-semibold text-lg leading-none mb-1">{selectedShop.nameEn || selectedShop.name}</h3>
+                                    <h3 className="font-semibold text-lg leading-none mb-1">{selectedShop.nameEn || selectedShop.nameMm || selectedShop.name}</h3>
                                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                                         <MapPin className="h-3.5 w-3.5" />
-                                        {[selectedShop.district, selectedShop.city].filter(Boolean).join(", ") || "No location provided"}
+                                        {[selectedShop.district || selectedShop.districtMm, selectedShop.city || selectedShop.cityMm].filter(Boolean).join(", ") || "No location provided"}
                                     </div>
                                     <div className="mt-2 flex gap-2">
                                         <Badge variant="outline" className="capitalize text-[10px] py-0">{selectedShop.category}</Badge>

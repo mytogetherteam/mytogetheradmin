@@ -42,13 +42,12 @@ export interface Shop {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  slug: string;
   category: string;
   categoryMm?: string;
   categoryTh?: string;
   categoryEn?: string;
 
-  address: string;
+  address?: string;
   addressMm?: string;
   addressTh?: string;
   addressEn?: string;
@@ -86,6 +85,9 @@ export interface Shop {
   ratingCount?: number;
   isFeatured?: boolean;
   shopCategory?: ShopCategoryDTO;
+  shopCategoryId?: number;
+  shopSubCategoryId?: number;
+  subCategory?: string;
   latitude?: number;
   longitude?: number;
   createdAt?: string;
@@ -103,11 +105,12 @@ export interface Shop {
 export interface DistrictDTO {
   id: number;
   cityId: number;
+  name: string;
   cityNameEn?: string;
+  cityName?: string;
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug: string;
   latitude?: number;
   longitude?: number;
   active: boolean;
@@ -115,6 +118,7 @@ export interface DistrictDTO {
 
 export interface CityDTO {
   id: number;
+  name: string;
   nameEn: string;
   nameMm: string;
   nameTh?: string;
@@ -124,10 +128,10 @@ export interface CityDTO {
 
 export interface RegionDTO {
   id: number;
+  name: string;
   nameMm: string;
   nameEn: string;
   nameTh: string;
-  slug: string;
   displayOrder: number;
   isActive: boolean;
   imageUrl?: string;
@@ -135,10 +139,10 @@ export interface RegionDTO {
 
 export interface MasterMenuSubCategoryDTO {
   id: number;
+  name: string;
   nameMm: string;
   nameEn: string;
   nameTh: string;
-  slug: string;
   displayOrder: number;
   isActive: boolean;
 }
@@ -149,7 +153,6 @@ export interface CuisineTypeDTO {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  slug: string;
   imageUrl?: string;
   regionId?: number;
   regionName?: string;
@@ -184,12 +187,24 @@ interface ShopPaymentMethodResponse {
 
 export interface ShopCategoryDTO {
   id: number;
+  name: string;
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug: string;
   iconUrl?: string;
   active: boolean;
+}
+
+export interface ShopSubCategoryDTO {
+  id: number;
+  name: string;
+  nameEn: string;
+  nameMm: string;
+  nameTh?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  categoryId: number;
+  displayOrder?: number;
 }
 
 
@@ -224,7 +239,6 @@ export interface MenuItem {
   name: string;
   nameMm?: string;
   nameEn?: string;
-  slug?: string;
   description?: string;
   descriptionMm?: string;
   descriptionTh?: string;
@@ -313,6 +327,8 @@ export interface ShopDetail extends Shop {
   latitude: number;
   longitude: number;
   shopCategory?: ShopCategoryDTO;
+  shopCategoryId?: number;
+  shopSubCategoryId?: number;
   photos?: Photo[];
   menuCategories?: MenuCategory[];
   recentReviews?: Review[];
@@ -370,7 +386,7 @@ export const ShopService = {
   },
 
   /**
-   * Get all shop categories
+    * Get all shop categories
    */
   getCategories: async (params?: { page?: number; size?: number; search?: string }): Promise<ShopCategoryDTO[]> => {
     try {
@@ -388,6 +404,31 @@ export const ShopService = {
       
       const response = await apiClient.get<ShopCategoryDTO[] | { content: ShopCategoryDTO[] }>(url);
       return Array.isArray(response) ? response : (response as { content?: ShopCategoryDTO[] }).content || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Get all shop sub-categories
+   */
+  getSubCategories: async (params?: { categoryId?: number; page?: number; size?: number; search?: string }): Promise<ShopSubCategoryDTO[]> => {
+    try {
+      let url = config.endpoints.admin.payment.shopSubCategories;
+      const queryParams = new URLSearchParams();
+      if (params) {
+        if (params.categoryId !== undefined) queryParams.append('categoryId', params.categoryId.toString());
+        if (params.page !== undefined) queryParams.append('page', params.page.toString());
+        if (params.size !== undefined) queryParams.append('size', params.size.toString());
+        if (params.search !== undefined) queryParams.append('search', params.search);
+      }
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+      
+      const response = await apiClient.get<ShopSubCategoryDTO[] | { content: ShopSubCategoryDTO[] }>(url);
+      return Array.isArray(response) ? response : (response as { content?: ShopSubCategoryDTO[] }).content || [];
     } catch {
       return [];
     }
@@ -453,7 +494,7 @@ export const ShopService = {
    * Get all categories (Admin) - optionally filter by shopId
    */
   getAdminCategories: async (page = 0, size = 100, search = "", shopId?: number): Promise<PageableResponse<MenuCategory>> => {
-    let endpoint = `/api/admin/categories?page=${page}&size=${size}`;
+    let endpoint = `${config.endpoints.admin.menu.categories}?page=${page}&size=${size}`;
     if (search) endpoint += `&search=${encodeURIComponent(search)}`;
     if (shopId !== undefined) endpoint += `&shopId=${shopId}`;
     return apiClient.get<PageableResponse<MenuCategory>>(endpoint);

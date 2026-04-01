@@ -10,11 +10,37 @@ export interface MenuCategory {
     nameEn?: string;
     description?: string;
     shopId?: number;
-    slug?: string;
     mediaUrl?: string;
     displayOrder?: number;
     isActive?: boolean;
     imageUrl?: string;
+}
+
+export interface ItemTag {
+    id: number;
+    name: string;
+    nameEn?: string;
+    nameMm?: string;
+    nameTh?: string;
+    colorHex?: string;
+    icon?: string;
+}
+
+export interface MasterItem {
+    id: number;
+    name: string;
+    nameEn?: string;
+    nameMm?: string;
+    nameTh?: string;
+    masterCategoryId?: number;
+    masterCategoryName?: string;
+}
+
+export interface ComboComponent {
+    includedItemId: number;
+    quantity: number;
+    displayOrder: number;
+    itemName?: string; // for display purposes
 }
 
 export interface MenuItem {
@@ -23,7 +49,6 @@ export interface MenuItem {
     nameMm?: string;
     nameTh?: string;
     nameEn?: string;
-    slug?: string;
     description?: string;
     descriptionMm?: string;
     descriptionTh?: string;
@@ -40,7 +65,7 @@ export interface MenuItem {
     menuSubCategoryId?: number;
     shopId: number;
     imageUrl?: string;
-    imageUrls?: string[]; // Multiple images support
+    imageUrls?: string[];
     isVegetarian?: boolean;
     isSpicy?: boolean;
     isAvailable?: boolean;
@@ -53,6 +78,12 @@ export interface MenuItem {
     variants?: Variant[];
     shopName?: string;
     categoryName?: string;
+    mealTypes?: string[];
+    tagIds?: number[];
+    tags?: ItemTag[];
+    masterItemId?: number;
+    masterCategoryId?: number;
+    components?: ComboComponent[];
 }
 
 export interface Option {
@@ -186,5 +217,25 @@ export const menuService = {
     },
     toggleHotDeal: async (id: number, enabled: boolean): Promise<MenuItem> => {
         return apiClient.put<MenuItem>(`${config.endpoints.admin.menu.itemActions.hotDeal(id)}?enabled=${enabled}`);
-    }
+    },
+
+    getAllItemTags: async (): Promise<ItemTag[]> => {
+        const response = await apiClient.get<ItemTag[] | { content: ItemTag[] }>(config.endpoints.admin.menu.itemTags.base);
+        return Array.isArray(response) ? response : (response as { content?: ItemTag[] }).content || [];
+    },
+
+    searchMasterItems: async (search = '', page = 0, size = 20): Promise<{ content: MasterItem[], last: boolean }> => {
+        const url = `${config.endpoints.admin.menu.masterItems.search}?search=${encodeURIComponent(search)}&page=${page}&size=${size}`;
+        const response = await apiClient.get<MasterItem[] | { content: MasterItem[], last: boolean }>(url);
+        if (Array.isArray(response)) {
+            return { content: response, last: true };
+        }
+        return { content: (response as { content?: MasterItem[] }).content || [], last: (response as { last?: boolean }).last ?? true };
+    },
+
+    getAllMasterMenuCategories: async (page = 0, size = 50): Promise<{ content: { id: number; nameEn?: string; name: string }[], last: boolean }> => {
+        const url = `${config.endpoints.admin.menu.masterMenuCategories.base}?page=${page}&size=${size}`;
+        const response = await apiClient.get<{ content?: { id: number; nameEn?: string; name: string }[], last?: boolean }>(url);
+        return { content: response?.content || [], last: response?.last ?? true };
+    },
 };

@@ -52,7 +52,8 @@ export default function CommentBoard() {
         }
     }, [currentPage, pageSize, search, postIdFilter]);
 
-    useEffect(() => { fetchComments(); }, [fetchComments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchComments(); }, [currentPage, pageSize, search, postIdFilter]);
 
     const handleDelete = async () => {
         if (!deleteId) return;

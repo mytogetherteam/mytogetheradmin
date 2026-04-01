@@ -29,6 +29,7 @@ const ShopOperatingHours = lazy(() => import("@/pages/shops/ShopOperatingHours")
 // Import
 const ShopsExcelImport = lazy(() => import("@/pages/import/ShopsExcelImport"));
 const ActivityExcelImport = lazy(() => import("@/pages/import/ActivityExcelImport"));
+const SingleShopExcelImport = lazy(() => import("@/pages/import/SingleShopExcelImport"));
 
 // Categories
 const CreateCategory = lazy(() => import("@/pages/categories/CreateCategory"));
@@ -44,6 +45,14 @@ const CreateMenuItem = lazy(() => import("@/pages/menus/CreateMenuItem"));
 const CreateSubCategory = lazy(() => import("@/pages/sub-categories/CreateSubCategory"));
 const ManageSubCategories = lazy(() => import("@/pages/sub-categories/ManageSubCategories"));
 const MenuApprovals = lazy(() => import("@/pages/menus/MenuApprovals"));
+const ManageItemTags = lazy(() => import("@/pages/item-tags/ManageItemTags"));
+const CreateItemTag = lazy(() => import("@/pages/item-tags/CreateItemTag"));
+const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
+const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
+const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
+const CreateMasterMenuCategory = lazy(() => import("@/pages/master-menu-categories/CreateMasterMenuCategory"));
+const ManageMasterItems = lazy(() => import("@/pages/master-items/ManageMasterItems"));
+const CreateMasterItem = lazy(() => import("@/pages/master-items/CreateMasterItem"));
 
 // Orders
 const OrderBoard = lazy(() => import("@/pages/orders/OrderBoard"));
@@ -163,6 +172,14 @@ function App() {
                     <Route path="/shop-categories/create" element={<CreateShopCategory />} />
                     <Route path="/shop-sub-categories/manage" element={<ManageShopSubCategories />} />
                     <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
+                    <Route path="/item-tags/manage" element={<ManageItemTags />} />
+                    <Route path="/item-tags/create" element={<CreateItemTag />} />
+                    <Route path="/promotions/manage" element={<ManagePromotions />} />
+                    <Route path="/promotions/create" element={<CreatePromotion />} />
+                    <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
+                    <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
+                    <Route path="/master-items/manage" element={<ManageMasterItems />} />
+                    <Route path="/master-items/create" element={<CreateMasterItem />} />
                     <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
                     <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
                     <Route path="/community/posts" element={<CommunityMgt />} />
@@ -199,6 +216,7 @@ function App() {
                 <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
                     <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                     <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
+                    <Route path="/import/single-shop-excel" element={<SingleShopExcelImport />} />
                     <Route path="/payment/methods" element={<PaymentMethods />} />
                     <Route path="/payment/methods/create" element={<PaymentMethodForm />} />
                     <Route path="/payment/methods/edit/:id" element={<PaymentMethodForm />} />

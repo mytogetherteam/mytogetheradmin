@@ -79,6 +79,52 @@ export const adminImportService = {
 
     return await parseJsonSafe(response);
   },
+
+  importSingleShopExcel: async (file: File): Promise<{
+    success: boolean;
+    message?: string;
+    data?: {
+      successCount?: number;
+      failureCount?: number;
+      errors?: Array<{ row: number; message: string }>;
+    };
+  }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const url = buildUrl(config.endpoints.admin.import.singleShopExcel);
+    console.log('[Import] Uploading single shop to:', url);
+
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+      headers,
+    });
+
+    if (!response.ok) {
+      const data = await parseJsonSafe(response);
+      const message =
+        typeof data === "object" && data !== null && "message" in data
+          ? String((data as { message: unknown }).message)
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new ApiError(message, response.status, data);
+    }
+
+    const data = await parseJsonSafe(response);
+    return data as {
+      success: boolean;
+      message?: string;
+      data?: {
+        successCount?: number;
+        failureCount?: number;
+        errors?: Array<{ row: number; message: string }>;
+      };
+    };
+  },
 };
 
 

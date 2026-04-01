@@ -42,7 +42,8 @@ export default function AuditLogs() {
         }
     }, [currentPage, pageSize, search]);
 
-    useEffect(() => { fetchLogs(); }, [fetchLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchLogs(); }, [currentPage, pageSize, search]);
 
     return (
         <div className="flex flex-col gap-6">

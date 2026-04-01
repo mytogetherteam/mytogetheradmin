@@ -7,9 +7,9 @@ export interface ShopCategoryDTO {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  slug?: string;
   imageUrl?: string;
-  isActive: boolean;
+  active: boolean;
+  displayOrder?: number;
 }
 
 export interface ShopSubCategoryDTO {
@@ -18,21 +18,17 @@ export interface ShopSubCategoryDTO {
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  slug?: string;
   imageUrl?: string;
-  isActive: boolean;
+  active: boolean;
   categoryId: number;
   displayOrder?: number;
 }
 
 export interface ShopSubCategoryRequest {
-  name?: string;
   nameMm?: string;
   nameTh?: string;
   nameEn?: string;
-  slug?: string;
   active: boolean;
-  categoryId?: number;
 }
 
 export const ShopCategoryService = {
@@ -158,9 +154,7 @@ export const ShopCategoryService = {
    */
   createShopSubCategory: async (categoryId: number, data: ShopSubCategoryRequest): Promise<ShopSubCategoryDTO> => {
     const url = config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId);
-    // Ensure categoryId is in the body if requested by user
-    const payload = { ...data, categoryId };
-    return apiClient.post<ShopSubCategoryDTO>(url, payload);
+    return apiClient.post<ShopSubCategoryDTO>(url, data);
   },
 
   /**

@@ -43,25 +43,12 @@ export default function CreateShopSubCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [slug, setSlug] = useState("");
     const [isActive, setIsActive] = useState(true);
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    const generateSlug = (value: string) => {
-        return value
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-    };
 
-    const updateSlugFromNames = (nextNameEn: string) => {
-        if (isEditMode) return;
-        const source = nextNameEn;
-        setSlug(source ? generateSlug(source) : "");
-    };
 
     const loadSubCategory = useCallback(async (subId: number) => {
         setLoading(true);
@@ -70,11 +57,7 @@ export default function CreateShopSubCategory() {
             setNameMm(subCat.nameMm || "");
             setNameTh(subCat.nameTh || "");
             setNameEn(subCat.nameEn || subCat.name || "");
-            setSlug(subCat.slug || (subCat.nameEn ? generateSlug(subCat.nameEn) : ""));
-            setIsActive(subCat.isActive !== false);
-            if ('active' in subCat && (subCat as Record<string, unknown>).active !== undefined) {
-                setIsActive(Boolean((subCat as Record<string, unknown>).active));
-            }
+            setIsActive(subCat.active !== false);
             setSelectedCategoryId(subCat.categoryId?.toString() || "");
         } catch (error) {
             console.error(error);
@@ -120,13 +103,10 @@ export default function CreateShopSubCategory() {
         setSubmitting(true);
         try {
             const dataObj: ShopSubCategoryRequest = {
-                name: nameEn,
                 nameMm,
                 nameTh,
                 nameEn,
-                slug: slug || generateSlug(nameEn),
                 active: isActive,
-                categoryId: catId || undefined
             };
 
             if (isEditMode && id) {
@@ -189,7 +169,7 @@ export default function CreateShopSubCategory() {
                     <form className="space-y-6" onSubmit={onSubmit}>
 
                         <div className="space-y-2">
-                            <Label>Parent Shop Category {!isEditMode && <span className="text-red-500">*</span>}</Label>
+                            <Label>Parent Shop Category</Label>
                             <Select
                                 value={selectedCategoryId}
                                 onValueChange={setSelectedCategoryId}
@@ -217,27 +197,18 @@ export default function CreateShopSubCategory() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="nameEn">Name (English) <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="nameEn">Name (English)</Label>
                                 <Input
                                     id="nameEn"
                                     value={nameEn}
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         setNameEn(value);
-                                        updateSlugFromNames(value);
                                     }}
                                     required
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="slug">Slug</Label>
-                                <Input
-                                    id="slug"
-                                    value={slug}
-                                    disabled={!isEditMode}
-                                    placeholder="e.g. fast_food"
-                                />
-                            </div>
+
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

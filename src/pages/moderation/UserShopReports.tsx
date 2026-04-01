@@ -65,7 +65,8 @@ export default function UserShopReports() {
         }
     }, [statusFilter, currentPage, pageSize]);
 
-    useEffect(() => { fetchReports(); }, [fetchReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchReports(); }, [statusFilter, currentPage, pageSize]);
 
     const openUpdateDialog = (report: UserShopReport) => {
         setEditReport(report);
@@ -316,7 +317,6 @@ export default function UserShopReports() {
                         <div className="space-y-2">
                             <Label>
                                 Resolution Notes
-                                {newStatus === "RESOLVED" && <span className="text-red-500 ml-1">*</span>}
                             </Label>
                             <Textarea
                                 placeholder="Describe the investigation or resolution action taken..."

@@ -54,12 +54,14 @@ export default function ManageDistricts() {
         } finally { setLoading(false); }
     }, [searchTerm, selectedCityId]);
 
-    useEffect(() => { loadCities(); }, [loadCities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadCities(); }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => loadDistricts(), 500);
         return () => clearTimeout(timer);
-    }, [loadDistricts]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm, selectedCityId]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -74,7 +76,7 @@ export default function ManageDistricts() {
     const exportToExcel = () => {
         const data = sortedDistricts.map((d) => ({
             ID: d.id, "City": d.cityNameEn || d.cityId, "Name (EN)": d.nameEn,
-            "Name (MM)": d.nameMm, "Name (TH)": d.nameTh || "", Slug: d.slug,
+            "Name (MM)": d.nameMm, "Name (TH)": d.nameTh || "",
             Latitude: d.latitude || "", Longitude: d.longitude || "",
             Active: d.active ? "Yes" : "No",
         }));
@@ -145,7 +147,6 @@ export default function ManageDistricts() {
                                             <SortableTableHead label="City" sortKey="cityNameEn" sortConfig={sortConfig} onSort={handleSort} />
                                             <SortableTableHead label="Name (EN)" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
                                             <TableHead>Name (MM)</TableHead>
-                                            <TableHead>Slug</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
@@ -158,7 +159,6 @@ export default function ManageDistricts() {
                                                 <TableCell className="text-muted-foreground">{d.cityNameEn || d.cityId}</TableCell>
                                                 <TableCell className="font-medium">{d.nameEn}</TableCell>
                                                 <TableCell>{d.nameMm}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs font-mono">{d.slug}</TableCell>
                                                 <TableCell>
                                                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${d.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                                                         {d.active ? "Active" : "Inactive"}

@@ -177,7 +177,7 @@ export default function PaymentMethodForm() {
                                     name="code"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Code *</FormLabel>
+                                            <FormLabel>Code</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="e.g. KPAY" {...field} />
                                             </FormControl>
@@ -225,7 +225,7 @@ export default function PaymentMethodForm() {
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Name (English) *</FormLabel>
+                                                <FormLabel>Name (English)</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="e.g. KBZ Pay" {...field} />
                                                 </FormControl>

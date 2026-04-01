@@ -42,7 +42,8 @@ export default function AppContentManagement() {
         }
     }, []);
 
-    useEffect(() => { fetchContents(); }, [fetchContents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchContents(); }, []);
 
     const handleEdit = (content: AppContent) => {
         setSelectedContent(content);
