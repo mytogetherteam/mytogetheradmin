@@ -17,7 +17,7 @@ import {
     Search,
     FileSpreadsheet,
     Trash2,
-    Pencil, // Changed from Edit to Pencil as per instruction
+    Pencil,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
@@ -32,13 +32,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
+import { MasterItemService, MasterItemDTO } from "@/services/masterItemService";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
-export default function ManageShopCategories() {
+export default function ManageMasterItems() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<ShopCategoryDTO[]>([]);
+    const [items, setItems] = useState<MasterItemDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,18 +49,18 @@ export default function ManageShopCategories() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCategories = useCallback(async () => {
+    const loadItems = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await ShopCategoryService.getShopCategories({
-                page: 0,
+            const res = await MasterItemService.getMasterItems({
+                page: 0, 
                 size: 200,
                 search: searchTerm
             });
-            setCategories(res.content || []);
+            setItems(res.content || []);
         } catch (e) {
             console.error(e);
-            toast.error("Failed to load shop categories");
+            toast.error("Failed to load master items");
         } finally {
             setLoading(false);
         }
@@ -68,33 +68,34 @@ export default function ManageShopCategories() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadCategories();
+            loadItems();
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm, loadCategories]);
+    }, [searchTerm, loadItems]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-    const sortedCategories = sortData(categories, sortConfig);
+    const sortedItems = sortData(items, sortConfig);
 
-    const totalItems = sortedCategories.length;
+    const totalItems = sortedItems.length;
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentCategories = sortedCategories.slice(startIndex, endIndex);
+    const currentItems = sortedItems.slice(startIndex, endIndex);
 
     const exportToExcel = () => {
-        const data = sortedCategories.map((c) => ({
-            ID: c.id,
-            Name: c.name,
-            "Name (MM)": c.nameMm || "",
-            "Name (EN)": c.nameEn || "",
-            "Is Active": c.active !== false ? "Yes" : "No",
+        const data = sortedItems.map((t) => ({
+            ID: t.id,
+            "Name (EN)": t.nameEn || "",
+            "Name (MM)": t.nameMm || "",
+            "Name (TH)": t.nameTh || "",
+            "Category": t.masterCategoryNameEn || "",
+            "Is Active": t.isActive !== false ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Shop Categories");
-        XLSX.writeFile(wb, "ShopCategories.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Master Items");
+        XLSX.writeFile(wb, "MasterItems.xlsx");
     };
 
     const handleDeleteClick = (e: React.MouseEvent, id: number, name: string) => {
@@ -105,13 +106,13 @@ export default function ManageShopCategories() {
     const handleDeleteConfirm = async () => {
         setDeleting(true);
         try {
-            await ShopCategoryService.deleteShopCategory(deleteDialog.id);
-            toast.success("Shop category deleted successfully");
+            await MasterItemService.deleteMasterItem(deleteDialog.id);
+            toast.success("Master item deleted successfully");
             setDeleteDialog({ open: false, id: 0, name: "" });
-            loadCategories();
+            loadItems();
         } catch (e) {
             console.error(e);
-            toast.error("Failed to delete shop category");
+            toast.error("Failed to delete master item");
         } finally {
             setDeleting(false);
         }
@@ -123,9 +124,9 @@ export default function ManageShopCategories() {
                 <CardHeader>
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
-                            <CardTitle className="leading-tight">Manage Shop Categories</CardTitle>
+                            <CardTitle className="leading-tight">Manage Master Menu Items</CardTitle>
                             <CardDescription className="line-clamp-2 md:line-clamp-none">
-                                Global classification management for shops and restaurants.
+                                Global dish dictionary management.
                             </CardDescription>
                         </div>
 
@@ -133,7 +134,7 @@ export default function ManageShopCategories() {
                             <div className="relative w-full sm:w-auto">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search..."
+                                    placeholder="Search items..."
                                     className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
                                     value={searchTerm}
                                     onChange={(e) => {
@@ -146,7 +147,7 @@ export default function ManageShopCategories() {
                                 <FileSpreadsheet className="h-4 w-4" />
                                 Export
                             </Button>
-                            <Button onClick={() => navigate("/shop-categories/create")}>
+                            <Button onClick={() => navigate("/master-items/create")}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>
@@ -166,36 +167,45 @@ export default function ManageShopCategories() {
                                         <TableRow>
                                             <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                                             <TableHead>Image</TableHead>
-                                            <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                                            <SortableTableHead label="Name" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Category</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currentCategories.length > 0 ? (
-                                            currentCategories.map((cat) => (
+                                        {currentItems.length > 0 ? (
+                                            currentItems.map((item) => (
                                                 <TableRow
-                                                    key={cat.id}
+                                                    key={item.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/shop-categories/create?id=${cat.id}`)}
+                                                    onClick={() => navigate(`/master-items/create?id=${item.id}`)}
                                                 >
-                                                    <TableCell className="font-mono text-xs">{cat.id}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
-                                                        <TableImage src={cat.imageUrl} alt={cat.name} size="sm" />
+                                                        <TableImage src={item.imageUrl} alt={item.nameEn || "Item"} size="sm" />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="font-medium">{cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`}</div>
-                                                        {(cat.nameMm || cat.nameEn || cat.nameTh) && (
+                                                        <div className="font-medium">{item.nameEn || item.nameMm || item.nameTh || `Item ${item.id}`}</div>
+                                                        {(item.nameMm || item.nameTh) && (
                                                             <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                                                {cat.nameMm && <span>{cat.nameMm}</span>}
-                                                                {cat.nameTh && <span>• {cat.nameTh}</span>}
-                                                                {cat.nameEn && <span>• {cat.nameEn}</span>}
+                                                                {item.nameMm && <span>{item.nameMm}</span>}
+                                                                {item.nameTh && <span>• {item.nameTh}</span>}
                                                             </div>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                            {cat.active !== false ? "Active" : "Inactive"}
+                                                        {item.masterCategoryNameEn ? (
+                                                            <span className="text-sm px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
+                                                                {item.masterCategoryNameEn}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${item.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                                            {item.isActive !== false ? "Active" : "Inactive"}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-right">
@@ -207,12 +217,12 @@ export default function ManageShopCategories() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-8 w-8 p-0"
-                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/shop-categories/create?id=${cat.id}`); }}
+                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/master-items/create?id=${item.id}`); }}
                                                                         >
                                                                             <Pencil className="h-4 w-4" />
                                                                         </Button>
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent>Edit Category</TooltipContent>
+                                                                    <TooltipContent>Edit Item</TooltipContent>
                                                                 </Tooltip>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
@@ -220,12 +230,12 @@ export default function ManageShopCategories() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             className="h-8 w-8 p-0 text-destructive"
-                                                                            onClick={(e) => handleDeleteClick(e, cat.id, cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`)}
+                                                                            onClick={(e) => handleDeleteClick(e, item.id, item.nameEn || item.nameMm || item.nameTh || `Item ${item.id}`)}
                                                                         >
                                                                             <Trash2 className="h-4 w-4" />
                                                                         </Button>
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent>Delete Category</TooltipContent>
+                                                                    <TooltipContent>Delete Item</TooltipContent>
                                                                 </Tooltip>
                                                             </div>
                                                         </TooltipProvider>
@@ -234,8 +244,8 @@ export default function ManageShopCategories() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                                    No shop categories found.
+                                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                                    No master items found.
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -261,7 +271,7 @@ export default function ManageShopCategories() {
             <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Shop Category?</DialogTitle>
+                        <DialogTitle>Delete Master Item?</DialogTitle>
                         <DialogDescription>
                             This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
                         </DialogDescription>

@@ -71,7 +71,8 @@ export default function ContentReports() {
         }
     }, [statusFilter, page, pageSize]);
 
-    useEffect(() => { fetchReports(); }, [fetchReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchReports(); }, [statusFilter, page, pageSize]);
 
     const handleResolve = async () => {
         if (!resolveReport) return;

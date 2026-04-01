@@ -218,7 +218,7 @@ export default function CreateSubCategory() {
                         {/* Category Selection (Only show if creating or if we want to allow moving) */}
                         {/* For now keeping it simple: Required on create. */}
                         <div className="space-y-2">
-                            <Label>Parent Category {!isEditMode && <span className="text-red-500">*</span>}</Label>
+                            <Label>Parent Category</Label>
                             <InfiniteSearchableSelect
                                 placeholder="Select a Category"
                                 selectedValue={selectedCategoryData}
@@ -242,7 +242,7 @@ export default function CreateSubCategory() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name (Default) <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="name">Name (Default)</Label>
                                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                             </div>
                             <div className="space-y-2">

@@ -77,7 +77,8 @@ export default function Broadcast() {
         }
     }, [page, pageSize]);
 
-    useEffect(() => { fetchHistory(); }, [fetchHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchHistory(); }, [page, pageSize]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();

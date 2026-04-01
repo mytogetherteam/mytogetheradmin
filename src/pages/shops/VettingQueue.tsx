@@ -47,7 +47,8 @@ export default function VettingQueue() {
         }
     }, [currentPage, pageSize]);
 
-    useEffect(() => { fetchShops(); }, [fetchShops]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchShops(); }, [currentPage, pageSize]);
 
     const handleApprove = async (id: number) => {
         try {
@@ -129,11 +130,11 @@ export default function VettingQueue() {
                                     >
                                         <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                         <TableCell>
-                                            <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.name} size="sm" />
+                                            <TableImage src={shop.logoUrl} alt={shop.nameEn || shop.nameMm || shop.name || "Shop"} size="sm" />
                                         </TableCell>
-                                        <TableCell className="font-medium">{shop.nameEn || shop.name}</TableCell>
+                                        <TableCell className="font-medium">{shop.nameEn || shop.nameMm || shop.name}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{shop.ownerName ?? "—"}</TableCell>
-                                        <TableCell className="text-sm">{shop.category}</TableCell>
+                                        <TableCell className="text-sm">{shop.category || shop.categoryMm || "—"}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
                                             {shop.createdAt ? new Date(shop.createdAt).toLocaleDateString() : "—"}
                                         </TableCell>

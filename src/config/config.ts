@@ -10,6 +10,7 @@ export const config = {
     admin: {
       import: {
         shopsExcel: '/api/admin/import/shops/excel',
+        singleShopExcel: '/api/admin/import/shops/single-excel',
         activityExcel: '/api/admin/import/activity/excel',
       },
       export: {
@@ -22,13 +23,13 @@ export const config = {
         shopFormData: '/api/admin/setup/shop-form-data',
         cuisineTypes: '/api/admin/setup/cuisine-types',
         cuisineTypeDetail: (id: number) => `/api/admin/setup/cuisine-types/${id}`,
-        paymentMethods: '/api/admin/setup/payment-methods',
+        paymentMethods: '/api/admin/payment-methods',
         paymentMethod: (id: number) => `/api/admin/setup/payment-methods/${id}`,
         shopCategories: '/api/admin/setup/shop-categories',
         shopCategory: (id: number) => `/api/admin/setup/shop-categories/${id}`,
-        shopSubCategories: '/api/admin/setup/shop-sub-categories',
-        shopSubCategory: (id: number) => `/api/admin/setup/shop-sub-categories/${id}`,
-        shopSubCategoriesByCategory: (catId: number) => `/api/admin/setup/shop-categories/${catId}/sub-categories`,
+            shopSubCategories: `/api/admin/setup/shop-categories/sub-categories`,
+            shopSubCategory: (id: number) => `/api/admin/setup/shop-categories/sub-categories/${id}`,
+            shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/setup/shop-categories/${categoryId}/sub-categories`,
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
         cuisines: {
@@ -93,12 +94,24 @@ export const config = {
         status: (id: string) => `/api/admin/orders/${id}/status`,
       },
       menu: {
-        categories: '/api/admin/categories',
-        categoryDetail: (id: number) => `/api/admin/categories/${id}`,
-        shopCategories: (shopId: number) => `/api/admin/categories/shop/${shopId}`,
+        categories: '/api/admin/menu-categories',
+        categoryDetail: (id: number) => `/api/admin/menu-categories/${id}`,
+        shopCategories: (shopId: number) => `/api/admin/menu-categories/shop/${shopId}`,
         items: '/api/admin/items',
         itemDetail: (id: number) => `/api/admin/items/${id}`,
-        categoryItems: (catId: number) => `/api/admin/items/categories/${catId}`,
+        itemTags: {
+          base: '/api/admin/item-tags',
+          detail: (id: number) => `/api/admin/item-tags/${id}`,
+        },
+        masterItems: {
+          base: '/api/admin/master-items',
+          detail: (id: number) => `/api/admin/master-items/${id}`,
+          search: '/api/admin/master-items/search',
+        },
+        masterMenuCategories: {
+          base: '/api/admin/master-menu-categories',
+          detail: (id: number) => `/api/admin/master-menu-categories/${id}`,
+        },
         subCategoryDetail: (id: number) => `/api/admin/menu-sub-categories/${id}`,
         subCategories: '/api/admin/menu-sub-categories',
         subCategoryByCategory: (catId: number) => `/api/admin/menu-sub-categories/category/${catId}`,
@@ -123,6 +136,10 @@ export const config = {
         history: '/api/admin/announcements/broadcast/history',
       },
       marketing: {
+        promotions: {
+            base: '/api/admin/promotions',
+            detail: (id: string | number) => `/api/admin/promotions/${id}`,
+        },
         banners: {
             base: '/api/admin/marketing/banners',
             detail: (id: string) => `/api/admin/marketing/banners/${id}`,
@@ -206,8 +223,8 @@ export const config = {
       operatingHours: (id: number) => `/api/admin/shops/${id}/operating-hours`,
       paymentMethods: (id: number) => `/api/admin/shops/${id}/payment-methods`,
       categories: {
-        shopCategories: (shopId: number) => `/api/admin/categories/shop/${shopId}`,
-        detail: (id: number) => `/api/admin/categories/${id}`,
+        shopCategories: (shopId: number) => `/api/admin/menu-categories/shop/${shopId}`,
+        detail: (id: number) => `/api/admin/menu-categories/${id}`,
         form: '/api/admin/setup/shop-form-data',
       },
       profile: {

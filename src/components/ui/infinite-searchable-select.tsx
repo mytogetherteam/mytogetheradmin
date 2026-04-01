@@ -132,7 +132,7 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn("w-full justify-between", className)}
+                    className={cn("w-full justify-between font-normal text-left px-3 text-base md:text-sm", className)}
                     disabled={disabled}
                 >
                     <span className="truncate text-left flex-1">{displayValue}</span>

@@ -248,7 +248,12 @@ class ApiClient {
         );
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) {
+        return null as unknown as T;
+      }
+      
+      const data = JSON.parse(text);
 
       // Automatically unwrap if it's a standard ApiResponseData
       if (data && typeof data === 'object' && 'success' in data && 'data' in data) {

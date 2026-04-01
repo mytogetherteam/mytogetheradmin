@@ -147,7 +147,8 @@ export default function OrderHistory() {
         }
     }, [filters]);
 
-    useEffect(() => { fetchOrders(); }, [fetchOrders]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchOrders(); }, [filters]);
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));

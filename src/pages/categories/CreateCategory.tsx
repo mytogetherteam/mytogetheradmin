@@ -183,7 +183,7 @@ export default function CreateCategory() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="categoryName">Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="categoryName">Name</Label>
                 <Input
                   id="categoryName"
                   value={name}

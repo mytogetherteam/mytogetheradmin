@@ -246,19 +246,19 @@ export default function ManageShopRestaurant() {
                                     <TableCell>
                                         <TableImage 
                                             src={shop.logoUrl} 
-                                            alt={shop.nameEn || shop.name} 
+                                            alt={shop.nameEn || shop.nameMm || shop.name || "Shop"} 
                                         />
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">{shop.id}</TableCell>
                                     <TableCell className="font-medium">
-                                        <div>{shop.nameEn || shop.name}</div>
-                                        {shop.nameMm && <div className="text-xs text-muted-foreground">{shop.nameMm}</div>}
+                                        <div>{shop.nameEn || shop.nameMm || shop.name}</div>
+                                        {shop.nameMm && shop.nameEn && shop.nameMm !== shop.nameEn && <div className="text-xs text-muted-foreground">{shop.nameMm}</div>}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="capitalize">{shop.category}</Badge>
+                                        <Badge variant="outline" className="capitalize">{shop.category || shop.categoryMm || shop.categoryEn}</Badge>
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
-                                        {[shop.district, shop.city].filter(Boolean).join(", ") || "—"}
+                                        {[shop.district || shop.districtMm, shop.city || shop.cityMm].filter(Boolean).join(", ") || "—"}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1 max-w-[120px]">

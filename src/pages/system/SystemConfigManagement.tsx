@@ -52,7 +52,8 @@ export default function SystemConfigManagement() {
         }
     }, []);
 
-    useEffect(() => { fetchConfigs(); }, [fetchConfigs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchConfigs(); }, []);
 
     const handleEdit = (config: SystemConfig) => {
         setIsAddMode(false);

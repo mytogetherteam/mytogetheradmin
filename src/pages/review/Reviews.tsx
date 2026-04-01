@@ -67,7 +67,8 @@ export default function Reviews() {
         }
     }, [type, currentPage, pageSize, search, rating, startDate, endDate]);
 
-    useEffect(() => { fetchReviews(); }, [fetchReviews]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { fetchReviews(); }, [type, currentPage, pageSize, search, rating, startDate, endDate]);
 
     const handleToggleVisibility = async (id: string, visible: boolean) => {
         try {

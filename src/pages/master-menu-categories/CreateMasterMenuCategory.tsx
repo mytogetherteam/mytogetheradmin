@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ShopCategoryService } from "@/services/shopCategoryService";
+import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
+import { cuisineService } from "@/services/cuisineService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +17,9 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
-export default function CreateShopCategory() {
+export default function CreateMasterMenuCategory() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const id = searchParams.get("id");
@@ -28,6 +30,8 @@ export default function CreateShopCategory() {
     const [nameEn, setNameEn] = useState("");
     const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
+    const [cuisineTypeId, setCuisineTypeId] = useState<number | "">(0);
+    const [cuisines, setCuisines] = useState<{ id: number; nameEn: string }[]>([]);
 
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -39,45 +43,49 @@ export default function CreateShopCategory() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
 
-
-
-    const handleNameEnChange = (value: string) => {
-        setNameEn(value);
-    };
-
-    const loadCategory = async (catId: number) => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const cat = await ShopCategoryService.getShopCategoryById(catId);
-            setNameMm(cat.nameMm || "");
-            setNameTh(cat.nameTh || "");
-            setNameEn(cat.nameEn || "");
+            const cusRes = await cuisineService.getCuisines(0, 500);
+            setCuisines(cusRes.content?.map(c => ({ id: c.id, nameEn: c.nameEn || c.nameMm || `Cuisine ${c.id}` })) || []);
+
+            // If edit mode, load Master Menu Category
+            if (isEditMode && id) {
+                const cat = await MasterMenuCategoryService.getMasterMenuCategoryById(parseInt(id));
+                setNameMm(cat.nameMm || "");
+                setNameTh(cat.nameTh || "");
+                setNameEn(cat.nameEn || "");
                 setDisplayOrder(cat.displayOrder || 1);
-            setIsActive(cat.active !== false);
-            if (cat.imageUrl) {
-                setExistingImage(cat.imageUrl);
+                setIsActive(cat.isActive !== false);
+                if (cat.cuisineTypeId) {
+                    setCuisineTypeId(cat.cuisineTypeId);
+                }
+                if (cat.imageUrl) {
+                    setExistingImage(cat.imageUrl);
+                }
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load shop category");
+            toast.error("Failed to load category details");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (isEditMode && id) {
-            loadCategory(parseInt(id));
-        } else {
+        loadData();
+        if (!isEditMode) {
             setNameMm("");
             setNameTh("");
             setNameEn("");
             setDisplayOrder(1);
             setIsActive(true);
+            setCuisineTypeId(0);
             setExistingImage(null);
             setImageFile(null);
             setImagePreview(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, isEditMode]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,32 +109,33 @@ export default function CreateShopCategory() {
 
         setSubmitting(true);
         try {
-        const dtoData = {
-            nameMm: nameMm || "",
-            nameTh: nameTh || "",
-            nameEn: nameEn || "",
-            displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-            active: isActive,
-        };
+            const dtoData = {
+                nameMm: nameMm || "",
+                nameTh: nameTh || "",
+                nameEn: nameEn || "",
+                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
+                isActive: isActive,
+                cuisineTypeId: cuisineTypeId || 0,
+            };
 
-        const formData = new FormData();
-        formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+            const formData = new FormData();
+            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
 
-        if (imageFile) {
-            formData.append("image", imageFile);
-        }
+            if (imageFile) {
+                formData.append("image", imageFile);
+            }
 
             if (isEditMode && id) {
-                await ShopCategoryService.updateShopCategory(parseInt(id), formData);
-                toast.success("Shop category updated successfully");
+                await MasterMenuCategoryService.updateMasterMenuCategory(parseInt(id), formData);
+                toast.success("Master menu category updated successfully");
             } else {
-                await ShopCategoryService.createShopCategory(formData);
-                toast.success("Shop category created successfully");
+                await MasterMenuCategoryService.createMasterMenuCategory(formData);
+                toast.success("Master menu category created successfully");
             }
-            navigate("/shop-categories/manage");
+            navigate("/master-menu-categories/manage");
         } catch (error) {
             console.error(error);
-            toast.error(isEditMode ? "Failed to update shop category" : "Failed to create shop category");
+            toast.error(isEditMode ? "Failed to update category" : "Failed to create category");
         } finally {
             setSubmitting(false);
         }
@@ -136,12 +145,12 @@ export default function CreateShopCategory() {
         if (!id) return;
         setDeleting(true);
         try {
-            await ShopCategoryService.deleteShopCategory(parseInt(id));
-            toast.success("Shop category deleted successfully");
-            navigate("/shop-categories/manage");
+            await MasterMenuCategoryService.deleteMasterMenuCategory(parseInt(id));
+            toast.success("Master menu category deleted successfully");
+            navigate("/master-menu-categories/manage");
         } catch (error) {
             console.error(error);
-            toast.error("Failed to delete shop category");
+            toast.error("Failed to delete category");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
@@ -160,38 +169,59 @@ export default function CreateShopCategory() {
         <div className="container mx-auto py-10 max-w-4xl">
             <div className="mb-8">
                 <h2 className="text-3xl font-bold tracking-tight">
-                    {isEditMode ? "Edit Shop Category" : "Create Shop Category"}
+                    {isEditMode ? "Edit Master Menu Category" : "Create Master Menu Category"}
                 </h2>
                 <p className="text-muted-foreground">
-                    {isEditMode ? "Update global shop category details." : "Add a new global shop category."}
+                    {isEditMode ? "Update global category details." : "Add a new global category linking items."}
                 </p>
             </div>
 
             <Card className="border-solid">
                 <CardHeader>
-                    <CardTitle>Shop Category Details</CardTitle>
-                    <CardDescription>Enter the category information and upload representative media.</CardDescription>
+                    <CardTitle>Master Menu Category Details</CardTitle>
+                    <CardDescription>Enter category name and an optional image.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form className="space-y-6" onSubmit={onSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="categoryNameEn">Name (English)</Label>
+                                <Label htmlFor="nameEn">Name (English) <span className="text-destructive">*</span></Label>
                                 <Input
-                                    id="categoryNameEn"
+                                    id="nameEn"
                                     value={nameEn}
-                                    onChange={(e) => handleNameEnChange(e.target.value)}
-                                    placeholder="e.g. Restaurant"
+                                    onChange={(e) => setNameEn(e.target.value)}
+                                    placeholder="e.g. Curries"
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="categoryNameMm">Name (Myanmar)</Label>
+                                <Label htmlFor="nameMm">Name (Myanmar)</Label>
                                 <Input
-                                    id="categoryNameMm"
+                                    id="nameMm"
                                     value={nameMm}
                                     onChange={(e) => setNameMm(e.target.value)}
-                                    placeholder="e.g. စားသောက်ဆိုင်"
+                                    placeholder="e.g. ဟင်းများ"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="nameTh">Name (Thai)</Label>
+                                <Input
+                                    id="nameTh"
+                                    value={nameTh}
+                                    onChange={(e) => setNameTh(e.target.value)}
+                                    placeholder="e.g. แกง"
+                                />
+                            </div>
+                            <div className="space-y-2 flex flex-col">
+                                <Label htmlFor="cuisineTypeId" className="mb-0 block">Cuisine Type</Label>
+                                <SearchableSelect
+                                    data={cuisines}
+                                    value="id"
+                                    labelKey="nameEn"
+                                    selectedValue={cuisines.find(c => c.id === cuisineTypeId)}
+                                    onChange={(item: { id: number; nameEn: string } | null) => setCuisineTypeId(item ? item.id : (0 as number | ""))}
+                                    placeholder="Select cuisine type..."
+                                    className="font-normal text-left px-3"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -214,15 +244,6 @@ export default function CreateShopCategory() {
                                     placeholder="1"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="categoryNameTh">Name (Thai)</Label>
-                                <Input
-                                    id="categoryNameTh"
-                                    value={nameTh}
-                                    onChange={(e) => setNameTh(e.target.value)}
-                                    placeholder="e.g. ร้านอาหาร"
-                                />
-                            </div>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -235,8 +256,8 @@ export default function CreateShopCategory() {
                         </div>
 
                         <div className="space-y-2 pt-4 border-t">
-                            <Label>Category Icon/Image</Label>
-                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-48">
+                            <Label>Category Image</Label>
+                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-64 md:w-2/3 mx-auto">
                                 <Input
                                     type="file"
                                     accept="image/*"
@@ -249,20 +270,20 @@ export default function CreateShopCategory() {
                                             <Upload className="h-10 w-10 text-muted-foreground" />
                                         </div>
                                         <div className="text-sm font-medium">Upload Category Image</div>
-                                        <div className="text-xs text-muted-foreground">PNG, JPG or WebP</div>
+                                        <div className="text-xs text-muted-foreground">PNG, JPG or WEBP</div>
                                     </div>
                                 ) : (
-                                    <div className="relative h-full aspect-square group">
-                                        <img src={imagePreview || existingImage!} className="h-full w-full object-contain rounded" alt="Main" />
-                                        <div className="absolute top-1 right-1 z-20">
+                                    <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
+                                        <img src={imagePreview || existingImage!} className="h-full w-full object-cover" alt="Category Preview" />
+                                        <div className="absolute top-2 right-2 z-20">
                                             <Button
                                                 type="button"
                                                 variant="destructive"
                                                 size="icon"
-                                                className="h-6 w-6 rounded-full shadow-sm"
+                                                className="h-8 w-8 rounded-full shadow-sm"
                                                 onClick={removeImage}
                                             >
-                                                <X className="h-3 w-3" />
+                                                <X className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </div>
@@ -286,7 +307,7 @@ export default function CreateShopCategory() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate("/shop-categories/manage")}
+                                    onClick={() => navigate("/master-menu-categories/manage")}
                                     disabled={submitting}
                                 >
                                     Cancel
@@ -310,7 +331,7 @@ export default function CreateShopCategory() {
                     <DialogHeader>
                         <DialogTitle>Are you absolutely sure?</DialogTitle>
                         <DialogDescription>
-                            This action cannot be undone. This will permanently delete the shop category
+                            This action cannot be undone. This will permanently delete the category
                             <strong> {nameEn || nameMm || "this category"}</strong>.
                         </DialogDescription>
                     </DialogHeader>
@@ -319,7 +340,7 @@ export default function CreateShopCategory() {
                             Cancel
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting ? "Deleting..." : "Delete Shop Category"}
+                            {deleting ? "Deleting..." : "Delete Master Menu Category"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

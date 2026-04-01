@@ -6,7 +6,6 @@ export interface CityDTO {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  slug?: string;
   active: boolean;
 }
 
