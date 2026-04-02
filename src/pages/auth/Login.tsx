@@ -13,6 +13,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { authService } from "@/services/authService"
 import { toast } from "sonner"
+import { handleApiError } from "@/lib/error-utils"
 
 export default function Login() {
     const navigate = useNavigate()
@@ -34,10 +35,7 @@ export default function Login() {
             })
             navigate("/")
         } catch (error) {
-            console.error("Login failed:", error)
-            toast.error("Login failed", {
-                description: "Invalid credentials. Please try again."
-            })
+            handleApiError(error, "Login failed")
         } finally {
             setLoading(false)
         }

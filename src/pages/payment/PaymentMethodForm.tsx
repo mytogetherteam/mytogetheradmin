@@ -25,6 +25,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { PaymentService } from "@/services/paymentService";
 import { PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 interface PaymentMethodFormValues {
     code: string;
@@ -82,8 +83,7 @@ export default function PaymentMethodForm() {
                 setIconPreview(data.iconUrl);
             }
         } catch (error) {
-            console.error("Failed to load payment method:", error);
-            toast.error("Failed to load payment method details.");
+            handleApiError(error, "Failed to load payment method details.");
             navigate("/payment/methods");
         } finally {
             setLoading(false);
@@ -141,8 +141,7 @@ export default function PaymentMethodForm() {
             }
             navigate("/payment/methods");
         } catch (error) {
-            console.error("Failed to save payment method:", error);
-            toast.error(isEditMode ? "Failed to update payment method." : "Failed to create payment method.");
+            handleApiError(error, isEditMode ? "Failed to update payment method." : "Failed to create payment method.");
         } finally {
             setSubmitting(false);
         }

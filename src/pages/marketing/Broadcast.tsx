@@ -16,6 +16,7 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Badge } from "@/components/ui/badge";
 
 export default function Broadcast() {
@@ -70,8 +71,8 @@ export default function Broadcast() {
             setHistory(data.content || []);
             setTotalElements(data.totalElements || 0);
             setTotalPages(data.totalPages || 1);
-        } catch {
-            toast.error("Failed to load broadcast history");
+        } catch (error) {
+            handleApiError(error, "Failed to load broadcast history");
         } finally {
             setLoading(false);
         }
@@ -102,8 +103,8 @@ export default function Broadcast() {
             setMessage("");
             setPage(0);
             fetchHistory();
-        } catch {
-            toast.error("Failed to send broadcast");
+        } catch (error) {
+            handleApiError(error, "Failed to send broadcast");
         } finally {
             setSending(false);
         }

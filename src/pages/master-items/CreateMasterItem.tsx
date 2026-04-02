@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MasterItemService } from "@/services/masterItemService";
 import { MasterMenuCategoryService, MasterMenuCategoryDTO } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,8 +67,7 @@ export default function CreateMasterItem() {
                 }
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load necessary data");
+            handleApiError(error, "Failed to load necessary data");
         } finally {
             setLoading(false);
         }
@@ -135,8 +135,7 @@ export default function CreateMasterItem() {
             }
             navigate("/master-items/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update master item" : "Failed to create master item");
+            handleApiError(error, isEditMode ? "Failed to update master item" : "Failed to create master item");
         } finally {
             setSubmitting(false);
         }
@@ -150,8 +149,7 @@ export default function CreateMasterItem() {
             toast.success("Master item deleted successfully");
             navigate("/master-items/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete master item");
+            handleApiError(error, "Failed to delete master item");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

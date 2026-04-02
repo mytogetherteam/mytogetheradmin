@@ -34,6 +34,7 @@ import { useNavigate } from "react-router-dom";
 import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPaymentTypeService";
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from 'xlsx';
 import { TableImage } from "@/components/TableImage";
 
@@ -84,8 +85,7 @@ export default function ManageShopPaymentTypes() {
             const data = await ShopPaymentTypeService.getShopPaymentTypes(shopId);
             setItems(data);
         } catch (error) {
-            console.error("Failed to load payment types", error);
-            toast.error("Failed to load payment types");
+            handleApiError(error, "Failed to load payment types");
         } finally {
             setLoading(false);
         }
@@ -134,8 +134,7 @@ export default function ManageShopPaymentTypes() {
             setItems(prev => prev.map(i => i.id === item.id ? { ...i, isActive: value } : i));
             toast.success("Status updated");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to update status");
+            handleApiError(error, "Failed to update status");
         }
     };
 
@@ -146,8 +145,7 @@ export default function ManageShopPaymentTypes() {
             toast.success("Deleted successfully");
             loadItems(parseInt(selectedShopId));
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete");
+            handleApiError(error, "Failed to delete");
         }
     };
 

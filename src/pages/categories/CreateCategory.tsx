@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,8 +77,7 @@ export default function CreateCategory() {
         setExistingImage(cat.imageUrl || cat.image || cat.icon || null);
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to load menu category");
+      handleApiError(error, "Failed to load category");
     } finally {
       setLoading(false);
     }
@@ -130,8 +130,7 @@ export default function CreateCategory() {
       }
       navigate("/categories/manage");
     } catch (error) {
-      console.error(error);
-      toast.error(isEditMode ? "Failed to update menu category" : "Failed to create menu category");
+      handleApiError(error, isEditMode ? "Failed to update menu category" : "Failed to create menu category");
     } finally {
       setSubmitting(false);
     }
@@ -145,8 +144,7 @@ export default function CreateCategory() {
       toast.success("Menu category deleted successfully");
       navigate("/categories/manage");
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete menu category");
+      handleApiError(error, "Failed to delete menu category");
     } finally {
       setDeleting(false);
       setDeleteDialogOpen(false);
@@ -247,37 +245,39 @@ export default function CreateCategory() {
                 checked={isActive}
                 onCheckedChange={setIsActive}
               />
-              <Label htmlFor="isActive">Active</Label>
+              <Label htmlFor="isActive">Active Status</Label>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-              {/* Main Image */}
-              <div className="space-y-2">
-                <Label>Main Image</Label>
-                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={handleImageChange}
-                  />
+            <div className="space-y-4 pt-4 border-t">
+              <Label>Category Image</Label>
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors h-64 md:w-2/3 mx-auto">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  onChange={handleImageChange}
+                />
+                {!imagePreview && !existingImage ? (
                   <div className="text-center space-y-2 pointer-events-none">
                     <div className="flex justify-center">
                       <Upload className="h-10 w-10 text-muted-foreground" />
                     </div>
-                    <div className="text-sm font-medium">Upload Main Image</div>
-                    <div className="text-xs text-muted-foreground">PNG, JPG or WebP</div>
+                    <div className="text-sm font-medium">Upload Category Image</div>
+                    <div className="text-xs text-muted-foreground">PNG, JPG or WEBP</div>
                   </div>
-                </div>
-                {(imagePreview || existingImage) && (
-                  <div className="relative mt-4 aspect-video rounded-md overflow-hidden border group w-full max-w-xs">
-                    <img src={imagePreview || existingImage!} className="w-full h-full object-cover" alt="Main" />
+                ) : (
+                  <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
+                    <img
+                      src={imagePreview || existingImage!}
+                      className="h-full w-full object-cover"
+                      alt="Category Preview"
+                    />
                     <div className="absolute top-2 right-2 z-20">
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
-                        className="h-8 w-8 shadow-sm"
+                        className="h-8 w-8 rounded-full shadow-sm"
                         onClick={removeImage}
                       >
                         <X className="h-4 w-4" />
@@ -286,8 +286,6 @@ export default function CreateCategory() {
                   </div>
                 )}
               </div>
-
-              {/* Gallery Photos removed */}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t">

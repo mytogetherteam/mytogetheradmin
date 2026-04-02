@@ -31,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 import { PaymentService } from "@/services/paymentService";
 import { PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
 export default function PaymentMethods() {
@@ -57,8 +58,7 @@ export default function PaymentMethods() {
             setTotalPages(response.totalPages);
             setTotalItems(response.totalElements);
         } catch (error) {
-            console.error("Failed to load payment methods", error);
-            toast.error("Failed to load payment methods");
+            handleApiError(error, "Failed to load payment methods");
         } finally {
             setLoading(false);
         }
@@ -102,8 +102,7 @@ export default function PaymentMethods() {
             );
             toast.success(`Payment method updated successfully`);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to update status");
+            handleApiError(error, "Failed to update status");
         }
     };
 
@@ -116,8 +115,7 @@ export default function PaymentMethods() {
             toast.success("Payment method deleted");
             loadItems(); // Reload the list
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete payment method");
+            handleApiError(error, "Failed to delete payment method");
         }
     };
 

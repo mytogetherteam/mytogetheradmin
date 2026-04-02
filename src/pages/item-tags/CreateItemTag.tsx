@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ItemTagService } from "@/services/itemTagService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,8 +57,7 @@ export default function CreateItemTag() {
                 setExistingImage(tag.iconUrl);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load item tag");
+            handleApiError(error, "Failed to load item tag");
         } finally {
             setLoading(false);
         }
@@ -127,8 +127,7 @@ export default function CreateItemTag() {
             }
             navigate("/item-tags/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update item tag" : "Failed to create item tag");
+            handleApiError(error, isEditMode ? "Failed to update item tag" : "Failed to create item tag");
         } finally {
             setSubmitting(false);
         }
@@ -142,8 +141,7 @@ export default function CreateItemTag() {
             toast.success("Item tag deleted successfully");
             navigate("/item-tags/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete item tag");
+            handleApiError(error, "Failed to delete item tag");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

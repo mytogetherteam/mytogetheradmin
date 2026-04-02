@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -45,8 +46,8 @@ export default function CommentBoard() {
             const content = data?.content ?? [];
             setComments(content);
             setTotalElements(data?.totalElements ?? content.length);
-        } catch {
-            toast.error("Failed to load comments");
+        } catch (e) {
+            handleApiError(e, "Failed to load comments");
         } finally {
             setLoading(false);
         }
@@ -62,8 +63,8 @@ export default function CommentBoard() {
             toast.success("Comment deleted");
             setDeleteId(null);
             fetchComments();
-        } catch {
-            toast.error("Failed to delete comment");
+        } catch (e) {
+            handleApiError(e, "Failed to delete comment");
         }
     };
 

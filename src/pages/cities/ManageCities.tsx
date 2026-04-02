@@ -17,6 +17,7 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { cityService, CityDTO } from "@/services/cityService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageCities() {
@@ -36,8 +37,7 @@ export default function ManageCities() {
             const res = await cityService.getCities(0, 500, searchTerm);
             setCities(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load cities");
+            handleApiError(e, "Failed to load cities");
         } finally {
             setLoading(false);
         }
@@ -77,8 +77,7 @@ export default function ManageCities() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadCities();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete city");
+            handleApiError(e, "Failed to delete city");
         } finally { setDeleting(false); }
     };
 

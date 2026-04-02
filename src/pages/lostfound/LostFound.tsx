@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, CheckCircle, Trash2, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -52,8 +53,8 @@ export default function LostFound() {
             setCases(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load cases");
+        } catch (e) {
+            handleApiError(e, "Failed to load cases");
         } finally {
             setLoading(false);
         }
@@ -66,8 +67,8 @@ export default function LostFound() {
             setSightings(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load sightings");
+        } catch (error) {
+            handleApiError(error, "Failed to load sightings");
         } finally {
             setLoading(false);
         }
@@ -94,8 +95,8 @@ export default function LostFound() {
                 setSightings(prev => prev.filter(s => s.id !== confirmId));
                 toast.success("Sighting removed");
             }
-        } catch {
-            toast.error("Action failed");
+        } catch (e) {
+            handleApiError(e, "Action failed");
         } finally {
             setConfirmId(null);
         }

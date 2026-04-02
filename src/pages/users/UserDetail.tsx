@@ -22,7 +22,7 @@ import {
     Clock,
     Store
 } from "lucide-react";
-import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -61,8 +61,7 @@ export default function UserDetail() {
             const data = await userService.getUserById(id);
             setUser(data);
         } catch (error) {
-            console.error("Failed to load user detail", error);
-            toast.error("Failed to load user details");
+            handleApiError(error, "Failed to load user details");
         } finally {
             setLoading(false);
         }
@@ -77,8 +76,7 @@ export default function UserDetail() {
             setOrdersTotalPages(data.totalPages || 1);
             setOrdersTotalItems(data.totalElements || 0);
         } catch (error) {
-            console.error("Failed to load user orders", error);
-            toast.error("Failed to load order history");
+            handleApiError(error, "Failed to load order history");
         } finally {
             setOrdersLoading(false);
         }
@@ -93,8 +91,7 @@ export default function UserDetail() {
             setActivitiesTotalPages(data.totalPages || 1);
             setActivitiesTotalItems(data.totalElements || 0);
         } catch (error) {
-            console.error("Failed to load user activity", error);
-            toast.error("Failed to load activity log");
+            handleApiError(error, "Failed to load activity log");
         } finally {
             setActivitiesLoading(false);
         }

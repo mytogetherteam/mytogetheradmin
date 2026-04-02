@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryDTO } from "@/services/shopCategoryService";
 import { TableImage } from "@/components/TableImage";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 import { Label } from "@/components/ui/label";
 
@@ -60,7 +61,7 @@ export default function ManageShopSubCategories() {
                 setSelectedCategoryId(data.value);
             }
         } catch (error) {
-            console.error(error);
+            handleApiError(error, "Failed to load categories");
         }
     };
 
@@ -74,8 +75,7 @@ export default function ManageShopSubCategories() {
                 setSubCategories([]);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load shop sub-categories");
+            handleApiError(error, "Failed to load shop sub-categories");
         } finally {
             setLoading(false);
         }
@@ -136,8 +136,7 @@ export default function ManageShopSubCategories() {
                 fetchSubCategories(parseInt(selectedCategoryId));
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete shop sub-category");
+            handleApiError(error, "Failed to delete shop sub-category");
         }
     };
 

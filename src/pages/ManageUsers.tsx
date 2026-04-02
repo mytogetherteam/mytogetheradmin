@@ -49,6 +49,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { userService, UserListItem } from "@/services/userService";
 import { exportService } from "@/services/exportService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManageUsers() {
@@ -83,8 +84,7 @@ export default function ManageUsers() {
                 setTotalPages(Math.ceil(response.length / pageSize));
             }
         } catch (error) {
-            console.error("Failed to load users", error);
-            toast.error("Failed to load users");
+            handleApiError(error, "Failed to load users");
         } finally {
             setLoading(false);
         }
@@ -112,8 +112,7 @@ export default function ManageUsers() {
             toast.success(`User ${user.active ? 'deactivated' : 'activated'} successfully`);
             loadUsers();
         } catch (error) {
-            console.error("Failed to toggle status", error);
-            toast.error("Failed to toggle user status");
+            handleApiError(error, "Failed to toggle user status");
         } finally {
             setActionLoading(false);
         }
@@ -134,8 +133,7 @@ export default function ManageUsers() {
             setRoleDialogOpen(false);
             loadUsers();
         } catch (error) {
-            console.error("Failed to update role", error);
-            toast.error("Failed to update user role");
+            handleApiError(error, "Failed to update user role");
         } finally {
             setActionLoading(false);
         }

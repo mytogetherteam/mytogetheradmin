@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { cityService, CreateCityRequest } from "@/services/cityService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function CreateCity() {
     const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function CreateCity() {
                     setNameTh(city.nameTh || "");
                     setActive(city.active);
                 })
-                .catch(() => toast.error("Failed to load city"))
+                .catch((e) => handleApiError(e, "Failed to load city"))
                 .finally(() => setLoading(false));
         }
     }, [id, isEdit]);
@@ -52,8 +53,7 @@ export default function CreateCity() {
             }
             navigate("/cities/manage");
         } catch (e) {
-            console.error(e);
-            toast.error(isEdit ? "Failed to update city" : "Failed to create city");
+            handleApiError(e, isEdit ? "Failed to update city" : "Failed to create city");
         } finally { setSubmitting(false); }
     };
 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Presentation, Edit, Trash2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function OnboardingManagement() {
     const [screens, setScreens] = useState<OnboardingScreen[]>([]);
@@ -25,8 +25,7 @@ export default function OnboardingManagement() {
             const data = await appManagementService.getOnboardingScreens();
             setScreens(data);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load onboarding screens");
+            handleApiError(error, "Failed to load onboarding screens");
         } finally {
             setLoading(false);
         }

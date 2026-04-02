@@ -34,6 +34,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { MasterMenuCategoryService, MasterMenuCategoryDTO } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageMasterMenuCategories() {
@@ -59,8 +60,7 @@ export default function ManageMasterMenuCategories() {
             });
             setCategories(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load master menu categories");
+            handleApiError(e, "Failed to load master menu categories");
         } finally {
             setLoading(false);
         }
@@ -112,8 +112,7 @@ export default function ManageMasterMenuCategories() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadCategories();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete master menu category");
+            handleApiError(e, "Failed to delete master menu category");
         } finally {
             setDeleting(false);
         }

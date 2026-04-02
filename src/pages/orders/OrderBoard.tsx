@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/skeleton";
 import { RefreshCw, ClipboardList, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -80,8 +81,8 @@ export default function OrderBoard() {
             setLastRefresh(new Date());
             // Rebuild the known-IDs set from the fresh snapshot
             knownIdsRef.current = new Set(data.map((o) => o.id));
-        } catch {
-            toast.error("Failed to fetch active orders");
+        } catch (error) {
+            handleApiError(error, "Failed to fetch active orders");
         } finally {
             setLoading(false);
         }
@@ -173,8 +174,8 @@ export default function OrderBoard() {
                 return prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o);
             });
             toast.success(`Order status updated to ${newStatus}`);
-        } catch {
-            toast.error("Failed to update order status");
+        } catch (error) {
+            handleApiError(error, "Failed to update order status");
         }
     };
 

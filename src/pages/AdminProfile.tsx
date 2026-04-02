@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Loader } from "@/components/ui/loader";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { authService } from "@/services/authService";
 import { userService } from "@/services/userService";
 import { User, Mail, Shield, Hash } from "lucide-react";
@@ -65,10 +66,7 @@ export default function AdminProfile() {
                 });
             }
         } catch (error) {
-            console.error("Failed to load admin profile:", error);
-            toast.error("Failed to load profile", {
-                description: "Unable to fetch profile data"
-            });
+            handleApiError(error, "Failed to load admin profile");
         } finally {
             setLoading(false);
         }
@@ -100,10 +98,7 @@ export default function AdminProfile() {
 
             toast.success("Profile updated successfully!");
         } catch (error) {
-            console.error("Failed to update profile:", error);
-            toast.error("Failed to update profile", {
-                description: "An error occurred while updating your profile"
-            });
+            handleApiError(error, "Failed to update profile");
         } finally {
             setSubmitting(false);
         }

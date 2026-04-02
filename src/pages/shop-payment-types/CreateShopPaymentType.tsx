@@ -32,6 +32,7 @@ import {
 import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
 import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function CreateShopPaymentType() {
     const navigate = useNavigate();
@@ -96,8 +97,7 @@ export default function CreateShopPaymentType() {
                     }
                 }
             } catch (error) {
-                console.error("Failed to load data", error);
-                toast.error("Failed to load required data");
+                handleApiError(error, "Failed to load required data");
             } finally {
                 setLoading(false);
             }
@@ -192,8 +192,7 @@ export default function CreateShopPaymentType() {
             }
             navigate(`/shop-payment-types/manage?shopId=${selectedShopId}`);
         } catch (error) {
-            console.error(error);
-            toast.error(isEdit ? "Failed to update" : "Failed to create");
+            handleApiError(error, isEdit ? "Failed to update" : "Failed to create");
         } finally {
             setSubmitting(false);
         }

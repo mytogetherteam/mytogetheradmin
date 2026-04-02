@@ -33,6 +33,7 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopService, MenuCategory } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageCategories() {
@@ -55,8 +56,7 @@ export default function ManageCategories() {
       const list = res?.content || [];
       setCategories(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to load menu categories");
+      handleApiError(e, "Failed to load menu categories");
     } finally {
       setLoading(false);
     }
@@ -107,8 +107,7 @@ export default function ManageCategories() {
       setDeleteDialog({ open: false, id: 0, name: "" });
       loadCategories();
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to delete menu category");
+      handleApiError(e, "Failed to delete menu category");
     } finally {
       setDeleting(false);
     }

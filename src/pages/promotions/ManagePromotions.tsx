@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -55,8 +56,7 @@ export default function ManagePromotions() {
             setTotalPages(data.totalPages || 1);
             setTotalElements(data.totalElements || 0);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load promotions");
+            handleApiError(error, "Failed to load promotions");
         } finally {
             setLoading(false);
         }
@@ -101,8 +101,7 @@ export default function ManagePromotions() {
             toast.success("Promotion deleted successfully");
             fetchPromotions(page, debouncedSearch);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete promotion");
+            handleApiError(error, "Failed to delete promotion");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

@@ -12,6 +12,7 @@ import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { districtService, CreateDistrictRequest } from "@/services/districtService";
 import { cityService, CityDTO } from "@/services/cityService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export type CreateDistrictFormData = CreateDistrictRequest;
 
@@ -48,7 +49,7 @@ export default function CreateDistrict() {
                     setLongitude(d.longitude ? String(d.longitude) : "");
                     setActive(d.active);
                 })
-                .catch(() => toast.error("Failed to load district"))
+                .catch((e) => handleApiError(e, "Failed to load district"))
                 .finally(() => setLoading(false));
         }
     }, [id, isEdit]);
@@ -78,8 +79,7 @@ export default function CreateDistrict() {
             }
             navigate("/districts/manage");
         } catch (e) {
-            console.error(e);
-            toast.error(isEdit ? "Failed to update district" : "Failed to create district");
+            handleApiError(e, isEdit ? "Failed to update district" : "Failed to create district");
         } finally { setSubmitting(false); }
     };
 

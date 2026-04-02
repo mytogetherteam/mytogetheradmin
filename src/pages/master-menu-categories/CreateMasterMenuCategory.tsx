@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { cuisineService } from "@/services/cuisineService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -65,8 +66,7 @@ export default function CreateMasterMenuCategory() {
                 }
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load category details");
+            handleApiError(error, "Failed to load category details");
         } finally {
             setLoading(false);
         }
@@ -134,8 +134,7 @@ export default function CreateMasterMenuCategory() {
             }
             navigate("/master-menu-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update category" : "Failed to create category");
+            handleApiError(error, isEditMode ? "Failed to update category" : "Failed to create category");
         } finally {
             setSubmitting(false);
         }
@@ -149,8 +148,7 @@ export default function CreateMasterMenuCategory() {
             toast.success("Master menu category deleted successfully");
             navigate("/master-menu-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete category");
+            handleApiError(error, "Failed to delete category");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

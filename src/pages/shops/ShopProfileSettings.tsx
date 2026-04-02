@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ShopService, Shop, ShopDetail } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,8 +45,7 @@ export default function ShopProfileSettings() {
             const res = await ShopService.getAllShops(0, 100);
             setShops(res?.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load shops");
+            handleApiError(e, "Failed to load shops");
         } finally {
             setLoadingShops(false);
         }
@@ -58,8 +58,7 @@ export default function ShopProfileSettings() {
             const data = await ShopService.getShopById(shopId);
             setProfile(data);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load shop profile");
+            handleApiError(e, "Failed to load shop profile");
         } finally {
             setLoading(false);
         }
@@ -85,8 +84,7 @@ export default function ShopProfileSettings() {
             await ShopService.updateShop(parseInt(selectedShopId), formData);
             toast.success("Shop profile updated successfully");
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to update shop profile");
+            handleApiError(e, "Failed to update shop profile");
         } finally {
             setSubmitting(false);
         }
@@ -99,8 +97,7 @@ export default function ShopProfileSettings() {
             setProfile(prev => prev ? { ...prev, isOpen } : null);
             toast.success(`Shop is now ${isOpen ? 'Open' : 'Closed'}`);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to update status");
+            handleApiError(e, "Failed to update status");
         }
     };
 

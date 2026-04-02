@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { History, Search } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -140,8 +141,8 @@ export default function OrderHistory() {
             const data = await orderService.getOrders(filters);
             setOrders(data.content);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load order history");
+        } catch (error) {
+            handleApiError(error, "Failed to load order history");
         } finally {
             setLoading(false);
         }

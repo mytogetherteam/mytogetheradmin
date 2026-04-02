@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import { districtService, DistrictDTO } from "@/services/districtService";
 import { cityService, CityDTO } from "@/services/cityService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageDistricts() {
@@ -49,8 +50,7 @@ export default function ManageDistricts() {
             const res = await districtService.getDistricts(0, 500, searchTerm, selectedCityId);
             setDistricts(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load districts");
+            handleApiError(e, "Failed to load districts");
         } finally { setLoading(false); }
     }, [searchTerm, selectedCityId]);
 
@@ -94,8 +94,7 @@ export default function ManageDistricts() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadDistricts();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete district");
+            handleApiError(e, "Failed to delete district");
         } finally { setDeleting(false); }
     };
 

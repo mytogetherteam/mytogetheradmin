@@ -16,6 +16,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -45,8 +46,8 @@ export default function SystemConfigManagement() {
         try {
             const data = await systemConfigService.getConfigs();
             setConfigs(data);
-        } catch {
-            toast.error("Failed to load system configurations");
+        } catch (error) {
+            handleApiError(error, "Failed to load system configurations");
         } finally {
             setLoading(false);
         }
@@ -90,8 +91,8 @@ export default function SystemConfigManagement() {
             setSelectedConfig(null);
             setIsAddMode(false);
             fetchConfigs();
-        } catch {
-            toast.error(isAddMode ? "Failed to create configuration" : "Failed to update configuration");
+        } catch (error) {
+            handleApiError(error, isAddMode ? "Failed to create configuration" : "Failed to update configuration");
         } finally {
             setSaving(false);
         }
@@ -102,8 +103,8 @@ export default function SystemConfigManagement() {
             await systemConfigService.initConfigs();
             toast.success("System configurations initialized");
             fetchConfigs();
-        } catch {
-            toast.error("Failed to initialize system configurations");
+        } catch (error) {
+            handleApiError(error, "Failed to initialize system configurations");
         }
     };
 

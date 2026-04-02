@@ -34,6 +34,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ItemTagService, ItemTagDTO } from "@/services/itemTagService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageItemTags() {
@@ -59,8 +60,7 @@ export default function ManageItemTags() {
             });
             setTags(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load item tags");
+            handleApiError(e, "Failed to load item tags");
         } finally {
             setLoading(false);
         }
@@ -112,8 +112,7 @@ export default function ManageItemTags() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadTags();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete item tag");
+            handleApiError(e, "Failed to delete item tag");
         } finally {
             setDeleting(false);
         }

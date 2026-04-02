@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
+import { handleApiError } from "@/lib/error-utils"
 import { userService } from "@/services/userService"
 import { Utensils, Leaf, DollarSign, Flame } from "lucide-react"
 
@@ -68,10 +69,7 @@ export default function Profile() {
                 spicinessPreference: profile.spicinessPreference,
             })
         } catch (error) {
-            console.error("Failed to load profile:", error)
-            toast.error("Failed to load profile", {
-                description: "Unable to fetch profile data"
-            })
+            handleApiError(error, "Failed to load profile")
         } finally {
             setLoading(false)
         }
@@ -87,10 +85,7 @@ export default function Profile() {
             await userService.updateProfile(data)
             toast.success("Profile updated successfully!")
         } catch (error) {
-            console.error("Failed to update profile:", error)
-            toast.error("Failed to update profile", {
-                description: "An error occurred"
-            })
+            handleApiError(error, "Failed to update profile")
         } finally {
             setSubmitting(false)
         }

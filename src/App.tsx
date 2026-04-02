@@ -42,8 +42,6 @@ const CreateShopSubCategory = lazy(() => import("@/pages/shop-sub-categories/Cre
 // Menu
 const ManageMenuItems = lazy(() => import("@/pages/menus/ManageMenuItems"));
 const CreateMenuItem = lazy(() => import("@/pages/menus/CreateMenuItem"));
-const CreateSubCategory = lazy(() => import("@/pages/sub-categories/CreateSubCategory"));
-const ManageSubCategories = lazy(() => import("@/pages/sub-categories/ManageSubCategories"));
 const MenuApprovals = lazy(() => import("@/pages/menus/MenuApprovals"));
 const ManageItemTags = lazy(() => import("@/pages/item-tags/ManageItemTags"));
 const CreateItemTag = lazy(() => import("@/pages/item-tags/CreateItemTag"));
@@ -180,8 +178,6 @@ function App() {
                     <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                     <Route path="/master-items/manage" element={<ManageMasterItems />} />
                     <Route path="/master-items/create" element={<CreateMasterItem />} />
-                    <Route path="/menus/sub-categories/create" element={<CreateSubCategory />} />
-                    <Route path="/menus/sub-categories/manage" element={<ManageSubCategories />} />
                     <Route path="/community/posts" element={<CommunityMgt />} />
                     <Route path="/community/posts/:id" element={<PostDetailPage />} />
                     <Route path="/community/comments" element={<CommentBoard />} />

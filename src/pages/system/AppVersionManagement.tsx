@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Smartphone, Edit2, Search, Info } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -35,8 +36,8 @@ export default function AppVersionManagement() {
         try {
             const data = await appVersionService.getAppVersions();
             setVersions(data);
-        } catch {
-            toast.error("Failed to load app versions");
+        } catch (error) {
+            handleApiError(error, "Failed to load app versions");
         } finally {
             setLoading(false);
         }
@@ -63,8 +64,8 @@ export default function AppVersionManagement() {
             toast.success("Version updated successfully");
             setSelectedVersion(null);
             fetchVersions();
-        } catch {
-            toast.error("Failed to update version");
+        } catch (error) {
+            handleApiError(error, "Failed to update version");
         } finally {
             setSaving(false);
         }

@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function Reviews() {
     const navigate = useNavigate();
@@ -60,8 +61,8 @@ export default function Reviews() {
             });
             setReviews(data.content);
             setTotalPages(data.totalPages);
-        } catch {
-            toast.error("Failed to load reviews");
+        } catch (e) {
+            handleApiError(e, "Failed to load reviews");
         } finally {
             setLoading(false);
         }
@@ -75,8 +76,8 @@ export default function Reviews() {
             await reviewService.toggleVisibility(type, id, !visible);
             setReviews(prev => prev.map(r => r.id === id ? { ...r, isVisible: !visible } : r));
             toast.success(`Review visibility updated`);
-        } catch {
-            toast.error("Failed to update visibility");
+        } catch (e) {
+            handleApiError(e, "Failed to update visibility");
         }
     };
 
@@ -86,8 +87,8 @@ export default function Reviews() {
             await reviewService.deleteReview(type, deleteId);
             setReviews(prev => prev.filter(r => r.id !== deleteId));
             toast.success("Review deleted");
-        } catch {
-            toast.error("Failed to delete review");
+        } catch (e) {
+            handleApiError(e, "Failed to delete review");
         } finally {
             setDeleteId(null);
         }

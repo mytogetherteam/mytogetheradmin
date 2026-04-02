@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Edit2, Send, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -35,8 +36,8 @@ export default function AppContentManagement() {
         try {
             const data = await appContentService.getAppContents();
             setContents(data);
-        } catch {
-            toast.error("Failed to load app contents");
+        } catch (error) {
+            handleApiError(error, "Failed to load app contents");
         } finally {
             setLoading(false);
         }
@@ -58,8 +59,8 @@ export default function AppContentManagement() {
             toast.success("Content updated successfully");
             setSelectedContent(null);
             fetchContents();
-        } catch {
-            toast.error("Failed to update content");
+        } catch (error) {
+            handleApiError(error, "Failed to update content");
         } finally {
             setSaving(false);
         }
@@ -72,8 +73,8 @@ export default function AppContentManagement() {
             await appContentService.publishAppContent(key, content.targetApp);
             toast.success("Content published successfully");
             fetchContents();
-        } catch {
-            toast.error("Failed to publish content");
+        } catch (error) {
+            handleApiError(error, "Failed to publish content");
         }
     };
 
@@ -83,8 +84,8 @@ export default function AppContentManagement() {
             await appContentService.deleteAppContent(id);
             toast.success("Content deleted successfully");
             fetchContents();
-        } catch {
-            toast.error("Failed to delete content");
+        } catch (error) {
+            handleApiError(error, "Failed to delete content");
         }
     };
 

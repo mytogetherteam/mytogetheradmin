@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -199,8 +200,7 @@ export default function ShopsExcelImport() {
 
       toast.success("Excel loaded", { description: "Preview updated from your file." });
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to read Excel file", { description: "Invalid file" });
+      handleApiError(e, "Failed to read Excel file");
     }
   };
 
@@ -221,8 +221,7 @@ export default function ShopsExcelImport() {
       setBackendResult(result);
       toast.success("Validation completed");
     } catch (e) {
-      console.error(e);
-      toast.error("Validation failed", { description: "Backend error" });
+      handleApiError(e, "Validation failed");
     } finally {
       setValidating(false);
     }

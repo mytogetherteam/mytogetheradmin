@@ -19,7 +19,10 @@ import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
+import { MasterItemService } from "@/services/masterItemService";
+import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -29,7 +32,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
-import { OptionGroup, Variant, Option, MenuSubCategory, ItemTag, ComboComponent } from "@/services/menuService";
+import { OptionGroup, Variant, Option, ItemTag, ComboComponent } from "@/services/menuService";
 import {
     DndContext,
     closestCenter,
@@ -115,7 +118,6 @@ export default function CreateMenuItem() {
     const [discountPercentage, setDiscountPercentage] = useState("");
     const [currency, setCurrency] = useState("THB");
     const [categoryId, setCategoryId] = useState("");
-    const [subCategoryId, setSubCategoryId] = useState("");
     const [shopId, setShopId] = useState("");
     const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
     const [isVegetarian, setIsVegetarian] = useState(false);
@@ -150,7 +152,6 @@ export default function CreateMenuItem() {
 
     // Selected items full data for InfiniteSearchableSelect display
     const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(null);
-    const [selectedSubCategoryData, setSelectedSubCategoryData] = useState<{ label: string, value: string } | null>(null);
 
 
     // Main Image
@@ -172,21 +173,6 @@ export default function CreateMenuItem() {
     );
 
 
-    const loadSubCategories = useCallback(async (catId: number) => {
-        try {
-            const res = await menuService.getMenuSubCategories(catId);
-            // If we have a subCategoryId, make sure we have its label
-            if (subCategoryId) {
-                const sub = res?.find((s: MenuSubCategory) => String(s.id) === subCategoryId);
-                if (sub) {
-                    setSelectedSubCategoryData({ label: sub.nameEn || sub.name || "", value: subCategoryId });
-                }
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }, [subCategoryId]);
-    
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -206,7 +192,7 @@ export default function CreateMenuItem() {
 
     // Fetch item tags on mount
     useEffect(() => {
-        menuService.getAllItemTags().then(setAvailableTags).catch(console.error);
+        menuService.getAllItemTags().then(setAvailableTags).catch((e) => handleApiError(e, "Failed to load item tags"));
     }, []);
 
     const fetchMasterItemData = useCallback(async (page: number, size: number, search: string) => {
@@ -264,20 +250,6 @@ export default function CreateMenuItem() {
         });
     };
 
-    const fetchSubCategoryData = useCallback(async (page: number, size: number, search: string) => {
-        if (!categoryId) return { content: [], last: true };
-        const res = await menuService.getMenuSubCategories(parseInt(categoryId));
-        const filtered = search 
-            ? res.filter(s => (s.nameEn || s.name || "").toLowerCase().includes(search.toLowerCase()))
-            : res;
-        
-        const start = page * size;
-        const end = start + size;
-        return {
-            content: filtered.slice(start, end).map(sub => ({ label: sub.nameEn || sub.name, value: String(sub.id) })),
-            last: end >= filtered.length
-        };
-    }, [categoryId]);
 
     const loadItem = useCallback(async (itemId: number) => {
         setLoading(true);
@@ -303,11 +275,16 @@ export default function CreateMenuItem() {
 
             if (item.menuCategoryId) {
                 setCategoryId(item.menuCategoryId.toString());
-                setSelectedCategoryData({ label: item.categoryName || "Selected Category", value: item.menuCategoryId.toString() });
-            }
-            if (item.menuSubCategoryId) {
-                setSubCategoryId(item.menuSubCategoryId.toString());
-                // We'll trust the loadSubCategories useEffect to set the label if needed
+                const label = item.categoryName || "Selected Category";
+                setSelectedCategoryData({ label, value: item.menuCategoryId.toString() });
+
+                // Fetch real name if backend didn't provide it
+                if (!item.categoryName || item.categoryName === "Selected Category") {
+                    ShopService.getCategoryById(item.menuCategoryId).then((cat) => {
+                        setCategoryId(cat.id.toString());
+                        setSelectedCategoryData({ label: cat.nameEn || cat.nameMm || `Category ${cat.id}`, value: String(cat.id) });
+                    }).catch((e) => handleApiError(e, "Failed to load item category"));
+                }
             }
             
             setIsVegetarian(item.isVegetarian || false);
@@ -322,11 +299,29 @@ export default function CreateMenuItem() {
             setTagIds(item.tagIds || (item.tags ? item.tags.map(t => t.id) : []));
             if (item.masterItemId) {
                 setMasterItemId(String(item.masterItemId));
-                setSelectedMasterItemData({ label: `Master Item #${item.masterItemId}`, value: String(item.masterItemId) });
+                const label = item.masterItemName || `Master Item #${item.masterItemId}`;
+                setSelectedMasterItemData({ label, value: String(item.masterItemId) });
+                
+                // Fetch real name if backend didn't provide it
+                if (!item.masterItemName) {
+                    MasterItemService.getMasterItemById(item.masterItemId).then((m) => {
+                        setMasterItemId(m.id.toString());
+                        setSelectedMasterItemData({ label: m.nameEn || m.nameMm || `Item ${m.id}`, value: String(m.id) });
+                    }).catch((e) => handleApiError(e, "Failed to load master item details"));
+                }
             }
             if (item.masterCategoryId) {
                 setMasterCategoryId(String(item.masterCategoryId));
-                setSelectedMasterCategoryData({ label: `Master Category #${item.masterCategoryId}`, value: String(item.masterCategoryId) });
+                const label = item.masterCategoryName || `Master Category #${item.masterCategoryId}`;
+                setSelectedMasterCategoryData({ label, value: String(item.masterCategoryId) });
+
+                // Fetch real name if backend didn't provide it
+                if (!item.masterCategoryName) {
+                    MasterMenuCategoryService.getMasterMenuCategoryById(item.masterCategoryId).then((mc) => {
+                        setMasterCategoryId(mc.id.toString());
+                        setSelectedMasterCategoryData({ label: mc.nameEn || mc.nameMm || `Category ${mc.id}`, value: String(mc.id) });
+                    }).catch((e) => handleApiError(e, "Failed to load master category details"));
+                }
             }
             setComboComponents(item.components || []);
             setOptionGroups(item.optionGroups || []);
@@ -335,9 +330,8 @@ export default function CreateMenuItem() {
             if (item.imageUrl) {
                 setExistingImage(item.imageUrl);
             }
-        } catch (e) {
-            console.error(e);
-            toast.error("Failed to load item");
+        } catch (error) {
+            handleApiError(error, "Failed to load item");
         } finally {
             setLoading(false);
         }
@@ -361,11 +355,9 @@ export default function CreateMenuItem() {
             setDiscountPercentage("");
             setCurrency("THB");
             setCategoryId("");
-            setSubCategoryId("");
             setShopId("");
             setSelectedShopData(null);
             setSelectedCategoryData(null);
-            setSelectedSubCategoryData(null);
             setIsVegetarian(false);
             setIsSpicy(false);
 
@@ -388,17 +380,9 @@ export default function CreateMenuItem() {
             setOptionGroups([]);
             setVariants([]);
             setSelectedCategoryData(null);
-            setSelectedSubCategoryData(null);
         }
     }, [id, isEditMode, loadItem]);
 
-    useEffect(() => {
-        if (categoryId) {
-            loadSubCategories(parseInt(categoryId));
-        } else {
-            setSubCategoryId("");
-        }
-    }, [categoryId, loadSubCategories]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -536,7 +520,6 @@ export default function CreateMenuItem() {
                 discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
                 currency: currency || "THB",
                 menuCategoryId: Number(categoryId),
-                menuSubCategoryId: subCategoryId ? Number(subCategoryId) : 0,
                 shopId: Number(shopId),
                 isVegetarian: isVegetarian,
                 isSpicy: isSpicy,
@@ -552,16 +535,35 @@ export default function CreateMenuItem() {
                 masterCategoryId: masterCategoryId ? Number(masterCategoryId) : undefined,
                 components: isCombo ? comboComponents.map((c, i) => ({ ...c, displayOrder: i + 1 })) : [],
                 optionGroups: optionGroups.map(og => ({
-                    ...og,
-                    name: og.nameEn,
+                    id: og.id,
+                    name: og.nameEn || og.name || "",
+                    nameMm: og.nameMm || "",
+                    nameTh: og.nameTh || "",
+                    displayOrder: og.displayOrder || 0,
+                    maxSelection: og.maxSelection || 0,
+                    minSelection: og.minSelection || 0,
+                    isRequired: og.isRequired ?? false,
+                    groupType: og.groupType || "SINGLE_SELECT",
                     options: og.options.map(opt => ({
-                        ...opt,
-                        name: opt.nameEn
+                        id: opt.id,
+                        name: opt.nameEn || opt.name || "",
+                        nameMm: opt.nameMm || "",
+                        nameTh: opt.nameTh || "",
+                        price: opt.price || 0,
+                        displayPrice: opt.displayPrice || "",
+                        linkedMenuItemId: opt.linkedMenuItemId,
+                        displayOrder: opt.displayOrder || 0
                     }))
                 })),
                 variants: variants.map(v => ({
-                    ...v,
-                    name: v.nameEn
+                    id: v.id,
+                    name: v.nameEn || v.name || "",
+                    nameEn: v.nameEn || v.name || "",
+                    nameMm: v.nameMm || "",
+                    nameTh: v.nameTh || "",
+                    price: v.price || 0,
+                    isAvailable: v.isAvailable !== false,
+                    displayOrder: v.displayOrder || 0
                 }))
             };
 
@@ -591,23 +593,7 @@ export default function CreateMenuItem() {
             }
             navigate("/menus/items/manage");
         } catch (error: unknown) {
-            console.error(error);
-            const err = error as { data?: { errors?: Record<string, string>; message?: string } };
-            let errorMessage = isEditMode ? "Failed to update item" : "Failed to create item";
-            
-            if (err?.data?.errors) {
-                const errors = err.data.errors;
-                const fieldErrors = Object.entries(errors)
-                    .map(([field, msg]) => `${field}: ${msg}`)
-                    .join(", ");
-                if (fieldErrors) {
-                    errorMessage = `Validation Failed: ${fieldErrors}`;
-                }
-            } else if (err?.data?.message) {
-                errorMessage = err.data.message;
-            }
-
-            toast.error(errorMessage);
+            handleApiError(error, isEditMode ? "Failed to update item" : "Failed to create item");
         } finally {
             setSubmitting(false);
         }
@@ -621,8 +607,7 @@ export default function CreateMenuItem() {
             toast.success("Item deleted successfully");
             navigate("/menus/items/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete item");
+            handleApiError(error, "Failed to delete item");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
@@ -663,40 +648,6 @@ export default function CreateMenuItem() {
                                     }}
                                     placeholder="Select Shop"
                                 />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Category</Label>
-                                    <InfiniteSearchableSelect
-                                        fetchData={fetchCategoryData}
-                                        valueKey="value"
-                                        labelKey="label"
-                                        selectedValue={selectedCategoryData}
-                                        onChange={(item) => {
-                                            setCategoryId(item?.value || "");
-                                            setSelectedCategoryData(item);
-                                            setSubCategoryId("");
-                                            setSelectedSubCategoryData(null);
-                                        }}
-                                        placeholder="Select Category"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Sub Category</Label>
-                                    <InfiniteSearchableSelect
-                                        fetchData={fetchSubCategoryData}
-                                        valueKey="value"
-                                        labelKey="label"
-                                        selectedValue={selectedSubCategoryData}
-                                        onChange={(item) => {
-                                            setSubCategoryId(item?.value || "");
-                                            setSelectedSubCategoryData(item);
-                                        }}
-                                        placeholder={categoryId ? "Select Sub Category" : "First select Category"}
-                                        disabled={!categoryId}
-                                    />
-                                </div>
                             </div>
                         </div>
 
@@ -887,38 +838,56 @@ export default function CreateMenuItem() {
                                 )}
                             </div>
 
-                            {/* Master Links */}
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-bold">Master Catalogue Links</h3>
-                                <p className="text-sm text-muted-foreground">Optionally link this item to a global master item and master category for better discoverability.</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Catalogue & Category Section */}
+                            <div className="space-y-4 bg-muted/5 p-4 rounded-xl border border-dashed">
+                                <div>
+                                    <h3 className="text-xl font-bold">Catalogue & Category Links</h3>
+                                    <p className="text-sm text-muted-foreground">Select a category for this item and optionally link it to a global master item/category.</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-6">
                                     <div className="space-y-2">
-                                        <Label>Master Item</Label>
+                                        <Label className="text-primary font-bold">Category (Mandatory)</Label>
                                         <InfiniteSearchableSelect
-                                            fetchData={fetchMasterItemData}
+                                            fetchData={fetchCategoryData}
                                             valueKey="value"
                                             labelKey="label"
-                                            selectedValue={selectedMasterItemData}
+                                            selectedValue={selectedCategoryData}
                                             onChange={(item) => {
-                                                setMasterItemId(item?.value || "");
-                                                setSelectedMasterItemData(item);
+                                                setCategoryId(item?.value || "");
+                                                setSelectedCategoryData(item);
                                             }}
-                                            placeholder="Search master items..."
+                                            placeholder="Select Category"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Master Category</Label>
-                                        <InfiniteSearchableSelect
-                                            fetchData={fetchMasterCategoryData}
-                                            valueKey="value"
-                                            labelKey="label"
-                                            selectedValue={selectedMasterCategoryData}
-                                            onChange={(item) => {
-                                                setMasterCategoryId(item?.value || "");
-                                                setSelectedMasterCategoryData(item);
-                                            }}
-                                            placeholder="Search master categories..."
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-dashed">
+                                        <div className="space-y-2">
+                                            <Label>Master Item (Optional)</Label>
+                                            <InfiniteSearchableSelect
+                                                fetchData={fetchMasterItemData}
+                                                valueKey="value"
+                                                labelKey="label"
+                                                selectedValue={selectedMasterItemData}
+                                                onChange={(item) => {
+                                                    setMasterItemId(item?.value || "");
+                                                    setSelectedMasterItemData(item);
+                                                }}
+                                                placeholder="Search master items..."
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Master Category (Optional)</Label>
+                                            <InfiniteSearchableSelect
+                                                fetchData={fetchMasterCategoryData}
+                                                valueKey="value"
+                                                labelKey="label"
+                                                selectedValue={selectedMasterCategoryData}
+                                                onChange={(item) => {
+                                                    setMasterCategoryId(item?.value || "");
+                                                    setSelectedMasterCategoryData(item);
+                                                }}
+                                                placeholder="Search master categories..."
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ShieldAlert, User, Clock, FileText, Eye } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -35,8 +35,8 @@ export default function AuditLogs() {
             const data = await systemService.getAuditLogs(currentPage - 1, pageSize, search);
             setLogs(data.content);
             setTotalPages(data.totalPages);
-        } catch {
-            toast.error("Failed to load audit logs");
+        } catch (error) {
+            handleApiError(error, "Failed to load audit logs");
         } finally {
             setLoading(false);
         }

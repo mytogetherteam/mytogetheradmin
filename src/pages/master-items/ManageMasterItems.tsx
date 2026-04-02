@@ -34,6 +34,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { MasterItemService, MasterItemDTO } from "@/services/masterItemService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageMasterItems() {
@@ -59,8 +60,7 @@ export default function ManageMasterItems() {
             });
             setItems(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load master items");
+            handleApiError(e, "Failed to load master items");
         } finally {
             setLoading(false);
         }
@@ -111,8 +111,7 @@ export default function ManageMasterItems() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadItems();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete master item");
+            handleApiError(e, "Failed to delete master item");
         } finally {
             setDeleting(false);
         }

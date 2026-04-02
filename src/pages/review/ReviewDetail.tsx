@@ -21,6 +21,7 @@ import {
     Trash2
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Separator } from "@/components/ui/separator";
 
 export default function ReviewDetail() {
@@ -35,8 +36,7 @@ export default function ReviewDetail() {
             const data = await reviewService.getReviewDetail(reviewType, reviewId);
             setReview(data);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load review details");
+            handleApiError(error, "Failed to load review details");
         } finally {
             setLoading(false);
         }
@@ -172,8 +172,7 @@ export default function ReviewDetail() {
                                                                         // Refresh data
                                                                         if (type && id) fetchReviewDetail(type.toUpperCase() as ReviewType, id);
                                                                     } catch (error) {
-                                                                        console.error(error);
-                                                                        toast.error("Failed to delete photo");
+                                                                        handleApiError(error, "Failed to delete photo");
                                                                     }
                                                                 }
                                                             }}

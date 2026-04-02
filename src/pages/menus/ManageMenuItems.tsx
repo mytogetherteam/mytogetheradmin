@@ -31,6 +31,7 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { menuService, MenuItem } from "@/services/menuService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 
@@ -59,8 +60,7 @@ export default function ManageMenuItems() {
                 setTotalPages(Math.ceil(response.length / pageSize));
             }
         } catch (error) {
-            console.error("Failed to load menu items", error);
-            toast.error("Failed to load menu items");
+            handleApiError(error, "Failed to load menu items");
         } finally {
             setLoading(false);
         }
@@ -108,8 +108,7 @@ export default function ManageMenuItems() {
             );
             toast.success(`Item updated successfully`);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to update item status");
+            handleApiError(error, "Failed to update item status");
         }
     };
 

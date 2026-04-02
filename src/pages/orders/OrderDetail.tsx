@@ -19,7 +19,7 @@ import {
     AlertCircle,
     Package
 } from "lucide-react";
-import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Separator } from "@/components/ui/separator";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -52,8 +52,7 @@ export default function OrderDetail() {
             setOrder(orderData);
             setHistory(historyData);
         } catch (error) {
-            console.error("OrderDetail: Fetch Error", error);
-            toast.error("Failed to load order details");
+            handleApiError(error, "Failed to load order details");
         } finally {
             setLoading(false);
         }

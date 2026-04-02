@@ -112,9 +112,6 @@ export const config = {
           base: '/api/admin/master-menu-categories',
           detail: (id: number) => `/api/admin/master-menu-categories/${id}`,
         },
-        subCategoryDetail: (id: number) => `/api/admin/menu-sub-categories/${id}`,
-        subCategories: '/api/admin/menu-sub-categories',
-        subCategoryByCategory: (catId: number) => `/api/admin/menu-sub-categories/category/${catId}`,
         itemActions: {
           recommended: (id: number) => `/api/admin/items/${id}/recommended`,
           availability: (id: number) => `/api/admin/items/${id}/availability`,

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -40,8 +41,8 @@ export default function VettingQueue() {
             const content = data?.content ?? [];
             setShops(content);
             setTotalElements(data?.totalElements ?? content.length);
-        } catch {
-            toast.error("Failed to load pending shops");
+        } catch (e) {
+            handleApiError(e, "Failed to load pending shops");
         } finally {
             setLoading(false);
         }
@@ -55,8 +56,8 @@ export default function VettingQueue() {
             await ShopService.verifyShop(id);
             toast.success("Shop approved successfully");
             fetchShops();
-        } catch {
-            toast.error("Failed to approve shop");
+        } catch (e) {
+            handleApiError(e, "Failed to approve shop");
         }
     };
 
@@ -69,8 +70,8 @@ export default function VettingQueue() {
             setRejectShop(null);
             setRejectReason("");
             fetchShops();
-        } catch {
-            toast.error("Failed to reject shop");
+        } catch (e) {
+            handleApiError(e, "Failed to reject shop");
         } finally {
             setActionLoading(false);
         }

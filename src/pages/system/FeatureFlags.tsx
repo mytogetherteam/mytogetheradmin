@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Flag, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -36,8 +37,7 @@ export default function FeatureFlags() {
             const data = await appManagementService.getFeatureFlags();
             setFlags(data);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load feature flags");
+            handleApiError(error, "Failed to load feature flags");
         } finally {
             setLoading(false);
         }
@@ -52,8 +52,7 @@ export default function FeatureFlags() {
             setFlags(prev => prev.filter(f => f.id !== confirmFlag.id));
             toast.success(`Feature flag "${confirmFlag.flagKey}" deleted`);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete feature flag");
+            handleApiError(error, "Failed to delete feature flag");
         } finally {
             setDeletingFlag(null);
         }

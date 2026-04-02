@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ShopCategoryService, ShopCategoryDTO, ShopSubCategoryRequest } from "@/services/shopCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,8 +61,7 @@ export default function CreateShopSubCategory() {
             setIsActive(subCat.active !== false);
             setSelectedCategoryId(subCat.categoryId?.toString() || "");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load sub-category");
+            handleApiError(error, "Failed to load sub-category");
         } finally {
             setLoading(false);
         }
@@ -85,8 +85,7 @@ export default function CreateShopSubCategory() {
                 setCategories(res.content);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load shop categories");
+            handleApiError(error, "Failed to load shop categories");
         } finally {
             setFetchingCategories(false);
         }
@@ -118,8 +117,7 @@ export default function CreateShopSubCategory() {
             }
             navigate("/shop-sub-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update sub-category" : "Failed to create sub-category");
+            handleApiError(error, isEditMode ? "Failed to update sub-category" : "Failed to create sub-category");
         } finally {
             setSubmitting(false);
         }
@@ -133,8 +131,7 @@ export default function CreateShopSubCategory() {
             toast.success("Sub-Category deleted successfully");
             navigate("/shop-sub-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete sub-category");
+            handleApiError(error, "Failed to delete sub-category");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

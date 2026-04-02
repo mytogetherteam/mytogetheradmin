@@ -169,15 +169,7 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Manage Menu Categories", url: "/categories/manage", icon: Settings2 }
                 ]
             },
-            {
-                title: "Menu Sub-Categories",
-                icon: Tags,
-                tooltip: "Menu Sub-Categories",
-                items: [
-                    { title: "Create Sub-Category", url: "/menus/sub-categories/create", icon: Plus },
-                    { title: "Manage Sub-Categories", url: "/menus/sub-categories/manage", icon: List }
-                ]
-            },
+
             {
                 title: "Item Discovery Tags",
                 icon: Tags,

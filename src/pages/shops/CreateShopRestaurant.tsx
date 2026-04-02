@@ -31,6 +31,7 @@ import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCate
 import { PaymentService } from "@/services/paymentService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
+import { handleApiError } from "@/lib/error-utils"
 import {
     Dialog,
     DialogContent,
@@ -234,8 +235,7 @@ export default function CreateShopRestaurant() {
             setShopSubCategories(subCategories)
             setPaymentMethods(setupData.paymentMethods || [])
         } catch (error) {
-            console.error("Failed to load setup data:", error)
-            toast.error("Failed to load necessary form data")
+            handleApiError(error, "Failed to load necessary form data")
         } finally {
             setSetupLoading(false)
             setCategoriesLoading(false)
@@ -415,10 +415,7 @@ export default function CreateShopRestaurant() {
             }
 
         } catch (error) {
-            console.error("Failed to load shop:", error)
-            toast.error("Failed to load shop data", {
-                description: "Unable to fetch shop details"
-            })
+            handleApiError(error, "Failed to load shop data")
             navigate("/shops/manage")
         } finally {
             setLoading(false)
@@ -574,34 +571,7 @@ export default function CreateShopRestaurant() {
             }
             navigate("/shops/manage")
         } catch (error: unknown) {
-            console.error("Failed to save shop:", error)
-            
-            // Try to parse backend validation errors
-            let validationErrors: Record<string, string> = {}
-            let generalMessage = "An error occurred"
-            
-            const axiosError = error as { response?: { data?: { errors?: Record<string, string>; message?: string } } };
-            
-            if (axiosError?.response?.data?.errors) {
-                validationErrors = axiosError.response.data.errors
-                const errorValues = Object.values(validationErrors)
-                if (errorValues.length > 0) {
-                    generalMessage = errorValues.join(", ")
-                }
-            } else if (axiosError?.response?.data?.message) {
-                generalMessage = axiosError.response.data.message
-            } else if (error instanceof Error) {
-                generalMessage = error.message
-            }
-            
-            if (Object.keys(validationErrors).length > 0) {
-                setBackendErrors(validationErrors)
-                setErrorDialogOpen(true)
-            } else {
-                toast.error(isEditMode ? "Failed to update shop" : "Failed to create shop", {
-                    description: generalMessage
-                })
-            }
+            handleApiError(error, isEditMode ? "Failed to update shop" : "Failed to create shop")
         } finally {
             setSubmitting(false)
         }
@@ -621,10 +591,7 @@ export default function CreateShopRestaurant() {
             toast.success("Shop deleted successfully!")
             navigate("/shops/manage")
         } catch (error) {
-            console.error("Failed to delete shop:", error)
-            toast.error("Failed to delete shop", {
-                description: "An error occurred"
-            })
+            handleApiError(error, "Failed to delete shop")
         } finally {
             setDeleting(false)
             setDeleteDialogOpen(false)

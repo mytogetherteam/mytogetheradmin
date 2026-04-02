@@ -26,6 +26,7 @@ import {
     ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead, SortConfig } from "@/components/SortableTableHead";
 import { TableImage } from "@/components/TableImage";
@@ -298,8 +299,11 @@ export default function BannerManagement() {
     const loadBanners = useCallback(async () => {
         setBannersLoading(true);
         try {
-            const b = await marketingService.getBanners().catch(() => []);
+            const b = await marketingService.getBanners();
             setBanners(b);
+        } catch (error) {
+            handleApiError(error, "Failed to load banners");
+            setBanners([]);
         } finally {
             setBannersLoading(false);
         }
@@ -314,8 +318,8 @@ export default function BannerManagement() {
             setShops(data.content || []);
             setTotalElements(data.totalElements || 0);
             setTotalPages(data.totalPages || 0);
-        } catch {
-            toast.error("Failed to load shops");
+        } catch (error) {
+            handleApiError(error, "Failed to load shops");
         } finally {
             setShopsLoading(false);
         }
@@ -372,8 +376,8 @@ export default function BannerManagement() {
             const updated = await marketingService.updateBanner(id, requestObj);
             setBanners((prev) => prev.map((b) => b.id === id ? updated : b));
             toast.success(`Banner ${isActive ? "activated" : "deactivated"}`);
-        } catch {
-            toast.error("Failed to update banner");
+        } catch (error) {
+            handleApiError(error, "Failed to update banner");
         }
     };
 
@@ -382,8 +386,8 @@ export default function BannerManagement() {
             await marketingService.deleteBanner(id);
             setBanners((prev) => prev.filter((b) => b.id !== id));
             toast.success("Banner removed");
-        } catch {
-            toast.error("Failed to remove banner");
+        } catch (error) {
+            handleApiError(error, "Failed to remove banner");
         }
     };
 
@@ -447,8 +451,8 @@ export default function BannerManagement() {
             setImageFile(null);
             setImagePreview(null);
             setEditingBannerId(null);
-        } catch {
-            toast.error("An error occurred while saving the banner");
+        } catch (error) {
+            handleApiError(error, "An error occurred while saving the banner");
         } finally {
             setSaving(false);
         }
@@ -471,8 +475,8 @@ export default function BannerManagement() {
             setShops(prev => prev.map(s => s.id === shop.id ? { ...s, isFeatured: newVal } : s));
             if (selectedShop?.id === shop.id) setSelectedShop((s) => s ? ({ ...s, isFeatured: newVal }) : null);
             toast.success(`Shop ${newVal ? "featured ⭐" : "unfeatured"}`);
-        } catch {
-            toast.error("Failed to update featured status");
+        } catch (error) {
+            handleApiError(error, "Failed to update featured status");
         } finally {
             setFeaturingId(null);
         }
@@ -495,8 +499,8 @@ export default function BannerManagement() {
             await marketingService.boostShop(String(boostShop.id), score);
             toast.success(`Boost applied (+${score}) to ${boostShop.nameEn || boostShop.nameMm}`);
             setBoostShop(null);
-        } catch {
-            toast.error("Failed to boost shop");
+        } catch (error) {
+            handleApiError(error, "Failed to boost shop");
         } finally {
             setBoosting(false);
         }

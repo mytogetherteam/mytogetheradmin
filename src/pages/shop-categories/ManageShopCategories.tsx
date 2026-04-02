@@ -34,6 +34,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageShopCategories() {
@@ -59,8 +60,7 @@ export default function ManageShopCategories() {
             });
             setCategories(res.content || []);
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to load shop categories");
+            handleApiError(e, "Failed to load shop categories");
         } finally {
             setLoading(false);
         }
@@ -110,8 +110,7 @@ export default function ManageShopCategories() {
             setDeleteDialog({ open: false, id: 0, name: "" });
             loadCategories();
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to delete shop category");
+            handleApiError(e, "Failed to delete shop category");
         } finally {
             setDeleting(false);
         }

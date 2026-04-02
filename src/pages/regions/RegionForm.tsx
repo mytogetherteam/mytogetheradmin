@@ -16,6 +16,7 @@ import {
     Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function RegionForm() {
     const { id } = useParams<{ id: string }>();
@@ -53,8 +54,7 @@ export default function RegionForm() {
                     });
                     if (data.imageUrl) setImagePreview(data.imageUrl);
                 } catch (error) {
-                    console.error(error);
-                    toast.error("Failed to load region details");
+                    handleApiError(error, "Failed to load region details");
                     navigate("/regions/manage");
                 } finally {
                     setFetching(false);
@@ -114,8 +114,7 @@ export default function RegionForm() {
             }
             navigate("/regions/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update region" : "Failed to create region");
+            handleApiError(error, isEditMode ? "Failed to update region" : "Failed to create region");
         } finally {
             setLoading(false);
         }

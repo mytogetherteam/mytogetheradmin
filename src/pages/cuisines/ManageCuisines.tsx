@@ -42,6 +42,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function ManageCuisines() {
     const navigate = useNavigate();
@@ -59,8 +60,7 @@ export default function ManageCuisines() {
             setCuisines(data.content);
             setTotalPages(data.totalPages);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load cuisines");
+            handleApiError(error, "Failed to load cuisines");
         } finally {
             setLoading(false);
         }
@@ -77,8 +77,7 @@ export default function ManageCuisines() {
             toast.success("Cuisine deleted successfully");
             fetchCuisines();
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete cuisine");
+            handleApiError(error, "Failed to delete cuisine");
         } finally {
             setDeleteId(null);
         }

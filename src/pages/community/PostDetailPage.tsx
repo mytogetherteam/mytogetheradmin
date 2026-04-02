@@ -18,6 +18,7 @@ import {
     AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Separator } from "@/components/ui/separator";
 import {
     Dialog,
@@ -51,8 +52,7 @@ export default function PostDetailPage() {
             setPost(postData);
             setComments(commentsData.content);
         } catch (error) {
-            console.error("PostDetail: Fetch Error", error);
-            toast.error("Failed to load post details");
+            handleApiError(error, "Failed to load post details");
         } finally {
             setLoading(false);
         }
@@ -77,8 +77,8 @@ export default function PostDetailPage() {
                 setPost(prev => prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : null);
                 toast.success("Comment deleted");
             }
-        } catch {
-            toast.error("Action failed");
+        } catch (error) {
+            handleApiError(error, "Action failed");
         } finally {
             setDeleteId(null);
         }

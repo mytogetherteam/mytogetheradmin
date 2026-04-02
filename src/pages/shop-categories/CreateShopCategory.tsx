@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ShopCategoryService } from "@/services/shopCategoryService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,8 +59,7 @@ export default function CreateShopCategory() {
                 setExistingImage(cat.imageUrl);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load shop category");
+            handleApiError(error, "Failed to load shop category");
         } finally {
             setLoading(false);
         }
@@ -125,8 +125,7 @@ export default function CreateShopCategory() {
             }
             navigate("/shop-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update shop category" : "Failed to create shop category");
+            handleApiError(error, isEditMode ? "Failed to update shop category" : "Failed to create shop category");
         } finally {
             setSubmitting(false);
         }
@@ -140,8 +139,7 @@ export default function CreateShopCategory() {
             toast.success("Shop category deleted successfully");
             navigate("/shop-categories/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete shop category");
+            handleApiError(error, "Failed to delete shop category");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

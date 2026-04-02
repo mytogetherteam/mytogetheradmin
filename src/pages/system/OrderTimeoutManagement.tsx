@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Timer, Edit2, Play, AlertTriangle, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog,
     DialogContent,
@@ -49,8 +50,8 @@ export default function OrderTimeoutManagement() {
         try {
             const data = await orderTimeoutService.getOrderTimeouts();
             setTimeouts(data);
-        } catch {
-            toast.error("Failed to load order timeouts");
+        } catch (e) {
+            handleApiError(e, "Failed to load order timeouts");
         } finally {
             setLoading(false);
         }
@@ -110,8 +111,8 @@ export default function OrderTimeoutManagement() {
             setSelectedTimeout(null);
             setIsAddMode(false);
             fetchTimeouts();
-        } catch {
-            toast.error("Failed to update order timeout");
+        } catch (e) {
+            handleApiError(e, "Failed to update order timeout");
         } finally {
             setSaving(false);
         }
@@ -122,8 +123,8 @@ export default function OrderTimeoutManagement() {
             await orderTimeoutService.initOrderTimeouts();
             toast.success("Default order timeouts initialized");
             fetchTimeouts();
-        } catch {
-            toast.error("Failed to initialize order timeouts");
+        } catch (e) {
+            handleApiError(e, "Failed to initialize order timeouts");
         }
     };
 

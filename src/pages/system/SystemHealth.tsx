@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Activity, Database, Server, Globe, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function SystemHealth() {
     const [stats, setStats] = useState<SystemLatency | null>(null);
@@ -20,8 +20,7 @@ export default function SystemHealth() {
             const data = await appManagementService.getSystemLatency();
             setStats(data);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load system health stats");
+            handleApiError(error, "Failed to load system health stats");
         } finally {
             setLoading(false);
         }

@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { MapPin, Clock, Store } from "lucide-react"
-import { toast } from "sonner"
+import { handleApiError } from "@/lib/error-utils"
 
 const daysOfWeekMap: Record<number, string> = {
     1: "Monday",
@@ -62,8 +62,7 @@ export default function ShopOperatingHours() {
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
         } catch (error) {
-            console.error("Failed to load shops:", error)
-            toast.error("Failed to load shops")
+            handleApiError(error, "Failed to load shops")
         } finally {
             setLoadingShops(false)
         }
@@ -76,8 +75,7 @@ export default function ShopOperatingHours() {
             const data = await ShopService.getShopOperatingHours(shopId)
             setOperatingHours(Array.isArray(data) ? data : [])
         } catch (error) {
-            console.error("Failed to load operating hours:", error)
-            toast.error("Failed to load operating hours for this shop")
+            handleApiError(error, "Failed to load operating hours for this shop")
             setOperatingHours([])
         } finally {
             setLoadingHours(false)

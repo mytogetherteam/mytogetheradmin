@@ -44,6 +44,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function ManageRegions() {
     const navigate = useNavigate();
@@ -62,8 +63,7 @@ export default function ManageRegions() {
             setRegions(data.content);
             setTotalPages(data.totalPages);
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load regions");
+            handleApiError(error, "Failed to load regions");
         } finally {
             setLoading(false);
         }
@@ -80,8 +80,7 @@ export default function ManageRegions() {
             toast.success("Region deleted successfully");
             fetchRegions();
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete region");
+            handleApiError(error, "Failed to delete region");
         } finally {
             setDeleteId(null);
         }

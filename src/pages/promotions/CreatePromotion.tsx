@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { PromotionService } from "@/services/promotionService";
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -133,8 +134,7 @@ export default function CreatePromotion() {
                 if (promo.imageUrl) setExistingImage(promo.imageUrl);
             }
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to load promotion data");
+            handleApiError(error, "Failed to load promotion data");
         } finally {
             setLoading(false);
         }
@@ -222,8 +222,7 @@ export default function CreatePromotion() {
             }
             navigate("/promotions/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update promotion" : "Failed to create promotion");
+            handleApiError(error, isEditMode ? "Failed to update promotion" : "Failed to create promotion");
         } finally {
             setSubmitting(false);
         }
@@ -237,8 +236,7 @@ export default function CreatePromotion() {
             toast.success("Promotion deleted successfully");
             navigate("/promotions/manage");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete promotion");
+            handleApiError(error, "Failed to delete promotion");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);

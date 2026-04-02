@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Search, User, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -55,8 +56,8 @@ export default function CommunityMgt() {
             setPosts(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load posts");
+        } catch (error) {
+            handleApiError(error, "Failed to load posts");
         } finally {
             setLoading(false);
         }
@@ -69,8 +70,8 @@ export default function CommunityMgt() {
             setComments(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load comments");
+        } catch (error) {
+            handleApiError(error, "Failed to load comments");
         } finally {
             setLoading(false);
         }
@@ -92,8 +93,8 @@ export default function CommunityMgt() {
                 setComments(prev => prev.filter(c => c.id !== deleteId));
             }
             toast.success(`${deleteTarget === "post" ? "Post" : "Comment"} deleted`);
-        } catch {
-            toast.error("Action failed");
+        } catch (error) {
+            handleApiError(error, "Action failed");
         } finally {
             setDeleteId(null);
         }

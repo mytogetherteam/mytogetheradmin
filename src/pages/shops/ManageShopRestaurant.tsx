@@ -49,6 +49,7 @@ import {
     X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { handleApiError } from "@/lib/error-utils"
 // import * as XLSX from "xlsx" // Removed for dynamic import
 
 export default function ManageShopRestaurant() {
@@ -83,8 +84,7 @@ export default function ManageShopRestaurant() {
             setShops(Array.isArray(list) ? list : [])
             setTotalElements(response?.totalElements ?? list.length)
         } catch (error) {
-            console.error("Failed to load shops:", error)
-            toast.error("Failed to load shops")
+            handleApiError(error, "Failed to load shops")
         } finally {
             setLoading(false)
         }
@@ -107,7 +107,7 @@ export default function ManageShopRestaurant() {
             setPendingShops(content)
             setPendingTotalElements(response?.totalElements ?? content.length)
         } catch (error) {
-            console.error("Failed to load pending shops:", error)
+            handleApiError(error, "Failed to load pending shops")
         } finally {
             setPendingLoading(false)
         }
@@ -131,8 +131,7 @@ export default function ManageShopRestaurant() {
             loadShops()
             loadPendingShops()
         } catch (err) {
-            console.error(err)
-            toast.error("Failed to toggle shop status")
+            handleApiError(err, "Failed to toggle shop status")
         } finally {
             setActionLoading(null)
         }
@@ -147,8 +146,7 @@ export default function ManageShopRestaurant() {
             loadShops()
             loadPendingShops()
         } catch (err) {
-            console.error(err)
-            toast.error("Failed to verify shop")
+            handleApiError(err, "Failed to verify shop")
         } finally {
             setActionLoading(null)
         }
@@ -169,8 +167,7 @@ export default function ManageShopRestaurant() {
             loadShops()
             loadPendingShops()
         } catch (err) {
-            console.error(err)
-            toast.error("Failed to reject shop")
+            handleApiError(err, "Failed to reject shop")
         } finally {
             setActionLoading(null)
         }
@@ -211,8 +208,7 @@ export default function ManageShopRestaurant() {
             XLSX.utils.book_append_sheet(wb, ws, "Shops")
             XLSX.writeFile(wb, "Shops.xlsx")
         } catch (error) {
-            console.error("Export failed:", error)
-            toast.error("Failed to export to Excel")
+            handleApiError(error, "Failed to export to Excel")
         }
     }
 

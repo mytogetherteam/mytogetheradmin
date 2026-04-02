@@ -28,6 +28,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -53,9 +54,8 @@ export default function MenuApprovals() {
             // Filter to only show pending requests if needed, though endpoint might already do this
             const pendingOnly = data.filter(item => item.status === "PENDING_APPROVAL");
             setApprovals(pendingOnly);
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to load pending menu approvals");
+        } catch (e) {
+            handleApiError(e, "Failed to load pending menu approvals");
         } finally {
             setLoading(false);
         }
@@ -71,9 +71,8 @@ export default function MenuApprovals() {
             await menuApprovalService.approveRequest(id);
             toast.success("Menu item approved successfully");
             setApprovals(prev => prev.filter(a => a.id !== id));
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to approve menu item");
+        } catch (e) {
+            handleApiError(e, "Failed to approve menu item");
         } finally {
             setIsSubmitting(false);
         }
@@ -92,9 +91,8 @@ export default function MenuApprovals() {
             setApprovals(prev => prev.filter(a => a.id !== rejectId));
             setRejectId(null);
             setRejectReason("");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to reject menu item");
+        } catch (e) {
+            handleApiError(e, "Failed to reject menu item");
         } finally {
             setIsSubmitting(false);
         }

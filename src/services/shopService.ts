@@ -100,6 +100,8 @@ export interface Shop {
   menuItemCount?: number;
   subCategoryMm?: string;
   subCategoryTh?: string;
+  cityId?: number;
+  cuisineId?: number;
 }
 
 export interface DistrictDTO {
@@ -250,7 +252,6 @@ export interface MenuItem {
   currency?: string;
   shopId?: number;
   menuCategoryId?: number;
-  menuSubCategoryId?: number;
   imageUrl?: string;
   imageUrls?: string[];
   isAvailable?: boolean;

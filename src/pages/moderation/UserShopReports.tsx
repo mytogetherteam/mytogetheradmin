@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldAlert, Pencil } from "lucide-react";
 
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -58,8 +59,8 @@ export default function UserShopReports() {
             );
             setReports(data.content);
             setTotalElements(data.totalElements ?? data.content.length);
-        } catch {
-            toast.error("Failed to load reports");
+        } catch (e) {
+            handleApiError(e, "Failed to load reports");
         } finally {
             setLoading(false);
         }
@@ -87,8 +88,8 @@ export default function UserShopReports() {
             setEditReport(null);
             setResolutionNotes("");
             fetchReports();
-        } catch {
-            toast.error("Failed to update report status");
+        } catch (e) {
+            handleApiError(e, "Failed to update report status");
         } finally {
             setActionLoading(false);
         }

@@ -15,6 +15,7 @@ import {
     Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 
 export default function CuisineForm() {
     const { id } = useParams<{ id: string }>();
@@ -50,8 +51,7 @@ export default function CuisineForm() {
                     });
                     if (data.imageUrl) setImagePreview(data.imageUrl);
                 } catch (error) {
-                    console.error(error);
-                    toast.error("Failed to load cuisine details");
+                    handleApiError(error, "Failed to load cuisine details");
                     navigate("/cuisines/manage");
                 } finally {
                     setFetching(false);
@@ -109,8 +109,7 @@ export default function CuisineForm() {
             }
             navigate("/cuisines/manage");
         } catch (error) {
-            console.error(error);
-            toast.error(isEditMode ? "Failed to update cuisine" : "Failed to create cuisine");
+            handleApiError(error, isEditMode ? "Failed to update cuisine" : "Failed to create cuisine");
         } finally {
             setLoading(false);
         }

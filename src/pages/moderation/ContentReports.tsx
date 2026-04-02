@@ -14,6 +14,7 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
 import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -64,8 +65,8 @@ export default function ContentReports() {
             setReports(data.content);
             setTotalElements(data.totalElements || data.content.length);
             setTotalPages(data.totalPages);
-        } catch {
-            toast.error("Failed to load reports");
+        } catch (e) {
+            handleApiError(e, "Failed to load reports");
         } finally {
             setLoading(false);
         }
@@ -83,8 +84,8 @@ export default function ContentReports() {
             setResolveReport(null);
             setResolution("");
             fetchReports();
-        } catch {
-            toast.error("Failed to resolve report");
+        } catch (e) {
+            handleApiError(e, "Failed to resolve report");
         } finally {
             setActionLoading(false);
         }
@@ -95,8 +96,8 @@ export default function ContentReports() {
             await moderationService.dismissReport(id);
             toast.success("Report dismissed");
             fetchReports();
-        } catch {
-            toast.error("Failed to dismiss report");
+        } catch (e) {
+            handleApiError(e, "Failed to dismiss report");
         }
     };
 

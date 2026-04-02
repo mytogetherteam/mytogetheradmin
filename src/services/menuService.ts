@@ -62,7 +62,6 @@ export interface MenuItem {
     largePrice?: number;
     currency: string;
     menuCategoryId?: number;
-    menuSubCategoryId?: number;
     shopId: number;
     imageUrl?: string;
     imageUrls?: string[];
@@ -82,7 +81,9 @@ export interface MenuItem {
     tagIds?: number[];
     tags?: ItemTag[];
     masterItemId?: number;
+    masterItemName?: string;
     masterCategoryId?: number;
+    masterCategoryName?: string;
     components?: ComboComponent[];
 }
 
@@ -124,21 +125,6 @@ export interface Variant {
     displayOrder?: number;
 }
 
-export interface MenuSubCategory {
-    id: number;
-    name: string;
-    nameMm?: string;
-    nameTh?: string;
-    nameEn?: string;
-    displayOrder?: number;
-    isActive?: boolean;
-    imageUrl?: string; 
-    icon?: string;
-    menuCategoryId?: number;
-    categoryName?: string;
-    masterMenuSubCategoryId?: number;
-    masterMenuSubCategoryName?: string;
-}
 
 export const menuService = {
     // --- Menu Categories ---
@@ -186,27 +172,6 @@ export const menuService = {
         await apiClient.delete(config.endpoints.admin.menu.itemDetail(id));
     },
 
-    // --- Menu SubCategories ---
-
-    getMenuSubCategories: async (categoryId: number): Promise<MenuSubCategory[]> => {
-        return apiClient.get<MenuSubCategory[]>(config.endpoints.admin.menu.subCategoryByCategory(categoryId));
-    },
-
-    getMenuSubCategory: async (id: number): Promise<MenuSubCategory> => {
-        return apiClient.get<MenuSubCategory>(config.endpoints.admin.menu.subCategoryDetail(id));
-    },
-
-    createMenuSubCategory: async (data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.post<MenuSubCategory>(config.endpoints.admin.menu.subCategories, data);
-    },
-
-    updateMenuSubCategory: async (id: number, data: FormData): Promise<MenuSubCategory> => {
-        return apiClient.put<MenuSubCategory>(config.endpoints.admin.menu.subCategoryDetail(id), data);
-    },
-
-    deleteMenuSubCategory: async (id: number): Promise<void> => {
-        await apiClient.delete(config.endpoints.admin.menu.subCategoryDetail(id));
-    },
 
     // --- Status Toggles ---
     toggleRecommended: async (id: number, enabled: boolean): Promise<MenuItem> => {
