@@ -17,10 +17,16 @@ import { BreadcrumbNav } from "@/components/breadcrumb-nav"
 import { Button } from "@/components/ui/button"
 import { AdminLiveAlertToasts } from "@/components/admin-live-alert-toasts"
 import { AdminWebSocketProvider } from "@/hooks/useAdminWebSocket"
+import { useInactivityMiddleware } from "@/middleware/inactivityMiddleware"
+import { useSessionExpiryMiddleware } from "@/middleware/sessionExpiryMiddleware"
 
 export default function AppLayout() {
     const navigate = useNavigate()
     const userData = authService.getUserData()
+
+    // ── Middleware ─────────────────────────────────────────────────────────────
+    useInactivityMiddleware()   // auto-logout after 30 min idle
+    useSessionExpiryMiddleware() // warn + extend when JWT < 5 min remaining
 
     const handleLogout = async () => {
         await authService.logout()

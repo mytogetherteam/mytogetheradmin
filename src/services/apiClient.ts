@@ -89,8 +89,8 @@ class ApiClient {
     const expiry = this.decodeJwtExpiry(token);
     if (!expiry) return;
 
-    // Refresh if expiring in less than 2 minutes
-    const bufferTime = 2 * 60 * 1000;
+    // Refresh if expiring in less than 5 minutes (matches warning threshold)
+    const bufferTime = 5 * 60 * 1000;
     const now = Date.now();
     
     if (expiry - now < bufferTime) {

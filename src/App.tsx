@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import AppLayout from "@/layouts/AppLayout";
 import { authService } from "@/services/authService";
 import { ProtectedRoute } from "@/middleware/authMiddleware";
+import { ErrorBoundary } from "@/middleware/errorBoundary";
 import { ExcelImportProvider } from "@/context/ExcelImportContext";
 import { AdminRole } from "@/utils/rbac";
 
@@ -126,7 +127,8 @@ function App() {
   return (
     <ExcelImportProvider>
       <Toaster />
-      <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>}>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>}>
         <Routes>
           <Route element={<PublicOnlyRoute />}>
             <Route path="/login" element={<Login />} />
@@ -233,7 +235,8 @@ function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Suspense>
+        </Suspense>
+      </ErrorBoundary>
     </ExcelImportProvider>
   );
 }
