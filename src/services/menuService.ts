@@ -37,7 +37,12 @@ export interface MasterItem {
 }
 
 export interface ComboComponent {
+    id?: number;
     includedItemId: number;
+    includedItemNameEn?: string;
+    includedItemNameMm?: string;
+    includedItemNameTh?: string;
+    includedItemPrice?: number;
     quantity: number;
     displayOrder: number;
     itemName?: string; // for display purposes

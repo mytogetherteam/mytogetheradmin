@@ -166,6 +166,8 @@ export default function CreateShopRestaurant() {
     const [categoriesLoading, setCategoriesLoading] = useState(false)
     const [shopSubCategories, setShopSubCategories] = useState<ShopSubCategoryDTO[]>([])
 
+    const [initialCategoryLabel, setInitialCategoryLabel] = useState<string | null>(null)
+    const [initialSubCategoryLabel, setInitialSubCategoryLabel] = useState<string | null>(null)
     const [selectedOwnerName, setSelectedOwnerName] = useState<string | null>(null)
 
     // Ref to prevent double API calls
@@ -320,12 +322,22 @@ export default function CreateShopRestaurant() {
             ])
 
             // Map API response to form structure
+            // Handle potentially nested Shop Categories / SubCategories from certain API responses
+            const shopCategoryId = shop.shopCategoryId || shop.shopCategory?.id || undefined;
+            
+            // Sub-category can be shopSubCategoryId at root, OR nested in shopCategory.subCategories list
+            const shopSubCategoryId = shop.shopSubCategoryId || 
+                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0 
+                    ? shop.shopCategory.subCategories[0].id 
+                    : undefined) || 
+                undefined;
+
             form.reset({
                 nameEn: shop.nameEn || shop.nameMm || "",
                 nameMm: shop.nameMm || shop.nameEn || "",
                 nameTh: shop.nameTh || "",
-                shopCategoryId: shop.shopCategoryId || undefined,
-                shopSubCategoryId: shop.shopSubCategoryId || undefined,
+                shopCategoryId,
+                shopSubCategoryId,
                 addressEn: shop.address || shop.addressEn || shop.addressMm || "",
                 addressMm: shop.addressMm || shop.address || "",
                 addressTh: shop.addressTh || "",
@@ -373,6 +385,14 @@ export default function CreateShopRestaurant() {
                 ownerId: shop.ownerId || undefined,
             })
 
+            setInitialCategoryLabel(shop.shopCategory?.nameEn || shop.categoryEn || shop.category || null);
+            setInitialSubCategoryLabel(
+                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0 
+                    ? shop.shopCategory.subCategories[0].nameEn 
+                    : null) || 
+                shop.subCategory || 
+                null
+            );
             setSelectedOwnerName(shop.ownerName || null);
 
             // Handle images
@@ -563,6 +583,7 @@ export default function CreateShopRestaurant() {
                 hasWifi: data.hasWifi ?? false,
                 isVerified: data.isVerified ?? false,
                 isActive: data.isActive ?? true,
+                cityId: selectedCityId,
                 isHalal: data.isHalal ?? false,
                 isVegetarian: data.isVegetarian ?? false,
                 pricePreference: data.pricePreference || "MEDIUM",
@@ -781,6 +802,7 @@ export default function CreateShopRestaurant() {
                                                             selectedValue={field.value ? { 
                                                                 label: shopCategories.find(c => Number(c.id) === Number(field.value))?.nameEn || 
                                                                        setupData?.shopCategories?.find(c => Number(c.id) === Number(field.value))?.nameEn ||
+                                                                       initialCategoryLabel ||
                                                                        "Selected", 
                                                                 value: field.value 
                                                             } : null}
@@ -806,7 +828,9 @@ export default function CreateShopRestaurant() {
                                                             valueKey="value"
                                                             labelKey="label"
                                                             selectedValue={field.value ? { 
-                                                                label: shopSubCategories.find(s => Number(s.id) === Number(field.value))?.nameEn || "Selected", 
+                                                                label: shopSubCategories.find(s => Number(s.id) === Number(field.value))?.nameEn || 
+                                                                       initialSubCategoryLabel || 
+                                                                       "Selected", 
                                                                 value: field.value 
                                                             } : null}
                                                             onChange={(item) => field.onChange(item ? (item as { label: string; value: number }).value : undefined)}
@@ -997,31 +1021,42 @@ export default function CreateShopRestaurant() {
                                                                     <FormLabel className="text-base">Delivery Types</FormLabel>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-4">
-                                                                    {["PICKUP", "DELIVERY"].map((type) => (
-                                                                        <FormField
-                                                                            key={type}
-                                                                            control={form.control as Control<ShopFormValues>}
-                                                                            name="supportedDeliveryTypes"
-                                                                            render={({ field }) => (
-                                                                                <FormItem key={type} className="flex flex-row items-start space-x-3 space-y-0">
-                                                                                    <FormControl>
-                                                                                        <Checkbox
-                                                                                            checked={(field.value as string[])?.includes(type)}
-                                                                                            onCheckedChange={(checked) => {
-                                                                                                const current = (field.value as string[]) || [];
-                                                                                                return checked
-                                                                                                    ? field.onChange([...current, type])
-                                                                                                    : field.onChange(current.filter((value: string) => value !== type))
-                                                                                            }}
-                                                                                        />
-                                                                                    </FormControl>
-                                                                                    <FormLabel className="font-normal capitalize cursor-pointer">
-                                                                                        {type.toLowerCase()}
-                                                                                    </FormLabel>
-                                                                                </FormItem>
-                                                                            )}
-                                                                        />
-                                                                    ))}
+                                                                    {((setupData?.deliveryTypes && setupData.deliveryTypes.length > 0 
+                                                                        ? setupData.deliveryTypes 
+                                                                        : [
+                                                                            { value: "PICKUP", label: "Pickup" }, 
+                                                                            { value: "DELIVERY", label: "Delivery" }
+                                                                          ]
+                                                                    ) as any[]).map((option) => {
+                                                                        const type = (typeof option === 'string' ? option : option.value) as string;
+                                                                        const label = (typeof option === 'string' ? option.toLowerCase() : option.label) as string;
+                                                                        
+                                                                        return (
+                                                                            <FormField
+                                                                                key={type}
+                                                                                control={form.control as Control<ShopFormValues>}
+                                                                                name="supportedDeliveryTypes"
+                                                                                render={({ field }) => (
+                                                                                    <FormItem key={type} className="flex flex-row items-start space-x-3 space-y-0">
+                                                                                        <FormControl>
+                                                                                            <Checkbox
+                                                                                                checked={(field.value as string[])?.includes(type)}
+                                                                                                onCheckedChange={(checked) => {
+                                                                                                    const current = (field.value as string[]) || [];
+                                                                                                    return checked
+                                                                                                        ? field.onChange([...current, type])
+                                                                                                        : field.onChange(current.filter((value: string) => value !== type))
+                                                                                                }}
+                                                                                            />
+                                                                                        </FormControl>
+                                                                                        <FormLabel className="font-normal cursor-pointer">
+                                                                                            {label}
+                                                                                        </FormLabel>
+                                                                                    </FormItem>
+                                                                                )}
+                                                                            />
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                                 <FormMessage />
                                                             </FormItem>
