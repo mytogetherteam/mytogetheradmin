@@ -78,9 +78,9 @@ function SortableItem({ id, children, className }: SortableItemProps) {
     return (
         <div ref={setNodeRef} style={style} className={className}>
             <div className="flex items-start gap-2">
-                <div 
-                    {...attributes} 
-                    {...listeners} 
+                <div
+                    {...attributes}
+                    {...listeners}
                     className="mt-3 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-primary transition-colors"
                 >
                     <GripVertical className="h-5 w-5" />
@@ -109,7 +109,6 @@ export default function CreateMenuItem() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [description, setDescription] = useState("");
     const [descriptionMm, setDescriptionMm] = useState("");
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
@@ -186,7 +185,13 @@ export default function CreateMenuItem() {
     const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAdminCategories(page, size, search);
         return {
-            content: res.content.map(cat => ({ label: cat.nameEn || cat.name, value: String(cat.id) })),
+            content: res.content.map((cat: any) => {
+                const categoryId = cat.id || cat.menuCategoryId || cat.categoryId;
+                return { 
+                    label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category", 
+                    value: String(categoryId) 
+                };
+            }),
             last: res.last
         };
     }, []);
@@ -259,7 +264,6 @@ export default function CreateMenuItem() {
             setNameMm(item.nameMm || "");
             setNameTh(item.nameTh || "");
             setNameEn(item.nameEn || "");
-            setDescription(item.description || "");
             setDescriptionMm(item.descriptionMm || "");
             setDescriptionTh(item.descriptionTh || "");
             setDescriptionEn(item.descriptionEn || "");
@@ -272,7 +276,7 @@ export default function CreateMenuItem() {
             if (item.shopId) {
                 setShopId(item.shopId.toString());
                 setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
-                
+
                 // Fetch real name if backend didn't provide it
                 if (!item.shopName || item.shopName === "Selected Shop") {
                     ShopService.getShopById(item.shopId).then((shop) => {
@@ -288,13 +292,14 @@ export default function CreateMenuItem() {
 
                 // Fetch real name if backend didn't provide it
                 if (!item.categoryName || item.categoryName === "Selected Category") {
-                    ShopService.getCategoryById(item.menuCategoryId).then((cat) => {
-                        setCategoryId(cat.id.toString());
-                        setSelectedCategoryData({ label: cat.nameEn || cat.nameMm || `Category ${cat.id}`, value: String(cat.id) });
+                    ShopService.getCategoryById(item.menuCategoryId).then((cat: any) => {
+                        const fetchedId = cat.id || cat.menuCategoryId || cat.categoryId || item.menuCategoryId;
+                        setCategoryId(String(fetchedId));
+                        setSelectedCategoryData({ label: cat.nameEn || cat.nameMm || cat.name || `Category ${fetchedId}`, value: String(fetchedId) });
                     }).catch((e) => handleApiError(e, "Failed to load item category"));
                 }
             }
-            
+
             setIsVegetarian(item.isVegetarian || false);
             setIsSpicy(item.isSpicy || false);
             setIsAvailable(item.isAvailable !== false);
@@ -309,7 +314,7 @@ export default function CreateMenuItem() {
                 setMasterItemId(String(item.masterItemId));
                 const label = item.masterItemName || `Master Item #${item.masterItemId}`;
                 setSelectedMasterItemData({ label, value: String(item.masterItemId) });
-                
+
                 // Fetch real name if backend didn't provide it
                 if (!item.masterItemName) {
                     MasterItemService.getMasterItemById(item.masterItemId).then((m) => {
@@ -332,8 +337,40 @@ export default function CreateMenuItem() {
                 }
             }
             setComboComponents(item.components || []);
-            setOptionGroups(item.optionGroups || []);
-            setVariants(item.variants || []);
+            const mappedOptionGroups = (item.optionGroups || []).map((og: any) => ({
+                id: og.id,
+                nameEn: og.nameEn || og.name_en || "",
+                nameMm: og.nameMm || og.name_mm || "",
+                nameTh: og.nameTh || og.name_th || "",
+                isRequired: og.isRequired ?? og.is_required ?? false,
+                minSelection: og.minSelection ?? og.min_selection ?? 0,
+                maxSelection: og.maxSelection ?? og.max_selection ?? 1,
+                displayOrder: og.displayOrder ?? og.display_order ?? 1,
+                groupType: og.groupType || og.group_type || "SINGLE_SELECT",
+                options: (og.options || []).map((opt: any) => ({
+                    id: opt.id,
+                    nameEn: opt.nameEn || opt.name_en || "",
+                    nameMm: opt.nameMm || opt.name_mm || "",
+                    nameTh: opt.nameTh || opt.name_th || "",
+                    price: opt.price ?? 0,
+                    isAvailable: opt.isAvailable ?? opt.is_available ?? true,
+                    displayOrder: opt.displayOrder ?? opt.display_order ?? 1,
+                    linkedMenuItemId: opt.linkedMenuItemId ?? opt.linked_menu_item_id,
+                }))
+            }));
+
+            const mappedVariants = (item.variants || []).map((v: any) => ({
+                id: v.id,
+                nameEn: v.nameEn || v.name_en || "",
+                nameMm: v.nameMm || v.name_mm || "",
+                nameTh: v.nameTh || v.name_th || "",
+                price: v.price ?? 0,
+                isAvailable: v.isAvailable ?? v.is_available ?? true,
+                displayOrder: v.displayOrder ?? v.display_order ?? 1,
+            }));
+
+            setOptionGroups(mappedOptionGroups);
+            setVariants(mappedVariants);
 
             if (item.imageUrl) {
                 setExistingImage(item.imageUrl);
@@ -353,7 +390,6 @@ export default function CreateMenuItem() {
             setNameMm("");
             setNameTh("");
             setNameEn("");
-            setDescription("");
             setDescriptionMm("");
             setDescriptionTh("");
             setDescriptionEn("");
@@ -491,7 +527,7 @@ export default function CreateMenuItem() {
             const oldIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === active.id);
             const newIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === over.id);
             const newArray = arrayMove(options, oldIndex, newIndex);
-            
+
             const newGroups = [...optionGroups];
             newGroups[groupIndex].options = newArray.map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
             setOptionGroups(newGroups);
@@ -516,35 +552,65 @@ export default function CreateMenuItem() {
             const dtoData = {
                 name: nameEn,
                 nameEn: nameEn,
+                name_en: nameEn, // snake_case backup
                 nameMm: nameMm || "",
+                name_mm: nameMm || "",
                 nameTh: nameTh || "",
-                description: description || "",
+                name_th: nameTh || "",
+                description: descriptionEn || "",
                 descriptionMm: descriptionMm || "",
+                description_mm: descriptionMm || "",
                 descriptionTh: descriptionTh || "",
+                description_th: descriptionTh || "",
                 descriptionEn: descriptionEn || "",
+                description_en: descriptionEn || "",
                 price: Number(price.replace(/,/g, "")) || 0,
                 originalPrice: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
-                discountAmount: discountAmount ? Number(discountAmount.replace(/,/g, "")) : 0,
+                original_price: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
                 discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
+                discount_percentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
                 currency: currency || "THB",
                 menuCategoryId: Number(categoryId),
+                menu_category_id: Number(categoryId),
+                categoryId: Number(categoryId), // Fallback in case of categoryId
+                category_id: Number(categoryId),
                 shopId: Number(shopId),
+                shop_id: Number(shopId),
                 isVegetarian: isVegetarian,
+                is_vegetarian: isVegetarian,
                 isSpicy: isSpicy,
+                is_spicy: isSpicy,
                 isAvailable: isAvailable,
+                is_available: isAvailable,
                 isCombo: isCombo,
+                is_combo: isCombo,
                 isPopular: isPopular,
+                is_popular: isPopular,
                 isHotDeal: isHotDeal,
+                is_hot_deal: isHotDeal,
                 isRecommended: isRecommended,
+                is_recommended: isRecommended,
                 displayOrder: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
+                display_order: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
                 mealTypes: mealTypes,
+                meal_types: mealTypes,
                 tagIds: tagIds,
+                tag_ids: tagIds,
                 masterItemId: masterItemId ? Number(masterItemId) : undefined,
+                master_item_id: masterItemId ? Number(masterItemId) : undefined,
                 masterCategoryId: masterCategoryId ? Number(masterCategoryId) : undefined,
-                components: isCombo ? comboComponents.map((c, i) => ({ ...c, displayOrder: i + 1 })) : [],
+                master_category_id: masterCategoryId ? Number(masterCategoryId) : undefined,
+                components: isCombo ? comboComponents.map((c, i) => {
+                    const mappedComponent = { ...c, displayOrder: i + 1 };
+                    if (!(isEditMode && id)) {
+                        delete mappedComponent.id;
+                    }
+                    return mappedComponent;
+                }) : [],
                 optionGroups: optionGroups.map(og => ({
-                    id: og.id,
+                    id: (isEditMode && id) ? og.id : undefined,
                     name: og.nameEn || og.name || "",
+                    nameEn: og.nameEn || og.name || "",
                     nameMm: og.nameMm || "",
                     nameTh: og.nameTh || "",
                     displayOrder: og.displayOrder || 0,
@@ -552,26 +618,51 @@ export default function CreateMenuItem() {
                     minSelection: og.minSelection || 0,
                     isRequired: og.isRequired ?? false,
                     groupType: og.groupType || "SINGLE_SELECT",
+                    // snake_case for backend compatibility
+                    name_en: og.nameEn || og.name || "",
+                    name_mm: og.nameMm || "",
+                    name_th: og.nameTh || "",
+                    display_order: og.displayOrder || 0,
+                    max_selection: og.maxSelection || 0,
+                    min_selection: og.minSelection || 0,
+                    is_required: og.isRequired ?? false,
+                    group_type: og.groupType || "SINGLE_SELECT",
                     options: og.options.map(opt => ({
-                        id: opt.id,
+                        id: (isEditMode && id) ? opt.id : undefined,
                         name: opt.nameEn || opt.name || "",
+                        nameEn: opt.nameEn || opt.name || "",
                         nameMm: opt.nameMm || "",
                         nameTh: opt.nameTh || "",
                         price: opt.price || 0,
                         displayPrice: opt.displayPrice || "",
                         linkedMenuItemId: opt.linkedMenuItemId,
-                        displayOrder: opt.displayOrder || 0
+                        displayOrder: opt.displayOrder || 0,
+                        isAvailable: opt.isAvailable ?? true,
+                        // snake_case for backend compatibility
+                        name_en: opt.nameEn || opt.name || "",
+                        name_mm: opt.nameMm || "",
+                        name_th: opt.nameTh || "",
+                        display_price: opt.displayPrice || "",
+                        linked_menu_item_id: opt.linkedMenuItemId,
+                        display_order: opt.displayOrder || 0,
+                        is_available: opt.isAvailable ?? true
                     }))
                 })),
                 variants: variants.map(v => ({
-                    id: v.id,
+                    id: (isEditMode && id) ? v.id : undefined,
                     name: v.nameEn || v.name || "",
                     nameEn: v.nameEn || v.name || "",
                     nameMm: v.nameMm || "",
                     nameTh: v.nameTh || "",
                     price: v.price || 0,
                     isAvailable: v.isAvailable !== false,
-                    displayOrder: v.displayOrder || 0
+                    displayOrder: v.displayOrder || 0,
+                    // snake_case for backend compatibility
+                    name_en: v.nameEn || v.name || "",
+                    name_mm: v.nameMm || "",
+                    name_th: v.nameTh || "",
+                    is_available: v.isAvailable !== false,
+                    display_order: v.displayOrder || 0
                 }))
             };
 
@@ -585,21 +676,27 @@ export default function CreateMenuItem() {
 
 
             if (isEditMode && id) {
-                if (!shopId || Number(shopId) === 0) {
-                    toast.error("Shop ID is missing or invalid");
+                if (!shopId || Number.isNaN(Number(shopId)) || Number(shopId) === 0) {
+                    toast.error(`Shop ID is missing or invalid: "${shopId}"`);
                     setSubmitting(false);
                     return;
                 }
+                if (!categoryId || Number.isNaN(Number(categoryId)) || Number(categoryId) === 0) {
+                    toast.error(`Please select a valid category. Current value: "${categoryId}"`);
+                    setSubmitting(false);
+                    return;
+                }
+                
                 await menuService.updateMenuItem(parseInt(id), formData);
                 toast.success("Item updated successfully");
             } else {
-                if (!shopId || Number(shopId) === 0) {
-                    toast.error("Please select a valid shop");
+                if (!shopId || Number.isNaN(Number(shopId)) || Number(shopId) === 0) {
+                    toast.error(`Please select a valid shop. Current value: "${shopId}"`);
                     setSubmitting(false);
                     return;
                 }
-                if (!categoryId || Number(categoryId) === 0) {
-                    toast.error("Please select a valid category");
+                if (!categoryId || Number.isNaN(Number(categoryId)) || Number(categoryId) === 0) {
+                    toast.error(`Please select a valid category. Current value: "${categoryId}"`);
                     setSubmitting(false);
                     return;
                 }
@@ -690,10 +787,6 @@ export default function CreateMenuItem() {
                                     <Label>Name (English) / Default</Label>
                                     <Input value={nameEn} onChange={e => setNameEn(e.target.value)} required placeholder="e.g. Cheese Burger" />
                                 </div>
-                                <div className="space-y-2 mt-4">
-                                    <Label>Description (Default)</Label>
-                                    <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ingredients, taste, etc." rows={2} />
-                                </div>
                                 <div className="space-y-2">
                                     <Label>Description (Myanmar)</Label>
                                     <Textarea value={descriptionMm} onChange={e => setDescriptionMm(e.target.value)} placeholder="" rows={2} />
@@ -703,7 +796,7 @@ export default function CreateMenuItem() {
                                     <Textarea value={descriptionTh} onChange={e => setDescriptionTh(e.target.value)} placeholder="" rows={2} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Description (English)</Label>
+                                    <Label>Description (English) / Default</Label>
                                     <Textarea value={descriptionEn} onChange={e => setDescriptionEn(e.target.value)} placeholder="" rows={2} />
                                 </div>
                             </div>
@@ -869,7 +962,7 @@ export default function CreateMenuItem() {
                                 </div>
                                 <div className="grid grid-cols-1 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-primary font-bold">Category (Mandatory)</Label>
+                                        <Label className="text-primary font-bold">Category</Label>
                                         <InfiniteSearchableSelect
                                             fetchData={fetchCategoryData}
                                             valueKey="value"
@@ -884,7 +977,7 @@ export default function CreateMenuItem() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-dashed">
                                         <div className="space-y-2">
-                                            <Label>Master Item (Optional)</Label>
+                                            <Label>Master Item</Label>
                                             <InfiniteSearchableSelect
                                                 fetchData={fetchMasterItemData}
                                                 valueKey="value"
@@ -898,7 +991,7 @@ export default function CreateMenuItem() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Master Category (Optional)</Label>
+                                            <Label>Master Category</Label>
                                             <InfiniteSearchableSelect
                                                 fetchData={fetchMasterCategoryData}
                                                 valueKey="value"
@@ -941,7 +1034,7 @@ export default function CreateMenuItem() {
                                                                 fetchData={fetchComboItemData}
                                                                 valueKey="value"
                                                                 labelKey="label"
-                                                                selectedValue={comp.includedItemId ? { label: comp.itemName || `Item #${comp.includedItemId}`, value: String(comp.includedItemId) } : null}
+                                                                selectedValue={comp.includedItemId ? { label: comp.includedItemNameEn || comp.itemName || `Item #${comp.includedItemId}`, value: String(comp.includedItemId) } : null}
                                                                 onChange={(item) => updateComboComponent(cIdx, { includedItemId: item ? Number(item.value) : 0, itemName: item?.label })}
                                                                 placeholder="Search included item..."
                                                             />
@@ -1186,13 +1279,6 @@ export default function CreateMenuItem() {
                                                                                                 placeholder="Display Price (e.g. 1,500 THB)"
                                                                                                 value={opt.displayPrice || ""}
                                                                                                 onChange={e => updateOption(gIdx, oIdx, { displayPrice: e.target.value })}
-                                                                                            />
-                                                                                            <Input
-                                                                                                className="w-24 h-8 text-sm"
-                                                                                                placeholder="Linked ID"
-                                                                                                type="number"
-                                                                                                value={opt.linkedMenuItemId}
-                                                                                                onChange={e => updateOption(gIdx, oIdx, { linkedMenuItemId: parseInt(e.target.value) || undefined })}
                                                                                             />
                                                                                             <Switch
                                                                                                 checked={opt.isAvailable}

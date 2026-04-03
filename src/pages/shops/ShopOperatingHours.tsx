@@ -11,13 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader } from "@/components/ui/loader"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select"
 import { MapPin, Clock, Store } from "lucide-react"
 import { handleApiError } from "@/lib/error-utils"
 
@@ -32,39 +26,31 @@ const daysOfWeekMap: Record<number, string> = {
     0: "Sunday",
 }
 
+type DropdownShop = Shop & { dropdownLabel: string; [key: string]: unknown };
+
 export default function ShopOperatingHours() {
 
-    const [shops, setShops] = useState<Shop[]>([])
-    const [selectedShopId, setSelectedShopId] = useState<number | null>(null)
+    const [selectedShop, setSelectedShop] = useState<DropdownShop | null>(null)
     const [operatingHours, setOperatingHours] = useState<OperatingHour[]>([])
 
-    const [loadingShops, setLoadingShops] = useState(true)
     const [loadingHours, setLoadingHours] = useState(false)
 
     useEffect(() => {
-        loadShops()
-    }, [])
-
-    useEffect(() => {
-        if (selectedShopId) {
-            loadOperatingHours(selectedShopId)
+        if (selectedShop) {
+            loadOperatingHours(selectedShop.id)
         } else {
             setOperatingHours([])
         }
-    }, [selectedShopId])
+    }, [selectedShop])
 
-    const loadShops = async () => {
-        setLoadingShops(true)
-        try {
-            // Using lookup for lightweight dropdown if available, falling back to full list
-
-            const response = await ShopService.getAllShops(0, 1000)
-            const list = response?.content || []
-            setShops(Array.isArray(list) ? list : [])
-        } catch (error) {
-            handleApiError(error, "Failed to load shops")
-        } finally {
-            setLoadingShops(false)
+    const fetchShops = async (page: number, size: number, search: string) => {
+        const response = await ShopService.getAllShops(page, size, search)
+        return {
+            ...response,
+            content: (response.content || []).map(shop => ({
+                ...shop,
+                dropdownLabel: `${shop.nameEn || shop.nameMm || shop.name} ${shop.city || shop.cityMm ? `- ${shop.city || shop.cityMm}` : ""}`
+            })) as DropdownShop[]
         }
     }
 
@@ -101,8 +87,6 @@ export default function ShopOperatingHours() {
         return "";
     }
 
-    const selectedShop = shops.find(s => s.id === selectedShopId)
-
     // Sort operating hours by dayOfWeek (Monday(1) to Sunday(7 or 0 -> treat as 7))
     const sortedHours = useMemo(() => {
         if (!operatingHours.length) return [];
@@ -132,27 +116,15 @@ export default function ShopOperatingHours() {
                 <CardContent className="pt-6">
                     <div className="mb-8">
                         <label className="text-sm font-medium mb-2 block">Select a Shop/Restaurant</label>
-                        {loadingShops ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Loader className="h-4 w-4" /> Loading shops...
-                            </div>
-                        ) : (
-                            <Select
-                                value={selectedShopId ? `${selectedShopId}` : ""}
-                                onValueChange={(val) => setSelectedShopId(Number(val))}
-                            >
-                                <SelectTrigger className="w-full md:w-[400px]">
-                                    <SelectValue placeholder="-- Select a Shop --" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    {shops.map(shop => (
-                                        <SelectItem key={shop.id} value={`${shop.id}`}>
-                                            {shop.nameEn || shop.nameMm || shop.name} {shop.city || shop.cityMm ? `- ${shop.city || shop.cityMm}` : ""}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
+                        <InfiniteSearchableSelect
+                            fetchData={fetchShops}
+                            valueKey="id"
+                            labelKey="dropdownLabel"
+                            selectedValue={selectedShop}
+                            onChange={(item) => setSelectedShop(item as DropdownShop)}
+                            placeholder="-- Select a Shop --"
+                            className="w-full md:w-[400px]"
+                        />
 
                         {selectedShop && (
                             <div className="mt-4 p-4 bg-muted/20 rounded-lg flex items-start gap-4 border">
@@ -180,7 +152,7 @@ export default function ShopOperatingHours() {
                         )}
                     </div>
 
-                    {selectedShopId ? (
+                    {selectedShop ? (
                         loadingHours ? (
                             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                 <Loader size="lg" className="mb-4" />

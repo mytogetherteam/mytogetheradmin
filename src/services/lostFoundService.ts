@@ -25,12 +25,14 @@ export interface LostFoundPage {
 }
 
 export interface Sighting {
-  id: string;
-  postId: string;
-  caseTitle: string;
+  id: number | string;
+  postId: number | string;
+  itemName: string;
+  postAuthorName: string;
+  witnessId?: number | string;
   witnessName: string;
   description: string;
-  status: 'SEEN' | 'NOT_SEEN' | 'PENDING';
+  status: string;
   createdAt: string;
 }
 
@@ -55,23 +57,27 @@ class LostFoundService {
     return response;
   }
 
-  async forceResolve(postId: string): Promise<void> {
-    return apiClient.put<void>(config.endpoints.admin.lostFound.resolve(postId), {});
+  async forceResolve(postId: number | string): Promise<void> {
+    return apiClient.put<void>(config.endpoints.admin.lostFound.resolve(String(postId)), {});
   }
 
-  async deleteCase(id: string): Promise<void> {
+  async deleteCase(id: number | string): Promise<void> {
     return apiClient.delete<void>(`${config.endpoints.admin.lostFound.posts}/${id}`);
   }
 
-  async getSightings(postId?: string, page = 0, size = 10): Promise<SightingPage> {
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
-    if (postId) params.append('postId', postId);
+  async getSightings(postId?: number | string, page = 0, size = 10, search = ''): Promise<SightingPage> {
+    const params = new URLSearchParams({ 
+        page: String(page), 
+        size: String(size),
+        search: search
+    });
+    if (postId) params.append('postId', String(postId));
     const response = await apiClient.get<SightingPage>(`${config.endpoints.admin.lostFound.sightings}?${params.toString()}`);
     return response;
   }
 
-  async deleteSighting(id: string): Promise<void> {
-    return apiClient.delete<void>(config.endpoints.admin.lostFound.sightingDetail(id));
+  async deleteSighting(id: number | string): Promise<void> {
+    return apiClient.delete<void>(config.endpoints.admin.lostFound.sightingDetail(String(id)));
   }
 }
 

@@ -40,7 +40,7 @@ export default function LostFound() {
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // Action dialogs
-    const [confirmId, setConfirmId] = useState<string | null>(null);
+    const [confirmId, setConfirmId] = useState<string | number | null>(null);
     const [actionType, setActionType] = useState<"resolve" | "delete_case" | "delete_sighting">("resolve");
 
     const fetchCases = useCallback(async () => {
@@ -63,7 +63,7 @@ export default function LostFound() {
     const fetchSightings = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await lostFoundService.getSightings(undefined, page, pageSize);
+            const data = await lostFoundService.getSightings(undefined, page, pageSize, search);
             setSightings(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
@@ -72,7 +72,7 @@ export default function LostFound() {
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize]);
+    }, [page, pageSize, search]);
 
     useEffect(() => {
         if (tab === "cases") fetchCases();
@@ -251,13 +251,18 @@ export default function LostFound() {
                                         </TableRow>
                                     ) : sortedSightings.map((s) => (
                                         <TableRow key={s.id}>
-                                            <TableCell className="text-xs font-medium max-w-[120px] truncate">{s.caseTitle}</TableCell>
+                                            <TableCell className="text-xs font-medium max-w-[120px] truncate">{s.itemName}</TableCell>
                                             <TableCell className="text-sm">{s.witnessName}</TableCell>
                                             <TableCell className="max-w-xs p-2">
                                                 <p className="text-xs line-clamp-2">{s.description}</p>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="text-[9px] uppercase">{s.status}</Badge>
+                                                <Badge 
+                                                    variant="outline" 
+                                                    className={`text-[9px] uppercase ${s.status === 'YES' ? 'text-green-600 bg-green-50' : ''}`}
+                                                >
+                                                    {s.status}
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground">
                                                 {new Date(s.createdAt).toLocaleDateString()}

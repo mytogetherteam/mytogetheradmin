@@ -8,13 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -34,10 +28,10 @@ export default function CreateShopSubCategory() {
 
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [fetchingCategories, setFetchingCategories] = useState(false);
 
     // Data State
-    const [categories, setCategories] = useState<ShopCategoryDTO[]>([]);
+    type DropdownCategory = ShopCategoryDTO & { dropdownLabel: string; [key: string]: unknown };
+    const [categories, setCategories] = useState<DropdownCategory[]>([]);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categoryIdFromUrl || "");
 
     // Form State
@@ -77,17 +71,26 @@ export default function CreateShopSubCategory() {
         }
     }, [id, isEditMode, loadSubCategory]);
 
+    const fetchSearchCategories = async (page: number, size: number, search: string) => {
+        const res = await ShopCategoryService.getShopCategories({ page, size, search });
+        return {
+            ...res,
+            content: (res.content || []).map(cat => ({
+                ...cat,
+                dropdownLabel: cat.nameEn || cat.name || `Category ${cat.id}`
+            })) as DropdownCategory[],
+            last: res.totalPages ? page >= res.totalPages - 1 : true,
+        }
+    };
+
     const loadCategories = async () => {
-        setFetchingCategories(true);
         try {
             const res = await ShopCategoryService.getShopCategories({ page: 0, size: 100 });
             if (res && res.content) {
-                setCategories(res.content);
+                setCategories(res.content.map(cat => ({...cat, dropdownLabel: cat.nameEn || cat.name || `Category ${cat.id}`})));
             }
         } catch (error) {
             handleApiError(error, "Failed to load shop categories");
-        } finally {
-            setFetchingCategories(false);
         }
     };
 
@@ -167,45 +170,29 @@ export default function CreateShopSubCategory() {
 
                         <div className="space-y-2">
                             <Label>Parent Shop Category</Label>
-                            <Select
-                                value={selectedCategoryId}
-                                onValueChange={setSelectedCategoryId}
+                            <InfiniteSearchableSelect
+                                fetchData={fetchSearchCategories}
+                                valueKey="id"
+                                labelKey="dropdownLabel"
+                                selectedValue={categories.find(c => String(c.id) === selectedCategoryId) || (selectedCategoryId ? { id: Number(selectedCategoryId) } : null) as DropdownCategory | null}
+                                onChange={(item) => setSelectedCategoryId(item ? String(item.id) : "")}
+                                placeholder="Select a Category"
                                 disabled={isEditMode}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {fetchingCategories ? (
-                                        <div className="flex justify-center p-2">
-                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : (
-                                        categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id.toString()}>
-                                                {cat.nameEn || cat.name || `Category ${cat.id}`}
-                                            </SelectItem>
-                                        ))
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            />
                             {isEditMode && <p className="text-xs text-muted-foreground">Category cannot be changed during edit.</p>}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="nameEn">Name (English)</Label>
-                                <Input
-                                    id="nameEn"
-                                    value={nameEn}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setNameEn(value);
-                                    }}
-                                    required
-                                />
-                            </div>
-
+                        <div className="space-y-2">
+                            <Label htmlFor="nameEn">Name (English)</Label>
+                            <Input
+                                id="nameEn"
+                                value={nameEn}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setNameEn(value);
+                                }}
+                                required
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

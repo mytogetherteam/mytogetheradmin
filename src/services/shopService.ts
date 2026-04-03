@@ -196,6 +196,7 @@ export interface ShopCategoryDTO {
   nameTh?: string;
   iconUrl?: string;
   active: boolean;
+  subCategories?: ShopSubCategoryDTO[];
 }
 
 export interface ShopSubCategoryDTO {

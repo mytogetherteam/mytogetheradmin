@@ -89,6 +89,12 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
           changeOrigin: true,
           secure: true,
+          // Bypass proxy for HTML requests so React Router can handle direct navigation/refresh
+          bypass: (req) => {
+            if (req.headers.accept?.includes('text/html')) {
+              return req.url;
+            }
+          }
         },
       },
     },

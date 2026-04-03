@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
@@ -62,16 +62,20 @@ export default function ManagePromotions() {
         }
     };
 
-    useEffect(() => {
-        setPage(0);
-        fetchPromotions(0, debouncedSearch);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch]);
+    const prevSearchRef = useRef(debouncedSearch);
 
     useEffect(() => {
+        if (prevSearchRef.current !== debouncedSearch) {
+            prevSearchRef.current = debouncedSearch;
+            if (page !== 0) {
+                setPage(0);
+                // The setPage above will trigger a re-render and execute the fetch later.
+                return;
+            }
+        }
         fetchPromotions(page, debouncedSearch);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page]);
+    }, [page, debouncedSearch]);
 
     const handleSort = (key: string) => {
         let direction: "asc" | "desc" = "asc";
