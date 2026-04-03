@@ -3,6 +3,7 @@ import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService"
 import { cuisineService } from "@/services/cuisineService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -231,7 +232,7 @@ export default function CreateMasterMenuCategory() {
                                     pattern="[0-9]*"
                                     value={displayOrder}
                                     onChange={(e) => {
-                                        const val = e.target.value;
+                                        const val = e.target.value.replace(/^0+(?!$)/, "");
                                         if (val === "" || /^\d+$/.test(val)) {
                                             setDisplayOrder(val === "" ? "" : parseInt(val, 10));
                                         }
@@ -272,7 +273,7 @@ export default function CreateMasterMenuCategory() {
                                     </div>
                                 ) : (
                                     <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
-                                        <img src={imagePreview || existingImage!} className="h-full w-full object-cover" alt="Category Preview" />
+                                        <img src={formatImageUrl(existingImage) || imagePreview || ""} className="h-full w-full object-cover" alt="Category Preview" />
                                         <div className="absolute top-2 right-2 z-20">
                                             <Button
                                                 type="button"

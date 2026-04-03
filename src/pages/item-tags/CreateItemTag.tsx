@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ItemTagService } from "@/services/itemTagService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -240,7 +241,7 @@ export default function CreateItemTag() {
                                     pattern="[0-9]*"
                                     value={displayOrder}
                                     onChange={(e) => {
-                                        const val = e.target.value;
+                                        const val = e.target.value.replace(/^0+(?!$)/, "");
                                         if (val === "" || /^\d+$/.test(val)) {
                                             setDisplayOrder(val === "" ? "" : parseInt(val, 10));
                                         }
@@ -281,7 +282,7 @@ export default function CreateItemTag() {
                                     </div>
                                 ) : (
                                     <div className="relative h-full aspect-square group">
-                                        <img src={imagePreview || existingImage!} className="h-full w-full object-contain rounded" alt="Main" />
+                                        <img src={formatImageUrl(existingImage) || imagePreview || ""} className="h-full w-full object-contain rounded" alt="Main" />
                                         <div className="absolute top-1 right-1 z-20">
                                             <Button
                                                 type="button"

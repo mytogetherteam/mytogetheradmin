@@ -71,6 +71,8 @@ export const authService = {
         authorities: response.authorities || [],
       })
     );
+    // Clear the apiClient's expiry cache so it decodes the NEW token's expiry
+    apiClient.clearTokenCache();
   },
 
   /**

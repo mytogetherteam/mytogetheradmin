@@ -78,18 +78,18 @@ export default function FeatureFlags() {
                     flags.map((flag) => (
                         <Card key={flag.id}>
                             <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Flag className="h-4 w-4" />
-                                            {flag.flagKey}
+                                <div className="flex justify-between items-start gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <CardTitle className="text-lg flex items-center gap-2 mb-1 break-all">
+                                            <Flag className="h-4 w-4 shrink-0" />
+                                            <span className="truncate" title={flag.flagKey}>{flag.flagKey}</span>
                                         </CardTitle>
                                         <CardDescription className="font-mono text-xs mt-1">{flag.targetApp}</CardDescription>
                                     </div>
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                        className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
                                         onClick={() => setConfirmFlag(flag)}
                                         disabled={deletingFlag === flag.id}
                                     >

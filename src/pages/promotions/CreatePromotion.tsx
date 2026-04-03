@@ -355,15 +355,51 @@ export default function CreatePromotion() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="promotionValue">Promo Value</Label>
-                                    <Input id="promotionValue" type="number" value={promotionValue} onChange={(e) => setPromotionValue(parseFloat(e.target.value) || 0)} placeholder="e.g. 20" />
+                                    <Input
+                                        id="promotionValue"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={promotionValue}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/^0+(?!$)/, "");
+                                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                setPromotionValue(val === "" ? 0 : parseFloat(val));
+                                            }
+                                        }}
+                                        placeholder="e.g. 20"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="maxDiscount">Max Discount Limit</Label>
-                                    <Input id="maxDiscount" type="number" value={maxDiscount} onChange={(e) => setMaxDiscount(parseFloat(e.target.value) || 0)} placeholder="e.g. 50" />
+                                    <Input
+                                        id="maxDiscount"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={maxDiscount}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/^0+(?!$)/, "");
+                                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                setMaxDiscount(val === "" ? 0 : parseFloat(val));
+                                            }
+                                        }}
+                                        placeholder="e.g. 50"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="minSpend">Minimum Spend Required</Label>
-                                    <Input id="minSpend" type="number" value={minSpend} onChange={(e) => setMinSpend(parseFloat(e.target.value) || 0)} placeholder="e.g. 10" />
+                                    <Input
+                                        id="minSpend"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={minSpend}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/^0+(?!$)/, "");
+                                            if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                setMinSpend(val === "" ? 0 : parseFloat(val));
+                                            }
+                                        }}
+                                        placeholder="e.g. 10"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -420,7 +456,7 @@ export default function CreatePromotion() {
                                             pattern="[0-9]*"
                                             value={displayOrder}
                                             onChange={(e) => {
-                                                const val = e.target.value;
+                                                const val = e.target.value.replace(/^0+(?!$)/, "");
                                                 if (val === "" || /^\d+$/.test(val)) {
                                                     setDisplayOrder(val === "" ? "" : parseInt(val, 10));
                                                 }

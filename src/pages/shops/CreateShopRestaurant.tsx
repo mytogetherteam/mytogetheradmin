@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
 import { PaymentService } from "@/services/paymentService"
+import { userService } from "@/services/userService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
 import { handleApiError } from "@/lib/error-utils"
@@ -88,6 +89,7 @@ export interface ShopFormValues {
     supportedDeliveryTypes: string[];
     paymentMethodIds: number[];
     operatingHours: OperatingHour[];
+    ownerId?: number;
 }
 
 const shopFormSchema = z.object({
@@ -130,6 +132,7 @@ const shopFormSchema = z.object({
         closeTime: z.string(),
         isClosed: z.boolean()
     })).default([]),
+    ownerId: z.number().optional().nullable(),
 })
 
 export default function CreateShopRestaurant() {
@@ -163,9 +166,7 @@ export default function CreateShopRestaurant() {
     const [categoriesLoading, setCategoriesLoading] = useState(false)
     const [shopSubCategories, setShopSubCategories] = useState<ShopSubCategoryDTO[]>([])
 
-    // Error Dialog
-    const [errorDialogOpen, setErrorDialogOpen] = useState(false)
-    const [backendErrors, setBackendErrors] = useState<Record<string, string>>({})
+    const [selectedOwnerName, setSelectedOwnerName] = useState<string | null>(null)
 
     // Ref to prevent double API calls
     const shopDataLoadedRef = useRef(false)
@@ -218,6 +219,7 @@ export default function CreateShopRestaurant() {
                 { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                 { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
             ],
+            ownerId: undefined,
         },
     })
 
@@ -290,6 +292,14 @@ export default function CreateShopRestaurant() {
         };
     }, [shopSubCategories]);
 
+    const fetchOwnerData = useCallback(async (page: number, size: number, search: string) => {
+        const results = await userService.getShopOwners(page, size, search);
+        return {
+            content: results.content.map(u => ({ label: u.fullName || u.username || `User ${u.id}`, value: Number(u.id) })),
+            last: results.number + 1 >= results.totalPages,
+        };
+    }, []);
+
     const loadShopData = useCallback(async (id: string) => {
         if (shopDataLoadedRef.current) return;
         shopDataLoadedRef.current = true;
@@ -324,7 +334,7 @@ export default function CreateShopRestaurant() {
                 longitude: shop.longitude || undefined,
                 phone: shop.phone || "",
                 email: shop.email || "",
-                descriptionEn: shop.descriptionEn || "",
+                descriptionEn: shop.descriptionEn || shop.description || "",
                 descriptionMm: shop.descriptionMm || "",
                 descriptionTh: shop.descriptionTh || "",
                 hasDelivery: shop.hasDelivery ?? false,
@@ -340,7 +350,7 @@ export default function CreateShopRestaurant() {
                 maxItemQuantityPerOrder: shop.maxItemQuantityPerOrder ?? 10,
                 minOrderAmount: (shop.minOrderAmount === undefined || shop.minOrderAmount === null || shop.minOrderAmount === 0) ? 1 : shop.minOrderAmount,
                 baseDeliveryFee: shop.baseDeliveryFee ?? 0,
-                cuisineTypeIds: shop.cuisineTypes ? shop.cuisineTypes.map((c: CuisineTypeDTO) => c.id) : [],
+                cuisineTypeIds: shop.cuisineTypeIds || (shop.cuisineTypes ? shop.cuisineTypes.map((c: CuisineTypeDTO) => c.id) : []),
                 mealTypes: shop.mealTypes || [],
                 supportedDeliveryTypes: shop.supportedDeliveryTypes || [],
                 paymentMethodIds: shopPaymentMethods.map(pm => pm.id),
@@ -360,7 +370,10 @@ export default function CreateShopRestaurant() {
                         { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                         { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
                     ],
+                ownerId: shop.ownerId || undefined,
             })
+
+            setSelectedOwnerName(shop.ownerName || null);
 
             // Handle images
             if (shop.logoUrl) {
@@ -379,38 +392,58 @@ export default function CreateShopRestaurant() {
                 setExistingGalleryUrls([]);
             }
 
-            // Set selectedCityId by finding which city contains the district
+            // 1. First priority: Set directly from IDs if available in the response
+            if (shop.cityId) {
+                setSelectedCityId(shop.cityId);
+            }
+
+            // 2. Second priority: If IDs are missing but names are present, derivation logic
             if (setupData?.cities) {
                 let city = null;
                 
-                // First try by districtId
-                if (shop.districtId) {
-                    city = setupData.cities.find(c =>
-                        c.districts?.some(d => d.id === shop.districtId)
-                    );
+                // If cityId was missing, try to find it by matching other fields
+                if (!shop.cityId) {
+                    // Try by districtId
+                    if (shop.districtId) {
+                        city = setupData.cities.find(c =>
+                            c.districts?.some(d => d.id === shop.districtId)
+                        );
+                    }
+                    
+                    // Try matching by district name
+                    if (!city && shop.district) {
+                        const districtName = shop.district;
+                        city = setupData.cities.find(c =>
+                            c.districts?.some(d => 
+                                d.nameEn === districtName || 
+                                d.nameMm === districtName
+                            )
+                        );
+                    }
+                    
+                    // Try by city name
+                    if (!city && shop.city) {
+                        const cityName = shop.city;
+                        city = setupData.cities.find(c =>
+                            c.nameEn === cityName || c.nameMm === cityName
+                        );
+                    }
+                    
+                    if (city) {
+                        setSelectedCityId(city.id);
+                    }
+                } else {
+                    city = setupData.cities.find(c => c.id === shop.cityId);
                 }
-                
-                // If no city found by districtId, try matching by district name
-                if (!city && shop.district) {
-                    const districtName = shop.district;
-                    city = setupData.cities.find(c =>
-                        c.districts?.some(d => 
-                            d.nameEn === districtName || 
-                            d.nameMm === districtName
-                        )
+
+                // Fallback for districtId if ID was missing but name exists
+                if (city && !shop.districtId && shop.district) {
+                    const district = city.districts?.find(d => 
+                        d.nameEn === shop.district || d.nameMm === shop.district
                     );
-                }
-                
-                // If still no city, try by city name
-                if (!city && shop.city) {
-                    const cityName = shop.city;
-                    city = setupData.cities.find(c =>
-                        c.nameEn === cityName || c.nameMm === cityName
-                    );
-                }
-                
-                if (city) {
-                    setSelectedCityId(city.id);
+                    if (district) {
+                        form.setValue("districtId", district.id);
+                    }
                 }
             }
 
@@ -487,7 +520,9 @@ export default function CreateShopRestaurant() {
                     { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                     { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
                 ],
+                ownerId: undefined,
             })
+            setSelectedOwnerName(null)
             setCoverPreview(null)
             setCoverFile(null)
             setLogoPreview(null)
@@ -540,6 +575,7 @@ export default function CreateShopRestaurant() {
                 supportedDeliveryTypes: data.supportedDeliveryTypes,
                 paymentMethodIds: data.paymentMethodIds,
                 operatingHours: data.operatingHours,
+                ownerId: data.ownerId || null,
             };
 
             formData.append("data", new Blob([JSON.stringify(payloadData)], {
@@ -783,6 +819,42 @@ export default function CreateShopRestaurant() {
                                             )}
                                         />
 
+                                        <FormField
+                                            control={form.control}
+                                            name="ownerId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Shop Owner</FormLabel>
+                                                    <FormControl>
+                                                        <InfiniteSearchableSelect
+                                                            fetchData={fetchOwnerData}
+                                                            valueKey="value"
+                                                            labelKey="label"
+                                                            selectedValue={field.value ? { 
+                                                                label: selectedOwnerName || "Selected Owner", 
+                                                                value: field.value 
+                                                            } : null}
+                                                            onChange={(item) => {
+                                                                if (item) {
+                                                                    field.onChange((item as { label: string; value: number }).value);
+                                                                    setSelectedOwnerName((item as { label: string; value: number }).label);
+                                                                } else {
+                                                                    field.onChange(null);
+                                                                    setSelectedOwnerName(null);
+                                                                }
+                                                            }}
+                                                            placeholder="Select Shop Owner"
+                                                            disabled={false}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Assign a registered shop owner to this establishment.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
                                         <Separator className="my-2" />
 
                                         <div className="space-y-4">
@@ -842,8 +914,8 @@ export default function CreateShopRestaurant() {
                                                             <div className="flex flex-wrap gap-2 mb-2">
                                                                 {field.value?.map((id: number) => {
                                                                     const cuisine = setupData?.cuisineTypes?.find((c: CuisineTypeDTO) => c.id === id)
-                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name || `Cuisine ${id}`) : null
-                                                                    return cuisine ? (
+                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name) : `Cuisine ${id}`
+                                                                    return (
                                                                         <Badge key={id} variant="secondary" className="gap-1">
                                                                             {label}
                                                                             <X
@@ -851,7 +923,7 @@ export default function CreateShopRestaurant() {
                                                                                 onClick={() => field.onChange(field.value.filter((val: number) => val !== id))}
                                                                             />
                                                                         </Badge>
-                                                                    ) : null
+                                                                    )
                                                                 })}
                                                             </div>
                                                             <FormControl>
@@ -1084,7 +1156,7 @@ export default function CreateShopRestaurant() {
                                                     data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
                                                     value="value"
                                                     labelKey="label"
-                                                    selectedValue={selectedCityId ? { label: setupData?.cities.find(c => c.id === selectedCityId)?.nameEn || "", value: selectedCityId } : undefined}
+                                                    selectedValue={selectedCityId ? { label: setupData?.cities.find(c => c.id === selectedCityId)?.nameEn || "Selected City", value: selectedCityId } : undefined}
                                                     onChange={(item) => item && handleCityChange(item.value)}
                                                     placeholder="Select City"
                                                     disabled={setupLoading}
@@ -1102,7 +1174,7 @@ export default function CreateShopRestaurant() {
                                                                 data={availableDistricts.map(d => ({ label: d.nameEn || d.nameMm || d.name || `District ${d.id}`, value: d.id }))}
                                                                 value="value"
                                                                 labelKey="label"
-                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || availableDistricts.find(d => d.id === field.value)?.nameMm || "", value: field.value } : undefined}
+                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || availableDistricts.find(d => d.id === field.value)?.nameMm || "Selected District", value: field.value } : undefined}
                                                                 onChange={(item) => item && handleDistrictChange(item.value)}
                                                                 placeholder="Select District"
                                                                 disabled={!selectedCityId}
@@ -1624,36 +1696,6 @@ export default function CreateShopRestaurant() {
                 </DialogContent>
             </Dialog>
 
-            {/* Backend Validation Errors Dialog */}
-            <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-destructive">Validation Errors</DialogTitle>
-                        <DialogDescription>
-                            Please fix the following errors and try again:
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div className="space-y-3 max-h-60 overflow-y-auto">
-                            {Object.entries(backendErrors).map(([field, message]) => (
-                                <div key={field} className="flex items-start gap-2 p-2 bg-destructive/10 rounded-md">
-                                    <div className="min-w-0">
-                                        <span className="font-medium text-sm text-destructive capitalize">
-                                            {field.replace(/([A-Z])/g, ' $1').trim()}:
-                                        </span>
-                                        <span className="text-sm ml-1">{message}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setErrorDialogOpen(false)}>
-                            Close
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }

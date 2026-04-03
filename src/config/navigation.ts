@@ -260,8 +260,6 @@ export const navigationConfig: NavGroup[] = [
         roles: AdminRole.ADMIN,
         items: [
             { title: "Import Single Shop (Excel)", url: "/import/single-shop-excel", icon: FileSpreadsheet, tooltip: "Import Single Shop (Excel)" },
-            { title: "Import Shops (Excel)", url: "/import/shops-excel", icon: FileSpreadsheet, tooltip: "Import Shops (Excel)" },
-            { title: "Import Activities (Excel)", url: "/import/activity-excel", icon: FileSpreadsheet, tooltip: "Import Activities (Excel)" }
         ]
     },
     {
