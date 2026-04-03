@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { formatImageUrl } from "@/lib/utils";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
@@ -108,7 +109,7 @@ export default function MenuApprovals() {
     };
 
     const getImageUrl = (item: MenuApprovalDTO) => {
-        return item.imageUrl || item.menuItem?.imageUrl;
+        return formatImageUrl(item.imageUrl || item.menuItem?.imageUrl);
     };
 
     const handleSort = (key: string) => {
@@ -171,7 +172,7 @@ export default function MenuApprovals() {
                                         <TableRow key={approval.id}>
                                             <TableCell>
                                                 {getImageUrl(approval) ? (
-                                                    <img src={getImageUrl(approval)} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                    <img src={getImageUrl(approval) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />

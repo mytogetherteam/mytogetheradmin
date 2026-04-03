@@ -23,6 +23,7 @@ import { MasterItemService } from "@/services/masterItemService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -271,6 +272,13 @@ export default function CreateMenuItem() {
             if (item.shopId) {
                 setShopId(item.shopId.toString());
                 setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
+                
+                // Fetch real name if backend didn't provide it
+                if (!item.shopName || item.shopName === "Selected Shop") {
+                    ShopService.getShopById(item.shopId).then((shop) => {
+                        setSelectedShopData({ label: shop.nameEn || shop.nameMm || `Shop ${shop.id}`, value: String(shop.id) });
+                    }).catch((e) => console.log("Failed to load shop name fallback", e));
+                }
             }
 
             if (item.menuCategoryId) {
@@ -577,15 +585,22 @@ export default function CreateMenuItem() {
 
 
             if (isEditMode && id) {
+                if (!shopId || Number(shopId) === 0) {
+                    toast.error("Shop ID is missing or invalid");
+                    setSubmitting(false);
+                    return;
+                }
                 await menuService.updateMenuItem(parseInt(id), formData);
                 toast.success("Item updated successfully");
             } else {
-                if (!shopId) {
-                    toast.error("Please select a shop");
+                if (!shopId || Number(shopId) === 0) {
+                    toast.error("Please select a valid shop");
+                    setSubmitting(false);
                     return;
                 }
-                if (!categoryId) {
-                    toast.error("Please select a category");
+                if (!categoryId || Number(categoryId) === 0) {
+                    toast.error("Please select a valid category");
+                    setSubmitting(false);
                     return;
                 }
                 await menuService.createMenuItem(formData);
@@ -637,17 +652,25 @@ export default function CreateMenuItem() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Shop / Restaurant</Label>
-                                <InfiniteSearchableSelect
-                                    fetchData={fetchShopData}
-                                    valueKey="value"
-                                    labelKey="label"
-                                    selectedValue={selectedShopData}
-                                    onChange={(item) => {
-                                        setShopId(item?.value || "");
-                                        setSelectedShopData(item);
-                                    }}
-                                    placeholder="Select Shop"
-                                />
+                                {isEditMode ? (
+                                    <Input
+                                        value={selectedShopData?.label ?? ""}
+                                        readOnly
+                                        className="bg-muted/50 cursor-not-allowed text-muted-foreground"
+                                    />
+                                ) : (
+                                    <InfiniteSearchableSelect
+                                        fetchData={fetchShopData}
+                                        valueKey="value"
+                                        labelKey="label"
+                                        selectedValue={selectedShopData}
+                                        onChange={(item) => {
+                                            setShopId(item?.value || "");
+                                            setSelectedShopData(item);
+                                        }}
+                                        placeholder="Select Shop"
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -923,6 +946,22 @@ export default function CreateMenuItem() {
                                                                 placeholder="Search included item..."
                                                             />
                                                         </div>
+                                                        <div className="flex items-center gap-1 w-20">
+                                                            <Label className="text-xs whitespace-nowrap">Order:</Label>
+                                                            <Input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
+                                                                className="h-8 text-sm px-1 text-center"
+                                                                value={comp.displayOrder}
+                                                                onChange={e => {
+                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                    if (val === "" || /^\d+$/.test(val)) {
+                                                                        updateComboComponent(cIdx, { displayOrder: parseInt(val) || 1 });
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
                                                         <div className="flex items-center gap-2 w-32">
                                                             <Label className="text-xs whitespace-nowrap">Qty:</Label>
                                                             <Input
@@ -1110,21 +1149,43 @@ export default function CreateMenuItem() {
                                                                                                 value={opt.nameTh}
                                                                                                 onChange={e => updateOption(gIdx, oIdx, { nameTh: e.target.value })}
                                                                                             />
+                                                                                            <div className="flex items-center gap-1 w-20">
+                                                                                                <span className="text-xs text-muted-foreground">Order:</span>
+                                                                                                <Input
+                                                                                                    type="text"
+                                                                                                    inputMode="numeric"
+                                                                                                    pattern="[0-9]*"
+                                                                                                    className="h-8 text-sm px-1 text-center"
+                                                                                                    value={opt.displayOrder}
+                                                                                                    onChange={e => {
+                                                                                                        const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                                                        if (val === "" || /^\d+$/.test(val)) {
+                                                                                                            updateOption(gIdx, oIdx, { displayOrder: parseInt(val) || 1 });
+                                                                                                        }
+                                                                                                    }}
+                                                                                                />
+                                                                                            </div>
                                                                                             <div className="flex items-center gap-1 w-28">
                                                                                                 <span className="text-xs text-muted-foreground font-mono">+</span>
                                                                                                 <Input
-                                                                                                    type="number"
-                                                                                                    className="h-8 text-sm px-1"
+                                                                                                    type="text"
+                                                                                                    inputMode="decimal"
+                                                                                                    className="h-8 text-sm px-2"
                                                                                                     placeholder="Price"
-                                                                                                    value={opt.price}
-                                                                                                    onChange={e => updateOption(gIdx, oIdx, { price: parseFloat(e.target.value) || 0 })}
+                                                                                                    value={opt.price === 0 ? "" : opt.price}
+                                                                                                    onChange={e => {
+                                                                                                        const val = e.target.value;
+                                                                                                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                                                                            updateOption(gIdx, oIdx, { price: parseFloat(val) || 0 });
+                                                                                                        }
+                                                                                                    }}
                                                                                                 />
                                                                                             </div>
-                                                                                            <PriceInput
-                                                                                                className="flex-1 h-8 text-sm"
-                                                                                                placeholder="Display Price (e.g. 1,500)"
+                                                                                            <Input
+                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
+                                                                                                placeholder="Display Price (e.g. 1,500 THB)"
                                                                                                 value={opt.displayPrice || ""}
-                                                                                                onValueChange={val => updateOption(gIdx, oIdx, { displayPrice: val })}
+                                                                                                onChange={e => updateOption(gIdx, oIdx, { displayPrice: e.target.value })}
                                                                                             />
                                                                                             <Input
                                                                                                 className="w-24 h-8 text-sm"
@@ -1211,6 +1272,22 @@ export default function CreateMenuItem() {
                                                                     value={variant.nameTh}
                                                                     onChange={e => updateVariant(vIdx, { nameTh: e.target.value })}
                                                                 />
+                                                                <div className="flex items-center gap-1 w-20">
+                                                                    <span className="text-sm font-medium">Order:</span>
+                                                                    <Input
+                                                                        type="text"
+                                                                        inputMode="numeric"
+                                                                        pattern="[0-9]*"
+                                                                        className="h-9 text-sm px-1 text-center"
+                                                                        value={variant.displayOrder}
+                                                                        onChange={e => {
+                                                                            const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                            if (val === "" || /^\d+$/.test(val)) {
+                                                                                updateVariant(vIdx, { displayOrder: parseInt(val) || 1 });
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
                                                                 <div className="flex items-center gap-1 w-32">
                                                                     <span className="text-sm font-medium">Price:</span>
                                                                     <PriceInput
@@ -1263,7 +1340,7 @@ export default function CreateMenuItem() {
                                     >
                                         {imagePreview || existingImage ? (
                                             <>
-                                                <img src={imagePreview || existingImage || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                                <img src={imagePreview || formatImageUrl(existingImage) || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                     <Button type="button" variant="destructive" size="icon" className="h-12 w-12 rounded-full shadow-xl hover:scale-110 transition-transform" onClick={(e) => { e.stopPropagation(); removeImage(); }}>
                                                         <Trash2 className="h-6 w-6" />

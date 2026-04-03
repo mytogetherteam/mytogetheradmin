@@ -34,6 +34,7 @@ class ApiClient {
   private refreshSubscribers: ((token: string) => void)[] = [];
   private refreshPromise: Promise<void> | null = null;
   private tokenExpiryCache: number | null = null;
+  private cachedTokenString: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -57,6 +58,11 @@ class ApiClient {
   }
 
   private decodeJwtExpiry(token: string): number | null {
+    // Invalidate cache if the token string itself has changed (e.g. after fresh login)
+    if (this.cachedTokenString !== token) {
+      this.tokenExpiryCache = null;
+      this.cachedTokenString = token;
+    }
     if (this.tokenExpiryCache) return this.tokenExpiryCache;
     try {
       const base64Url = token.split('.')[1];
@@ -174,8 +180,8 @@ class ApiClient {
                           endpoint.includes('/auth/register') || 
                           endpoint.includes('/auth/refresh');
 
-    // Skip proactive refresh for the refresh endpoint itself
-    if (!endpoint.includes('/refresh')) {
+    // Skip proactive refresh for all auth endpoints (login, register, refresh)
+    if (!isAuthEndpoint) {
       await this.checkAndRefreshToken();
     }
 
@@ -273,6 +279,7 @@ class ApiClient {
 
   private handleLogout() {
     this.tokenExpiryCache = null;
+    this.cachedTokenString = null;
     localStorage.removeItem(config.storage.tokenKey);
     localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);
@@ -280,6 +287,12 @@ class ApiClient {
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
+  }
+
+  /** Call after saving a new token (e.g. post-login) to ensure cache is fresh */
+  clearTokenCache() {
+    this.tokenExpiryCache = null;
+    this.cachedTokenString = null;
   }
 
   async get<T>(endpoint: string): Promise<T> {

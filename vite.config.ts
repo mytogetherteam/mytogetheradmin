@@ -70,6 +70,26 @@ export default defineConfig(({ mode }) => {
           secure: true,
           ws: true,
         },
+        '/shop-photos': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+        },
+        '/item-photos': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+        },
+        '/user-photos': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+        },
+        '/marketing': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+        },
       },
     },
   };

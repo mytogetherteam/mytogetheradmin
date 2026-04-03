@@ -33,6 +33,7 @@ import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
 import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 
 export default function CreateShopPaymentType() {
     const navigate = useNavigate();
@@ -79,22 +80,23 @@ export default function CreateShopPaymentType() {
         }
 
         const fetchData = async () => {
+            // Only fetch if we are in edit mode and have the required IDs
+            if (!isEdit || !paramShopId || !id) return;
+            
             setLoading(true);
             try {
-                if (isEdit && paramShopId && id) {
-                    const existing = await ShopPaymentTypeService.getShopPaymentTypeById(
-                        parseInt(paramShopId),
-                        parseInt(id)
-                    );
-                    // Selected shop has already been set via getShopById above, or can just be updated here
-                    setSelectedPaymentMethodId(existing.paymentMethodId.toString());
-                    setAccountName(existing.accountName || "");
-                    setAccountNumber(existing.accountNumber || "");
-                    setDisplayOrder(existing.displayOrder || 1);
-                    setIsActive(existing.isActive);
-                    if (existing.qrImageUrl) {
-                        setExistingQrUrl(existing.qrImageUrl);
-                    }
+                const existing = await ShopPaymentTypeService.getShopPaymentTypeById(
+                    parseInt(paramShopId),
+                    parseInt(id)
+                );
+                
+                setSelectedPaymentMethodId(existing.paymentMethodId.toString());
+                setAccountName(existing.accountName || "");
+                setAccountNumber(existing.accountNumber || "");
+                setDisplayOrder(existing.displayOrder || 1);
+                setIsActive(existing.isActive);
+                if (existing.qrImageUrl) {
+                    setExistingQrUrl(existing.qrImageUrl);
                 }
             } catch (error) {
                 handleApiError(error, "Failed to load required data");
@@ -103,7 +105,8 @@ export default function CreateShopPaymentType() {
             }
         };
         fetchData();
-    }, [isEdit, paramShopId, id, searchParams, selectedShopData]);
+        // Removed selectedShopData from dependencies to prevent infinite loops/redundant fetches
+    }, [isEdit, paramShopId, id, searchParams]);
 
     // Fetch payment methods based on selected shop
     useEffect(() => {
@@ -320,7 +323,7 @@ export default function CreateShopPaymentType() {
                                             pattern="[0-9]*"
                                             value={displayOrder}
                                             onChange={(e) => {
-                                                const val = e.target.value;
+                                                const val = e.target.value.replace(/^0+(?!$)/, "");
                                                 if (val === "" || /^\d+$/.test(val)) {
                                                     setDisplayOrder(val === "" ? "" : parseInt(val, 10));
                                                 }
@@ -358,7 +361,7 @@ export default function CreateShopPaymentType() {
                                     {(previewUrl || existingQrUrl) ? (
                                         <div className="relative group">
                                             <img
-                                                src={previewUrl || existingQrUrl!}
+                                                src={previewUrl || formatImageUrl(existingQrUrl) || ""}
                                                 alt="QR Preview"
                                                 className="max-h-64 rounded-lg shadow-md border"
                                             />
@@ -367,7 +370,7 @@ export default function CreateShopPaymentType() {
                                                 onClick={() => {
                                                     setQrImage(null);
                                                     setPreviewUrl(null);
-                                                    if (!previewUrl) setExistingQrUrl(null);
+                                                    setExistingQrUrl(null);
                                                 }}
                                                 className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >

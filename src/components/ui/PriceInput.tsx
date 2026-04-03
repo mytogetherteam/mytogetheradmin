@@ -5,22 +5,36 @@ import { formatNumberWithCommas, parseNumberFromCommas } from "@/lib/utils"
 interface PriceInputProps extends Omit<React.ComponentProps<typeof Input>, "onChange" | "value"> {
   value: string | number;
   onValueChange: (value: string) => void;
+  allowAnyInput?: boolean;
 }
 
 const PriceInput = React.forwardRef<HTMLInputElement, PriceInputProps>(
-  ({ value, onValueChange, ...props }, ref) => {
+  ({ value, onValueChange, allowAnyInput = false, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(formatNumberWithCommas(value));
 
     React.useEffect(() => {
-      setDisplayValue(formatNumberWithCommas(value));
+      // Only update local state if the incoming value actually changed significantly (to avoid jumping)
+      const formatted = formatNumberWithCommas(value);
+      if (parseNumberFromCommas(formatted) !== parseNumberFromCommas(displayValue)) {
+        setDisplayValue(formatted);
+      }
     }, [value]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = parseNumberFromCommas(e.target.value);
+      const input = e.target.value;
+      
+      if (allowAnyInput) {
+        setDisplayValue(input);
+        onValueChange(input);
+        return;
+      }
+
+      const rawValue = parseNumberFromCommas(input);
       
       // Allow only numbers and one decimal point
       if (rawValue === "" || /^[0-9]*\.?[0-9]*$/.test(rawValue)) {
-        onValueChange(rawValue);
+        setDisplayValue(input); // Local state stays exactly as user typed (to keep dots)
+        onValueChange(rawValue); // Parent gets the numeric string
       }
     };
 

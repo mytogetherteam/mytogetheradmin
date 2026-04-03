@@ -102,6 +102,7 @@ export interface Shop {
   subCategoryTh?: string;
   cityId?: number;
   cuisineId?: number;
+  ownerId?: number;
 }
 
 export interface DistrictDTO {
@@ -340,6 +341,7 @@ export interface ShopDetail extends Shop {
   cuisineTypes?: CuisineTypeDTO[];
   cuisineTypeIds?: number[];
   mealTypes?: string[];
+  ownerId?: number;
   supportedDeliveryTypes?: string[];
   paymentMethodIds?: number[];
   paymentMethods?: PaymentMethodDTO[];

@@ -1,7 +1,6 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
-export type BannerPlacement = 'HOME_TOP' | 'FEED_MIDDLE' | 'SHOP_DETAIL' | 'SEARCH_TOP';
 
 export interface Banner {
   id: string;
@@ -10,7 +9,6 @@ export interface Banner {
   titleEn?: string;
   imageUrl: string;
   linkUrl?: string;
-  placement: BannerPlacement;
   displayOrder?: number;
   isActive: boolean;
   startDate: string;
@@ -33,7 +31,6 @@ export interface CreateBannerRequest {
   titleEn?: string;
   imageUrl?: string;
   linkUrl?: string;
-  placement: BannerPlacement;
   displayOrder?: number;
   isActive?: boolean;
   startDate: string;

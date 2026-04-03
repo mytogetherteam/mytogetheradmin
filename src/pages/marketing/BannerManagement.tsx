@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { marketingService, Banner, BannerPlacement, CreateBannerRequest } from "@/services/marketingService";
+import { marketingService, Banner, CreateBannerRequest } from "@/services/marketingService";
 import { ShopService, Shop } from "@/services/shopService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,6 @@ import {
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
@@ -31,7 +28,6 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead, SortConfig } from "@/components/SortableTableHead";
 import { TableImage } from "@/components/TableImage";
 
-const PLACEMENTS: BannerPlacement[] = ['HOME_TOP', 'FEED_MIDDLE', 'SHOP_DETAIL', 'SEARCH_TOP'];
 
 interface BannerFormState extends Omit<CreateBannerRequest, "displayOrder"> {
     displayOrder: number | "";
@@ -43,7 +39,6 @@ const emptyBanner: BannerFormState = {
     titleEn: "",
     imageUrl: "",
     linkUrl: "",
-    placement: "HOME_TOP",
     displayOrder: 1,
     isActive: true,
     startDate: new Date().toISOString().split('T')[0],
@@ -55,9 +50,6 @@ function BannerCard({ banner, onToggle, onEdit, onDelete }: { banner: Banner; on
         <Card className="overflow-hidden">
             <div className="h-36 bg-muted flex items-center justify-center relative">
                 <TableImage src={banner.imageUrl} alt={banner.titleEn || banner.titleMm || "Banner"} className="w-full h-full object-cover rounded-none" />
-                <Badge className="absolute top-2 right-2" variant={banner.isActive ? "default" : "secondary"}>
-                    {banner.placement?.replace("_", " ")}
-                </Badge>
             </div>
             <CardContent className="pt-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -366,7 +358,6 @@ export default function BannerManagement() {
                 titleTh: bannerToUpdate.titleTh,
                 titleEn: bannerToUpdate.titleEn,
                 linkUrl: bannerToUpdate.linkUrl,
-                placement: bannerToUpdate.placement,
                 displayOrder: bannerToUpdate.displayOrder,
                 isActive: isActive,
                 startDate: bannerToUpdate.startDate,
@@ -398,7 +389,6 @@ export default function BannerManagement() {
             titleEn: banner.titleEn || "",
             imageUrl: banner.imageUrl || "",
             linkUrl: banner.linkUrl || "",
-            placement: banner.placement,
             displayOrder: banner.displayOrder || 1,
             isActive: banner.isActive,
             startDate: banner.startDate,
@@ -424,7 +414,6 @@ export default function BannerManagement() {
                 titleTh: form.titleTh,
                 titleEn: form.titleEn,
                 linkUrl: form.linkUrl,
-                placement: form.placement,
                 displayOrder: safeDisplayOrder as number,
                 isActive: form.isActive,
                 startDate: form.startDate,
@@ -855,22 +844,6 @@ export default function BannerManagement() {
                                 value={form.linkUrl ?? ""}
                                 onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))}
                             />
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Placement</label>
-                            <Select
-                                value={form.placement}
-                                onValueChange={(v) => setForm((f) => ({ ...f, placement: v as BannerPlacement }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {PLACEMENTS.map((p) => (
-                                        <SelectItem key={p} value={p}>{p.replace("_", " ")}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
