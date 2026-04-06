@@ -35,7 +35,6 @@ import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-se
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { Badge } from "@/components/ui/badge";
-import * as XLSX from "xlsx";
 
 export default function ManageMenuItems() {
     const navigate = useNavigate();
@@ -67,7 +66,7 @@ export default function ManageMenuItems() {
     const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAdminCategories(page, size, search);
         return {
-            content: res.content.map((cat: any) => {
+            content: res.content.map((cat: { id?: number; menuCategoryId?: number; categoryId?: number; nameEn?: string; name?: string; nameMm?: string; nameTh?: string }) => {
                 const catId = cat.id || cat.menuCategoryId || cat.categoryId;
                 return { 
                     label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category", 
@@ -105,7 +104,7 @@ export default function ManageMenuItems() {
                 setItems(list);
                 
                 // Robustly resolve total items and pages locally to bypass typescript error:
-                const resAny = response as any;
+                const resAny = response as { total?: number; count?: number; totalCount?: number; lastPage?: number };
                 const returnedTotalElements = response.totalElements ?? resAny.total ?? resAny.count ?? resAny.totalCount;
                 const total = returnedTotalElements !== undefined ? returnedTotalElements : list.length;
                 
@@ -180,21 +179,24 @@ export default function ManageMenuItems() {
         }
     };
 
-    const exportToExcel = () => {
-        const data = items.map(i => ({
-            ID: i.id,
-            Name: i.name,
-            Price: i.price,
-            Currency: i.currency,
-
-            Shop: i.shopName || i.shopId,
-
-            Category: i.categoryName || 'Uncategorized'
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "MenuItems");
-        XLSX.writeFile(wb, "Menu_Items.xlsx");
+    const exportToExcel = async () => {
+        try {
+            const XLSX = await import("xlsx");
+            const data = items.map(i => ({
+                ID: i.id,
+                Name: i.name,
+                Price: i.price,
+                Currency: i.currency,
+                Shop: i.shopName || i.shopId,
+                Category: i.categoryName || 'Uncategorized'
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "MenuItems");
+            XLSX.writeFile(wb, "Menu_Items.xlsx");
+        } catch (error) {
+            handleApiError(error, "Failed to export Excel file");
+        }
     };
 
     return (

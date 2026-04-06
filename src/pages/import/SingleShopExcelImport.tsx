@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
@@ -89,38 +88,6 @@ function normalizeHeader(h: unknown) {
   return String(h ?? "").trim();
 }
 
-function parseSheetToRows(ws: XLSX.WorkSheet): { headers: string[]; rows: ParsedRow[] } {
-  const matrix = XLSX.utils.sheet_to_json(ws, {
-    header: 1,
-    defval: null,
-    blankrows: false,
-  }) as unknown[][];
-  if (!matrix.length) return { headers: [], rows: [] };
-
-  const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
-  const rows: ParsedRow[] = [];
-
-  for (let i = 1; i < matrix.length; i++) {
-    const rowArr = matrix[i] || [];
-    const rowObj: ParsedRow = { __excelRow: i + 1 };
-    for (let c = 0; c < headers.length; c++) {
-      rowObj[headers[c]] = rowArr[c] ?? null;
-    }
-    rows.push(rowObj);
-  }
-
-  return { headers, rows };
-}
-
-function buildTemplateWorkbook() {
-  const wb = XLSX.utils.book_new();
-  (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((key) => {
-    const { headers, title } = SHEET_CONFIG[key];
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    XLSX.utils.book_append_sheet(wb, ws, title);
-  });
-  return wb;
-}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SingleShopExcelImport() {
@@ -135,6 +102,42 @@ export default function SingleShopExcelImport() {
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parseSheetToRows = (xlsxLib: any, ws: any): { headers: string[]; rows: ParsedRow[] } => {
+    const matrix = xlsxLib.utils.sheet_to_json(ws, {
+      header: 1,
+      defval: null,
+      blankrows: false,
+    }) as unknown[][];
+    if (!matrix.length) return { headers: [], rows: [] };
+
+    const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
+    const rows: ParsedRow[] = [];
+
+    for (let i = 1; i < matrix.length; i++) {
+      const rowArr = matrix[i] || [];
+      const rowObj: ParsedRow = { __excelRow: i + 1 };
+      for (let c = 0; c < headers.length; c++) {
+        rowObj[headers[c]] = rowArr[c] ?? null;
+      }
+      rows.push(rowObj);
+    }
+
+    return { headers, rows };
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildTemplateWorkbook = (xlsxLib: any): any => {
+    const wb = xlsxLib.utils.book_new();
+    (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((key) => {
+      const { headers, title } = SHEET_CONFIG[key];
+      const ws = xlsxLib.utils.aoa_to_sheet([headers]);
+      xlsxLib.utils.book_append_sheet(wb, ws, title);
+    });
+    return wb;
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [uploading, setUploading] = useState(false);
@@ -204,6 +207,7 @@ export default function SingleShopExcelImport() {
     setSortConfig({ key, direction });
   };
 
+
   const onPickFile = async (picked: File | null) => {
     setFile(picked);
     setBackendResult(null);
@@ -213,6 +217,7 @@ export default function SingleShopExcelImport() {
     if (!picked) return;
 
     try {
+      const XLSX = await import("xlsx");
       const buffer = await picked.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array" });
 
@@ -221,7 +226,7 @@ export default function SingleShopExcelImport() {
       (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((name) => {
         const ws = wb.Sheets[name];
         if (!ws) return;
-        next[name] = parseSheetToRows(ws);
+        next[name] = parseSheetToRows(XLSX, ws);
       });
 
       setWorkbookData(next);
@@ -237,10 +242,16 @@ export default function SingleShopExcelImport() {
     }
   };
 
-  const downloadTemplate = () => {
-    const wb = buildTemplateWorkbook();
-    XLSX.writeFile(wb, "single-shop-import-template.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = buildTemplateWorkbook(XLSX);
+      XLSX.writeFile(wb, "single-shop-import-template.xlsx");
+    } catch (e) {
+      handleApiError(e, "Failed to download template");
+    }
   };
+
 
   const handleUpload = async () => {
     if (!file) {

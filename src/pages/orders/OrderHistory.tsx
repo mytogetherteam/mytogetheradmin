@@ -121,7 +121,7 @@ export default function OrderHistory() {
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
         return {
-            content: res.content.map((shop: any) => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+            content: res.content.map((shop: { nameEn?: string; name?: string; id: number }) => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
             last: res.last
         };
     }, []);
@@ -244,7 +244,7 @@ export default function OrderHistory() {
                                 selectedValue={selectedShopData}
                                 onChange={(item) => {
                                     setShopId(item?.value || "");
-                                    setSelectedShopData(item);
+                                    setSelectedShopData(item ? { label: item.label || "", value: item.value } : null);
                                     setCurrentPage(1);
                                 }}
                                 placeholder="Select Shop"

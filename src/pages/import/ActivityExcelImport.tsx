@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
@@ -48,35 +47,6 @@ function normalizeHeader(h: unknown) {
   return String(h ?? "").trim();
 }
 
-function parseSheetToRows(ws: XLSX.WorkSheet): { headers: string[]; rows: ParsedRow[] } {
-  const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: false }) as unknown[][];
-  if (!matrix.length) return { headers: [], rows: [] };
-
-  const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
-  const rows: ParsedRow[] = [];
-
-  for (let i = 1; i < matrix.length; i++) {
-    const rowArr = matrix[i] || [];
-    const rowObj: ParsedRow = { __excelRow: i + 1 };
-    for (let c = 0; c < headers.length; c++) {
-      rowObj[headers[c]] = rowArr[c] ?? null;
-    }
-    rows.push(rowObj);
-  }
-
-  return { headers, rows };
-}
-
-function buildTemplateWorkbook() {
-  const wb = XLSX.utils.book_new();
-
-  Object.entries(SHEET_CONFIG).forEach(([, config]) => {
-    const ws = XLSX.utils.aoa_to_sheet([config.headers]);
-    XLSX.utils.book_append_sheet(wb, ws, config.title);
-  });
-
-  return wb;
-}
 
 export default function ActivityExcelImport() {
   const [file, setFile] = useState<File | null>(null);
@@ -87,6 +57,39 @@ export default function ActivityExcelImport() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parseSheetToRows = (xlsxLib: any, ws: any): { headers: string[]; rows: ParsedRow[] } => {
+    const matrix = xlsxLib.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: false }) as unknown[][];
+    if (!matrix.length) return { headers: [], rows: [] };
+
+    const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
+    const rows: ParsedRow[] = [];
+
+    for (let i = 1; i < matrix.length; i++) {
+      const rowArr = matrix[i] || [];
+      const rowObj: ParsedRow = { __excelRow: i + 1 };
+      for (let c = 0; c < headers.length; c++) {
+        rowObj[headers[c]] = rowArr[c] ?? null;
+      }
+      rows.push(rowObj);
+    }
+
+    return { headers, rows };
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildTemplateWorkbook = (xlsxLib: any): any => {
+    const wb = xlsxLib.utils.book_new();
+
+    Object.entries(SHEET_CONFIG).forEach(([, config]) => {
+      const ws = xlsxLib.utils.aoa_to_sheet([config.headers]);
+      xlsxLib.utils.book_append_sheet(wb, ws, config.title);
+    });
+
+    return wb;
+  };
+
 
   const headers = useMemo(() => parsed?.headers ?? [], [parsed]);
   const rows = useMemo(() => parsed?.rows ?? [], [parsed]);
@@ -127,6 +130,7 @@ export default function ActivityExcelImport() {
     setSortConfig({ key, direction });
   };
 
+
   const onPickFile = async (f: File | null) => {
     if (!f) return;
     setFile(f);
@@ -134,12 +138,13 @@ export default function ActivityExcelImport() {
     setParsed(null);
 
     try {
+      const XLSX = await import("xlsx");
       const blob = f.slice(0, 1 << 20);
       const arrayBuffer = await blob.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
       const wb = XLSX.read(data, { type: "array" });
       const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      const { headers, rows } = parseSheetToRows(firstSheet);
+      const { headers, rows } = parseSheetToRows(XLSX, firstSheet);
       setParsed({ headers, rows });
       toast.success("Excel loaded", { description: "Preview updated from your file." });
     } catch (e) {
@@ -153,10 +158,16 @@ export default function ActivityExcelImport() {
     setBackendResult(null);
   };
 
-  const downloadTemplate = () => {
-    const wb = buildTemplateWorkbook();
-    XLSX.writeFile(wb, "activity-import-template.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = buildTemplateWorkbook(XLSX);
+      XLSX.writeFile(wb, "activity-import-template.xlsx");
+    } catch (e) {
+      handleApiError(e, "Failed to download template");
+    }
   };
+
 
   const validateWithBackend = async () => {
     if (!file) {

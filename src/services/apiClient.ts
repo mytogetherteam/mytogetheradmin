@@ -155,7 +155,12 @@ class ApiClient {
         } else {
           throw new Error('Invalid refresh response');
         }
-      } catch {
+      } catch (error) {
+        console.error('Critical Auth Failure: Session refresh failed', {
+          error,
+          timestamp: new Date().toISOString(),
+          context: 'Proactive refresh or 401 retry failed'
+        });
         this.handleLogout();
         this.refreshSubscribers = [];
         throw new ApiError('Session expired', 401);
