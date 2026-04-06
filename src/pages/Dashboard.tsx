@@ -336,7 +336,7 @@ export default function Dashboard() {
             )}
 
             {/* Row 1: KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
                 <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
                 <StatCard title="Total Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
                 <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} />
@@ -345,9 +345,9 @@ export default function Dashboard() {
             </div>
 
             {/* Row 2: Moderation Alert Cards */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 delay-150 duration-700 fill-mode-both">
                 <Card
-                    className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-colors"
+                    className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
                     onClick={() => navigate("/shops/manage?tab=pending")}
                 >
                     <CardContent className="flex items-center gap-4 p-4">
@@ -367,7 +367,7 @@ export default function Dashboard() {
                 </Card>
 
                 <Card
-                    className="cursor-pointer border-red-500/30 hover:border-red-500/60 transition-colors"
+                    className="cursor-pointer border-red-500/30 hover:border-red-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
                     onClick={() => navigate("/moderation/user-shop")}
                 >
                     <CardContent className="flex items-center gap-4 p-4">

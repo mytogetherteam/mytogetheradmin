@@ -176,7 +176,7 @@ export default function AnalyticalDashboard() {
     }));
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <BarChart2 className="h-6 w-6 text-primary" />

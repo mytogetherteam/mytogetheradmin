@@ -84,13 +84,24 @@ export default function CreateCategory() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        const { compressImage } = await import("@/utils/imageCompression");
+        const compressed = await compressImage(file);
+        setImageFile(compressed);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } catch (error) {
+        console.error("Image compression failed:", error);
+        // Fallback to original file if compression fails
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.readAsDataURL(file);
+      }
     }
   };
 

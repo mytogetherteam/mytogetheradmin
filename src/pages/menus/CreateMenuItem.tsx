@@ -54,6 +54,79 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from "lucide-react";
 
+interface CategoryResponse {
+    id?: number;
+    menuCategoryId?: number;
+    categoryId?: number;
+    nameEn?: string;
+    name?: string;
+    nameMm?: string;
+    nameTh?: string;
+}
+
+interface TagResponse {
+    id?: number;
+}
+
+interface OptionGroupResponse {
+    id?: number;
+    nameEn?: string;
+    name_en?: string;
+    nameMm?: string;
+    name_mm?: string;
+    nameTh?: string;
+    name_th?: string;
+    isRequired?: boolean;
+    is_required?: boolean;
+    minSelection?: number;
+    min_selection?: number;
+    maxSelection?: number;
+    max_selection?: number;
+    displayOrder?: number;
+    display_order?: number;
+    groupType?: "SINGLE_SELECT" | "MULTI_SELECT" | string;
+    group_type?: string;
+    options?: OptionResponse[];
+}
+
+interface OptionResponse {
+    id?: number;
+    nameEn?: string;
+    name_en?: string;
+    nameMm?: string;
+    name_mm?: string;
+    nameTh?: string;
+    name_th?: string;
+    price?: number;
+    isAvailable?: boolean;
+    is_available?: boolean;
+    displayOrder?: number;
+    display_order?: number;
+    linkedMenuItemId?: number;
+    linked_menu_item_id?: number;
+}
+
+interface VariantResponse {
+    id?: number;
+    nameEn?: string;
+    name_en?: string;
+    nameMm?: string;
+    name_mm?: string;
+    nameTh?: string;
+    name_th?: string;
+    price?: number;
+    isAvailable?: boolean;
+    is_available?: boolean;
+    displayOrder?: number;
+    display_order?: number;
+}
+
+interface ItemResponse {
+    image_url?: string;
+    mediaUrl?: string;
+    media_url?: string;
+}
+
 interface SortableItemProps {
     id: string;
     children: React.ReactNode;
@@ -186,7 +259,7 @@ export default function CreateMenuItem() {
     const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAdminCategories(page, size, search);
         return {
-            content: res.content.map((cat: any) => {
+            content: res.content.map((cat: CategoryResponse) => {
                 const categoryId = cat.id || cat.menuCategoryId || cat.categoryId;
                 return { 
                     label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category", 
@@ -299,7 +372,7 @@ export default function CreateMenuItem() {
 
                 // Fetch real name if backend didn't provide it
                 if (!item.categoryName || item.categoryName === "Selected Category") {
-                    ShopService.getCategoryById(item.menuCategoryId).then((cat: any) => {
+                    ShopService.getCategoryById(item.menuCategoryId).then((cat: CategoryResponse) => {
                         const fetchedId = cat.id || cat.menuCategoryId || cat.categoryId || item.menuCategoryId;
                         setCategoryId(String(fetchedId));
                         setSelectedCategoryData({ label: cat.nameEn || cat.nameMm || cat.name || `Category ${fetchedId}`, value: String(fetchedId) });
@@ -316,7 +389,7 @@ export default function CreateMenuItem() {
             setIsRecommended(item.isRecommended || false);
             setDisplayOrder(String(item.displayOrder || 1));
             setMealTypes(item.mealTypes || []);
-            setTagIds(item.tagIds?.map(Number) || (item.tags ? item.tags.map((t: any) => Number(t.id)) : []));
+            setTagIds(item.tagIds?.map(Number) || (item.tags ? item.tags.map((t: TagResponse) => Number(t.id)) : []));
             if (item.masterItemId) {
                 setMasterItemId(String(item.masterItemId));
                 const label = item.masterItemName || `Master Item #${item.masterItemId}`;
@@ -344,7 +417,7 @@ export default function CreateMenuItem() {
                 }
             }
             setComboComponents(item.components || []);
-            const mappedOptionGroups = (item.optionGroups || []).map((og: any) => ({
+            const mappedOptionGroups = (item.optionGroups || []).map((og: OptionGroupResponse) => ({
                 id: og.id,
                 nameEn: og.nameEn || og.name_en || "",
                 nameMm: og.nameMm || og.name_mm || "",
@@ -353,8 +426,8 @@ export default function CreateMenuItem() {
                 minSelection: og.minSelection ?? og.min_selection ?? 0,
                 maxSelection: og.maxSelection ?? og.max_selection ?? 1,
                 displayOrder: og.displayOrder ?? og.display_order ?? 1,
-                groupType: og.groupType || og.group_type || "SINGLE_SELECT",
-                options: (og.options || []).map((opt: any) => ({
+                groupType: (og.groupType || og.group_type || "SINGLE_SELECT") as "SINGLE_SELECT" | "MULTI_SELECT",
+                options: (og.options || []).map((opt: OptionResponse) => ({
                     id: opt.id,
                     nameEn: opt.nameEn || opt.name_en || "",
                     nameMm: opt.nameMm || opt.name_mm || "",
@@ -366,7 +439,7 @@ export default function CreateMenuItem() {
                 }))
             }));
 
-            const mappedVariants = (item.variants || []).map((v: any) => ({
+            const mappedVariants = (item.variants || []).map((v: VariantResponse) => ({
                 id: v.id,
                 nameEn: v.nameEn || v.name_en || "",
                 nameMm: v.nameMm || v.name_mm || "",
@@ -379,7 +452,7 @@ export default function CreateMenuItem() {
             setOptionGroups(mappedOptionGroups);
             setVariants(mappedVariants);
 
-            const resolvedImageUrl = item.imageUrl || (item as any).image_url || (item as any).mediaUrl || (item as any).media_url;
+            const resolvedImageUrl = item.imageUrl || (item as ItemResponse).image_url || (item as ItemResponse).mediaUrl || (item as ItemResponse).media_url;
             if (resolvedImageUrl) {
                 setExistingImage(resolvedImageUrl);
             }

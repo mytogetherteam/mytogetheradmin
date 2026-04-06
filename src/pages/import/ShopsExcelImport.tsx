@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Loader } from "@/components/ui/loader";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminImportService } from "@/services/adminImportService";
 import { ArrowUpDown, Download, FileUp, Trash2 } from "lucide-react";
+import { useExcelImport } from "@/context/use-excel-import";
 
 type SheetKey = "Shops" | "MenuItems" | "OperatingHours";
 
@@ -78,37 +78,6 @@ function normalizeHeader(h: unknown) {
   return String(h ?? "").trim();
 }
 
-function parseSheetToRows(ws: XLSX.WorkSheet): { headers: string[]; rows: ParsedRow[] } {
-  const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: false }) as unknown[][];
-  if (!matrix.length) return { headers: [], rows: [] };
-
-  const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
-  const rows: ParsedRow[] = [];
-
-  for (let i = 1; i < matrix.length; i++) {
-    const rowArr = matrix[i] || [];
-    const rowObj: ParsedRow = { __excelRow: i + 1 };
-    for (let c = 0; c < headers.length; c++) {
-      rowObj[headers[c]] = rowArr[c] ?? null;
-    }
-    rows.push(rowObj);
-  }
-
-  return { headers, rows };
-}
-
-function buildTemplateWorkbook() {
-  const wb = XLSX.utils.book_new();
-  (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((key) => {
-    const { headers } = SHEET_CONFIG[key];
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    XLSX.utils.book_append_sheet(wb, ws, key);
-  });
-  return wb;
-}
-
-import { useExcelImport } from "@/context/use-excel-import";
-
 export default function ShopsExcelImport() {
   const {
     file,
@@ -120,11 +89,6 @@ export default function ShopsExcelImport() {
     clearData,
   } = useExcelImport();
 
-  // Remove local states that are now global
-  // const [file, setFile] = useState<File | null>(null);
-  // const [selectedSheet, setSelectedSheet] = useState<SheetKey>("Shops");
-  // const [workbookData, setWorkbookData] = useState<...>(...);
-
   const [showOnlyNullRows, setShowOnlyNullRows] = useState(true);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -135,6 +99,37 @@ export default function ShopsExcelImport() {
   const sheet = workbookData[selectedSheet];
   const headers = useMemo(() => sheet?.headers ?? [], [sheet]);
   const rows = useMemo(() => sheet?.rows ?? [], [sheet]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parseSheetToRows = (xlsxLib: any, ws: any): { headers: string[]; rows: ParsedRow[] } => {
+    const matrix = xlsxLib.utils.sheet_to_json(ws, { header: 1, defval: null, blankrows: false }) as unknown[][];
+    if (!matrix.length) return { headers: [], rows: [] };
+
+    const headers = (matrix[0] || []).map(normalizeHeader).filter(Boolean);
+    const rows: ParsedRow[] = [];
+
+    for (let i = 1; i < matrix.length; i++) {
+      const rowArr = matrix[i] || [];
+      const rowObj: ParsedRow = { __excelRow: i + 1 };
+      for (let c = 0; c < headers.length; c++) {
+        rowObj[headers[c]] = rowArr[c] ?? null;
+      }
+      rows.push(rowObj);
+    }
+
+    return { headers, rows };
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildTemplateWorkbook = (xlsxLib: any): any => {
+    const wb = xlsxLib.utils.book_new();
+    (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((key) => {
+      const { headers } = SHEET_CONFIG[key];
+      const ws = xlsxLib.utils.aoa_to_sheet([headers]);
+      xlsxLib.utils.book_append_sheet(wb, ws, key);
+    });
+    return wb;
+  };
 
   const hasErrors = useMemo(() => {
     return rows.some(r => headers.some(h => isBlank(r[h])));
@@ -184,6 +179,7 @@ export default function ShopsExcelImport() {
     if (!picked) return;
 
     try {
+      const XLSX = await import("xlsx");
       const buffer = await picked.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array" });
 
@@ -191,7 +187,7 @@ export default function ShopsExcelImport() {
       (Object.keys(SHEET_CONFIG) as SheetKey[]).forEach((name) => {
         const ws = wb.Sheets[name];
         if (!ws) return;
-        next[name] = parseSheetToRows(ws);
+        next[name] = parseSheetToRows(XLSX, ws);
       });
 
       setWorkbookData(next as Record<SheetKey, { headers: string[]; rows: ParsedRow[] }>);
@@ -204,9 +200,14 @@ export default function ShopsExcelImport() {
     }
   };
 
-  const downloadTemplate = () => {
-    const wb = buildTemplateWorkbook();
-    XLSX.writeFile(wb, "shops-import-template.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = buildTemplateWorkbook(XLSX);
+      XLSX.writeFile(wb, "shops-import-template.xlsx");
+    } catch (e) {
+      handleApiError(e, "Failed to download template");
+    }
   };
 
   const validateWithBackend = async () => {

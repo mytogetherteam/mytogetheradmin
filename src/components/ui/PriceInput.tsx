@@ -13,12 +13,11 @@ const PriceInput = React.forwardRef<HTMLInputElement, PriceInputProps>(
     const [displayValue, setDisplayValue] = React.useState(formatNumberWithCommas(value));
 
     React.useEffect(() => {
-      // Only update local state if the incoming value actually changed significantly (to avoid jumping)
       const formatted = formatNumberWithCommas(value);
       if (parseNumberFromCommas(formatted) !== parseNumberFromCommas(displayValue)) {
         setDisplayValue(formatted);
       }
-    }, [value]);
+    }, [value, displayValue]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;

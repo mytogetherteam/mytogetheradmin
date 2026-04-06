@@ -1034,9 +1034,9 @@ export default function CreateShopRestaurant() {
                                                                             { value: "PICKUP", label: "Pickup" }, 
                                                                             { value: "DELIVERY", label: "Delivery" }
                                                                           ]
-                                                                    ) as any[]).map((option) => {
+                                                                    ) as { value?: string; label?: string }[]).map((option) => {
                                                                         const type = (typeof option === 'string' ? option : option.value) as string;
-                                                                        const label = (typeof option === 'string' ? option.toLowerCase() : option.label) as string;
+                                                                        const label = (typeof option === 'string' ? option : option.label) as string;
                                                                         
                                                                         return (
                                                                             <FormField

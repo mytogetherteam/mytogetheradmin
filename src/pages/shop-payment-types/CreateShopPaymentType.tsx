@@ -106,8 +106,7 @@ export default function CreateShopPaymentType() {
             }
         };
         fetchData();
-        // Removed selectedShopData from dependencies to prevent infinite loops/redundant fetches
-    }, [isEdit, paramShopId, id, searchParams]);
+    }, [isEdit, paramShopId, id, searchParams, selectedShopData]);
 
     // Fetch payment methods based on selected shop
     useEffect(() => {

@@ -32,6 +32,7 @@ export function useInactivityMiddleware() {
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningToastIdRef = useRef<string | number | null>(null);
+  const scheduleLogoutRef = useRef<() => void>(() => {});
 
   const clearAllTimers = useCallback(() => {
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
@@ -51,7 +52,6 @@ export function useInactivityMiddleware() {
     clearAllTimers();
     dismissWarningToast();
 
-    // Warning toast before timeout
     warningTimerRef.current = setTimeout(() => {
       const remainingSecs = Math.round(WARNING_BEFORE_MS / 1000);
       const remainingMins = Math.floor(remainingSecs / 60);
@@ -61,15 +61,13 @@ export function useInactivityMiddleware() {
         action: {
           label: 'Stay logged in',
           onClick: () => {
-            // Reset idle timer when user clicks "Stay logged in"
-            scheduleLogout();
+            scheduleLogoutRef.current();
           },
         },
       });
       warningToastIdRef.current = id;
     }, INACTIVITY_TIMEOUT_MS - WARNING_BEFORE_MS);
 
-    // Hard logout timer
     logoutTimerRef.current = setTimeout(async () => {
       dismissWarningToast();
       toast.error('You have been logged out', {
@@ -80,11 +78,14 @@ export function useInactivityMiddleware() {
     }, INACTIVITY_TIMEOUT_MS);
   }, [clearAllTimers, dismissWarningToast]);
 
+  useEffect(() => {
+    scheduleLogoutRef.current = scheduleLogout;
+  }, [scheduleLogout]);
+
   const handleActivity = useCallback(() => {
-    // Dismiss warning if user becomes active again before the timeout
     dismissWarningToast();
-    scheduleLogout();
-  }, [scheduleLogout, dismissWarningToast]);
+    scheduleLogoutRef.current();
+  }, [dismissWarningToast]);
 
   useEffect(() => {
     // Only run if the user is authenticated
