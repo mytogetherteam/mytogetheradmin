@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
+import { compressImage } from "@/utils/imageCompression"
 import { PaymentService } from "@/services/paymentService"
 import { userService } from "@/services/userService"
 import { Loader } from "@/components/ui/loader"
@@ -655,38 +656,44 @@ export default function CreateShopRestaurant() {
         }
     }
 
-    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] ?? null
-        setCoverFile(file);
-        if (!file) {
+    const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const originalFile = e.target.files?.[0] ?? null
+        if (!originalFile) {
             // Keep preview if it was from existing data? 
             // Better to clear if user explicitly cleared input, but input file doesn't allow 'clear' easily without reset.
             // If they pick nothing, we keep current file or clear it.
             if (!coverPreview?.startsWith('http')) setCoverPreview(null);
             return
         }
+        
+        const file = await compressImage(originalFile);
+        setCoverFile(file);
         const reader = new FileReader()
         reader.onloadend = () => setCoverPreview(reader.result as string)
         reader.readAsDataURL(file)
     }
 
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] ?? null
-        setLogoFile(file);
-        if (!file) {
+    const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const originalFile = e.target.files?.[0] ?? null
+        if (!originalFile) {
             if (!logoPreview?.startsWith('http')) setLogoPreview(null);
             return
         }
+        
+        const file = await compressImage(originalFile);
+        setLogoFile(file);
         const reader = new FileReader()
         reader.onloadend = () => setLogoPreview(reader.result as string)
         reader.readAsDataURL(file)
     }
 
-    const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        setGalleryFiles(prev => [...prev, ...files]);
-        files.forEach(file => {
+        
+        const compressedFiles = await Promise.all(files.map(f => compressImage(f)));
+        setGalleryFiles(prev => [...prev, ...compressedFiles]);
+        compressedFiles.forEach(file => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setGalleryPreviews(prev => [...prev, reader.result as string]);

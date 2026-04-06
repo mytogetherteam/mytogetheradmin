@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { orderService, Order, OrderStatus, OrderFilters } from "@/services/orderService";
+import { ShopService } from "@/services/shopService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,6 +14,7 @@ import { History, Search } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { exportService } from "@/services/exportService";
@@ -113,6 +115,16 @@ export default function OrderHistory() {
     const [endDate, setEndDate] = useState(todayStr);
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [searchTerm, setSearchTerm] = useState("");
+    const [shopId, setShopId] = useState("");
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+
+    const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+        const res = await ShopService.getAllShops(page, size, search);
+        return {
+            content: res.content.map((shop: any) => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+            last: res.last
+        };
+    }, []);
 
     const isCustom = period === "custom";
 
@@ -131,9 +143,10 @@ export default function OrderHistory() {
         size: pageSize,
         startDate,
         endDate,
+        shopId: shopId || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter as OrderStatus,
         search: searchTerm || undefined,
-    }), [currentPage, pageSize, startDate, endDate, statusFilter, searchTerm]);
+    }), [currentPage, pageSize, startDate, endDate, shopId, statusFilter, searchTerm]);
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
@@ -197,7 +210,7 @@ export default function OrderHistory() {
                         </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-5">
+                    <div className="grid gap-3 md:grid-cols-6">
                         <div>
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Date</label>
                             <div className="relative">
@@ -223,7 +236,22 @@ export default function OrderHistory() {
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Shop/ID</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Shop</label>
+                            <InfiniteSearchableSelect
+                                fetchData={fetchShopData}
+                                valueKey="value"
+                                labelKey="label"
+                                selectedValue={selectedShopData}
+                                onChange={(item) => {
+                                    setShopId(item?.value || "");
+                                    setSelectedShopData(item);
+                                    setCurrentPage(1);
+                                }}
+                                placeholder="Select Shop"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Order ID</label>
                             <Input
                                 placeholder="Search..."
                                 value={searchTerm}
