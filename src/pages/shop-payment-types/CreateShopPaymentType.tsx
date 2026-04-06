@@ -34,6 +34,7 @@ import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { formatImageUrl } from "@/lib/utils";
+import { compressImage } from "@/utils/imageCompression";
 
 export default function CreateShopPaymentType() {
     const navigate = useNavigate();
@@ -133,9 +134,10 @@ export default function CreateShopPaymentType() {
         fetchMethods();
     }, [selectedShopId, isEdit, selectedPaymentMethodId]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const originalFile = e.target.files?.[0];
+        if (originalFile) {
+            const file = await compressImage(originalFile);
             setQrImage(file);
             const reader = new FileReader();
             reader.onloadend = () => {

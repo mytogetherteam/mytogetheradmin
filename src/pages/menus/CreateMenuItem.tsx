@@ -24,6 +24,7 @@ import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService"
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { formatImageUrl } from "@/lib/utils";
+import { compressImage } from "@/utils/imageCompression";
 import {
     Dialog,
     DialogContent,
@@ -221,12 +222,18 @@ export default function CreateMenuItem() {
     }, []);
 
     const fetchComboItemData = useCallback(async (page: number, size: number, search: string) => {
-        const res = await menuService.getAllMenuItems(page, size, search);
+        console.log("Combo item fetching with shopId:", shopId, "parsed:", shopId ? parseInt(shopId) : "undefined");
+        const res = await menuService.getAllMenuItems(
+            page, 
+            size, 
+            search, 
+            shopId ? parseInt(shopId) : undefined
+        );
         return {
             content: res.content.map(item => ({ label: item.nameEn || item.name, value: String(item.id) })),
             last: res.last
         };
-    }, []);
+    }, [shopId]);
 
     const toggleMealType = (type: string) => {
         setMealTypes(prev =>
@@ -267,11 +274,11 @@ export default function CreateMenuItem() {
             setDescriptionMm(item.descriptionMm || "");
             setDescriptionTh(item.descriptionTh || "");
             setDescriptionEn(item.descriptionEn || "");
-            // Format price with commas
-            setPrice(item.price ? item.price.toLocaleString() : "0");
-            setOriginalPrice(item.originalPrice ? item.originalPrice.toLocaleString() : "");
-            setDiscountAmount(item.discountAmount ? item.discountAmount.toLocaleString() : "");
-            setDiscountPercentage(item.discountPercentage ? item.discountPercentage.toLocaleString() : "");
+            // Format price with commas safely
+            setPrice(item.price != null ? Number(item.price).toLocaleString() : "0");
+            setOriginalPrice(item.originalPrice != null ? Number(item.originalPrice).toLocaleString() : "");
+            setDiscountAmount(item.discountAmount != null ? Number(item.discountAmount).toLocaleString() : "");
+            setDiscountPercentage(item.discountPercentage != null ? Number(item.discountPercentage).toLocaleString() : "");
             setCurrency(item.currency || "THB");
             if (item.shopId) {
                 setShopId(item.shopId.toString());
@@ -309,7 +316,7 @@ export default function CreateMenuItem() {
             setIsRecommended(item.isRecommended || false);
             setDisplayOrder(String(item.displayOrder || 1));
             setMealTypes(item.mealTypes || []);
-            setTagIds(item.tagIds || (item.tags ? item.tags.map(t => t.id) : []));
+            setTagIds(item.tagIds?.map(Number) || (item.tags ? item.tags.map((t: any) => Number(t.id)) : []));
             if (item.masterItemId) {
                 setMasterItemId(String(item.masterItemId));
                 const label = item.masterItemName || `Master Item #${item.masterItemId}`;
@@ -372,8 +379,9 @@ export default function CreateMenuItem() {
             setOptionGroups(mappedOptionGroups);
             setVariants(mappedVariants);
 
-            if (item.imageUrl) {
-                setExistingImage(item.imageUrl);
+            const resolvedImageUrl = item.imageUrl || (item as any).image_url || (item as any).mediaUrl || (item as any).media_url;
+            if (resolvedImageUrl) {
+                setExistingImage(resolvedImageUrl);
             }
         } catch (error) {
             handleApiError(error, "Failed to load item");
@@ -428,9 +436,10 @@ export default function CreateMenuItem() {
     }, [id, isEditMode, loadItem]);
 
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const originalFile = e.target.files?.[0];
+        if (originalFile) {
+            const file = await compressImage(originalFile);
             setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
@@ -938,7 +947,7 @@ export default function CreateMenuItem() {
                                 ) : (
                                     <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/10">
                                         {availableTags.map(tag => {
-                                            const selected = tagIds.includes(tag.id);
+                                            const selected = tagIds.some(id => String(id) === String(tag.id));
                                             return (
                                                 <Badge
                                                     key={tag.id}
@@ -1031,6 +1040,7 @@ export default function CreateMenuItem() {
                                                     <div key={cIdx} className="flex flex-wrap items-center gap-3 p-3 border rounded-xl bg-white shadow-sm">
                                                         <div className="flex-1 min-w-[200px]">
                                                             <InfiniteSearchableSelect
+                                                                key={`combo-search-${cIdx}-${shopId}`}
                                                                 fetchData={fetchComboItemData}
                                                                 valueKey="value"
                                                                 labelKey="label"

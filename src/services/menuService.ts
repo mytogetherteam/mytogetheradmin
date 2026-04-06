@@ -153,11 +153,12 @@ export const menuService = {
 
     // --- Menu Items ---
 
-    getAllMenuItems: async (page = 0, size = 20, search = "", shopId?: number): Promise<PageableResponse<MenuItem>> => {
+    getAllMenuItems: async (page = 0, size = 20, search = "", shopId?: number, categoryId?: number, masterCategoryId?: number): Promise<PageableResponse<MenuItem>> => {
         let endpoint = `${config.endpoints.admin.menu.items}?page=${page}&size=${size}&search=${encodeURIComponent(search)}`;
-        if (shopId) {
-            endpoint += `&shopId=${shopId}`;
-        }
+        if (shopId) endpoint += `&shopId=${shopId}&shop_id=${shopId}`;
+        if (categoryId) endpoint += `&categoryId=${categoryId}&category_id=${categoryId}`;
+        if (masterCategoryId) endpoint += `&masterCategoryId=${masterCategoryId}&master_category_id=${masterCategoryId}`;
+        console.log("FETCHING MENU ITEMS:", endpoint); 
         return apiClient.get<PageableResponse<MenuItem>>(endpoint);
     },
 
