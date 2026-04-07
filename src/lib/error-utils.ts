@@ -16,11 +16,14 @@ export function handleApiError(error: unknown, defaultTitle: string = "An error 
 
   if (error instanceof ApiError) {
     const errorData = error.data as ApiErrorData;
-    const message = errorData?.message || error.message || defaultTitle;
     const details = errorData?.details || null;
+    const message = errorData?.message || error.message || defaultTitle;
 
-    toast.error(message, {
-      description: details,
+    // Prioritize details as the main message if they exist
+    // If we have specific details, we show them as the main message and omit the generic message
+    const displayMessage = details || message;
+
+    toast.error(displayMessage, {
       duration: 5000,
     });
     return;

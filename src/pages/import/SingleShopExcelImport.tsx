@@ -151,6 +151,14 @@ export default function SingleShopExcelImport() {
     };
   } | null>(null);
 
+  interface BackendError {
+    message?: string;
+    details?: string;
+    successCount?: number;
+    failureCount?: number;
+    errors?: Array<{ row: number; message: string }>;
+  }
+
   const sheet = workbookData[selectedSheet];
   const headers = useMemo(() => sheet?.headers ?? [], [sheet]);
   const rows = useMemo(() => sheet?.rows ?? [], [sheet]);
@@ -272,11 +280,10 @@ export default function SingleShopExcelImport() {
         description: "Single shop imported successfully.",
       });
     } catch (e: unknown) {
-      handleApiError(e, "Import failed");
-      const error = e as { data?: { message?: string; successCount?: number; failureCount?: number } };
+      const error = e as { data?: BackendError };
       setBackendResult({
         success: false,
-        message: error?.data?.message || "Backend returned an error.",
+        message: error?.data?.details || error?.data?.message || "Backend returned an error.",
         data: error?.data,
       });
     } finally {
