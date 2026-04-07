@@ -1130,6 +1130,7 @@ export default function CreateMenuItem() {
                                                                 pattern="[0-9]*"
                                                                 className="h-8 text-sm px-1 text-center"
                                                                 value={comp.displayOrder}
+                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
                                                                 onChange={e => {
                                                                     const val = e.target.value.replace(/^0+(?!$)/, "");
                                                                     if (val === "" || /^\d+$/.test(val)) {
@@ -1141,10 +1142,18 @@ export default function CreateMenuItem() {
                                                         <div className="flex items-center gap-2 w-32">
                                                             <Label className="text-xs whitespace-nowrap">Qty:</Label>
                                                             <Input
-                                                                type="number"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
                                                                 min={1}
                                                                 value={comp.quantity}
-                                                                onChange={e => updateComboComponent(cIdx, { quantity: parseInt(e.target.value) || 1 })}
+                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
+                                                                onChange={e => {
+                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                    if (val === "" || /^\d+$/.test(val)) {
+                                                                        updateComboComponent(cIdx, { quantity: parseInt(val) || 1 });
+                                                                    }
+                                                                }}
                                                                 className="h-9 w-20 text-sm"
                                                             />
                                                         </div>
@@ -1269,18 +1278,34 @@ export default function CreateMenuItem() {
                                                                         <div className="space-y-1">
                                                                             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Min Selection</Label>
                                                                             <Input
-                                                                                type="number"
+                                                                                type="text"
+                                                                                inputMode="numeric"
+                                                                                pattern="[0-9]*"
                                                                                 value={group.minSelection}
-                                                                                onChange={e => updateOptionGroup(gIdx, { minSelection: parseInt(e.target.value) || 0 })}
+                                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
+                                                                                onChange={e => {
+                                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                                    if (val === "" || /^\d+$/.test(val)) {
+                                                                                        updateOptionGroup(gIdx, { minSelection: parseInt(val) || 0 });
+                                                                                    }
+                                                                                }}
                                                                                 className="h-8"
                                                                             />
                                                                         </div>
                                                                         <div className="space-y-1">
                                                                             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Max Selection</Label>
                                                                             <Input
-                                                                                type="number"
+                                                                                type="text"
+                                                                                inputMode="numeric"
+                                                                                pattern="[0-9]*"
                                                                                 value={group.maxSelection}
-                                                                                onChange={e => updateOptionGroup(gIdx, { maxSelection: parseInt(e.target.value) || 1 })}
+                                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
+                                                                                onChange={e => {
+                                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
+                                                                                    if (val === "" || /^\d+$/.test(val)) {
+                                                                                        updateOptionGroup(gIdx, { maxSelection: parseInt(val) || 1 });
+                                                                                    }
+                                                                                }}
                                                                                 className="h-8"
                                                                             />
                                                                         </div>
@@ -1333,6 +1358,7 @@ export default function CreateMenuItem() {
                                                                                                     pattern="[0-9]*"
                                                                                                     className="h-8 text-sm px-1 text-center"
                                                                                                     value={opt.displayOrder}
+                                                                                                    onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
                                                                                                     onChange={e => {
                                                                                                         const val = e.target.value.replace(/^0+(?!$)/, "");
                                                                                                         if (val === "" || /^\d+$/.test(val)) {
@@ -1449,6 +1475,7 @@ export default function CreateMenuItem() {
                                                                         pattern="[0-9]*"
                                                                         className="h-9 text-sm px-1 text-center"
                                                                         value={variant.displayOrder}
+                                                                        onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
                                                                         onChange={e => {
                                                                             const val = e.target.value.replace(/^0+(?!$)/, "");
                                                                             if (val === "" || /^\d+$/.test(val)) {
