@@ -33,6 +33,12 @@ export interface PageableResponse<T> {
     empty: boolean;
   };
   empty: boolean;
+  page?: {
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    number: number;
+  };
 }
 
 // Shop Interfaces

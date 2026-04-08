@@ -104,11 +104,11 @@ export default function ManageMenuItems() {
                 setItems(list);
                 
                 // Robustly resolve total items and pages locally to bypass typescript error:
-                const resAny = response as { total?: number; count?: number; totalCount?: number; lastPage?: number };
-                const returnedTotalElements = response.totalElements ?? resAny.total ?? resAny.count ?? resAny.totalCount;
+                const resAny = response as { total?: number; count?: number; totalCount?: number; lastPage?: number; page?: { totalElements?: number; totalPages?: number; } };
+                const returnedTotalElements = resAny.page?.totalElements ?? response.totalElements ?? resAny.total ?? resAny.count ?? resAny.totalCount;
                 const total = returnedTotalElements !== undefined ? returnedTotalElements : list.length;
                 
-                const returnedTotalPages = response.totalPages ?? resAny.lastPage;
+                const returnedTotalPages = resAny.page?.totalPages ?? response.totalPages ?? resAny.lastPage;
                 const pages = returnedTotalPages !== undefined ? returnedTotalPages : Math.max(1, Math.ceil(total / pageSize));
                 
                 setTotalItems(total);

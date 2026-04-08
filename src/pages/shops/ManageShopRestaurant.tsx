@@ -82,7 +82,7 @@ export default function ManageShopRestaurant() {
             const response = await ShopService.getAllShops(currentPage - 1, pageSize, debouncedSearch)
             const list = response?.content || []
             setShops(Array.isArray(list) ? list : [])
-            setTotalElements(response?.totalElements ?? list.length)
+            setTotalElements(response?.page?.totalElements ?? response?.totalElements ?? list.length)
         } catch (error) {
             handleApiError(error, "Failed to load shops")
         } finally {
@@ -105,7 +105,7 @@ export default function ManageShopRestaurant() {
             const response = await ShopService.getPendingVettingShops(pendingCurrentPage - 1, pendingPageSize)
             const content = response?.content || []
             setPendingShops(content)
-            setPendingTotalElements(response?.totalElements ?? content.length)
+            setPendingTotalElements(response?.page?.totalElements ?? response?.totalElements ?? content.length)
         } catch (error) {
             handleApiError(error, "Failed to load pending shops")
         } finally {
@@ -365,9 +365,9 @@ export default function ManageShopRestaurant() {
                             <TabsTrigger value="pending" className="flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
                                 Pending Vetting
-                                {pendingShops.length > 0 && (
+                                {pendingTotalElements > 0 && (
                                     <span className="ml-1 bg-orange-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
-                                        {pendingShops.length}
+                                        {pendingTotalElements}
                                     </span>
                                 )}
                             </TabsTrigger>
