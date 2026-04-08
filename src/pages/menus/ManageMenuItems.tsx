@@ -31,6 +31,8 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { menuService, MenuItem } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
+import { MasterItemService } from "@/services/masterItemService";
+import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
@@ -54,6 +56,10 @@ export default function ManageMenuItems() {
     const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(null);
     const [masterCategoryId, setMasterCategoryId] = useState<string>("");
     const [selectedMasterCategoryData, setSelectedMasterCategoryData] = useState<{ label: string, value: string } | null>(null);
+
+    const [extraCategoryNames, setExtraCategoryNames] = useState<Record<number, string>>({});
+    const [extraMasterItemNames, setExtraMasterItemNames] = useState<Record<number, string>>({});
+    const [extraMasterCategoryNames, setExtraMasterCategoryNames] = useState<Record<number, string>>({});
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -102,6 +108,35 @@ export default function ManageMenuItems() {
             if (response && response.content !== undefined) {
                 const list = response.content;
                 setItems(list);
+                
+                // Fetch missing names
+                const missingCategories = new Set<number>();
+                const missingMasterItems = new Set<number>();
+                const missingMasterCategories = new Set<number>();
+
+                list.forEach(item => {
+                    const typedItem = item as any;
+                    const catId = item.menuCategoryId || typedItem.categoryId;
+                    if (catId && !item.categoryName) missingCategories.add(catId);
+                    if (item.masterItemId && !item.masterItemName) missingMasterItems.add(item.masterItemId);
+                    if (item.masterCategoryId && !item.masterCategoryName) missingMasterCategories.add(item.masterCategoryId);
+                });
+
+                missingCategories.forEach(id => {
+                    ShopService.getCategoryById(id).then((cat: any) => {
+                        setExtraCategoryNames(prev => ({ ...prev, [id]: cat.nameEn || cat.nameMm || cat.name || `Category ${id}` }));
+                    }).catch(() => {});
+                });
+                missingMasterItems.forEach(id => {
+                    MasterItemService.getMasterItemById(id).then(mi => {
+                        setExtraMasterItemNames(prev => ({ ...prev, [id]: mi.nameEn || mi.nameMm || mi.nameTh || String(id) }));
+                    }).catch(() => {});
+                });
+                missingMasterCategories.forEach(id => {
+                    MasterMenuCategoryService.getMasterMenuCategoryById(id).then((mc: any) => {
+                        setExtraMasterCategoryNames(prev => ({ ...prev, [id]: mc.nameEn || mc.nameMm || mc.nameTh || mc.name || String(id) }));
+                    }).catch(() => {});
+                });
                 
                 // Robustly resolve total items and pages locally to bypass typescript error:
                 const resAny = response as { total?: number; count?: number; totalCount?: number; lastPage?: number; page?: { totalElements?: number; totalPages?: number; } };
@@ -188,7 +223,9 @@ export default function ManageMenuItems() {
                 Price: i.price,
                 Currency: i.currency,
                 Shop: i.shopName || i.shopId,
-                Category: i.categoryName || 'Uncategorized'
+                Category: i.categoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
+                'Master Category': i.masterCategoryName || extraMasterCategoryNames[i.masterCategoryId!] || i.masterCategoryId || '-',
+                'Master Item': i.masterItemName || extraMasterItemNames[i.masterItemId!] || i.masterItemId || '-'
             }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
@@ -299,6 +336,8 @@ export default function ManageMenuItems() {
                                             <SortableTableHead label="Price" sortKey="price" sortConfig={sortConfig} onSort={handleSort} />
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Category</TableHead>
+                                            <TableHead>M. Category</TableHead>
+                                            <TableHead>M. Item</TableHead>
                                             <TableHead>Flags</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -334,8 +373,27 @@ export default function ManageMenuItems() {
                                                     { }
                                                     <TableCell className="text-sm">{item.shopName || item.shopId}</TableCell>
                                                     <TableCell>
-                                                        { }
-                                                        <Badge variant="outline" className="font-normal">{item.categoryName || "Uncategorized"}</Badge>
+                                                        <Badge variant="outline" className="font-normal whitespace-nowrap">
+                                                            {item.categoryName || extraCategoryNames[item.menuCategoryId || (item as any).categoryId || -1] || "Uncategorized"}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {(item.masterCategoryName || item.masterCategoryId) ? (
+                                                            <Badge variant="outline" className="font-normal whitespace-nowrap bg-muted/20">
+                                                                {item.masterCategoryName || extraMasterCategoryNames[item.masterCategoryId!] || item.masterCategoryId}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {(item.masterItemName || item.masterItemId) ? (
+                                                            <Badge variant="outline" className="font-normal whitespace-nowrap bg-muted/20">
+                                                                {item.masterItemName || extraMasterItemNames[item.masterItemId!] || item.masterItemId}
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">-</span>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex flex-col gap-2">
@@ -357,7 +415,7 @@ export default function ManageMenuItems() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                                     No results found.
                                                 </TableCell>
                                             </TableRow>
