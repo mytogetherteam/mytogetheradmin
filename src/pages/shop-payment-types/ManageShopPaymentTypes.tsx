@@ -41,13 +41,19 @@ import { formatImageUrl } from "@/lib/utils";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
-    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(
+        localStorage.getItem("manage_payment_shop_data") ? JSON.parse(localStorage.getItem("manage_payment_shop_data")!) : null
+    );
     const selectedShopId = selectedShopData?.value || "";
     const [items, setItems] = useState<ShopPaymentTypeDTO[]>([]);
     const [loading, setLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_payment_page")) || 1);
+    const [pageSize, setPageSize] = useState(Number(localStorage.getItem("manage_payment_page_size")) || 20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [selectedPaymentTypeId, setSelectedPaymentTypeId] = useState<number | null>(
+        localStorage.getItem("lastSelectedPaymentTypeId") ? Number(localStorage.getItem("lastSelectedPaymentTypeId")) : null
+    );
+    const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_payment_search") || "");
 
     // Initial load: Fetch just one page of shops to get the first shop as default selection
     useEffect(() => {
@@ -101,9 +107,16 @@ export default function ManageShopPaymentTypes() {
         }
     }, [selectedShopId, loadItems]);
 
+    // Persist filters and selection
+    useEffect(() => {
+        localStorage.setItem("manage_payment_shop_data", JSON.stringify(selectedShopData));
+        localStorage.setItem("manage_payment_search", searchTerm);
+        localStorage.setItem("manage_payment_page", String(currentPage));
+        localStorage.setItem("manage_payment_page_size", String(pageSize));
+    }, [selectedShopData, searchTerm, currentPage, pageSize]);
+
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
-    const [searchTerm, setSearchTerm] = useState("");
 
     const filteredItems = items.filter(item =>
         (item.paymentMethodName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -252,8 +265,12 @@ export default function ManageShopPaymentTypes() {
                                             currentItems.map((item) => (
                                                 <TableRow 
                                                     key={item.id} 
-                                                    className="hover:bg-muted/50 transition-colors cursor-pointer"
-                                                    onClick={() => navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`)}
+                                                    className={`transition-colors cursor-pointer ${selectedPaymentTypeId === item.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
+                                                    onClick={() => {
+                                                        localStorage.setItem("lastSelectedPaymentTypeId", String(item.id));
+                                                        setSelectedPaymentTypeId(item.id);
+                                                        navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`);
+                                                    }}
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
@@ -283,7 +300,11 @@ export default function ManageShopPaymentTypes() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                onClick={() => navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`)}
+                                                                onClick={() => {
+                                                                    localStorage.setItem("lastSelectedPaymentTypeId", String(item.id));
+                                                                    setSelectedPaymentTypeId(item.id);
+                                                                    navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`);
+                                                                }}
                                                             >
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>

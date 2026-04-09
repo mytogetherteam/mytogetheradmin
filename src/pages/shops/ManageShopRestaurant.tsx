@@ -432,7 +432,7 @@ export default function ManageShopRestaurant() {
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Select value={`${pageSize}`} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
-                                                <SelectTrigger className="h-8 w-[70px]"><SelectValue /></SelectTrigger>
+                                                <SelectTrigger className="h-8 w-[70px]" hideClear><SelectValue /></SelectTrigger>
                                                 <SelectContent side="top">
                                                     {[10, 20, 30, 40, 50].map((s) => <SelectItem key={s} value={`${s}`}>{s}</SelectItem>)}
                                                 </SelectContent>

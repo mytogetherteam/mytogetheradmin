@@ -1,10 +1,16 @@
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const Select = SelectPrimitive.Root
+const SelectContext = React.createContext<{ value?: string; onValueChange?: (value: string) => void }>({})
+
+const Select = ({ value, onValueChange, ...props }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>) => (
+  <SelectContext.Provider value={{ value, onValueChange }}>
+    <SelectPrimitive.Root value={value} onValueChange={onValueChange} {...props} />
+  </SelectContext.Provider>
+)
 
 const SelectGroup = SelectPrimitive.Group
 
@@ -12,22 +18,45 @@ const SelectValue = SelectPrimitive.Value
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-))
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & { hideClear?: boolean }
+>(({ className, children, hideClear = false, ...props }, ref) => {
+  const { value, onValueChange } = React.useContext(SelectContext)
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onValueChange) {
+      onValueChange("")
+    }
+  }
+
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 group",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <div className="flex items-center gap-1 shrink-0">
+        {!hideClear && value && (
+          <div
+            onClick={handleClear}
+            className="p-0.5 hover:bg-muted rounded-md transition-colors"
+            role="button"
+            aria-label="Clear selection"
+          >
+            <X className="h-3.5 w-3.5 opacity-50 hover:opacity-100" />
+          </div>
+        )}
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </SelectPrimitive.Icon>
+      </div>
+    </SelectPrimitive.Trigger>
+  )
+})
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
 const SelectScrollUpButton = React.forwardRef<

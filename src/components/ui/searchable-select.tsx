@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, Search } from "lucide-react"
+import { Check, ChevronsUpDown, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,6 +60,11 @@ export function SearchableSelect<T extends { [key: string]: unknown }>({
         setSearchQuery("")
     }
 
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onChange(null)
+    }
+
     const displayValue = selectedValue
         ? String(selectedValue[displayKey])
         : title || placeholder
@@ -71,11 +76,23 @@ export function SearchableSelect<T extends { [key: string]: unknown }>({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn("w-full justify-between font-normal text-left px-3 text-base md:text-sm", className)}
+                    className={cn("w-full justify-between font-normal text-left px-3 text-base md:text-sm group", className)}
                     disabled={disabled}
                 >
-                    <span>{displayValue}</span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <span className="truncate flex-1">{displayValue}</span>
+                    <div className="flex items-center shrink-0">
+                        {selectedValue && (
+                            <div 
+                                onClick={handleClear}
+                                className="p-0.5 hover:bg-muted rounded-md transition-colors mr-1"
+                                role="button"
+                                aria-label="Clear selection"
+                            >
+                                <X className="h-3.5 w-3.5 opacity-50 hover:opacity-100" />
+                            </div>
+                        )}
+                        <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                    </div>
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0" align="start" side="bottom">
