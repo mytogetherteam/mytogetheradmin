@@ -56,12 +56,16 @@ export default function ManageUsers() {
     const navigate = useNavigate();
     const [users, setUsers] = useState<UserListItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_users_search") || "");
     const debouncedSearch = useDebounce(searchTerm, 300);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_users_page")) || 1);
+    const [pageSize, setPageSize] = useState(Number(localStorage.getItem("manage_users_page_size")) || 20);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+
+    const [selectedUserId, setSelectedUserId] = useState<string | number | null>(
+        localStorage.getItem("lastSelectedUserId") ? (isNaN(Number(localStorage.getItem("lastSelectedUserId"))) ? localStorage.getItem("lastSelectedUserId") : Number(localStorage.getItem("lastSelectedUserId"))) : null
+    );
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
     // User Actions State
@@ -74,14 +78,16 @@ export default function ManageUsers() {
         setLoading(true);
         try {
             const response = await userService.getAllUsers(currentPage - 1, pageSize, debouncedSearch);
-            if (response && response.content) {
-                setUsers(response.content);
-                setTotalPages(response.totalPages);
-                setTotalItems(response.totalElements);
-            } else if (Array.isArray(response)) {
-                setUsers(response);
-                setTotalItems(response.length);
-                setTotalPages(Math.ceil(response.length / pageSize));
+            if (response) {
+                const list = response.content || (Array.isArray(response) ? response : []);
+                setUsers(list);
+                
+                // Robustly handle different pagination structures
+                const elements = response.page?.totalElements ?? response.totalElements ?? list.length;
+                const pages = response.page?.totalPages ?? response.totalPages ?? Math.ceil(elements / pageSize);
+                
+                setTotalItems(elements);
+                setTotalPages(pages);
             }
         } catch (error) {
             handleApiError(error, "Failed to load users");
@@ -93,6 +99,13 @@ export default function ManageUsers() {
     useEffect(() => {
         loadUsers();
     }, [loadUsers]);
+
+    // Persist filters and selection
+    useEffect(() => {
+        localStorage.setItem("manage_users_search", searchTerm);
+        localStorage.setItem("manage_users_page", String(currentPage));
+        localStorage.setItem("manage_users_page_size", String(pageSize));
+    }, [searchTerm, currentPage, pageSize]);
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));
@@ -195,8 +208,12 @@ export default function ManageUsers() {
                                             sortedUsers.map((user) => (
                                                 <TableRow
                                                     key={user.id}
-                                                    className="hover:bg-muted/50 transition-colors cursor-pointer group"
-                                                    onClick={() => navigate(`/users/${user.id}`)}
+                                                    className={`transition-colors cursor-pointer group ${selectedUserId === user.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
+                                                    onClick={() => {
+                                                        localStorage.setItem("lastSelectedUserId", String(user.id));
+                                                        setSelectedUserId(user.id);
+                                                        navigate(`/users/${user.id}`);
+                                                    }}
                                                 >
                                                     <TableCell className="font-mono text-xs">{user.id}</TableCell>
                                                     <TableCell className="font-medium">{(user.fullName || (user.username as string) || "N/A")}</TableCell>
@@ -217,7 +234,12 @@ export default function ManageUsers() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/users/${user.id}`); }}>
+                                                                <DropdownMenuItem onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    localStorage.setItem("lastSelectedUserId", String(user.id));
+                                                                    setSelectedUserId(user.id);
+                                                                    navigate(`/users/${user.id}`); 
+                                                                }}>
                                                                     <User className="mr-2 h-4 w-4" />
                                                                     View Details
                                                                 </DropdownMenuItem>
