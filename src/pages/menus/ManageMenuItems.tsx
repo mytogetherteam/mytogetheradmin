@@ -42,20 +42,30 @@ export default function ManageMenuItems() {
     const navigate = useNavigate();
     const [items, setItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_menu_search") || "");
+    const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_menu_page")) || 1);
+    const [pageSize, setPageSize] = useState(Number(localStorage.getItem("manage_menu_page_size")) || 20);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [isClientPaginated, setIsClientPaginated] = useState(false);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-    const [shopId, setShopId] = useState<string>("");
-    const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
-    const [categoryId, setCategoryId] = useState<string>("");
-    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(null);
-    const [masterCategoryId, setMasterCategoryId] = useState<string>("");
-    const [selectedMasterCategoryData, setSelectedMasterCategoryData] = useState<{ label: string, value: string } | null>(null);
+    const [shopId, setShopId] = useState<string>(localStorage.getItem("manage_menu_shop_id") || "");
+    const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(
+        localStorage.getItem("manage_menu_shop_data") ? JSON.parse(localStorage.getItem("manage_menu_shop_data")!) : null
+    );
+    const [categoryId, setCategoryId] = useState<string>(localStorage.getItem("manage_menu_category_id") || "");
+    const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(
+        localStorage.getItem("manage_menu_category_data") ? JSON.parse(localStorage.getItem("manage_menu_category_data")!) : null
+    );
+    const [masterCategoryId, setMasterCategoryId] = useState<string>(localStorage.getItem("manage_menu_master_category_id") || "");
+    const [selectedMasterCategoryData, setSelectedMasterCategoryData] = useState<{ label: string, value: string } | null>(
+        localStorage.getItem("manage_menu_master_category_data") ? JSON.parse(localStorage.getItem("manage_menu_master_category_data")!) : null
+    );
+
+    const [selectedMenuItemId, setSelectedMenuItemId] = useState<number | null>(
+        localStorage.getItem("lastSelectedMenuItemId") ? Number(localStorage.getItem("lastSelectedMenuItemId")) : null
+    );
 
     const [extraCategoryNames, setExtraCategoryNames] = useState<Record<number, string>>({});
     const [extraMasterItemNames, setExtraMasterItemNames] = useState<Record<number, string>>({});
@@ -171,6 +181,18 @@ export default function ManageMenuItems() {
         }, 300);
         return () => clearTimeout(timer);
     }, [currentPage, pageSize, searchTerm, shopId, categoryId, masterCategoryId, loadItems]);
+
+    useEffect(() => {
+        localStorage.setItem("manage_menu_search", searchTerm);
+        localStorage.setItem("manage_menu_page", String(currentPage));
+        localStorage.setItem("manage_menu_page_size", String(pageSize));
+        localStorage.setItem("manage_menu_shop_id", shopId);
+        localStorage.setItem("manage_menu_shop_data", JSON.stringify(selectedShopData));
+        localStorage.setItem("manage_menu_category_id", categoryId);
+        localStorage.setItem("manage_menu_category_data", JSON.stringify(selectedCategoryData));
+        localStorage.setItem("manage_menu_master_category_id", masterCategoryId);
+        localStorage.setItem("manage_menu_master_category_data", JSON.stringify(selectedMasterCategoryData));
+    }, [searchTerm, currentPage, pageSize, shopId, selectedShopData, categoryId, selectedCategoryData, masterCategoryId, selectedMasterCategoryData]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
@@ -346,8 +368,12 @@ export default function ManageMenuItems() {
                                             displayItems.map((item) => (
                                                 <TableRow
                                                     key={item.id}
-                                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/menus/items/create?id=${item.id}`)}
+                                                    className={`cursor-pointer transition-colors ${selectedMenuItemId === item.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
+                                                    onClick={() => {
+                                                        localStorage.setItem("lastSelectedMenuItemId", String(item.id));
+                                                        setSelectedMenuItemId(item.id ?? null);
+                                                        navigate(`/menus/items/create?id=${item.id}`);
+                                                    }}
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>

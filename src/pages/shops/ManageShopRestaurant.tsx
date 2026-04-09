@@ -57,16 +57,19 @@ export default function ManageShopRestaurant() {
     const [pendingShops, setPendingShops] = useState<Shop[]>([])
     const [loading, setLoading] = useState(true)
     const [pendingLoading, setPendingLoading] = useState(false)
-    const [searchTerm, setSearchTerm] = useState("")
-    const [debouncedSearch, setDebouncedSearch] = useState("")
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageSize, setPageSize] = useState(20)
+    const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_shop_search") || "")
+    const [debouncedSearch, setDebouncedSearch] = useState(localStorage.getItem("manage_shop_search") || "")
+    const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_shop_page")) || 1)
+    const [pageSize, setPageSize] = useState(Number(localStorage.getItem("manage_shop_page_size")) || 20)
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
     const [pendingCurrentPage, setPendingCurrentPage] = useState(1)
     const [pendingPageSize, setPendingPageSize] = useState(20)
     const [totalElements, setTotalElements] = useState(0)
     const [pendingTotalElements, setPendingTotalElements] = useState(0)
-    const [activeTab, setActiveTab] = useState("all")
+    const [activeTab, setActiveTab] = useState(localStorage.getItem("manage_shop_tab") || "all")
+    const [selectedShopId, setSelectedShopId] = useState<number | null>(
+        localStorage.getItem("lastSelectedShopId") ? Number(localStorage.getItem("lastSelectedShopId")) : null
+    )
     const navigate = useNavigate()
 
     // Reject dialog
@@ -98,6 +101,13 @@ export default function ManageShopRestaurant() {
         }, 300)
         return () => clearTimeout(timer)
     }, [searchTerm, debouncedSearch])
+
+    useEffect(() => {
+        localStorage.setItem("manage_shop_search", debouncedSearch)
+        localStorage.setItem("manage_shop_page", String(currentPage))
+        localStorage.setItem("manage_shop_page_size", String(pageSize))
+        localStorage.setItem("manage_shop_tab", activeTab)
+    }, [debouncedSearch, currentPage, pageSize, activeTab])
 
     const loadPendingShops = useCallback(async () => {
         setPendingLoading(true)
@@ -236,8 +246,12 @@ export default function ManageShopRestaurant() {
                             shopList.map((shop) => (
                                 <TableRow
                                     key={shop.id}
-                                    onClick={() => navigate(`/shops/create?id=${shop.id}`)}
-                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                    onClick={() => {
+                                        localStorage.setItem("lastSelectedShopId", String(shop.id));
+                                        setSelectedShopId(shop.id);
+                                        navigate(`/shops/create?id=${shop.id}`);
+                                    }}
+                                    className={`cursor-pointer transition-colors ${selectedShopId === shop.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
                                 >
                                     <TableCell>
                                         <TableImage 
@@ -289,7 +303,12 @@ export default function ManageShopRestaurant() {
                                                 variant="ghost"
                                                 size="icon"
                                                 title="Edit"
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/shops/create?id=${shop.id}`) }}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    localStorage.setItem("lastSelectedShopId", String(shop.id));
+                                                    setSelectedShopId(shop.id);
+                                                    navigate(`/shops/create?id=${shop.id}`) 
+                                                }}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
