@@ -384,7 +384,10 @@ export default function ManageMenuItems() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{item.nameEn || item.name}</div>
-                                                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">{item.descriptionEn || item.description}</div>
+                                                        {item.nameMm && (item.nameEn || item.name) !== item.nameMm && (
+                                                            <div className="text-xs text-muted-foreground">{item.nameMm}</div>
+                                                        )}
+                                                        <div className="text-xs text-muted-foreground/70 truncate max-w-[150px] mt-1">{item.descriptionEn || item.description}</div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">
                                                         <div>{item.price} <span className="text-[10px] text-muted-foreground">{item.currency}</span></div>
