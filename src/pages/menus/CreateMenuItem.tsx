@@ -1110,7 +1110,7 @@ export default function CreateMenuItem() {
                                                 </div>
                                             ) : (
                                                 comboComponents.map((comp, cIdx) => (
-                                                    <div key={cIdx} className="flex flex-wrap items-center gap-3 p-3 border rounded-xl bg-white shadow-sm">
+                                                    <div key={cIdx} className="flex flex-wrap items-center gap-3 p-3 border rounded-xl bg-card shadow-sm">
                                                         <div className="flex-1 min-w-[200px]">
                                                             <InfiniteSearchableSelect
                                                                 key={`combo-search-${cIdx}-${shopId}`}
@@ -1208,7 +1208,7 @@ export default function CreateMenuItem() {
                                                 <div className="space-y-4">
                                                     {optionGroups.map((group, gIdx) => (
                                                         <SortableItem key={`og-${gIdx}`} id={`og-${gIdx}`}>
-                                                            <div className="p-4 border rounded-xl bg-white shadow-sm space-y-4 relative group/og">
+                                                            <div className="p-4 border rounded-xl bg-card shadow-sm space-y-4 relative group/og">
                                                                 <Button
                                                                     type="button"
                                                                     variant="ghost"
@@ -1448,7 +1448,7 @@ export default function CreateMenuItem() {
                                                 <div className="space-y-4">
                                                     {variants.map((variant, vIdx) => (
                                                         <SortableItem key={`var-${vIdx}`} id={`var-${vIdx}`}>
-                                                            <div className="flex flex-wrap items-center gap-2 bg-white border p-3 rounded-xl shadow-sm relative group/var">
+                                                            <div className="flex flex-wrap items-center gap-2 bg-card border p-3 rounded-xl shadow-sm relative group/var">
                                                                 <Input
                                                                     className="flex-1 min-w-[140px]"
                                                                     placeholder="Variant Name (EN)"
