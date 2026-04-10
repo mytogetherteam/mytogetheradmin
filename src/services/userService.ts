@@ -42,6 +42,12 @@ export interface PageResponse<T> {
   totalPages: number;
   number: number;
   size: number;
+  page?: {
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  };
 }
 
 export interface UserLookup {
