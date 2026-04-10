@@ -82,9 +82,11 @@ export default function ManageUsers() {
                 const list = response.content || (Array.isArray(response) ? response : []);
                 setUsers(list);
                 
-                // Robustly handle different pagination structures
-                const elements = response.page?.totalElements ?? response.totalElements ?? list.length;
-                const pages = response.page?.totalPages ?? response.totalPages ?? Math.ceil(elements / pageSize);
+                // Robustly handle different pagination structures (Spring Boot 3 uses nested 'page' object)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const r = response as any;
+                const elements = r.page?.totalElements ?? response.totalElements ?? list.length;
+                const pages = r.page?.totalPages ?? response.totalPages ?? Math.ceil(elements / pageSize);
                 
                 setTotalItems(elements);
                 setTotalPages(pages);
