@@ -105,7 +105,7 @@ export const navigationConfig: NavGroup[] = [
         title: "Approvals",
         roles: AdminRole.ADMIN_OPS,
         items: [
-            { title: "Menu Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Menu Approvals" }
+            { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Admin Approvals" }
         ]
     },
     {

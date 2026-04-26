@@ -27,6 +27,33 @@ export interface MenuApprovalDTO {
   menuItem?: MenuItemLightDTO;
 }
 
+export interface PaymentApprovalDTO {
+  id: number;
+  shopId: number;
+  status: string; // "PENDING_APPROVAL", "APPROVED", "REJECTED"
+  submittedAt: string;
+  approvedAt?: string;
+  rejectedReason?: string;
+  // Specific fields based on typical payment approval
+  paymentMethodId?: number;
+  paymentMethodName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  qrCodeUrl?: string;
+}
+
+export interface CategoryApprovalDTO {
+  id: number;
+  shopId: number;
+  status: string; // "PENDING_APPROVAL", "APPROVED", "REJECTED"
+  submittedAt: string;
+  approvedAt?: string;
+  rejectedReason?: string;
+  // Specific fields based on typical category approval
+  nameEn?: string;
+  nameMm?: string;
+}
+
 // Keep the array format as per standard MyTogether API patterns, or unwrap directly
 // If you use standard pagination later, it might be wrapped in standard PaginatedResponse.
 // We'll return just the array for now as specified by your JSON sample structure.
@@ -91,6 +118,90 @@ export const menuApprovalService = {
   rejectRequest: async (requestId: number, reason: string): Promise<void> => {
     return apiClient.post(
       `${config.endpoints.admin.menu.approvals.reject(requestId)}?reason=${encodeURIComponent(reason)}`
+    );
+  },
+
+  /**
+   * Get all pending payment change requests
+   */
+  getPendingPaymentApprovals: async (page = 0, size = 20, search = ""): Promise<PaymentApprovalDTO[]> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (search) params.append('search', search);
+
+    const response = await apiClient.get<PaymentApprovalDTO[] | PaginatedResponse<PaymentApprovalDTO> | { data: PaginatedResponse<PaymentApprovalDTO> }>(
+      `${config.endpoints.admin.menu.approvals.payments.list}?${params.toString()}`
+    );
+    
+    if (Array.isArray(response)) return response;
+    if (response && typeof response === 'object') {
+        if ('data' in response && response.data && 'content' in response.data) return response.data.content;
+        if ('content' in response) return response.content;
+    }
+    return [];
+  },
+
+  /**
+   * Get a specific payment change request by ID
+   */
+  getPaymentApprovalById: async (id: number): Promise<PaymentApprovalDTO> => {
+    return apiClient.get<PaymentApprovalDTO>(config.endpoints.admin.menu.approvals.payments.detail(id));
+  },
+
+  /**
+   * Approve a payment change request
+   */
+  approvePaymentRequest: async (requestId: number): Promise<void> => {
+    return apiClient.post(config.endpoints.admin.menu.approvals.payments.approve(requestId));
+  },
+
+  /**
+   * Reject a payment change request
+   */
+  rejectPaymentRequest: async (requestId: number, reason: string): Promise<void> => {
+    return apiClient.post(
+      `${config.endpoints.admin.menu.approvals.payments.reject(requestId)}?reason=${encodeURIComponent(reason)}`
+    );
+  },
+
+  /**
+   * Get all pending category change requests
+   */
+  getPendingCategoryApprovals: async (page = 0, size = 20, search = ""): Promise<CategoryApprovalDTO[]> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (search) params.append('search', search);
+
+    const response = await apiClient.get<CategoryApprovalDTO[] | PaginatedResponse<CategoryApprovalDTO> | { data: PaginatedResponse<CategoryApprovalDTO> }>(
+      `${config.endpoints.admin.menu.approvals.categories.list}?${params.toString()}`
+    );
+    
+    if (Array.isArray(response)) return response;
+    if (response && typeof response === 'object') {
+        if ('data' in response && response.data && 'content' in response.data) return response.data.content;
+        if ('content' in response) return response.content;
+    }
+    return [];
+  },
+
+  /**
+   * Get a specific category change request by ID
+   */
+  getCategoryApprovalById: async (id: number): Promise<CategoryApprovalDTO> => {
+    return apiClient.get<CategoryApprovalDTO>(config.endpoints.admin.menu.approvals.categories.detail(id));
+  },
+
+  /**
+   * Approve a category change request
+   */
+  approveCategoryRequest: async (requestId: number): Promise<void> => {
+    return apiClient.post(config.endpoints.admin.menu.approvals.categories.approve(requestId));
+  },
+
+  /**
+   * Reject a category change request
+   */
+  rejectCategoryRequest: async (requestId: number, reason: string): Promise<void> => {
+    return apiClient.post(
+      `${config.endpoints.admin.menu.approvals.categories.reject(requestId)}?reason=${encodeURIComponent(reason)}`
     );
   }
 };

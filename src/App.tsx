@@ -44,6 +44,9 @@ const CreateShopSubCategory = lazy(() => import("@/pages/shop-sub-categories/Cre
 const ManageMenuItems = lazy(() => import("@/pages/menus/ManageMenuItems"));
 const CreateMenuItem = lazy(() => import("@/pages/menus/CreateMenuItem"));
 const MenuApprovals = lazy(() => import("@/pages/menus/MenuApprovals"));
+const MenuApprovalDetail = lazy(() => import("@/pages/menus/MenuApprovalDetail"));
+const PaymentApprovalDetail = lazy(() => import("@/pages/menus/PaymentApprovalDetail"));
+const CategoryApprovalDetail = lazy(() => import("@/pages/menus/CategoryApprovalDetail"));
 const ManageItemTags = lazy(() => import("@/pages/item-tags/ManageItemTags"));
 const CreateItemTag = lazy(() => import("@/pages/item-tags/CreateItemTag"));
 const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
@@ -154,6 +157,9 @@ function App() {
                     <Route path="/users/manage" element={<ManageUsers />} />
                     <Route path="/users/:id" element={<UserDetail />} />
                     <Route path="/menus/approvals" element={<MenuApprovals />} />
+                    <Route path="/menus/approvals/menu-items/:id" element={<MenuApprovalDetail />} />
+                    <Route path="/menus/approvals/payments/:id" element={<PaymentApprovalDetail />} />
+                    <Route path="/menus/approvals/categories/:id" element={<CategoryApprovalDetail />} />
                     <Route path="/menus/items/manage" element={<ManageMenuItems />} />
                     <Route path="/menus/items/create" element={<CreateMenuItem />} />
                     <Route path="/orders/board" element={<OrderBoard />} />

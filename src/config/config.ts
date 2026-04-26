@@ -122,6 +122,18 @@ export const config = {
           detail: (id: number) => `/api/admin/menu/approvals/${id}`,
           approve: (id: number) => `/api/admin/menu/approvals/${id}/approve`,
           reject: (id: number) => `/api/admin/menu/approvals/${id}/reject`,
+          payments: {
+            list: '/api/admin/menu/approvals/payments',
+            detail: (id: number) => `/api/admin/menu/approvals/payments/${id}`,
+            approve: (id: number) => `/api/admin/menu/approvals/payments/${id}/approve`,
+            reject: (id: number) => `/api/admin/menu/approvals/payments/${id}/reject`,
+          },
+          categories: {
+            list: '/api/admin/menu/approvals/categories',
+            detail: (id: number) => `/api/admin/menu/approvals/categories/${id}`,
+            approve: (id: number) => `/api/admin/menu/approvals/categories/${id}/approve`,
+            reject: (id: number) => `/api/admin/menu/approvals/categories/${id}/reject`,
+          }
         }
       },
       announcements: {
