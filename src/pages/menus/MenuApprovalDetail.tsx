@@ -159,9 +159,9 @@ export default function MenuApprovalDetail() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-start gap-4">
-                                {formatImageUrl(approval.imageUrl || approval.menuItem?.imageUrl) ? (
+                                {formatImageUrl(approval.imageUrl) ? (
                                     <img
-                                        src={formatImageUrl(approval.imageUrl || approval.menuItem?.imageUrl) || ""}
+                                        src={formatImageUrl(approval.imageUrl) || ""}
                                         alt={approval.nameEn}
                                         className="h-32 w-32 rounded-lg object-cover border"
                                     />

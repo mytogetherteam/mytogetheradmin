@@ -111,7 +111,7 @@ export function MenuItemApprovalsTab() {
     };
 
     const getImageUrl = (item: MenuApprovalDTO) => {
-        return formatImageUrl(item.imageUrl || item.menuItem?.imageUrl);
+        return formatImageUrl(item.imageUrl);
     };
 
     const handleSort = (key: string) => {
@@ -143,6 +143,7 @@ export function MenuItemApprovalsTab() {
                                     <SortableTableHead label="MM Name" sortKey="nameMm" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Shop ID" sortKey="shopId" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Price" sortKey="price" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <SortableTableHead label="Submitted" sortKey="submittedAt" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead className="text-right">Actions</TableHead>
@@ -156,6 +157,7 @@ export function MenuItemApprovalsTab() {
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-6 w-24 bg-muted animate-pulse rounded-full" /></TableCell>
                                             <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
@@ -183,6 +185,13 @@ export function MenuItemApprovalsTab() {
                                             </TableCell>
                                             <TableCell className="font-medium">
                                                 {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {approval.requestType ? (
+                                                    <Badge variant="outline">{approval.requestType}</Badge>
+                                                ) : (
+                                                    "-"
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
@@ -231,7 +240,7 @@ export function MenuItemApprovalsTab() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <ClipboardCheck className="h-8 w-8 text-muted/50" />
                                                 <p>No pending menu approvals found.</p>

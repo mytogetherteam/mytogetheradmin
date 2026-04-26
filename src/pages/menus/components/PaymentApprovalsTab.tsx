@@ -136,6 +136,7 @@ export function PaymentApprovalsTab() {
                                     <SortableTableHead label="Method" sortKey="paymentMethodName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Account Name" sortKey="accountName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Account Number" sortKey="accountNumber" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <SortableTableHead label="Submitted" sortKey="submittedAt" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead className="text-right">Actions</TableHead>
@@ -150,6 +151,7 @@ export function PaymentApprovalsTab() {
                                             <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-6 w-24 bg-muted animate-pulse rounded-full" /></TableCell>
                                             <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell className="text-right"><div className="h-8 w-20 ml-auto bg-muted animate-pulse rounded" /></TableCell>
@@ -159,8 +161,8 @@ export function PaymentApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
-                                                {approval.qrCodeUrl ? (
-                                                    <img src={approval.qrCodeUrl} alt="QR Code" className="h-10 w-10 rounded object-cover border" />
+                                                {approval.qrImageUrl ? (
+                                                    <img src={approval.qrImageUrl} alt="QR Code" className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <QrCode className="h-4 w-4 text-muted-foreground" />
@@ -175,6 +177,13 @@ export function PaymentApprovalsTab() {
                                             </TableCell>
                                             <TableCell>{approval.accountName || '-'}</TableCell>
                                             <TableCell className="font-mono text-sm">{approval.accountNumber || '-'}</TableCell>
+                                            <TableCell>
+                                                {approval.requestType ? (
+                                                    <Badge variant="outline">{approval.requestType}</Badge>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
                                                     Pending
@@ -222,7 +231,7 @@ export function PaymentApprovalsTab() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <CreditCard className="h-8 w-8 text-muted/50" />
                                                 <p>No pending payment approvals found.</p>

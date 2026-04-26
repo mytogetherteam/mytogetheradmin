@@ -35,6 +35,7 @@ import { ShopService, MenuCategory } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 
 export default function ManageCategories() {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export default function ManageCategories() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [shopId, setShopId] = useState<string>("");
+  const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
 
   // Delete confirmation dialog
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
@@ -52,7 +55,7 @@ export default function ManageCategories() {
   const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await ShopService.getAdminCategories(0, 200, searchTerm);
+      const res = await ShopService.getAdminCategories(0, 200, searchTerm, shopId ? parseInt(shopId) : undefined);
       const list = res?.content || [];
       setCategories(Array.isArray(list) ? list : []);
     } catch (e) {
@@ -60,7 +63,15 @@ export default function ManageCategories() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, shopId]);
+
+  const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+    const res = await ShopService.getAllShops(page, size, search);
+    return {
+      content: res.content.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+      last: res.last
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -82,6 +93,7 @@ export default function ManageCategories() {
   const exportToExcel = () => {
     const data = sortedCategories.map((c) => ({
       ID: c.id,
+      Shop: c.shopName || c.shopId || "",
       Name: c.name,
       "Name (MM)": c.nameMm || "",
       "Name (EN)": c.nameEn || "",
@@ -138,6 +150,20 @@ export default function ManageCategories() {
                   }}
                 />
               </div>
+              <div className="w-full sm:w-[200px]">
+                <InfiniteSearchableSelect
+                  placeholder="Filter by shop..."
+                  fetchData={fetchShopData}
+                  valueKey="value"
+                  labelKey="label"
+                  selectedValue={selectedShopData}
+                  onChange={(data) => {
+                    setShopId(data?.value || "");
+                    setSelectedShopData(data);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
               <Button variant="outline" className="gap-2 shrink-0" onClick={exportToExcel}>
                 <FileSpreadsheet className="h-4 w-4" />
                 Export
@@ -162,6 +188,7 @@ export default function ManageCategories() {
                     <TableRow>
                       <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
                       <TableHead>Image</TableHead>
+                      <TableHead>Shop</TableHead>
                       <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
                       <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
                       <TableHead>Status</TableHead>
@@ -179,6 +206,10 @@ export default function ManageCategories() {
                           <TableCell className="font-mono text-xs">{cat.id}</TableCell>
                           <TableCell>
                             <TableImage src={cat.imageUrl || cat.image || cat.icon} alt={cat.name} size="sm" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs font-mono text-muted-foreground mb-1">ID: {cat.shopId}</div>
+                            <div className="font-medium text-sm line-clamp-1">{cat.shopName || "Unknown Shop"}</div>
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">{cat.name}</div>
@@ -219,7 +250,7 @@ export default function ManageCategories() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                           No menu categories found.
                         </TableCell>
                       </TableRow>

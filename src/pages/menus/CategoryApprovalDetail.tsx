@@ -157,14 +157,36 @@ export default function CategoryApprovalDetail() {
                             <CardDescription>Details of the category to be created or updated</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Category Name (EN)</p>
-                                    <p className="text-lg font-semibold">{approval.nameEn || "-"}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Category Name (MM)</p>
-                                    <p className="text-lg font-semibold">{approval.nameMm || "-"}</p>
+                            <div className="flex flex-col md:flex-row gap-6 items-start">
+                                {approval.imageUrl ? (
+                                    <div className="shrink-0 space-y-2 text-center">
+                                        <p className="text-sm font-medium text-muted-foreground">Category Image</p>
+                                        <img
+                                            src={approval.imageUrl}
+                                            alt={approval.nameEn || "Category Image"}
+                                            className="h-32 w-32 rounded-lg object-cover border"
+                                        />
+                                    </div>
+                                ) : null}
+                                <div className="space-y-4 flex-1 w-full">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Category Name (EN)</p>
+                                            <p className="text-lg font-semibold">{approval.nameEn || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Category Name (MM)</p>
+                                            <p className="text-lg font-semibold">{approval.nameMm || "-"}</p>
+                                        </div>
+                                    </div>
+                                    {approval.requestType && (
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground mb-1">Request Type</p>
+                                            <Badge variant={approval.requestType === "CREATE" ? "default" : "secondary"}>
+                                                {approval.requestType}
+                                            </Badge>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>

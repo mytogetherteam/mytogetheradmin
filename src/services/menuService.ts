@@ -82,6 +82,7 @@ export interface MenuItem {
     variants?: Variant[];
     shopName?: string;
     categoryName?: string;
+    menuCategoryName?: string;
     mealTypes?: string[];
     tagIds?: number[];
     tags?: ItemTag[];
@@ -139,8 +140,8 @@ export const menuService = {
         return apiClient.get<PageableResponse<MenuCategory>>(endpoint);
     },
 
-    createMenuCategory: async (shopId: number, data: FormData): Promise<MenuCategory> => {
-        return apiClient.post<MenuCategory>(config.endpoints.admin.menu.shopCategories(shopId), data);
+    createMenuCategory: async (data: FormData): Promise<MenuCategory> => {
+        return apiClient.post<MenuCategory>(config.endpoints.admin.menu.categories, data);
     },
 
     updateMenuCategory: async (id: number, data: FormData): Promise<MenuCategory> => {

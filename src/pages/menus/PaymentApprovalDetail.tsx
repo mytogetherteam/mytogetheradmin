@@ -158,11 +158,11 @@ export default function PaymentApprovalDetail() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex flex-col md:flex-row gap-6 items-start">
-                                {approval.qrCodeUrl ? (
+                                {approval.qrImageUrl ? (
                                     <div className="shrink-0 space-y-2 text-center">
                                         <p className="text-sm font-medium text-muted-foreground">QR Code</p>
                                         <img
-                                            src={approval.qrCodeUrl}
+                                            src={approval.qrImageUrl}
                                             alt="QR Code"
                                             className="h-48 w-48 rounded-lg object-contain border bg-white p-2"
                                         />

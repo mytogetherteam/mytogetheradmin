@@ -16,7 +16,8 @@ import {
     Check,
     X,
     LayoutList,
-    Eye
+    Eye,
+    ImageIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -130,9 +131,11 @@ export function CategoryApprovalsTab() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[80px]">Image</TableHead>
                                     <SortableTableHead label="Shop ID" sortKey="shopId" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Name (EN)" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Name (MM)" sortKey="nameMm" sortConfig={sortConfig} onSort={handleSort} />
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <SortableTableHead label="Submitted" sortKey="submittedAt" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead className="text-right">Actions</TableHead>
@@ -142,9 +145,11 @@ export function CategoryApprovalsTab() {
                                 {loading ? (
                                     [...Array(pageSize)].map((_, i) => (
                                         <TableRow key={i}>
+                                            <TableCell><div className="h-10 w-10 rounded bg-muted animate-pulse" /></TableCell>
                                             <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-6 w-24 bg-muted animate-pulse rounded-full" /></TableCell>
                                             <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell className="text-right"><div className="h-8 w-20 ml-auto bg-muted animate-pulse rounded" /></TableCell>
@@ -154,12 +159,28 @@ export function CategoryApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
+                                                {approval.imageUrl ? (
+                                                    <img src={approval.imageUrl} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
                                                 <Badge variant="outline" className="font-mono">#{approval.shopId}</Badge>
                                             </TableCell>
                                             <TableCell className="font-medium text-primary">
                                                 {approval.nameEn || '-'}
                                             </TableCell>
                                             <TableCell>{approval.nameMm || '-'}</TableCell>
+                                            <TableCell>
+                                                {approval.requestType ? (
+                                                    <Badge variant="outline">{approval.requestType}</Badge>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </TableCell>
                                             <TableCell>
                                                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
                                                     Pending
@@ -207,7 +228,7 @@ export function CategoryApprovalsTab() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <LayoutList className="h-8 w-8 text-muted/50" />
                                                 <p>No pending category approvals found.</p>

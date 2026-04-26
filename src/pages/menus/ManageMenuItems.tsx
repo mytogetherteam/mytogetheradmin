@@ -127,7 +127,7 @@ export default function ManageMenuItems() {
                 list.forEach(item => {
                     const typedItem = item as any;
                     const catId = item.menuCategoryId || typedItem.categoryId;
-                    if (catId && !item.categoryName) missingCategories.add(catId);
+                    if (catId && !item.categoryName && !item.menuCategoryName) missingCategories.add(catId);
                     if (item.masterItemId && !item.masterItemName) missingMasterItems.add(item.masterItemId);
                     if (item.masterCategoryId && !item.masterCategoryName) missingMasterCategories.add(item.masterCategoryId);
                 });
@@ -245,7 +245,7 @@ export default function ManageMenuItems() {
                 Price: i.price,
                 Currency: i.currency,
                 Shop: i.shopName || i.shopId,
-                Category: i.categoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
+                Category: i.categoryName || i.menuCategoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
                 'Master Category': i.masterCategoryName || extraMasterCategoryNames[i.masterCategoryId!] || i.masterCategoryId || '-',
                 'Master Item': i.masterItemName || extraMasterItemNames[i.masterItemId!] || i.masterItemId || '-'
             }));
@@ -399,11 +399,10 @@ export default function ManageMenuItems() {
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    { }
                                                     <TableCell className="text-sm">{item.shopName || item.shopId}</TableCell>
                                                     <TableCell>
                                                         <Badge variant="outline" className="font-normal whitespace-nowrap">
-                                                            {item.categoryName || extraCategoryNames[item.menuCategoryId || (item as any).categoryId || -1] || "Uncategorized"}
+                                                            {item.categoryName || item.menuCategoryName || extraCategoryNames[item.menuCategoryId || (item as any).categoryId || -1] || "Uncategorized"}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>

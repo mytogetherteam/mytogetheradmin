@@ -18,6 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
+import { useCallback } from "react";
 
 export default function CreateCategory() {
   const navigate = useNavigate();
@@ -31,6 +33,8 @@ export default function CreateCategory() {
   const [nameEn, setNameEn] = useState("");
   const [displayOrder, setDisplayOrder] = useState<number | "">(1);
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [shopId, setShopId] = useState("");
+  const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
 
 
   const [loading, setLoading] = useState(false);
@@ -57,11 +61,21 @@ export default function CreateCategory() {
       setNameEn("");
       setDisplayOrder(1);
       setIsActive(true);
+      setShopId("");
+      setSelectedShopData(null);
       setExistingImage(null);
       setImageFile(null);
       setImagePreview(null);
     }
   }, [id, isEditMode]);
+
+  const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
+    const res = await ShopService.getAllShops(page, size, search);
+    return {
+      content: res.content.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+      last: res.last
+    };
+  }, []);
 
 
   const loadCategory = async (catId: number) => {
@@ -74,6 +88,17 @@ export default function CreateCategory() {
       setNameEn(cat.nameEn || "");
       setDisplayOrder(cat.displayOrder || 1);
       setIsActive(cat.isActive !== false);
+      if (cat.shopId) {
+        setShopId(cat.shopId.toString());
+        setSelectedShopData({ label: cat.shopName || `Shop #${cat.shopId}`, value: cat.shopId.toString() });
+        
+        // Fetch real name if backend didn't provide it
+        if (!cat.shopName) {
+          ShopService.getShopById(cat.shopId).then((shop) => {
+            setSelectedShopData({ label: shop.nameEn || shop.nameMm || `Shop ${shop.id}`, value: String(shop.id) });
+          }).catch((e) => console.log("Failed to load shop name fallback", e));
+        }
+      }
       if (cat.imageUrl || cat.image || cat.icon) {
         setExistingImage(cat.imageUrl || cat.image || cat.icon || null);
       }
@@ -122,7 +147,8 @@ export default function CreateCategory() {
         nameMm: nameMm || "",
         nameTh: nameTh || "",
         displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-        isActive: isActive
+        isActive: isActive,
+        shopId: shopId ? parseInt(shopId) : undefined
       };
 
 
@@ -189,7 +215,20 @@ export default function CreateCategory() {
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={onSubmit}>
-
+            <div className="space-y-2">
+              <Label>Select Shop</Label>
+              <InfiniteSearchableSelect
+                placeholder="Search and select shop..."
+                fetchData={fetchShopData}
+                valueKey="value"
+                labelKey="label"
+                selectedValue={selectedShopData}
+                onChange={(data) => {
+                  setShopId(data?.value || "");
+                  setSelectedShopData(data);
+                }}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2 md:col-span-3">

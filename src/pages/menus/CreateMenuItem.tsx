@@ -257,7 +257,7 @@ export default function CreateMenuItem() {
     }, []);
 
     const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
-        const res = await ShopService.getAdminCategories(page, size, search);
+        const res = await ShopService.getAdminCategories(page, size, search, shopId ? parseInt(shopId) : undefined);
         return {
             content: res.content.map((cat: CategoryResponse) => {
                 const categoryId = cat.id || cat.menuCategoryId || cat.categoryId;
@@ -268,7 +268,7 @@ export default function CreateMenuItem() {
             }),
             last: res.last
         };
-    }, []);
+    }, [shopId]);
 
     // Fetch item tags on mount
     useEffect(() => {
@@ -725,6 +725,27 @@ export default function CreateMenuItem() {
                         name_mm: opt.nameMm || "",
                         name_th: opt.nameTh || "",
                         display_price: opt.displayPrice || "",
+                        linked_menu_item_id: opt.linkedMenuItemId,
+                        display_order: opt.displayOrder || 0,
+                        is_available: opt.isAvailable ?? true
+                    }))
+                })),
+                option_groups: optionGroups.map(og => ({
+                    id: (isEditMode && id) ? og.id : undefined,
+                    name_en: og.nameEn || og.name || "",
+                    name_mm: og.nameMm || "",
+                    name_th: og.nameTh || "",
+                    display_order: og.displayOrder || 0,
+                    max_selection: og.maxSelection || 0,
+                    min_selection: og.minSelection || 0,
+                    is_required: og.isRequired ?? false,
+                    group_type: og.groupType || "SINGLE_SELECT",
+                    options: og.options.map(opt => ({
+                        id: (isEditMode && id) ? opt.id : undefined,
+                        name_en: opt.nameEn || opt.name || "",
+                        name_mm: opt.nameMm || "",
+                        name_th: opt.nameTh || "",
+                        price: opt.price || 0,
                         linked_menu_item_id: opt.linkedMenuItemId,
                         display_order: opt.displayOrder || 0,
                         is_available: opt.isAvailable ?? true
