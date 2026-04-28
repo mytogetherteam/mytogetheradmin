@@ -34,6 +34,7 @@ export interface PaymentApprovalDTO {
   submittedAt: string;
   approvedAt?: string;
   rejectedReason?: string;
+  displayOrder?: number;
   // Specific fields based on typical payment approval
   paymentMethodId?: number;
   paymentMethodName?: string;
@@ -77,9 +78,10 @@ export const menuApprovalService = {
   /**
    * Get all pending menu item changes/approvals
    */
-  getPendingApprovals: async (page = 0, size = 20, search = ""): Promise<MenuApprovalDTO[]> => {
+  getPendingApprovals: async (page = 0, size = 20, search = "", shopId?: number): Promise<MenuApprovalDTO[]> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (search) params.append('search', search);
+    if (shopId) params.append('shopId', String(shopId));
 
     const response = await apiClient.get<MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO> | { data: PaginatedResponse<MenuApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.list}?${params.toString()}`
@@ -127,9 +129,10 @@ export const menuApprovalService = {
   /**
    * Get all pending payment change requests
    */
-  getPendingPaymentApprovals: async (page = 0, size = 20, search = ""): Promise<PaymentApprovalDTO[]> => {
+  getPendingPaymentApprovals: async (page = 0, size = 20, search = "", shopId?: number): Promise<PaymentApprovalDTO[]> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (search) params.append('search', search);
+    if (shopId) params.append('shopId', String(shopId));
 
     const response = await apiClient.get<PaymentApprovalDTO[] | PaginatedResponse<PaymentApprovalDTO> | { data: PaginatedResponse<PaymentApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.payments.list}?${params.toString()}`
@@ -169,9 +172,10 @@ export const menuApprovalService = {
   /**
    * Get all pending category change requests
    */
-  getPendingCategoryApprovals: async (page = 0, size = 20, search = ""): Promise<CategoryApprovalDTO[]> => {
+  getPendingCategoryApprovals: async (page = 0, size = 20, search = "", shopId?: number): Promise<CategoryApprovalDTO[]> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (search) params.append('search', search);
+    if (shopId) params.append('shopId', String(shopId));
 
     const response = await apiClient.get<CategoryApprovalDTO[] | PaginatedResponse<CategoryApprovalDTO> | { data: PaginatedResponse<CategoryApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.categories.list}?${params.toString()}`

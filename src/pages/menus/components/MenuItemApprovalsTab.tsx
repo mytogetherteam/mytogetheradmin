@@ -17,7 +17,8 @@ import {
     X,
     ClipboardCheck,
     ImageIcon,
-    Eye
+    Eye,
+    Search
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -35,6 +36,7 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { formatImageUrl } from "@/lib/utils";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+import { ShopSelect } from "@/components/ShopSelect";
 
 export function MenuItemApprovalsTab() {
     const navigate = useNavigate();
@@ -50,19 +52,33 @@ export function MenuItemApprovalsTab() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [shopIdFilter, setShopIdFilter] = useState<string>("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const fetchApprovals = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await menuApprovalService.getPendingApprovals();
-            const pendingOnly = data.filter(item => item.status === "PENDING_APPROVAL" || item.status === "PENDING");
-            setApprovals(pendingOnly.length ? pendingOnly : data);
+            const shopId = shopIdFilter ? parseInt(shopIdFilter) : undefined;
+            const data = await menuApprovalService.getPendingApprovals(0, 100, debouncedSearch, shopId);
+            // The API now handles filtering, so we don't need to filter pendingOnly manually if the API returns what we want
+            // But let's keep some client-side safety if needed
+            setApprovals(data);
+            setCurrentPage(1); // Reset to first page on search/filter
         } catch (e) {
             handleApiError(e, "Failed to load pending menu approvals");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [debouncedSearch, shopIdFilter]);
 
     useEffect(() => {
         fetchApprovals();
@@ -125,13 +141,31 @@ export function MenuItemApprovalsTab() {
         <div className="space-y-6">
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-medium flex items-center gap-2">
-                        <ClipboardCheck className="h-5 w-5 text-primary" />
-                        Pending Menu Items
-                        <Badge variant="secondary" className="ml-2">
-                            {approvals.length}
-                        </Badge>
-                    </CardTitle>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <CardTitle className="text-lg font-medium flex items-center gap-2">
+                            <ClipboardCheck className="h-5 w-5 text-primary" />
+                            Pending Menu Items
+                            <Badge variant="secondary" className="ml-2">
+                                {approvals.length}
+                            </Badge>
+                        </CardTitle>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name..."
+                                    className="pl-8 w-full sm:w-[200px]"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <div className="w-full sm:w-[220px]">
+                                <ShopSelect 
+                                    onSelect={(id) => setShopIdFilter(id ? String(id) : "")} 
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border">
@@ -194,8 +228,17 @@ export function MenuItemApprovalsTab() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
-                                                    Pending
+                                                <Badge 
+                                                    variant="secondary" 
+                                                    className={
+                                                        approval.status === "PENDING_APPROVAL" || approval.status === "PENDING"
+                                                            ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200"
+                                                            : approval.status === "APPROVED"
+                                                                ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
+                                                                : "bg-red-100 text-red-800 hover:bg-red-100 border-red-200"
+                                                    }
+                                                >
+                                                    {approval.status?.replace("_", " ") || "Pending"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">

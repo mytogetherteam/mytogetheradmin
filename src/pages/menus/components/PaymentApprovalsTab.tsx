@@ -17,7 +17,9 @@ import {
     X,
     CreditCard,
     QrCode,
-    Eye
+    Eye,
+    Search,
+    ListOrdered
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -34,6 +36,7 @@ import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+import { ShopSelect } from "@/components/ShopSelect";
 
 export function PaymentApprovalsTab() {
     const navigate = useNavigate();
@@ -47,19 +50,31 @@ export function PaymentApprovalsTab() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [shopIdFilter, setShopIdFilter] = useState<string>("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const fetchApprovals = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await menuApprovalService.getPendingPaymentApprovals();
-            const pendingOnly = data.filter(item => item.status === "PENDING_APPROVAL" || item.status === "PENDING");
-            setApprovals(pendingOnly.length ? pendingOnly : data);
+            const shopId = shopIdFilter ? parseInt(shopIdFilter) : undefined;
+            const data = await menuApprovalService.getPendingPaymentApprovals(0, 100, debouncedSearch, shopId);
+            setApprovals(data);
+            setCurrentPage(1);
         } catch (e) {
             handleApiError(e, "Failed to load pending payment approvals");
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [debouncedSearch, shopIdFilter]);
 
     useEffect(() => {
         fetchApprovals();
@@ -118,13 +133,31 @@ export function PaymentApprovalsTab() {
         <div className="space-y-6">
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-medium flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        Pending Payment Methods
-                        <Badge variant="secondary" className="ml-2">
-                            {approvals.length}
-                        </Badge>
-                    </CardTitle>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <CardTitle className="text-lg font-medium flex items-center gap-2">
+                            <CreditCard className="h-5 w-5 text-primary" />
+                            Pending Payment Methods
+                            <Badge variant="secondary" className="ml-2">
+                                {approvals.length}
+                            </Badge>
+                        </CardTitle>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name..."
+                                    className="pl-8 w-full sm:w-[200px]"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <div className="w-full sm:w-[220px]">
+                                <ShopSelect 
+                                    onSelect={(id) => setShopIdFilter(id ? String(id) : "")} 
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border">
@@ -136,6 +169,7 @@ export function PaymentApprovalsTab() {
                                     <SortableTableHead label="Method" sortKey="paymentMethodName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Account Name" sortKey="accountName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Account Number" sortKey="accountNumber" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <SortableTableHead label="Submitted" sortKey="submittedAt" sortConfig={sortConfig} onSort={handleSort} />
@@ -178,6 +212,16 @@ export function PaymentApprovalsTab() {
                                             <TableCell>{approval.accountName || '-'}</TableCell>
                                             <TableCell className="font-mono text-sm">{approval.accountNumber || '-'}</TableCell>
                                             <TableCell>
+                                                {approval.displayOrder !== undefined ? (
+                                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                        <ListOrdered className="h-3 w-3" />
+                                                        {approval.displayOrder}
+                                                    </div>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
                                                 {approval.requestType ? (
                                                     <Badge variant="outline">{approval.requestType}</Badge>
                                                 ) : (
@@ -185,8 +229,17 @@ export function PaymentApprovalsTab() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
-                                                    Pending
+                                                <Badge 
+                                                    variant="secondary" 
+                                                    className={
+                                                        approval.status === "PENDING_APPROVAL" || approval.status === "PENDING"
+                                                            ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200"
+                                                            : approval.status === "APPROVED"
+                                                                ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200"
+                                                                : "bg-red-100 text-red-800 hover:bg-red-100 border-red-200"
+                                                    }
+                                                >
+                                                    {approval.status?.replace("_", " ") || "Pending"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-sm">

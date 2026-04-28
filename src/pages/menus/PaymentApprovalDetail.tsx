@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X, Store, CalendarIcon, QrCode } from "lucide-react";
+import { ArrowLeft, Check, X, Store, CalendarIcon, QrCode, ListOrdered } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import {
@@ -219,6 +219,18 @@ export default function PaymentApprovalDetail() {
                                     <p className="text-sm text-muted-foreground">{formatDate(approval.submittedAt)}</p>
                                 </div>
                             </div>
+                            {approval.displayOrder !== undefined && (
+                                <>
+                                    <Separator />
+                                    <div className="flex items-center gap-3">
+                                        <ListOrdered className="h-5 w-5 text-muted-foreground" />
+                                        <div>
+                                            <p className="text-sm font-medium">Display Order</p>
+                                            <p className="text-sm text-muted-foreground">{approval.displayOrder}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                             {approval.approvedAt && (
                                 <>
                                     <Separator />
