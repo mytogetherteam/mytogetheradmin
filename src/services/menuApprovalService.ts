@@ -25,6 +25,7 @@ export interface MenuApprovalDTO {
   approvedAt?: string;
   rejectedReason?: string;
   requestType?: string;
+  shopName?: string;
 }
 
 export interface PaymentApprovalDTO {
@@ -42,6 +43,7 @@ export interface PaymentApprovalDTO {
   accountNumber?: string;
   qrImageUrl?: string;
   requestType?: string;
+  shopName?: string;
 }
 
 export interface CategoryApprovalDTO {
@@ -56,6 +58,7 @@ export interface CategoryApprovalDTO {
   nameMm?: string;
   imageUrl?: string;
   requestType?: string;
+  shopName?: string;
 }
 
 // Keep the array format as per standard MyTogether API patterns, or unwrap directly

@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check, X, Store, Calendar as CalendarIcon, QrCode, ListOrdered } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -158,11 +159,11 @@ export default function PaymentApprovalDetail() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex flex-col md:flex-row gap-6 items-start">
-                                {approval.qrImageUrl ? (
+                                {formatImageUrl(approval.qrImageUrl) ? (
                                     <div className="shrink-0 space-y-2 text-center">
                                         <p className="text-sm font-medium text-muted-foreground">QR Code</p>
                                         <img
-                                            src={approval.qrImageUrl}
+                                            src={formatImageUrl(approval.qrImageUrl) || ""}
                                             alt="QR Code"
                                             className="h-48 w-48 rounded-lg object-contain border bg-white p-2"
                                         />
@@ -207,8 +208,9 @@ export default function PaymentApprovalDetail() {
                             <div className="flex items-center gap-3">
                                 <Store className="h-5 w-5 text-muted-foreground" />
                                 <div>
-                                    <p className="text-sm font-medium">Shop ID</p>
-                                    <p className="text-sm text-muted-foreground font-mono">#{approval.shopId}</p>
+                                    <p className="text-sm font-medium">Shop</p>
+                                    <p className="text-sm text-primary font-medium">{approval.shopName || `Shop #${approval.shopId}`}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">#{approval.shopId}</p>
                                 </div>
                             </div>
                             <Separator />

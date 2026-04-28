@@ -218,8 +218,9 @@ export default function MenuApprovalDetail() {
                             <div className="flex items-center gap-3">
                                 <Store className="h-5 w-5 text-muted-foreground" />
                                 <div>
-                                    <p className="text-sm font-medium">Shop ID</p>
-                                    <p className="text-sm text-muted-foreground font-mono">#{approval.shopId}</p>
+                                    <p className="text-sm font-medium">Shop</p>
+                                    <p className="text-sm text-primary font-medium">{approval.shopName || `Shop #${approval.shopId}`}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">#{approval.shopId}</p>
                                 </div>
                             </div>
                             <Separator />

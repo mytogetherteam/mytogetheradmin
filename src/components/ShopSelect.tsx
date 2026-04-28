@@ -13,8 +13,16 @@ export function ShopSelect({ onSelect, className, placeholder = "Filter by Shop.
 
     const fetchData = React.useCallback(async (page: number, size: number, search: string) => {
         const response = await ShopService.getAllShops(page, size, search);
+        
+        // Map content to ensure 'name' is populated for the select label
+        const mappedContent = (response.content || []).map(shop => ({
+            ...shop,
+            // Use fallback chain for name to avoid "undefined" in dropdown
+            name: shop.name || shop.nameEn || shop.nameMm || `Shop #${shop.id}`
+        }));
+
         return {
-            content: response.content as (Shop & { [key: string]: unknown })[],
+            content: mappedContent as (Shop & { [key: string]: unknown })[],
             last: response.last,
             totalElements: response.totalElements,
             totalPages: response.totalPages

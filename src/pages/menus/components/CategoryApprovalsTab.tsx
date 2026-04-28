@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { formatImageUrl } from "@/lib/utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -164,7 +165,7 @@ export function CategoryApprovalsTab() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[80px]">Image</TableHead>
-                                    <SortableTableHead label="Shop ID" sortKey="shopId" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Shop" sortKey="shopName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Name (EN)" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Name (MM)" sortKey="nameMm" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead>Type</TableHead>
@@ -178,7 +179,7 @@ export function CategoryApprovalsTab() {
                                     [...Array(pageSize)].map((_, i) => (
                                         <TableRow key={i}>
                                             <TableCell><div className="h-10 w-10 rounded bg-muted animate-pulse" /></TableCell>
-                                            <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
@@ -191,8 +192,8 @@ export function CategoryApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
-                                                {approval.imageUrl ? (
-                                                    <img src={approval.imageUrl} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                {formatImageUrl(approval.imageUrl) ? (
+                                                    <img src={formatImageUrl(approval.imageUrl) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -200,7 +201,12 @@ export function CategoryApprovalsTab() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="font-mono">#{approval.shopId}</Badge>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-sm whitespace-nowrap">
+                                                        {approval.shopName || `Shop #${approval.shopId}`}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground font-mono">#{approval.shopId}</span>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="font-medium text-primary">
                                                 {approval.nameEn || '-'}

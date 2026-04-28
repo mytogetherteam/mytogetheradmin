@@ -126,9 +126,6 @@ export function MenuItemApprovalsTab() {
         }
     };
 
-    const getImageUrl = (item: MenuApprovalDTO) => {
-        return formatImageUrl(item.imageUrl);
-    };
 
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));
@@ -175,7 +172,7 @@ export function MenuItemApprovalsTab() {
                                     <TableHead className="w-[80px]">Image</TableHead>
                                     <SortableTableHead label="Name (EN)" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="MM Name" sortKey="nameMm" sortConfig={sortConfig} onSort={handleSort} />
-                                    <SortableTableHead label="Shop ID" sortKey="shopId" sortConfig={sortConfig} onSort={handleSort} />
+                                    <SortableTableHead label="Shop" sortKey="shopName" sortConfig={sortConfig} onSort={handleSort} />
                                     <SortableTableHead label="Price" sortKey="price" sortConfig={sortConfig} onSort={handleSort} />
                                     <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
@@ -190,7 +187,7 @@ export function MenuItemApprovalsTab() {
                                             <TableCell><div className="h-10 w-10 rounded bg-muted animate-pulse" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-16 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-6 w-24 bg-muted animate-pulse rounded-full" /></TableCell>
@@ -202,8 +199,8 @@ export function MenuItemApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
-                                                {getImageUrl(approval) ? (
-                                                    <img src={getImageUrl(approval) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                {formatImageUrl(approval.imageUrl) ? (
+                                                    <img src={formatImageUrl(approval.imageUrl) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -215,7 +212,12 @@ export function MenuItemApprovalsTab() {
                                             </TableCell>
                                             <TableCell>{approval.nameMm || '-'}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="font-mono">#{approval.shopId}</Badge>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-sm whitespace-nowrap">
+                                                        {approval.shopName || `Shop #${approval.shopId}`}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground font-mono">#{approval.shopId}</span>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="font-medium">
                                                 {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
