@@ -11,20 +11,36 @@ export interface MenuItemLightDTO {
 
 export interface MenuApprovalDTO {
   id: number;
-  menuCategoryId: number;
   shopId: number;
+  menuItemId?: number;
   nameEn: string;
   nameMm: string;
+  nameTh?: string;
   descriptionEn?: string;
   descriptionMm?: string;
+  descriptionTh?: string;
   price: number;
+  originalPrice?: number;
+  discountAmount?: number;
+  discountPercentage?: number;
   imageUrl?: string;
   isAvailable: boolean;
+  isRecommended?: boolean;
+  isHotDeal?: boolean;
+  isCombo?: boolean;
   status: string; // "PENDING_APPROVAL", "APPROVED", "REJECTED"
+  requestType: string; // "CREATE", "UPDATE", etc.
+  masterMenuItemId?: number;
+  masterCategoryId?: number;
+  menuCategoryId: number;
+  mealTypes?: string;
+  tagIds?: string;
+  variantsJson?: string;
+  optionGroupsJson?: string;
+  componentsJson?: string;
   submittedAt: string;
   approvedAt?: string;
   rejectedReason?: string;
-  requestType?: string;
   shopName?: string;
 }
 
