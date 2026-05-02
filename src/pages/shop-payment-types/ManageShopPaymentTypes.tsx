@@ -37,7 +37,6 @@ import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from 'xlsx';
 import { TableImage } from "@/components/TableImage";
-import  from "@/lib/utils";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();

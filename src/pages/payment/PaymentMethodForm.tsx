@@ -26,7 +26,6 @@ import { PaymentService } from "@/services/paymentService";
 import { PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import  from "@/lib/utils";
 
 interface PaymentMethodFormValues {
     code: string;

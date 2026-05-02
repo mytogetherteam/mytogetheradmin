@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { ShopCategoryService } from "@/services/shopCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import  from "@/lib/utils";
 import { compressImage } from "@/utils/imageCompression";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -33,7 +33,6 @@ import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
 import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import  from "@/lib/utils";
 import { compressImage } from "@/utils/imageCompression";
 
 export default function CreateShopPaymentType() {
