@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check, X, Store, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -159,11 +159,11 @@ export default function CategoryApprovalDetail() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex flex-col md:flex-row gap-6 items-start">
-                                {formatImageUrl(approval.imageUrl) ? (
+                                {approval.imageUrl ? (
                                     <div className="shrink-0 space-y-2 text-center">
                                         <p className="text-sm font-medium text-muted-foreground">Category Image</p>
                                         <img
-                                            src={formatImageUrl(approval.imageUrl) || ""}
+                                            src={approval.imageUrl || ""}
                                             alt={approval.nameEn || "Category Image"}
                                             className="h-32 w-32 rounded-lg object-cover border"
                                         />

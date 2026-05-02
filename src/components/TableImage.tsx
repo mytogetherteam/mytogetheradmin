@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ImageIcon } from "lucide-react";
-import { cn, formatImageUrl } from "@/lib/utils";
+import { cn,  } from "@/lib/utils";
 
 interface TableImageProps {
   src?: string | null;
@@ -31,7 +31,7 @@ export function TableImage({ src, alt, className, size = "md", fallbackIcon }: T
     >
       {hasImage ? (
         <img
-          src={formatImageUrl(src) || ""}
+          src={src || ""}
           alt={alt || "Image"}
           className="w-full h-full object-cover transition-opacity duration-300"
           onError={() => setError(true)}

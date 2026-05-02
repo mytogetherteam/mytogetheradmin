@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ShopCategoryService } from "@/services/shopCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { compressImage } from "@/utils/imageCompression";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -254,7 +254,7 @@ export default function CreateShopCategory() {
                                     </div>
                                 ) : (
                                     <div className="relative h-full aspect-square group">
-                                        <img src={formatImageUrl(existingImage) || imagePreview || ""} className="h-full w-full object-contain rounded" alt="Main" />
+                                        <img src={existingImage || imagePreview || ""} className="h-full w-full object-contain rounded" alt="Main" />
                                         <div className="absolute top-1 right-1 z-20">
                                             <Button
                                                 type="button"

@@ -33,7 +33,7 @@ import {
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { formatImageUrl } from "@/lib/utils";
+
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { ShopSelect } from "@/components/ShopSelect";
@@ -199,8 +199,8 @@ export function MenuItemApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
-                                                {formatImageUrl(approval.imageUrl) ? (
-                                                    <img src={formatImageUrl(approval.imageUrl) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                {approval.imageUrl ? (
+                                                    <img src={approval.imageUrl || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />

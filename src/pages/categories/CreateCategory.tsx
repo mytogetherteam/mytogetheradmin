@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -319,7 +319,7 @@ export default function CreateCategory() {
                 ) : (
                   <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
                     <img
-                      src={imagePreview || formatImageUrl(existingImage) || ""}
+                      src={imagePreview || existingImage || ""}
                       className="h-full w-full object-cover"
                       alt="Category Preview"
                     />

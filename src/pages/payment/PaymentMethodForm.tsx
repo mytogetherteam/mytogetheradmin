@@ -26,7 +26,7 @@ import { PaymentService } from "@/services/paymentService";
 import { PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 
 interface PaymentMethodFormValues {
     code: string;
@@ -274,7 +274,7 @@ export default function PaymentMethodForm() {
                                         />
                                         {iconPreview ? (
                                             <>
-                                                <img src={iconPreview?.startsWith('data:') ? iconPreview : (formatImageUrl(iconPreview) ?? '')} alt="Icon Preview" className="w-full h-full object-contain" />
+                                                <img src={iconPreview?.startsWith('data:') ? iconPreview : (iconPreview ?? '')} alt="Icon Preview" className="w-full h-full object-contain" />
                                                 <div className="absolute top-1 right-1 z-20">
                                                     <Button type="button" variant="destructive" size="icon" className="h-6 w-6 rounded-full shadow-sm" onClick={(e) => { e.preventDefault(); clearIcon(); }}>
                                                         <X className="h-3.5 w-3.5" />

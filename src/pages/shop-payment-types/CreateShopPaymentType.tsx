@@ -33,7 +33,7 @@ import { ShopPaymentTypeService } from "@/services/shopPaymentTypeService";
 import { ShopService, PaymentMethodDTO } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { compressImage } from "@/utils/imageCompression";
 
 export default function CreateShopPaymentType() {
@@ -362,7 +362,7 @@ export default function CreateShopPaymentType() {
                                     {(previewUrl || existingQrUrl) ? (
                                         <div className="relative group">
                                             <img
-                                                src={previewUrl || formatImageUrl(existingQrUrl) || ""}
+                                                src={previewUrl || existingQrUrl || ""}
                                                 alt="QR Preview"
                                                 className="max-h-64 rounded-lg shadow-md border"
                                             />

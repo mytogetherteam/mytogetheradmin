@@ -3,7 +3,7 @@ import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService"
 import { cuisineService } from "@/services/cuisineService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -273,7 +273,7 @@ export default function CreateMasterMenuCategory() {
                                     </div>
                                 ) : (
                                     <div className="relative h-full aspect-video group bg-muted rounded overflow-hidden">
-                                        <img src={formatImageUrl(existingImage) || imagePreview || ""} className="h-full w-full object-cover" alt="Category Preview" />
+                                        <img src={existingImage || imagePreview || ""} className="h-full w-full object-cover" alt="Category Preview" />
                                         <div className="absolute top-2 right-2 z-20">
                                             <Button
                                                 type="button"

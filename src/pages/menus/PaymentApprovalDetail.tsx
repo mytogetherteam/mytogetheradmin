@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check, X, Store, Calendar as CalendarIcon, QrCode, ListOrdered } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -159,11 +159,11 @@ export default function PaymentApprovalDetail() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex flex-col md:flex-row gap-6 items-start">
-                                {formatImageUrl(approval.qrImageUrl) ? (
+                                {approval.qrImageUrl ? (
                                     <div className="shrink-0 space-y-2 text-center">
                                         <p className="text-sm font-medium text-muted-foreground">QR Code</p>
                                         <img
-                                            src={formatImageUrl(approval.qrImageUrl) || ""}
+                                            src={approval.qrImageUrl || ""}
                                             alt="QR Code"
                                             className="h-48 w-48 rounded-lg object-contain border bg-white p-2"
                                         />

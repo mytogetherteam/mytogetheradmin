@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -192,8 +192,8 @@ export function CategoryApprovalsTab() {
                                     paginatedApprovals.map((approval) => (
                                         <TableRow key={approval.id}>
                                             <TableCell>
-                                                {formatImageUrl(approval.imageUrl) ? (
-                                                    <img src={formatImageUrl(approval.imageUrl) || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
+                                                {approval.imageUrl ? (
+                                                    <img src={approval.imageUrl || ""} alt={approval.nameEn} className="h-10 w-10 rounded object-cover border" />
                                                 ) : (
                                                     <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />

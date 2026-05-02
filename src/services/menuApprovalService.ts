@@ -54,7 +54,7 @@ export interface PaymentApprovalDTO {
   displayOrder?: number;
   // Specific fields based on typical payment approval
   paymentMethodId?: number;
-  paymentMethodName?: string;
+  paymentMethodName?: string | null;
   accountName?: string;
   accountNumber?: string;
   qrImageUrl?: string;

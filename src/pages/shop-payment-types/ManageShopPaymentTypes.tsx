@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from 'xlsx';
 import { TableImage } from "@/components/TableImage";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
@@ -276,7 +276,7 @@ export default function ManageShopPaymentTypes() {
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
                                                             <TableImage 
-                                                                src={formatImageUrl(item.qrImageUrl)} 
+                                                                src={item.qrImageUrl} 
                                                                 alt="QR" 
                                                                 fallbackIcon={<QrCode className="h-5 w-5 text-muted-foreground opacity-30" />}
                                                             />

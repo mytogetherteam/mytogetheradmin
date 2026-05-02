@@ -23,7 +23,7 @@ import { MasterItemService } from "@/services/masterItemService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { formatImageUrl } from "@/lib/utils";
+import  from "@/lib/utils";
 import { compressImage } from "@/utils/imageCompression";
 import {
     Dialog,
@@ -1557,7 +1557,7 @@ export default function CreateMenuItem() {
                                     >
                                         {imagePreview || existingImage ? (
                                             <>
-                                                <img src={imagePreview || formatImageUrl(existingImage) || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                                <img src={imagePreview || existingImage || ""} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                     <Button type="button" variant="destructive" size="icon" className="h-12 w-12 rounded-full shadow-xl hover:scale-110 transition-transform" onClick={(e) => { e.stopPropagation(); removeImage(); }}>
                                                         <Trash2 className="h-6 w-6" />
