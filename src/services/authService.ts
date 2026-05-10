@@ -1,4 +1,3 @@
-import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
 export interface LoginRequest {
@@ -36,22 +35,22 @@ export interface UserData {
   authorities: string[];
 }
 
-const decodeJwtExpiry = (token: string): number | null => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    const payload = JSON.parse(jsonPayload) as { exp: number };
-    return payload.exp ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-};
+// const decodeJwtExpiry = (token: string): number | null => {
+//   try {
+//     const base64Url = token.split('.')[1];
+//     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+//     const jsonPayload = decodeURIComponent(
+//       atob(base64)
+//         .split('')
+//         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+//         .join('')
+//     );
+//     const payload = JSON.parse(jsonPayload) as { exp: number };
+//     return payload.exp ? payload.exp * 1000 : null;
+//   } catch {
+//     return null;
+//   }
+// };
 
 export const authService = {
   /**
@@ -72,56 +71,57 @@ export const authService = {
       })
     );
     // Clear the apiClient's expiry cache so it decodes the NEW token's expiry
-    apiClient.clearTokenCache();
+    // apiClient.clearTokenCache();
   },
 
   /**
    * Login user with username/email and password
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    console.log('Login attempt to:', config.endpoints.auth.login);
-    console.log('API Base URL:', config.apiBaseUrl);
-    const response = await apiClient.post<LoginResponse>(
-      config.endpoints.auth.login,
-      credentials
-    );
-
-    // Store token and user data
-    authService.saveAuthData(response);
-
-    return response;
+    console.log('Login attempt mocked for:', credentials.usernameOrEmail);
+    const mockResponse: LoginResponse = {
+      token: 'mock-token',
+      type: 'Bearer',
+      refreshToken: 'mock-refresh-token',
+      id: 1,
+      username: credentials.usernameOrEmail,
+      email: `${credentials.usernameOrEmail}@example.com`,
+      fullName: 'Mock Admin',
+      role: 'ADMIN',
+      authorities: ['ROLE_ADMIN']
+    };
+    authService.saveAuthData(mockResponse);
+    return mockResponse;
   },
 
   /**
    * Register a new user
    */
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
-    const response = await apiClient.post<RegisterResponse>(
-      config.endpoints.auth.register,
-      data
-    );
-
-    // Store token and user data after successful registration
-    authService.saveAuthData(response);
-
-    return response;
+    const mockResponse: RegisterResponse = {
+      token: 'mock-token',
+      type: 'Bearer',
+      refreshToken: 'mock-refresh-token',
+      id: 1,
+      username: data.username,
+      email: data.email,
+      fullName: data.fullName,
+      role: 'ADMIN',
+      authorities: ['ROLE_ADMIN']
+    };
+    authService.saveAuthData(mockResponse);
+    return mockResponse;
   },
 
   /**
    * Logout user and clear stored data
    */
   logout: async (): Promise<void> => {
-    try {
-      await apiClient.post(config.endpoints.auth.logout);
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      localStorage.removeItem(config.storage.tokenKey);
-      localStorage.removeItem(config.storage.refreshTokenKey);
-      localStorage.removeItem(config.storage.userKey);
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+    localStorage.removeItem(config.storage.tokenKey);
+    localStorage.removeItem(config.storage.refreshTokenKey);
+    localStorage.removeItem(config.storage.userKey);
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
     }
   },
 
@@ -129,34 +129,34 @@ export const authService = {
    * Get stored authentication token
    */
   getToken: (): string | null => {
-    return localStorage.getItem(config.storage.tokenKey);
+    return 'mock-token';
   },
 
   /**
    * Get stored refresh token
    */
   getRefreshToken: (): string | null => {
-    return localStorage.getItem(config.storage.refreshTokenKey);
+    return 'mock-refresh-token';
   },
 
   /**
    * Get stored user data
    */
   getUserData: (): UserData | null => {
-    const data = localStorage.getItem(config.storage.userKey);
-    return data ? JSON.parse(data) : null;
+    return {
+      id: 1,
+      username: 'mockadmin',
+      email: 'mockadmin@example.com',
+      fullName: 'Mock Admin',
+      role: 'ADMIN',
+      authorities: ['ROLE_ADMIN']
+    };
   },
 
   /**
    * Check if user is authenticated
    */
   isAuthenticated: (): boolean => {
-    const token = authService.getToken();
-    if (!token) return false;
-    
-    const expiry = decodeJwtExpiry(token);
-    if (!expiry) return false;
-    
-    return Date.now() < expiry;
+    return true;
   },
 };
