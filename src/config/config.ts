@@ -27,9 +27,9 @@ export const config = {
         paymentMethod: (id: number) => `/api/admin/setup/payment-methods/${id}`,
         shopCategories: '/api/admin/setup/shop-categories',
         shopCategory: (id: number) => `/api/admin/setup/shop-categories/${id}`,
-            shopSubCategories: `/api/admin/setup/shop-categories/sub-categories`,
-            shopSubCategory: (id: number) => `/api/admin/setup/shop-categories/sub-categories/${id}`,
-            shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/setup/shop-categories/${categoryId}/sub-categories`,
+        shopSubCategories: `/api/admin/setup/shop-categories/sub-categories`,
+        shopSubCategory: (id: number) => `/api/admin/setup/shop-categories/sub-categories/${id}`,
+        shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/setup/shop-categories/${categoryId}/sub-categories`,
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
         cuisines: {
@@ -146,18 +146,18 @@ export const config = {
       },
       marketing: {
         promotions: {
-            base: '/api/admin/promotions',
-            detail: (id: string | number) => `/api/admin/promotions/${id}`,
+          base: '/api/admin/promotions',
+          detail: (id: string | number) => `/api/admin/promotions/${id}`,
         },
         banners: {
-            base: '/api/admin/marketing/banners',
-            detail: (id: string) => `/api/admin/marketing/banners/${id}`,
-            toggle: (id: string) => `/api/admin/marketing/banners/${id}/toggle`,
+          base: '/api/admin/marketing/banners',
+          detail: (id: string) => `/api/admin/marketing/banners/${id}`,
+          toggle: (id: string) => `/api/admin/marketing/banners/${id}/toggle`,
         },
         featuredShops: '/api/admin/marketing/featured-shops',
         shopActions: {
-            boost: (shopId: string) => `/api/admin/marketing/shops/${shopId}/boost`,
-            featured: (shopId: string) => `/api/admin/marketing/shops/${shopId}/featured`,
+          boost: (shopId: string) => `/api/admin/marketing/shops/${shopId}/boost`,
+          featured: (shopId: string) => `/api/admin/marketing/shops/${shopId}/featured`,
         }
       },
       analytics: {

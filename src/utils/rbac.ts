@@ -1,7 +1,7 @@
 export enum AdminRole {
-  ADMIN         = 'ADMIN',
-  ADMIN_OPS     = 'ADMIN_OPS',
-  ADMIN_SETUP   = 'ADMIN_SETUP',
+  ADMIN = 'ADMIN',
+  ADMIN_OPS = 'ADMIN_OPS',
+  ADMIN_SETUP = 'ADMIN_SETUP',
   ADMIN_FINANCE = 'ADMIN_FINANCE',
 }
 
@@ -13,15 +13,35 @@ export enum AdminRole {
  * @param requiredRole The role required to access a feature or menu
  * @returns boolean
  */
+const operationAdminAccess: readonly AdminRole[] = [
+  AdminRole.ADMIN_OPS,
+  AdminRole.ADMIN_SETUP,
+  AdminRole.ADMIN_FINANCE,
+];
+
 export const hasAccess = (userRole: string | undefined, requiredRole: AdminRole | AdminRole[]): boolean => {
   if (!userRole) return false;
-  
-  // ADMIN is the Super Admin and sees everything
-  if (userRole === AdminRole.ADMIN || userRole === 'MASTER_ADMIN') return true;
-  
+
+  // Super admin (panel or API role name)
+  if (
+    userRole === AdminRole.ADMIN ||
+    userRole === 'MASTER_ADMIN' ||
+    userRole === 'SuperAdmin'
+  ) {
+    return true;
+  }
+
+  // API OperationAdmin — ops / setup / finance surfaces, not SuperAdmin-only routes
+  if (userRole === 'OperationAdmin') {
+    if (Array.isArray(requiredRole)) {
+      return requiredRole.some((r) => operationAdminAccess.includes(r));
+    }
+    return operationAdminAccess.includes(requiredRole);
+  }
+
   if (Array.isArray(requiredRole)) {
     return requiredRole.includes(userRole as AdminRole);
   }
-  
+
   return userRole === requiredRole;
 };

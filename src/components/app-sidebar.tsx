@@ -18,13 +18,14 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { 
+import {
     ChevronRight,
     Search
 } from "lucide-react"
 
 import { Link, useLocation } from "react-router-dom"
 import { authService } from "@/services/authService"
+import { useAuthStore } from "@/store/useAuthStore"
 import { cn } from "@/lib/utils"
 import { hasAccess, AdminRole } from "@/utils/rbac"
 import { useState } from "react"
@@ -34,7 +35,8 @@ export function AppSidebar() {
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState("");
 
-    const userData = authService.getUserData();
+    const persistedUser = useAuthStore((s) => s.user);
+    const userData = persistedUser ?? authService.getUserData();
     const userRole = userData?.role;
 
     const canSee = (requiredRole?: AdminRole | AdminRole[]) => {
@@ -53,13 +55,13 @@ export function AppSidebar() {
     // Helper functions for filtering
     const filterNavItems = (items: NavItem[]): NavItem[] => {
         const result: NavItem[] = [];
-        
+
         for (const item of items) {
             if (!canSee(item.roles)) continue;
-            
+
             // If the item itself matches
             const matchesQuery = item.title.toLowerCase().includes(query);
-            
+
             // If any of its sub-items match
             const matchingSubItems = item.items?.filter(sub => {
                 const subMatchesQuery = sub.title.toLowerCase().includes(query);
@@ -75,15 +77,15 @@ export function AppSidebar() {
                 result.push({ ...item, items: matchingSubItems });
             }
         }
-        
+
         return result;
     };
 
     const filteredConfig = navigationConfig.map(group => {
         if (!canSee(group.roles)) return { ...group, items: [] };
-        
+
         let filteredItems = filterNavItems(group.items);
-        
+
         // If the group title matches the query, show all items under it
         if (query && group.title && group.title.toLowerCase().includes(query)) {
             filteredItems = group.items.filter(item => canSee(item.roles)).map(item => {
@@ -93,7 +95,7 @@ export function AppSidebar() {
                 return item;
             });
         }
-        
+
         return {
             ...group,
             items: filteredItems
@@ -137,10 +139,10 @@ export function AppSidebar() {
                                 if (item.items && item.items.length > 0) {
                                     // Collapsible item
                                     return (
-                                        <Collapsible 
-                                            key={(query ? 'search-' : 'normal-') + itemIdx} 
-                                            asChild 
-                                            className="group/collapsible" 
+                                        <Collapsible
+                                            key={(query ? 'search-' : 'normal-') + itemIdx}
+                                            asChild
+                                            className="group/collapsible"
                                             defaultOpen={!!query}
                                         >
                                             <SidebarMenuItem>
@@ -169,7 +171,7 @@ export function AppSidebar() {
                                         </Collapsible>
                                     );
                                 }
-                                
+
                                 // Regular item
                                 return (
                                     <SidebarMenuItem key={itemIdx}>

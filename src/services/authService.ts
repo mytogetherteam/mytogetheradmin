@@ -1,61 +1,57 @@
 import { config } from '@/config/config';
+import { getHumanMessageFromNestHttpBody } from '@/lib/nestHttpBody';
+import { ApiError, apiClient } from '@/services/apiClient';
+import { api } from '@/utils/axios';
+import { adminLoginApiResponseSchema } from '@/schemas/admin-login.schema';
+import { useAuthStore } from '@/store/useAuthStore';
+import axios from 'axios';
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UserData,
+} from '@/interfaces/auth/auth.interface';
 
-export interface LoginRequest {
-  usernameOrEmail: string;
-  password: string;
+export type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, UserData };
+
+function mapAdminPayloadToLoginResponse(
+  credentials: LoginRequest,
+  data: {
+    token: string;
+    refreshToken: string;
+    id: number;
+    email: string;
+    role: string;
+    name?: string | null;
+    fullName?: string | null;
+  }
+): LoginResponse {
+  const fullName =
+    (data.fullName && data.fullName.trim()) ||
+    (data.name && data.name.trim()) ||
+    credentials.usernameOrEmail.trim() ||
+    data.email.split('@')[0] ||
+    'Admin';
+
+  const guessedUsername = data.email.includes('@')
+    ? data.email.split('@')[0]!
+    : credentials.usernameOrEmail.trim();
+
+  return {
+    token: data.token,
+    type: 'Bearer',
+    refreshToken: data.refreshToken,
+    id: data.id,
+    username: guessedUsername,
+    email: data.email,
+    fullName,
+    role: data.role,
+    authorities: [`ROLE_${data.role}`],
+  };
 }
-
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  fullName: string;
-}
-
-export interface LoginResponse {
-  token: string;
-  type: string;
-  refreshToken: string;
-  id: number;
-  username: string;
-  email: string;
-  fullName: string;
-  role: string;
-  authorities: string[];
-}
-
-export type RegisterResponse = LoginResponse;
-
-export interface UserData {
-  id: number;
-  username: string;
-  email: string;
-  fullName: string;
-  role: string;
-  authorities: string[];
-}
-
-// const decodeJwtExpiry = (token: string): number | null => {
-//   try {
-//     const base64Url = token.split('.')[1];
-//     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-//     const jsonPayload = decodeURIComponent(
-//       atob(base64)
-//         .split('')
-//         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-//         .join('')
-//     );
-//     const payload = JSON.parse(jsonPayload) as { exp: number };
-//     return payload.exp ? payload.exp * 1000 : null;
-//   } catch {
-//     return null;
-//   }
-// };
 
 export const authService = {
-  /**
-   * Helper to store authentication data
-   */
   saveAuthData: (response: LoginResponse): void => {
     localStorage.setItem(config.storage.tokenKey, response.token);
     localStorage.setItem(config.storage.refreshTokenKey, response.refreshToken);
@@ -70,33 +66,99 @@ export const authService = {
         authorities: response.authorities || [],
       })
     );
-    // Clear the apiClient's expiry cache so it decodes the NEW token's expiry
-    // apiClient.clearTokenCache();
+    apiClient.clearTokenCache();
   },
 
   /**
-   * Login user with username/email and password
+   * Platform admin login — maps to Nest `POST /api/admin/auth/login` (emailOrUsername + password).
    */
-  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    console.log('Login attempt mocked for:', credentials.usernameOrEmail);
-    const mockResponse: LoginResponse = {
-      token: 'mock-token',
-      type: 'Bearer',
-      refreshToken: 'mock-refresh-token',
-      id: 1,
-      username: credentials.usernameOrEmail,
-      email: `${credentials.usernameOrEmail}@example.com`,
-      fullName: 'Mock Admin',
-      role: 'ADMIN',
-      authorities: ['ROLE_ADMIN']
-    };
-    authService.saveAuthData(mockResponse);
-    return mockResponse;
+  adminLogin: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    let json: unknown;
+    try {
+      const { data } = await api.post<unknown>(config.endpoints.auth.login, {
+        emailOrUsername: credentials.usernameOrEmail.trim(),
+        password: credentials.password,
+      });
+      json = data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const rawBody = error.response?.data;
+        const httpStatus = error.response?.status;
+        const nestedCode =
+          rawBody &&
+            typeof rawBody === 'object' &&
+            'statusCode' in rawBody &&
+            typeof (rawBody as { statusCode?: unknown }).statusCode === 'number'
+            ? (rawBody as { statusCode: number }).statusCode
+            : undefined;
+        const status = httpStatus ?? nestedCode;
+
+        let message = '';
+        const business = adminLoginApiResponseSchema.safeParse(rawBody);
+        if (
+          business.success &&
+          !business.data.success &&
+          'message' in business.data &&
+          business.data.message
+        ) {
+          message = business.data.message.trim();
+        } else {
+          message =
+            getHumanMessageFromNestHttpBody(rawBody) ||
+            (error.response?.statusText
+              ? `${error.response.status} ${error.response.statusText}`
+              : '') ||
+            error.message ||
+            'Login request failed';
+        }
+
+        throw new ApiError(message.trim(), status, rawBody);
+      }
+      throw new ApiError(
+        error instanceof Error ? error.message : 'Login request failed',
+      );
+    }
+
+    const parsed = adminLoginApiResponseSchema.safeParse(json);
+    if (!parsed.success) {
+      const hintFromBody = json && typeof json === 'object' ? getHumanMessageFromNestHttpBody(json).trim() : '';
+      const codeFromBody =
+        json &&
+          typeof json === 'object' &&
+          'statusCode' in json &&
+          typeof (json as { statusCode?: unknown }).statusCode === 'number'
+          ? (json as { statusCode: number }).statusCode
+          : undefined;
+      throw new ApiError(hintFromBody || 'Unexpected login response', codeFromBody, json);
+    }
+    const body = parsed.data;
+    if (!body.success) {
+      throw new ApiError(
+        body.message?.trim() || 'Unable to sign in',
+        undefined,
+        json,
+      );
+    }
+
+    const mapped = mapAdminPayloadToLoginResponse(credentials, body.data);
+    authService.saveAuthData(mapped);
+    useAuthStore.getState().setUser({
+      id: mapped.id,
+      username: mapped.username,
+      email: mapped.email,
+      fullName: mapped.fullName,
+      role: mapped.role,
+      authorities: mapped.authorities,
+    });
+    return mapped;
   },
 
   /**
-   * Register a new user
+   * @deprecated Prefer `adminLogin` + typed flows; kept as alias for callers that still say `login`.
    */
+  login: async (credentials: LoginRequest): Promise<LoginResponse> =>
+    authService.adminLogin(credentials),
+
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     const mockResponse: RegisterResponse = {
       token: 'mock-token',
@@ -107,16 +169,23 @@ export const authService = {
       email: data.email,
       fullName: data.fullName,
       role: 'ADMIN',
-      authorities: ['ROLE_ADMIN']
+      authorities: ['ROLE_ADMIN'],
     };
     authService.saveAuthData(mockResponse);
+    useAuthStore.getState().setUser({
+      id: mockResponse.id,
+      username: mockResponse.username,
+      email: mockResponse.email,
+      fullName: mockResponse.fullName,
+      role: mockResponse.role,
+      authorities: mockResponse.authorities,
+    });
     return mockResponse;
   },
 
-  /**
-   * Logout user and clear stored data
-   */
   logout: async (): Promise<void> => {
+    useAuthStore.getState().clearAuth();
+    apiClient.clearTokenCache();
     localStorage.removeItem(config.storage.tokenKey);
     localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);
@@ -125,38 +194,32 @@ export const authService = {
     }
   },
 
-  /**
-   * Get stored authentication token
-   */
   getToken: (): string | null => {
-    return 'mock-token';
+    return localStorage.getItem(config.storage.tokenKey);
   },
 
-  /**
-   * Get stored refresh token
-   */
   getRefreshToken: (): string | null => {
-    return 'mock-refresh-token';
+    return localStorage.getItem(config.storage.refreshTokenKey);
   },
 
-  /**
-   * Get stored user data
-   */
+  /** Parsed `user_key` only — for first paint before Zustand persist rehydrates. */
+  getUserProfileFromStorageOnly: (): UserData | null => {
+    const raw = localStorage.getItem(config.storage.userKey);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as UserData;
+    } catch {
+      return null;
+    }
+  },
+
   getUserData: (): UserData | null => {
-    return {
-      id: 1,
-      username: 'mockadmin',
-      email: 'mockadmin@example.com',
-      fullName: 'Mock Admin',
-      role: 'ADMIN',
-      authorities: ['ROLE_ADMIN']
-    };
+    const fromStore = useAuthStore.getState().user;
+    if (fromStore) return fromStore;
+    return authService.getUserProfileFromStorageOnly();
   },
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated: (): boolean => {
-    return true;
+    return Boolean(localStorage.getItem(config.storage.tokenKey));
   },
 };
