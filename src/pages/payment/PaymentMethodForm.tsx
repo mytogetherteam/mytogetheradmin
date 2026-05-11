@@ -126,7 +126,7 @@ export default function PaymentMethodForm() {
             };
 
             const formData = new FormData();
-            formData.append("data", new Blob([JSON.stringify(paymentData)], { type: "application/json" }));
+            formData.append("data", JSON.stringify(paymentData));
 
             if (iconFile) {
                 formData.append("icon", iconFile);
