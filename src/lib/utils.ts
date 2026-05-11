@@ -9,7 +9,7 @@ export function formatNumberWithCommas(value: string | number | undefined): stri
   if (value === undefined || value === null || value === "") return "";
   const stringValue = typeof value === "number" ? value.toString() : value.replace(/,/g, "");
   if (isNaN(Number(stringValue))) return stringValue;
-  
+
   const parts = stringValue.split(".");
   // Remove leading zeros from the integer part (except for "0" itself)
   parts[0] = Number(parts[0]).toString();
@@ -21,5 +21,9 @@ export function parseNumberFromCommas(value: string): string {
   return value.replace(/,/g, "");
 }
 
-
+export const substringText = (text: string, maxLength: number): string => {
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength).trim() + "…";
+};
 
