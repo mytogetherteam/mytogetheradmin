@@ -218,24 +218,10 @@ class ApiClient {
     // const url = `${this.baseUrl}${endpoint}`;
 
     try {
-      console.log(`[MOCK API] ${options.method || 'GET'} ${endpoint}`);
-      
-      const mockData: any = [];
-      mockData.content = [];
-      mockData.totalElements = 0;
-      mockData.totalPages = 0;
-      mockData.size = 20;
-      mockData.number = 0;
-      mockData.data = [];
-      mockData.success = true;
-      mockData.message = 'Mocked request';
-      mockData.id = 1;
-      mockData.name = 'Mock Data';
+      const normalizedBase = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+      const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      const url = `${normalizedBase}${normalizedEndpoint}`;
 
-      // Always return mock data to run UI without backend
-      return mockData as unknown as T;
-
-      /*
       const response = await fetch(url, {
         ...options,
         headers,
@@ -261,11 +247,11 @@ class ApiClient {
         }
 
         // If already refreshing, wait for it to finish
-        return new Promise<T>((resolve) => {
-          this.addRefreshSubscriber(() => {
-            resolve(this.request<T>(endpoint, options));
-          });
-        });
+        // return new Promise<T>((resolve) => {
+        //   this.addRefreshSubscriber((token: string) => {
+        //     resolve(this.request<T>(endpoint, options));
+        //   });
+        // });
       }
 
       if (!response.ok) {
@@ -290,7 +276,6 @@ class ApiClient {
       }
 
       return data;
-      */
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -319,8 +304,21 @@ class ApiClient {
     this.cachedTokenString = null;
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  async get<T>(endpoint: string, options?: { params?: Record<string, any> }): Promise<T> {
+    let url = endpoint;
+    if (options?.params) {
+      const query = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          query.append(key, String(value));
+        }
+      });
+      const queryString = query.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+    }
+    return this.request<T>(url, { method: 'GET' });
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {

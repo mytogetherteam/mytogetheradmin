@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ShopCategoryService } from '@/services/shopCategoryService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
@@ -48,5 +48,12 @@ export function useDeleteShopCategoryMutation() {
     onError: (error) => {
       handleApiError(error, 'Failed to delete shop category');
     },
+  });
+}
+
+export function useShopCategories(params?: { page?: number; size?: number; search?: string }) {
+  return useQuery({
+    queryKey: [...shopCategoryKeys.all, params],
+    queryFn: () => ShopCategoryService.getShopCategories(params),
   });
 }

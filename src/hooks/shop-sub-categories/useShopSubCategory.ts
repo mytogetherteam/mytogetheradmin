@@ -1,8 +1,12 @@
-import { useMutation } from '@tanstack/react-query';
-import { ShopCategoryService, ShopSubCategoryRequest } from '@/services/shopCategoryService';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { ShopCategoryService } from '@/services/shopCategoryService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
 import { useNavigate } from 'react-router-dom';
+
+export const shopSubCategoryKeys = {
+  all: ['shop-sub-categories'] as const,
+};
 
 export function useCreateShopSubCategoryMutation() {
   const navigate = useNavigate();
@@ -45,5 +49,12 @@ export function useDeleteShopSubCategoryMutation() {
     onError: (error) => {
       handleApiError(error, 'Failed to delete sub-category');
     },
+  });
+}
+
+export function useShopSubCategories(params?: { page?: number; size?: number; search?: string }) {
+  return useQuery({
+    queryKey: [...shopSubCategoryKeys.all, params],
+    queryFn: () => ShopCategoryService.getShopSubCategoriesPaginated(params),
   });
 }

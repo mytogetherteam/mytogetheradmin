@@ -43,98 +43,18 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
-import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select"
+import { AsyncSelectField } from "@/components/common/AsyncSelectField"
+
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 
-// Schema based on API CreateShopRequest
-interface OperatingHour {
-    dayOfWeek: number;
-    openTime: string;
-    closeTime: string;
-    isClosed: boolean;
-}
+import { shopFormSchema, ShopFormValues } from "@/schemas/shop.schema"
+import { ShopCategoryService } from "@/services/shopCategoryService"
+import { cuisineService } from "@/services/cuisineService"
+import { cityService } from "@/services/cityService"
+import { districtService } from "@/services/districtService"
 
-export interface ShopFormValues {
-    nameEn: string;
-    nameMm?: string;
-    nameTh?: string;
-    shopCategoryId: number;
-    shopSubCategoryId?: number;
-    addressEn: string;
-    addressMm?: string;
-    addressTh?: string;
-    districtId: number;
-    latitude: number;
-    longitude: number;
-    phone: string;
-    email?: string;
-    descriptionEn: string;
-    descriptionMm?: string;
-    descriptionTh?: string;
-    hasDelivery: boolean;
-    deliveryEnabled: boolean;
-    hasParking: boolean;
-    hasWifi: boolean;
-    isVerified: boolean;
-    isActive: boolean;
-    isHalal: boolean;
-    isVegetarian: boolean;
-    pricePreference: "LOW" | "MEDIUM" | "HIGH";
-    enableStockCheck: boolean;
-    maxItemQuantityPerOrder: number;
-    minOrderAmount: number;
-    baseDeliveryFee: number;
-    cuisineTypeIds: number[];
-    mealTypes: string[];
-    supportedDeliveryTypes: string[];
-    paymentMethodIds: number[];
-    operatingHours: OperatingHour[];
-    ownerId?: number;
-}
 
-const shopFormSchema = z.object({
-    nameEn: z.string().optional(),
-    nameMm: z.string().optional().or(z.literal("")),
-    nameTh: z.string().optional().or(z.literal("")),
-    shopCategoryId: z.number().optional().nullable(),
-    shopSubCategoryId: z.number().optional().nullable(),
-    addressEn: z.string().optional(),
-    addressMm: z.string().optional().or(z.literal("")),
-    addressTh: z.string().optional().or(z.literal("")),
-    districtId: z.number().optional().nullable(),
-    latitude: z.coerce.number().optional(),
-    longitude: z.coerce.number().optional(),
-    phone: z.string().optional(),
-    email: z.string().optional().or(z.literal("")),
-    descriptionEn: z.string().optional(),
-    descriptionMm: z.string().optional().or(z.literal("")),
-    descriptionTh: z.string().optional().or(z.literal("")),
-    hasDelivery: z.boolean().default(false),
-    deliveryEnabled: z.boolean().default(false),
-    hasParking: z.boolean().default(false),
-    hasWifi: z.boolean().default(false),
-    isVerified: z.boolean().default(false),
-    isActive: z.boolean().default(true),
-    isHalal: z.boolean().default(false),
-    isVegetarian: z.boolean().default(false),
-    pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
-    enableStockCheck: z.boolean().default(false),
-    maxItemQuantityPerOrder: z.number().default(10),
-    minOrderAmount: z.coerce.number().default(1),
-    baseDeliveryFee: z.coerce.number().default(0),
-    cuisineTypeIds: z.array(z.number()).default([]),
-    mealTypes: z.array(z.string()).default([]),
-    supportedDeliveryTypes: z.array(z.string()).default([]),
-    paymentMethodIds: z.array(z.number()).default([]),
-    operatingHours: z.array(z.object({
-        dayOfWeek: z.number(),
-        openTime: z.string(),
-        closeTime: z.string(),
-        isClosed: z.boolean()
-    })).default([]),
-    ownerId: z.number().optional().nullable(),
-})
 
 export default function CreateShopRestaurant() {
     const [searchParams] = useSearchParams()
@@ -162,18 +82,16 @@ export default function CreateShopRestaurant() {
     const [selectedCityId, setSelectedCityId] = useState<number | null>(null)
     const [availableDistricts, setAvailableDistricts] = useState<DistrictDTO[]>([])
 
-    // Categories
-    const [shopCategories, setShopCategories] = useState<ShopCategoryDTO[]>([])
-    const [categoriesLoading, setCategoriesLoading] = useState(false)
-    const [shopSubCategories, setShopSubCategories] = useState<ShopSubCategoryDTO[]>([])
+    const [initialCuisineOptions, setInitialCuisineOptions] = useState<{ label: string; value: string }[]>([])
 
     const [initialCategoryLabel, setInitialCategoryLabel] = useState<string | null>(null)
     const [initialSubCategoryLabel, setInitialSubCategoryLabel] = useState<string | null>(null)
     const [selectedOwnerName, setSelectedOwnerName] = useState<string | null>(null)
+    const [initialCityLabel, setInitialCityLabel] = useState<string | null>(null)
+    const [initialDistrictLabel, setInitialDistrictLabel] = useState<string | null>(null)
 
     // Ref to prevent double API calls
     const shopDataLoadedRef = useRef(false)
-
 
 
     const form = useForm<ShopFormValues>({
@@ -228,85 +146,22 @@ export default function CreateShopRestaurant() {
 
     const loadSetupData = useCallback(async () => {
         setSetupLoading(true)
-        setCategoriesLoading(true)
         try {
-            const [setupData, categories, subCategories] = await Promise.all([
-                PaymentService.getShopFormData(),
-                ShopService.getCategories(),
-                ShopService.getSubCategories()
-            ])
+            const setupData = await PaymentService.getShopFormData()
             setSetupData(setupData)
-            setShopCategories(categories)
-            setShopSubCategories(subCategories)
             setPaymentMethods(setupData.paymentMethods || [])
         } catch (error) {
             handleApiError(error, "Failed to load necessary form data")
         } finally {
             setSetupLoading(false)
-            setCategoriesLoading(false)
         }
     }, [])
 
-    const fetchCategoryData = useCallback(async (page: number, size: number, search: string) => {
-        // If there's a search term, we should hit the API
-        if (search) {
-            const results = await ShopService.getCategories({ page, size, search });
-            return {
-                content: results.map(c => ({ label: c.nameEn || `Category ${c.id}`, value: c.id })),
-                last: results.length < size,
-            };
-        }
-
-        // Use existing shopCategories if available for initial load to avoid extra API calls
-        let categories = shopCategories;
-        if (categories.length === 0) {
-            categories = await ShopService.getCategories();
-            setShopCategories(categories);
-        }
-
-        const start = page * size;
-        const slice = categories.slice(start, start + size);
-        return {
-            content: slice.map(c => ({ label: c.nameEn || `Category ${c.id}`, value: c.id })),
-            last: start + size >= categories.length,
-        };
-    }, [shopCategories]);
-
-    const fetchSubCategoryData = useCallback(async (page: number, size: number, search: string) => {
-        if (search) {
-            const results = await ShopService.getSubCategories({ page, size, search });
-            return {
-                content: results.map(s => ({ label: s.nameEn || `SubCategory ${s.id}`, value: s.id })),
-                last: results.length < size,
-            };
-        }
-
-        let subCategories = shopSubCategories;
-        if (subCategories.length === 0) {
-            subCategories = await ShopService.getSubCategories();
-            setShopSubCategories(subCategories);
-        }
-
-        const start = page * size;
-        const slice = subCategories.slice(start, start + size);
-        return {
-            content: slice.map(s => ({ label: s.nameEn || `SubCategory ${s.id}`, value: s.id })),
-            last: start + size >= subCategories.length,
-        };
-    }, [shopSubCategories]);
-
-    const fetchOwnerData = useCallback(async (page: number, size: number, search: string) => {
-        const results = await userService.getShopOwners(page, size, search);
-        return {
-            content: results.content.map(u => ({ label: u.fullName || u.username || `User ${u.id}`, value: Number(u.id) })),
-            last: results.number + 1 >= results.totalPages,
-        };
-    }, []);
 
     const loadShopData = useCallback(async (id: string) => {
         if (shopDataLoadedRef.current) return;
         shopDataLoadedRef.current = true;
-        
+
         setLoading(true)
         try {
             const shopId = parseInt(id, 10)
@@ -325,12 +180,12 @@ export default function CreateShopRestaurant() {
             // Map API response to form structure
             // Handle potentially nested Shop Categories / SubCategories from certain API responses
             const shopCategoryId = shop.shopCategoryId || shop.shopCategory?.id || undefined;
-            
+
             // Sub-category can be shopSubCategoryId at root, OR nested in shopCategory.subCategories list
-            const shopSubCategoryId = shop.shopSubCategoryId || 
-                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0 
-                    ? shop.shopCategory.subCategories[0].id 
-                    : undefined) || 
+            const shopSubCategoryId = shop.shopSubCategoryId ||
+                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0
+                    ? shop.shopCategory.subCategories[0].id
+                    : undefined) ||
                 undefined;
 
             form.reset({
@@ -388,13 +243,22 @@ export default function CreateShopRestaurant() {
 
             setInitialCategoryLabel(shop.shopCategory?.nameEn || shop.categoryEn || shop.category || null);
             setInitialSubCategoryLabel(
-                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0 
-                    ? shop.shopCategory.subCategories[0].nameEn 
-                    : null) || 
-                shop.subCategory || 
+                (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0
+                    ? shop.shopCategory.subCategories[0].nameEn
+                    : null) ||
+                shop.subCategory ||
                 null
             );
             setSelectedOwnerName(shop.ownerName || null);
+            setInitialCityLabel(shop.cityEn || shop.cityMm || null);
+            setInitialDistrictLabel(shop.districtEn || shop.districtMm || null);
+
+            if (shop.cuisineTypes) {
+                setInitialCuisineOptions(shop.cuisineTypes.map((c: any) => ({
+                    label: c.nameEn || c.name || `Cuisine ${c.id}`,
+                    value: String(c.id)
+                })));
+            }
 
             // Handle images
             if (shop.logoUrl) {
@@ -416,12 +280,16 @@ export default function CreateShopRestaurant() {
             // 1. First priority: Set directly from IDs if available in the response
             if (shop.cityId) {
                 setSelectedCityId(shop.cityId);
+                // Fetch districts for the selected city
+                districtService.getDistricts({ page: 1, size: 100, cityId: shop.cityId }).then(results => {
+                    setAvailableDistricts(results.content as any);
+                }).catch(err => console.error("Failed to fetch initial districts", err));
             }
 
             // 2. Second priority: If IDs are missing but names are present, derivation logic
             if (setupData?.cities) {
                 let city = null;
-                
+
                 // If cityId was missing, try to find it by matching other fields
                 if (!shop.cityId) {
                     // Try by districtId
@@ -430,18 +298,18 @@ export default function CreateShopRestaurant() {
                             c.districts?.some(d => d.id === shop.districtId)
                         );
                     }
-                    
+
                     // Try matching by district name
                     if (!city && shop.district) {
                         const districtName = shop.district;
                         city = setupData.cities.find(c =>
-                            c.districts?.some(d => 
-                                d.nameEn === districtName || 
+                            c.districts?.some(d =>
+                                d.nameEn === districtName ||
                                 d.nameMm === districtName
                             )
                         );
                     }
-                    
+
                     // Try by city name
                     if (!city && shop.city) {
                         const cityName = shop.city;
@@ -449,7 +317,7 @@ export default function CreateShopRestaurant() {
                             c.nameEn === cityName || c.nameMm === cityName
                         );
                     }
-                    
+
                     if (city) {
                         setSelectedCityId(city.id);
                     }
@@ -459,7 +327,7 @@ export default function CreateShopRestaurant() {
 
                 // Fallback for districtId if ID was missing but name exists
                 if (city && !shop.districtId && shop.district) {
-                    const district = city.districts?.find(d => 
+                    const district = city.districts?.find(d =>
                         d.nameEn === shop.district || d.nameMm === shop.district
                     );
                     if (district) {
@@ -544,6 +412,13 @@ export default function CreateShopRestaurant() {
                 ownerId: undefined,
             })
             setSelectedOwnerName(null)
+            setInitialCategoryLabel(null)
+            setInitialSubCategoryLabel(null)
+            setInitialCuisineOptions([])
+            setInitialCityLabel(null)
+            setInitialDistrictLabel(null)
+            setSelectedCityId(null)
+            setAvailableDistricts([])
             setCoverPreview(null)
             setCoverFile(null)
             setLogoPreview(null)
@@ -665,7 +540,7 @@ export default function CreateShopRestaurant() {
             if (!coverPreview?.startsWith('http')) setCoverPreview(null);
             return
         }
-        
+
         const file = await compressImage(originalFile);
         setCoverFile(file);
         const reader = new FileReader()
@@ -679,7 +554,7 @@ export default function CreateShopRestaurant() {
             if (!logoPreview?.startsWith('http')) setLogoPreview(null);
             return
         }
-        
+
         const file = await compressImage(originalFile);
         setLogoFile(file);
         const reader = new FileReader()
@@ -690,7 +565,7 @@ export default function CreateShopRestaurant() {
     const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        
+
         const compressedFiles = await Promise.all(files.map(f => compressImage(f)));
         setGalleryFiles(prev => [...prev, ...compressedFiles]);
         compressedFiles.forEach(file => {
@@ -713,9 +588,15 @@ export default function CreateShopRestaurant() {
         setExistingGalleryUrls(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleCityChange = (cityId: number) => {
+    const handleCityChange = async (cityId: number) => {
         setSelectedCityId(cityId);
         form.setValue("districtId", 0);
+        try {
+            const results = await districtService.getDistricts({ page: 1, size: 100, cityId });
+            setAvailableDistricts(results.content as any);
+        } catch (error) {
+            console.error("Failed to fetch districts", error);
+        }
     };
 
     const handleDistrictChange = (districtId: number) => {
@@ -756,8 +637,8 @@ export default function CreateShopRestaurant() {
                                                 <FormItem>
                                                     <FormLabel>Shop Name (English)</FormLabel>
                                                     <FormControl>
-                                                        <Input 
-                                                            placeholder="e.g. My Together Cafe" 
+                                                        <Input
+                                                            placeholder="e.g. My Together Cafe"
                                                             {...field}
                                                         />
                                                     </FormControl>
@@ -802,20 +683,29 @@ export default function CreateShopRestaurant() {
                                                 <FormItem>
                                                     <FormLabel>Category</FormLabel>
                                                     <FormControl>
-                                                        <InfiniteSearchableSelect
-                                                            fetchData={fetchCategoryData}
-                                                            valueKey="value"
-                                                            labelKey="label"
-                                                            selectedValue={field.value ? { 
-                                                                label: shopCategories.find(c => Number(c.id) === Number(field.value))?.nameEn || 
-                                                                       setupData?.shopCategories?.find(c => Number(c.id) === Number(field.value))?.nameEn ||
-                                                                       initialCategoryLabel ||
-                                                                       "Selected", 
-                                                                value: field.value 
-                                                            } : null}
-                                                            onChange={(item) => item && field.onChange((item as { label: string; value: number }).value)}
+                                                        <AsyncSelectField
+                                                            label="Category"
+                                                            hideLabel
+                                                            fetchFunction={async (page, size, search) => {
+                                                                const results = await ShopCategoryService.getShopCategories({
+                                                                    page,
+                                                                    size,
+                                                                    search: search || ""
+                                                                });
+                                                                return {
+                                                                    data: results.content.map(c => ({ label: c.nameEn || `Category ${c.id}`, value: String(c.id) })),
+                                                                    totalCount: results.totalElements,
+                                                                };
+                                                            }}
+                                                            value={field.value ? String(field.value) : ""}
+                                                            onValueChange={(val) => field.onChange(val ? Number(val) : undefined)}
+                                                            initialValue={field.value ? {
+                                                                label: setupData?.shopCategories?.find(c => Number(c.id) === Number(field.value))?.nameEn ||
+                                                                    initialCategoryLabel ||
+                                                                    "Selected",
+                                                                value: String(field.value)
+                                                            } : undefined}
                                                             placeholder="Select Category"
-                                                            disabled={categoriesLoading}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -830,19 +720,28 @@ export default function CreateShopRestaurant() {
                                                 <FormItem>
                                                     <FormLabel>Sub Category</FormLabel>
                                                     <FormControl>
-                                                        <InfiniteSearchableSelect
-                                                            fetchData={fetchSubCategoryData}
-                                                            valueKey="value"
-                                                            labelKey="label"
-                                                            selectedValue={field.value ? { 
-                                                                label: shopSubCategories.find(s => Number(s.id) === Number(field.value))?.nameEn || 
-                                                                       initialSubCategoryLabel || 
-                                                                       "Selected", 
-                                                                value: field.value 
-                                                            } : null}
-                                                            onChange={(item) => field.onChange(item ? (item as { label: string; value: number }).value : undefined)}
+                                                        <AsyncSelectField
+                                                            label="Sub Category"
+                                                            hideLabel
+                                                            fetchFunction={async (page, size, search) => {
+                                                                const results = await ShopCategoryService.getShopSubCategoriesPaginated({
+                                                                    page,
+                                                                    size,
+                                                                    search: search || ""
+                                                                });
+                                                                return {
+                                                                    data: results.content.map(s => ({ label: s.nameEn || `SubCategory ${s.id}`, value: String(s.id) })),
+                                                                    totalCount: results.totalElements,
+                                                                };
+                                                            }}
+                                                            value={field.value ? String(field.value) : ""}
+                                                            onValueChange={(val) => field.onChange(val ? Number(val) : undefined)}
+                                                            initialValue={field.value ? {
+                                                                label: initialSubCategoryLabel ||
+                                                                    "Selected",
+                                                                value: String(field.value)
+                                                            } : undefined}
                                                             placeholder="Select Sub Category (Optional)"
-                                                            disabled={false}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -857,25 +756,30 @@ export default function CreateShopRestaurant() {
                                                 <FormItem>
                                                     <FormLabel>Shop Owner</FormLabel>
                                                     <FormControl>
-                                                        <InfiniteSearchableSelect
-                                                            fetchData={fetchOwnerData}
-                                                            valueKey="value"
-                                                            labelKey="label"
-                                                            selectedValue={field.value ? { 
-                                                                label: selectedOwnerName || "Selected Owner", 
-                                                                value: field.value 
-                                                            } : null}
-                                                            onChange={(item) => {
-                                                                if (item) {
-                                                                    field.onChange((item as { label: string; value: number }).value);
-                                                                    setSelectedOwnerName((item as { label: string; value: number }).label);
+                                                        <AsyncSelectField
+                                                            label="Shop Owner"
+                                                            hideLabel
+                                                            fetchFunction={async (page, size, search) => {
+                                                                const results = await userService.getShopOwners(page - 1, size, search || "");
+                                                                return {
+                                                                    data: results.content.map(u => ({ label: u.fullName || u.username || `User ${u.id}`, value: String(u.id) })),
+                                                                    totalCount: results.totalElements,
+                                                                };
+                                                            }}
+                                                            value={field.value ? String(field.value) : ""}
+                                                            onValueChange={(val) => {
+                                                                if (val) {
+                                                                    field.onChange(Number(val));
                                                                 } else {
                                                                     field.onChange(null);
                                                                     setSelectedOwnerName(null);
                                                                 }
                                                             }}
+                                                            initialValue={field.value ? {
+                                                                label: selectedOwnerName || "Selected Owner",
+                                                                value: String(field.value)
+                                                            } : undefined}
                                                             placeholder="Select Shop Owner"
-                                                            disabled={false}
                                                         />
                                                     </FormControl>
                                                     <FormDescription>
@@ -939,39 +843,36 @@ export default function CreateShopRestaurant() {
                                                 <FormField
                                                     control={form.control}
                                                     name="cuisineTypeIds"
-                                                    render={({ field }) => (
+                                                    render={({ field, fieldState }) => (
                                                         <FormItem>
                                                             <FormLabel>Cuisine Types</FormLabel>
-                                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                                {field.value?.map((id: number) => {
-                                                                    const cuisine = setupData?.cuisineTypes?.find((c: CuisineTypeDTO) => c.id === id)
-                                                                    const label = cuisine ? (cuisine.nameEn || cuisine.name) : `Cuisine ${id}`
-                                                                    return (
-                                                                        <Badge key={id} variant="secondary" className="gap-1">
-                                                                            {label}
-                                                                            <X
-                                                                                className="h-3 w-3 cursor-pointer"
-                                                                                onClick={() => field.onChange(field.value.filter((val: number) => val !== id))}
-                                                                            />
-                                                                        </Badge>
-                                                                    )
-                                                                })}
-                                                            </div>
                                                             <FormControl>
-                                                                <SearchableSelect
-                                                                    data={setupData?.cuisineTypes?.map((c: CuisineTypeDTO) => ({
-                                                                        label: c.nameEn || c.name || `Cuisine ${c.id}`,
-                                                                        value: c.id
-                                                                    })) || []}
-                                                                    value="value"
-                                                                    labelKey="label"
-                                                                    onChange={(item) => {
-                                                                        if (item && !field.value?.includes(item.value)) {
-                                                                            field.onChange([...(field.value || []), item.value])
-                                                                        }
+                                                                <AsyncSelectField
+                                                                    multiple
+                                                                    label="Cuisine Types"
+                                                                    hideLabel
+                                                                    fetchFunction={async (page, size, search) => {
+                                                                        const results = await cuisineService.getCuisines({
+                                                                            page,
+                                                                            size,
+                                                                            search: search || ""
+                                                                        });
+                                                                        return {
+                                                                            data: results.content.map(c => ({ label: c.nameEn || c.name || `Cuisine ${c.id}`, value: String(c.id) })),
+                                                                            totalCount: results.totalElements,
+                                                                        };
                                                                     }}
-                                                                    placeholder={setupLoading ? "Loading cuisine types..." : "Add cuisine type"}
-                                                                    disabled={setupLoading}
+                                                                    value={field.value ? field.value.map(String) : []}
+                                                                    onValueChange={(vals) => field.onChange(vals.map(Number))}
+                                                                    initialValues={field.value?.map(id => {
+                                                                        const cuisine = initialCuisineOptions?.find((c) => Number(c.value) === id);
+                                                                        return {
+                                                                            label: cuisine ? cuisine.label : `Cuisine ${id}`,
+                                                                            value: String(id)
+                                                                        };
+                                                                    })}
+                                                                    placeholder="Select Cuisines"
+                                                                    error={fieldState.error?.message}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -1028,16 +929,16 @@ export default function CreateShopRestaurant() {
                                                                     <FormLabel className="text-base">Delivery Types</FormLabel>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-4">
-                                                                    {((setupData?.deliveryTypes && setupData.deliveryTypes.length > 0 
-                                                                        ? setupData.deliveryTypes 
+                                                                    {((setupData?.deliveryTypes && setupData.deliveryTypes.length > 0
+                                                                        ? setupData.deliveryTypes
                                                                         : [
-                                                                            { value: "PICKUP", label: "Pickup" }, 
+                                                                            { value: "PICKUP", label: "Pickup" },
                                                                             { value: "DELIVERY", label: "Delivery" }
-                                                                          ]
+                                                                        ]
                                                                     ) as { value?: string; label?: string }[]).map((option) => {
                                                                         const type = (typeof option === 'string' ? option : option.value) as string;
                                                                         const label = (typeof option === 'string' ? option : option.label) as string;
-                                                                        
+
                                                                         return (
                                                                             <FormField
                                                                                 key={type}
@@ -1194,14 +1095,27 @@ export default function CreateShopRestaurant() {
                                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                                     City
                                                 </label>
-                                                <SearchableSelect
-                                                    data={(setupData?.cities || []).map(c => ({ label: c.nameEn, value: c.id }))}
-                                                    value="value"
-                                                    labelKey="label"
-                                                    selectedValue={selectedCityId ? { label: setupData?.cities.find(c => c.id === selectedCityId)?.nameEn || "Selected City", value: selectedCityId } : undefined}
-                                                    onChange={(item) => item && handleCityChange(item.value)}
+                                                <AsyncSelectField
+                                                    label="City"
+                                                    hideLabel
+                                                    fetchFunction={async (page, size, search) => {
+                                                        const results = await cityService.getCities({
+                                                            page,
+                                                            size,
+                                                            search: search || ""
+                                                        });
+                                                        return {
+                                                            data: results.content.map((c: any) => ({ label: c.nameEn, value: String(c.id) })),
+                                                            totalCount: results.totalElements,
+                                                        };
+                                                    }}
+                                                    value={selectedCityId ? String(selectedCityId) : ""}
+                                                    onValueChange={(val) => val && handleCityChange(Number(val))}
+                                                    initialValue={selectedCityId ? {
+                                                        label: initialCityLabel || "Selected City",
+                                                        value: String(selectedCityId)
+                                                    } : undefined}
                                                     placeholder="Select City"
-                                                    disabled={setupLoading}
                                                 />
                                             </div>
 
@@ -1216,7 +1130,13 @@ export default function CreateShopRestaurant() {
                                                                 data={availableDistricts.map(d => ({ label: d.nameEn || d.nameMm || d.name || `District ${d.id}`, value: d.id }))}
                                                                 value="value"
                                                                 labelKey="label"
-                                                                selectedValue={field.value ? { label: availableDistricts.find(d => d.id === field.value)?.nameEn || availableDistricts.find(d => d.id === field.value)?.nameMm || "Selected District", value: field.value } : undefined}
+                                                                selectedValue={field.value ? {
+                                                                    label: availableDistricts.find(d => d.id === field.value)?.nameEn ||
+                                                                        availableDistricts.find(d => d.id === field.value)?.nameMm ||
+                                                                        initialDistrictLabel ||
+                                                                        "Selected District",
+                                                                    value: field.value
+                                                                } : undefined}
                                                                 onChange={(item) => item && handleDistrictChange(item.value)}
                                                                 placeholder="Select District"
                                                                 disabled={!selectedCityId}
@@ -1568,10 +1488,10 @@ export default function CreateShopRestaurant() {
                                                     <FormItem>
                                                         <FormLabel>Min Order Amount</FormLabel>
                                                         <FormControl>
-                                                            <PriceInput 
-                                                                placeholder="0" 
-                                                                value={field.value || ""} 
-                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))} 
+                                                            <PriceInput
+                                                                placeholder="0"
+                                                                value={field.value || ""}
+                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -1585,10 +1505,10 @@ export default function CreateShopRestaurant() {
                                                     <FormItem>
                                                         <FormLabel>Base Delivery Fee</FormLabel>
                                                         <FormControl>
-                                                            <PriceInput 
-                                                                placeholder="0" 
-                                                                value={field.value || ""} 
-                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))} 
+                                                            <PriceInput
+                                                                placeholder="0"
+                                                                value={field.value || ""}
+                                                                onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
