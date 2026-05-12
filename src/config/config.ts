@@ -19,17 +19,18 @@ export const config = {
         orders: '/api/admin/export/orders',
       },
       auditLogs: '/api/admin/audit-logs',
+      shopCategories: '/api/admin/shop-categories',
+      shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
+      shopSubCategories: '/api/admin/shop-sub-categories',
+      shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
+      shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
       payment: {
         shopFormData: '/api/admin/setup/shop-form-data',
         cuisineTypes: '/api/admin/setup/cuisine-types',
         cuisineTypeDetail: (id: number) => `/api/admin/setup/cuisine-types/${id}`,
         paymentMethods: '/api/admin/payment-methods',
         paymentMethod: (id: number) => `/api/admin/setup/payment-methods/${id}`,
-        shopCategories: '/api/admin/shop-categories',
-        shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
-        shopSubCategories: `/api/admin/shop-sub-categories`,
-        shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
-        shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
+
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
         cuisines: {

@@ -400,7 +400,7 @@ export const ShopService = {
    */
   getCategories: async (params?: { page?: number; size?: number; search?: string }): Promise<ShopCategoryDTO[]> => {
     try {
-      let url = config.endpoints.admin.payment.shopCategories;
+      let url = config.endpoints.admin.shopCategories;
       const queryParams = new URLSearchParams();
       if (params) {
         if (params.page !== undefined) queryParams.append('page', params.page.toString());
@@ -424,7 +424,7 @@ export const ShopService = {
    */
   getSubCategories: async (params?: { categoryId?: number; page?: number; size?: number; search?: string }): Promise<ShopSubCategoryDTO[]> => {
     try {
-      let url = config.endpoints.admin.payment.shopSubCategories;
+      let url = config.endpoints.admin.shopSubCategories;
       const queryParams = new URLSearchParams();
       if (params) {
         if (params.categoryId !== undefined) queryParams.append('categoryId', params.categoryId.toString());

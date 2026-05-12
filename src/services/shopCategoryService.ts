@@ -95,7 +95,7 @@ export const ShopCategoryService = {
    * Get all shop categories (paginated)
    */
   getShopCategories: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: ShopCategoryDTO[]; totalElements: number; totalPages: number }> => {
-    let url = config.endpoints.admin.payment.shopCategories;
+    let url = config.endpoints.admin.shopCategories;
     const queryParams = new URLSearchParams();
     if (params) {
       if (params.page !== undefined) queryParams.append('page', params.page.toString());
@@ -122,7 +122,7 @@ export const ShopCategoryService = {
    * Get shop category by ID
    */
   getShopCategoryById: async (id: number): Promise<ShopCategoryDTO> => {
-    return handleApiCall(() => api.get(config.endpoints.admin.payment.shopCategory(id)));
+    return handleApiCall(() => api.get(config.endpoints.admin.shopCategory(id)));
   },
 
   /**
@@ -130,7 +130,7 @@ export const ShopCategoryService = {
    */
   createShopCategory: async (data: FormData): Promise<ShopCategoryDTO> => {
     return handleApiCall(() =>
-      api.post(config.endpoints.admin.payment.shopCategories, data, {
+      api.post(config.endpoints.admin.shopCategories, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     );
@@ -141,7 +141,7 @@ export const ShopCategoryService = {
    */
   updateShopCategory: async (id: number, data: FormData): Promise<ShopCategoryDTO> => {
     return handleApiCall(() =>
-      api.put(config.endpoints.admin.payment.shopCategory(id), data, {
+      api.put(config.endpoints.admin.shopCategory(id), data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     );
@@ -151,14 +151,14 @@ export const ShopCategoryService = {
    * Delete a shop category
    */
   deleteShopCategory: async (id: number): Promise<void> => {
-    return handleApiCall(() => api.delete(config.endpoints.admin.payment.shopCategory(id)));
+    return handleApiCall(() => api.delete(config.endpoints.admin.shopCategory(id)));
   },
 
   /**
    * Get all shop sub-categories (paginated)
    */
   getShopSubCategoriesPaginated: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: ShopSubCategoryDTO[]; totalElements: number; totalPages: number }> => {
-    let url = config.endpoints.admin.payment.shopSubCategories;
+    let url = config.endpoints.admin.shopSubCategories;
     const queryParams = new URLSearchParams();
     if (params) {
       if (params.page !== undefined) queryParams.append('page', params.page.toString());
@@ -186,7 +186,7 @@ export const ShopCategoryService = {
    */
   getShopSubCategoriesByCategory: async (categoryId: number): Promise<ShopSubCategoryDTO[]> => {
     const response = await handleApiCall<ShopSubCategoryDTO[]>(
-      () => api.get(config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId))
+      () => api.get(config.endpoints.admin.shopSubCategoriesByCategory(categoryId))
     );
     return Array.isArray(response) ? response : [];
   },
@@ -195,7 +195,7 @@ export const ShopCategoryService = {
    * Get shop sub-category by ID
    */
   getShopSubCategoryById: async (id: number): Promise<ShopSubCategoryDTO> => {
-    return handleApiCall(() => api.get(config.endpoints.admin.payment.shopSubCategory(id)));
+    return handleApiCall(() => api.get(config.endpoints.admin.shopSubCategory(id)));
   },
 
   /**
@@ -203,7 +203,7 @@ export const ShopCategoryService = {
    */
   createShopSubCategory: async (categoryId: number, data: FormData): Promise<ShopSubCategoryDTO> => {
     return handleApiCall(() =>
-      api.post(config.endpoints.admin.payment.shopSubCategoriesByCategory(categoryId), data, {
+      api.post(config.endpoints.admin.shopSubCategoriesByCategory(categoryId), data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     );
@@ -214,7 +214,7 @@ export const ShopCategoryService = {
    */
   updateShopSubCategory: async (id: number, data: FormData): Promise<ShopSubCategoryDTO> => {
     return handleApiCall(() =>
-      api.put(config.endpoints.admin.payment.shopSubCategory(id), data, {
+      api.put(config.endpoints.admin.shopSubCategory(id), data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     );
@@ -224,6 +224,6 @@ export const ShopCategoryService = {
    * Delete a shop sub-category
    */
   deleteShopSubCategory: async (id: number): Promise<void> => {
-    return handleApiCall(() => api.delete(config.endpoints.admin.payment.shopSubCategory(id)));
+    return handleApiCall(() => api.delete(config.endpoints.admin.shopSubCategory(id)));
   },
 };
