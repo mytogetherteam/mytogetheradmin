@@ -31,10 +31,8 @@ export interface CreateCityRequest {
 }
 
 class CityService {
-  async getCities(page = 0, size = 20, search = ''): Promise<CityPage> {
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
-    if (search) params.append('search', search);
-    return apiClient.get<CityPage>(`${config.endpoints.admin.cities.list}?${params.toString()}`);
+  async getCities(params?: { page?: number; size?: number; search?: string }): Promise<CityPage> {
+    return apiClient.get<CityPage>(config.endpoints.admin.cities.list, { params });
   }
 
   async getCityById(id: number): Promise<CityDTO> {

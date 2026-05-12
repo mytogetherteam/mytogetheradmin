@@ -38,11 +38,8 @@ export interface CreateDistrictRequest {
 }
 
 class DistrictService {
-  async getDistricts(page = 0, size = 20, search = '', cityId?: number): Promise<DistrictPage> {
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
-    if (search) params.append('search', search);
-    if (cityId !== undefined) params.append('cityId', String(cityId));
-    return apiClient.get<DistrictPage>(`${config.endpoints.admin.districts.list}?${params.toString()}`);
+  async getDistricts(params?: { page?: number; size?: number; search?: string; cityId?: number }): Promise<DistrictPage> {
+    return apiClient.get<DistrictPage>(config.endpoints.admin.districts.list, { params });
   }
 
   async getDistrictById(id: number): Promise<DistrictDTO> {
