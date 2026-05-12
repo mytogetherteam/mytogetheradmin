@@ -44,9 +44,12 @@ export default function CreateShopCategory() {
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const { mutateAsync: createCategory, isPending: isCreating } = useCreateShopCategoryMutation();
-  const { mutateAsync: updateCategory, isPending: isUpdating } = useUpdateShopCategoryMutation();
-  const { mutateAsync: deleteCategory, isPending: isDeleting } = useDeleteShopCategoryMutation();
+  const { mutateAsync: createCategory, isPending: isCreating } =
+    useCreateShopCategoryMutation();
+  const { mutateAsync: updateCategory, isPending: isUpdating } =
+    useUpdateShopCategoryMutation();
+  const { mutateAsync: deleteCategory, isPending: isDeleting } =
+    useDeleteShopCategoryMutation();
 
   const submitting = isCreating || isUpdating;
 
@@ -113,16 +116,15 @@ export default function CreateShopCategory() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const dtoData = {
-      nameMm: nameMm || "",
-      nameTh: nameTh || "",
-      nameEn: nameEn || "",
-      displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
-      active: isActive,
-    };
-
     const formData = new FormData();
-    formData.append("data", JSON.stringify(dtoData));
+    formData.append("nameEn", nameEn || "");
+    formData.append("nameMm", nameMm || "");
+    formData.append("nameTh", nameTh || "");
+    formData.append(
+      "displayOrder",
+      String(displayOrder === "" || displayOrder < 1 ? 1 : displayOrder),
+    );
+    formData.append("active", isActive as any);
 
     if (imageFile) {
       formData.append("image", imageFile);
