@@ -15,7 +15,22 @@ export const api = axios.create({
   validateStatus: (status) => status >= 200 && status < 300,
 });
 
+function isFormData(body: unknown): body is FormData {
+  return (
+    typeof FormData !== 'undefined' &&
+    (body instanceof FormData ||
+      (body !== null &&
+        typeof body === 'object' &&
+        (body as { constructor?: { name?: string } }).constructor?.name ===
+        'FormData'))
+  );
+}
+
 api.interceptors.request.use((req) => {
+  if (isFormData(req.data)) {
+    delete req.headers['Content-Type'];
+  }
+
   const token = localStorage.getItem(config.storage.tokenKey);
   const path = req.url ?? '';
   const skipBearer =

@@ -129,22 +129,14 @@ export const ShopCategoryService = {
    * Create a new shop category
    */
   createShopCategory: async (data: FormData): Promise<ShopCategoryDTO> => {
-    return handleApiCall(() =>
-      api.post(config.endpoints.admin.shopCategories, data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    );
+    return handleApiCall(() => api.post(config.endpoints.admin.shopCategories, data));
   },
 
   /**
    * Update a shop category
    */
   updateShopCategory: async (id: number, data: FormData): Promise<ShopCategoryDTO> => {
-    return handleApiCall(() =>
-      api.put(config.endpoints.admin.shopCategory(id), data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    );
+    return handleApiCall(() => api.put(config.endpoints.admin.shopCategory(id), data));
   },
 
   /**
@@ -203,9 +195,7 @@ export const ShopCategoryService = {
    */
   createShopSubCategory: async (categoryId: number, data: FormData): Promise<ShopSubCategoryDTO> => {
     return handleApiCall(() =>
-      api.post(config.endpoints.admin.shopSubCategoriesByCategory(categoryId), data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      api.post(config.endpoints.admin.shopSubCategoriesByCategory(categoryId), data)
     );
   },
 
@@ -213,11 +203,7 @@ export const ShopCategoryService = {
    * Update a shop sub-category
    */
   updateShopSubCategory: async (id: number, data: FormData): Promise<ShopSubCategoryDTO> => {
-    return handleApiCall(() =>
-      api.put(config.endpoints.admin.shopSubCategory(id), data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    );
+    return handleApiCall(() => api.put(config.endpoints.admin.shopSubCategory(id), data));
   },
 
   /**
