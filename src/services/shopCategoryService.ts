@@ -83,6 +83,14 @@ async function handleApiCall<T>(requestFn: () => Promise<{ data: unknown }>): Pr
       );
     }
     if ('data' in body && 'success' in body) {
+      if (
+        'meta' in body &&
+        body.meta !== null &&
+        typeof body.meta === 'object' &&
+        !Array.isArray(body.meta)
+      ) {
+        return { data: body.data, meta: body.meta } as T;
+      }
       return body.data as T;
     }
   }
@@ -105,12 +113,68 @@ export const ShopCategoryService = {
     const queryString = queryParams.toString();
     if (queryString) url += `?${queryString}`;
 
-    const response = await handleApiCall<ShopCategoryDTO[] | { content: ShopCategoryDTO[]; totalElements: number; totalPages: number }>(
-      () => api.get(url)
-    );
+    const response = await handleApiCall<
+      | ShopCategoryDTO[]
+      | { content: ShopCategoryDTO[]; totalElements: number; totalPages: number }
+      | {
+        data: ShopCategoryDTO[];
+        meta: {
+          current_page: number;
+          from: number | null;
+          last_page: number;
+          per_page: number;
+          to: number | null;
+          total: number;
+        };
+      }
+      | {
+        data: ShopCategoryDTO[];
+        total: number;
+        last_page: number;
+        current_page: number;
+        per_page: number;
+        from: number | null;
+        to: number | null;
+      }
+    >(() => api.get(url));
 
+    if (
+      response &&
+      typeof response === 'object' &&
+      'meta' in response &&
+      'data' in response &&
+      Array.isArray((response as { data: unknown }).data)
+    ) {
+      const r = response as {
+        data: ShopCategoryDTO[];
+        meta: { total: number; last_page: number };
+      };
+      return {
+        content: r.data,
+        totalElements: r.meta.total,
+        totalPages: r.meta.last_page,
+      };
+    }
     if (Array.isArray(response)) {
       return { content: response, totalElements: response.length, totalPages: 1 };
+    }
+    if (
+      response &&
+      typeof response === 'object' &&
+      'data' in response &&
+      Array.isArray((response as { data?: unknown }).data) &&
+      !('meta' in response)
+    ) {
+      const r = response as {
+        data: ShopCategoryDTO[];
+        total: number;
+        last_page: number;
+      };
+      return {
+        content: r.data,
+        totalElements: r.total,
+        totalPages: r.last_page,
+      };
     }
     if (response && (response as { content?: unknown }).content) {
       return response as { content: ShopCategoryDTO[]; totalElements: number; totalPages: number };

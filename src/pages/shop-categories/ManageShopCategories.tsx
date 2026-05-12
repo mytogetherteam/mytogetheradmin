@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     Table,
     TableBody,
@@ -45,6 +45,18 @@ export default function ManageShopCategories() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+
+    const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+    const isFirstSearchDebounce = useRef(true);
+
+    useEffect(() => {
+        const delayMs = isFirstSearchDebounce.current ? 0 : 500;
+        isFirstSearchDebounce.current = false;
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), delayMs);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     // Delete confirmation dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
@@ -54,34 +66,34 @@ export default function ManageShopCategories() {
         setLoading(true);
         try {
             const res = await ShopCategoryService.getShopCategories({
-                page: 0,
-                size: 200,
-                search: searchTerm
+                page: currentPage,
+                size: pageSize,
+                search: debouncedSearch.trim() || undefined,
             });
             setCategories(res.content || []);
+            setTotalItems(res.totalElements ?? 0);
+            setTotalPages(Math.max(1, res.totalPages ?? 1));
         } catch (e) {
             handleApiError(e, "Failed to load shop categories");
         } finally {
             setLoading(false);
         }
-    }, [searchTerm]);
+    }, [debouncedSearch, currentPage, pageSize]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            loadCategories();
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm, loadCategories]);
+        void loadCategories();
+    }, [loadCategories]);
+
+    useEffect(() => {
+        if (!loading && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [loading, currentPage, totalPages]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedCategories = sortData(categories, sortConfig);
-
-    const totalItems = sortedCategories.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentCategories = sortedCategories.slice(startIndex, endIndex);
+    const currentCategories = sortedCategories;
 
     const exportToExcel = () => {
         const data = sortedCategories.map((c) => ({
@@ -249,7 +261,10 @@ export default function ManageShopCategories() {
                                 totalItems={totalItems}
                                 pageSize={pageSize}
                                 onPageChange={setCurrentPage}
-                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                                onPageSizeChange={(size) => {
+                                    setPageSize(size);
+                                    setCurrentPage(1);
+                                }}
                             />
                         </>
                     )}
