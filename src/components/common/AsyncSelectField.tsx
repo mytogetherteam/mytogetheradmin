@@ -59,6 +59,10 @@ interface BaseAsyncSelectFieldProps {
   initialValues?: Option[];
   /** Extra className for the trigger button. */
   triggerClassName?: string;
+  /** When set (single select), prepended to the chosen option label on the trigger (not on the empty / “all” row). */
+  selectedLabelPrefix?: string;
+  /** Text on the trigger when nothing is selected and `showAllOption` is not used. */
+  emptyTriggerLabel?: string;
   /** Disable the select field. */
   disabled?: boolean;
 }
@@ -81,6 +85,8 @@ export function AsyncSelectField(props: AsyncSelectFieldProps) {
     initialValues,
     triggerClassName,
     disabled = false,
+    selectedLabelPrefix,
+    emptyTriggerLabel = "Select option",
   } = props;
 
   const multiple = props.multiple === true;
@@ -340,7 +346,21 @@ export function AsyncSelectField(props: AsyncSelectFieldProps) {
       );
     }
 
-    return selectedOption ? selectedOption.label : "Select option";
+    return selectedOption
+      ? (() => {
+          const isEmptyChoice =
+            showAllOption && String(selectedOption.value) === "";
+          const base = selectedOption.label;
+          if (
+            !multiple &&
+            selectedLabelPrefix &&
+            !isEmptyChoice
+          ) {
+            return `${selectedLabelPrefix}${base}`;
+          }
+          return base;
+        })()
+      : emptyTriggerLabel;
   };
 
   return (

@@ -47,7 +47,7 @@ export const shopFormSchema = z.object({
         closeTime: z.string(),
         isClosed: z.boolean()
     })).default([]),
-    ownerId: z.number().optional().nullable(),
+    assignedAdminId: z.coerce.number().optional().nullable(),
 });
 
 export type ShopFormValues = z.infer<typeof shopFormSchema>;

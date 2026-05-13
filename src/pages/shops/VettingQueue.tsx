@@ -135,7 +135,7 @@ export default function VettingQueue() {
                                         </TableCell>
                                         <TableCell className="font-medium">{shop.nameEn || shop.nameMm || shop.name}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{shop.ownerName ?? "—"}</TableCell>
-                                        <TableCell className="text-sm">{shop.category || shop.categoryMm || "—"}</TableCell>
+                                        <TableCell className="text-sm">{shop.shopCategory?.nameMm || shop.shopCategory?.nameEn || shop.category || "—"}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
                                             {shop.createdAt ? new Date(shop.createdAt).toLocaleDateString() : "—"}
                                         </TableCell>
