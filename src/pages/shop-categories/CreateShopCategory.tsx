@@ -44,9 +44,12 @@ export default function CreateShopCategory() {
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const { mutateAsync: createCategory, isPending: isCreating } = useCreateShopCategoryMutation();
-  const { mutateAsync: updateCategory, isPending: isUpdating } = useUpdateShopCategoryMutation();
-  const { mutateAsync: deleteCategory, isPending: isDeleting } = useDeleteShopCategoryMutation();
+  const { mutateAsync: createCategory, isPending: isCreating } =
+    useCreateShopCategoryMutation();
+  const { mutateAsync: updateCategory, isPending: isUpdating } =
+    useUpdateShopCategoryMutation();
+  const { mutateAsync: deleteCategory, isPending: isDeleting } =
+    useDeleteShopCategoryMutation();
 
   const submitting = isCreating || isUpdating;
 
