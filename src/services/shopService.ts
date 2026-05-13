@@ -49,19 +49,18 @@ export interface Shop {
   nameTh?: string;
   nameEn?: string;
   category: string;
-  categoryMm?: string;
-  categoryTh?: string;
-  categoryEn?: string;
 
   address?: string;
   addressMm?: string;
   addressTh?: string;
   addressEn?: string;
-  district?: string;
+  district?: string | DistrictDTO;
   districtMm?: string;
+  districtEn?: string;
+  districtTh?: string;
   districtId?: number;
-  city?: string;
-  cityMm?: string;
+  city?: string | CityDTO;
+  cityId?: number;
   phone?: string;
   email?: string;
   description?: string;
@@ -104,11 +103,9 @@ export interface Shop {
   specialties?: string;
   menuCategoryCount?: number;
   menuItemCount?: number;
-  subCategoryMm?: string;
-  subCategoryTh?: string;
-  cityId?: number;
   cuisineId?: number;
-  ownerId?: number;
+  /** Admin id (admin table) linked via AdminShop; replaces legacy owner user id. */
+  assignedAdminId?: number;
 }
 
 export interface DistrictDTO {
@@ -133,6 +130,32 @@ export interface CityDTO {
   nameTh?: string;
   active: boolean;
   districts?: DistrictDTO[];
+}
+
+/** City label from nested `city` (Prisma/API) or legacy string `city`. */
+export function resolveShopCityLabel(shop: {
+  city?: string | CityDTO;
+}): string | undefined {
+  const c = shop.city;
+  if (c && typeof c === 'object') {
+    return c.nameEn || c.nameMm || c.nameTh || undefined;
+  }
+  if (typeof c === 'string' && c.trim()) return c;
+  return undefined;
+}
+
+/** District label from nested `district`, legacy `district` string, or En/Mm fields. */
+export function resolveShopDistrictLabel(shop: {
+  district?: string | DistrictDTO;
+  districtMm?: string;
+  districtEn?: string;
+}): string | undefined {
+  const d = shop.district;
+  if (d && typeof d === 'object') {
+    return d.nameEn || d.nameMm || d.nameTh || undefined;
+  }
+  if (typeof d === 'string' && d.trim()) return d;
+  return shop.districtMm || shop.districtEn || undefined;
 }
 
 export interface RegionDTO {
@@ -217,8 +240,55 @@ export interface ShopSubCategoryDTO {
   displayOrder?: number;
 }
 
+/** Row from GET /api/admin/shop-profile (includes joined shopCategory). */
+export interface AdminShopProfileListItem {
+  id: number;
+  nameEn: string;
+  nameMm?: string | null;
+  nameTh?: string | null;
+  coverUrl?: string | null;
+  logoUrl?: string | null;
+  addressEn?: string | null;
+  addressMm?: string | null;
+  addressTh?: string | null;
+  isActive: boolean;
+  isVerified: boolean;
+  categoryId?: number | null;
+  shopCategory?: ShopCategoryDTO | null;
+  city?: CityDTO | null;
+  district?: DistrictDTO | null;
+}
 
+export interface AdminShopProfileListResponse {
+  content: AdminShopProfileListItem[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  numberOfElements: number;
+}
 
+export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Shop {
+  return {
+    id: row.id,
+    name: row.nameEn,
+    nameEn: row.nameEn,
+    nameMm: row.nameMm ?? undefined,
+    nameTh: row.nameTh ?? undefined,
+    coverUrl: row.coverUrl ?? undefined,
+    logoUrl: row.logoUrl ?? undefined,
+    address: row.addressEn ?? undefined,
+    addressEn: row.addressEn ?? undefined,
+    addressMm: row.addressMm ?? undefined,
+    addressTh: row.addressTh ?? undefined,
+    shopCategory: row.shopCategory ?? undefined,
+    category: row.shopCategory?.nameEn ?? '',
+    district: row.district ?? undefined,
+    city: row.city ?? undefined,
+    isActive: row.isActive,
+    isVerified: row.isVerified,
+  };
+}
 export interface ShopFormDataDTO {
   cities: CityDTO[];
   cuisineTypes: CuisineTypeDTO[];
@@ -348,7 +418,6 @@ export interface ShopDetail extends Shop {
   cuisineTypes?: CuisineTypeDTO[];
   cuisineTypeIds?: number[];
   mealTypes?: string[];
-  ownerId?: number;
   supportedDeliveryTypes?: string[];
   paymentMethodIds?: number[];
   paymentMethods?: PaymentMethodDTO[];
@@ -448,8 +517,30 @@ export const ShopService = {
    * Create a new shop
    */
   createShop: async (shopData: FormData): Promise<ShopDetail> => {
-    const endpoint = config.endpoints.shops.list; 
-    return apiClient.post<ShopDetail>(endpoint, shopData);
+    return apiClient.post<ShopDetail>(
+      config.endpoints.admin.shopProfile.create,
+      shopData,
+    );
+  },
+
+  /**
+   * SuperAdmin: paginated shop profiles from Prisma (admin shop-profile API).
+   * Page is 1-based (matches backend).
+   */
+  getAdminShopProfiles: async (
+    page: number = 1,
+    size: number = 20,
+    search?: string,
+  ): Promise<AdminShopProfileListResponse> => {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+    if (search?.trim()) {
+      params.set('search', search.trim());
+    }
+    const url = `${config.endpoints.admin.shopProfile.list}?${params.toString()}`;
+    return apiClient.get<AdminShopProfileListResponse>(url);
   },
 
   /**

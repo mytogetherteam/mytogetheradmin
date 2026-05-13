@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { ShopService, Shop } from "@/services/shopService"
+import { ShopService, Shop, resolveShopCityLabel, resolveShopDistrictLabel, mapAdminShopProfileRowToShop } from "@/services/shopService"
 import {
     Table,
     TableBody,
@@ -17,7 +17,8 @@ import { Loader } from "@/components/ui/loader"
 import { Input } from "@/components/ui/input"
 import { DataTablePagination } from "@/components/DataTablePagination"
 import { SortableTableHead } from "@/components/SortableTableHead"
-import { TableImage } from "@/components/TableImage"
+import { LazyImage } from "@/components/common/LazyImage"
+import { resolveMediaUrl } from "@/lib/resolveMediaUrl"
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils"
 import {
     Select,
@@ -82,10 +83,11 @@ export default function ManageShopRestaurant() {
         try {
             // Include sort if needed, but ShopService sort param format might vary. 
             // For now, let's keep it simple with page, size, and search.
-            const response = await ShopService.getAllShops(currentPage - 1, pageSize, debouncedSearch)
-            const list = response?.content || []
-            setShops(Array.isArray(list) ? list : [])
-            setTotalElements(response?.page?.totalElements ?? response?.totalElements ?? list.length)
+            const response = await ShopService.getAdminShopProfiles(currentPage, pageSize, debouncedSearch)
+            const raw = response?.content || []
+            const list = Array.isArray(raw) ? raw.map(mapAdminShopProfileRowToShop) : []
+            setShops(list)
+            setTotalElements(response?.totalElements ?? list.length)
         } catch (error) {
             handleApiError(error, "Failed to load shops")
         } finally {
@@ -183,8 +185,8 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const sortedShops = sortData(shops, sortConfig)
-    const currentShops = sortedShops // No longer slicing in-memory
+    const displayedAllShops = shops
+    const displayedPendingShops = sortData(pendingShops, sortConfig)
     const totalPages = Math.max(1, Math.ceil(totalElements / pageSize))
     const startIndex = (currentPage - 1) * pageSize
     const endIndex = Math.min(startIndex + pageSize, totalElements)
@@ -198,15 +200,15 @@ export default function ManageShopRestaurant() {
     const exportToExcel = async () => {
         try {
             const XLSX = await import("xlsx")
-            const data = sortedShops.map((shop) => ({
+            const data = displayedAllShops.map((shop) => ({
                 ID: shop.id,
                 Name: shop.name,
                 NameMM: shop.nameMm || "",
                 Category: shop.category,
                 SubCategory: shop.category || "",
                 Address: shop.address,
-                District: shop.district || "",
-                City: shop.city || "",
+                District: resolveShopDistrictLabel(shop) || "",
+                City: resolveShopCityLabel(shop) || "",
                 Phone: shop.phone || "",
                 Rating: shop.ratingAvg || 0,
                 ReviewCount: shop.ratingCount || 0,
@@ -222,9 +224,139 @@ export default function ManageShopRestaurant() {
         }
     }
 
-    const ShopTable = ({ shopList, isLoading }: { shopList: Shop[]; isLoading: boolean }) => (
+    const ShopTable = ({
+        shopList,
+        isLoading,
+        variant = "full",
+    }: {
+        shopList: Shop[]
+        isLoading: boolean
+        variant?: "full" | "adminList"
+    }) => (
         isLoading ? (
             <div className="flex justify-center items-center py-12"><Loader /></div>
+        ) : variant === "adminList" ? (
+            <div className="rounded-md border overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[52px]">Photo</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Address</TableHead>
+                            <TableHead className="w-[100px]">Active</TableHead>
+                            <TableHead className="w-[110px]">Verified</TableHead>
+                            <TableHead className="text-right w-[120px]">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {shopList.length > 0 ? (
+                            shopList.map((shop) => {
+                                const coverSrc = resolveMediaUrl(shop.coverUrl || shop.logoUrl)
+                                const locality = [resolveShopDistrictLabel(shop), resolveShopCityLabel(shop)].filter(Boolean).join(", ")
+                                const street = shop.addressEn || shop.address || ""
+                                const addressDisplay = [street, locality].filter(Boolean).join(street && locality ? " · " : "") || "—"
+                                return (
+                                    <TableRow
+                                        key={shop.id}
+                                        onClick={() => {
+                                            localStorage.setItem("lastSelectedShopId", String(shop.id))
+                                            setSelectedShopId(shop.id)
+                                            navigate(`/shops/create?id=${shop.id}`)
+                                        }}
+                                        className={`cursor-pointer transition-colors ${selectedShopId === shop.id ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
+                                    >
+                                        <TableCell className="align-middle">
+                                            <LazyImage
+                                                src={coverSrc}
+                                                alt={shop.nameEn || shop.nameMm || shop.name || "Shop cover"}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="font-medium">
+                                            <div>{shop.nameEn || shop.nameMm || shop.name}</div>
+                                            {shop.nameMm && shop.nameEn && shop.nameMm !== shop.nameEn && (
+                                                <div className="text-xs text-muted-foreground">{shop.nameMm}</div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="max-w-[200px] truncate">
+                                                {shop.shopCategory?.nameEn || shop.category || shop.shopCategory?.nameMm || "—"}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="max-w-[280px] text-sm text-muted-foreground">
+                                            <span className="line-clamp-2">{addressDisplay}</span>
+                                        </TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex flex-col gap-1">
+                                                <Switch
+                                                    checked={shop.isActive !== false}
+                                                    disabled={actionLoading === shop.id}
+                                                    onCheckedChange={() =>
+                                                        handleToggleStatus({ stopPropagation: () => {} } as unknown as React.MouseEvent, shop)
+                                                    }
+                                                />
+                                                <span className={`text-xs font-medium ${shop.isActive !== false ? "text-green-600" : "text-red-500"}`}>
+                                                    {shop.isActive !== false ? "Active" : "Inactive"}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {shop.isVerified ? (
+                                                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Verified</Badge>
+                                            ) : (
+                                                <Badge variant="secondary">Unverified</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Edit"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        localStorage.setItem("lastSelectedShopId", String(shop.id))
+                                                        setSelectedShopId(shop.id)
+                                                        navigate(`/shops/create?id=${shop.id}`)
+                                                    }}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title={shop.isVerified ? "Already verified" : "Verify shop"}
+                                                    disabled={shop.isVerified || actionLoading === shop.id}
+                                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                    onClick={(e) => handleVerify(e, shop)}
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Reject shop"
+                                                    disabled={actionLoading === shop.id}
+                                                    className="text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                                    onClick={(e) => openRejectDialog(e, shop)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                    No results.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         ) : (
             <div className="rounded-md border overflow-x-auto">
                 <Table>
@@ -254,9 +386,9 @@ export default function ManageShopRestaurant() {
                                     className={`cursor-pointer transition-colors ${selectedShopId === shop.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
                                 >
                                     <TableCell>
-                                        <TableImage 
-                                            src={shop.logoUrl} 
-                                            alt={shop.nameEn || shop.nameMm || shop.name || "Shop"} 
+                                        <LazyImage
+                                            src={resolveMediaUrl(shop.logoUrl || shop.coverUrl)}
+                                            alt={shop.nameEn || shop.nameMm || shop.name || "Shop"}
                                         />
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">{shop.id}</TableCell>
@@ -265,10 +397,10 @@ export default function ManageShopRestaurant() {
                                         {shop.nameMm && shop.nameEn && shop.nameMm !== shop.nameEn && <div className="text-xs text-muted-foreground">{shop.nameMm}</div>}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="capitalize">{shop.category || shop.categoryMm || shop.categoryEn}</Badge>
+                                        <Badge variant="outline" className="capitalize">{shop.shopCategory?.nameEn || shop.category || shop.shopCategory?.nameMm || "—"}</Badge>
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
-                                        {[shop.district || shop.districtMm, shop.city || shop.cityMm].filter(Boolean).join(", ") || "—"}
+                                        {[resolveShopDistrictLabel(shop), resolveShopCityLabel(shop)].filter(Boolean).join(", ") || "—"}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1 max-w-[120px]">
@@ -397,7 +529,7 @@ export default function ManageShopRestaurant() {
                                 <div className="flex justify-center items-center py-12"><Loader /></div>
                             ) : (
                                 <>
-                                    <ShopTable shopList={currentShops} isLoading={false} />
+                                    <ShopTable shopList={displayedAllShops} isLoading={false} variant="adminList" />
 
                                     {/* Pagination */}
                                     <div className="flex flex-col items-center gap-4 py-4 md:flex-row md:justify-between px-2">
@@ -443,7 +575,7 @@ export default function ManageShopRestaurant() {
                             )}
                         </TabsContent>
                         <TabsContent value="pending">
-                            <ShopTable shopList={pendingShops} isLoading={pendingLoading} />
+                            <ShopTable shopList={displayedPendingShops} isLoading={pendingLoading} variant="full" />
                             <DataTablePagination
                                 currentPage={pendingCurrentPage}
                                 totalPages={Math.max(1, Math.ceil(pendingTotalElements / pendingPageSize))}

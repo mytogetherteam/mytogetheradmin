@@ -122,7 +122,7 @@ export default function CreateShopCategory() {
     formData.append("nameTh", nameTh || "");
     formData.append(
       "displayOrder",
-      String(displayOrder === "" || displayOrder < 1 ? 1 : displayOrder),
+      String(displayOrder === "" || displayOrder < 1 ? 1 : displayOrder)
     );
     formData.append("active", isActive as any);
 

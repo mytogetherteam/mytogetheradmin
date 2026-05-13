@@ -19,10 +19,17 @@ export const config = {
         orders: '/api/admin/export/orders',
       },
       auditLogs: '/api/admin/audit-logs',
+      admins: {
+        list: '/api/admin/admins',
+      },
       shopCategories: '/api/admin/shop-categories',
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
+      shopProfile: {
+        create: '/api/admin/shop-profile',
+        list: '/api/admin/shop-profile',
+      },
       shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
       payment: {
         shopFormData: '/api/admin/setup/shop-form-data',

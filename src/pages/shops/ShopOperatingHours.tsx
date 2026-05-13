@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
-import { ShopService, OperatingHour, Shop } from "@/services/shopService"
+import { ShopService, OperatingHour, Shop, resolveShopCityLabel, resolveShopDistrictLabel } from "@/services/shopService"
 import {
     Table,
     TableBody,
@@ -47,10 +47,13 @@ export default function ShopOperatingHours() {
         const response = await ShopService.getAllShops(page, size, search)
         return {
             ...response,
-            content: (response.content || []).map(shop => ({
-                ...shop,
-                dropdownLabel: `${shop.nameEn || shop.nameMm || shop.name} ${shop.city || shop.cityMm ? `- ${shop.city || shop.cityMm}` : ""}`
-            })) as DropdownShop[]
+            content: (response.content || []).map(shop => {
+                const cityPart = resolveShopCityLabel(shop);
+                return {
+                    ...shop,
+                    dropdownLabel: `${shop.nameEn || shop.nameMm || shop.name}${cityPart ? ` - ${cityPart}` : ""}`,
+                };
+            }) as DropdownShop[]
         }
     }
 
@@ -139,7 +142,7 @@ export default function ShopOperatingHours() {
                                     <h3 className="font-semibold text-lg leading-none mb-1">{selectedShop.nameEn || selectedShop.nameMm || selectedShop.name}</h3>
                                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                                         <MapPin className="h-3.5 w-3.5" />
-                                        {[selectedShop.district || selectedShop.districtMm, selectedShop.city || selectedShop.cityMm].filter(Boolean).join(", ") || "No location provided"}
+                                        {[resolveShopDistrictLabel(selectedShop), resolveShopCityLabel(selectedShop)].filter(Boolean).join(", ") || "No location provided"}
                                     </div>
                                     <div className="mt-2 flex gap-2">
                                         <Badge variant="outline" className="capitalize text-[10px] py-0">{selectedShop.category}</Badge>

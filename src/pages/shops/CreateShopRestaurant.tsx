@@ -27,10 +27,9 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO } from "@/services/shopService"
+import { ShopService, ShopFormDataDTO, DistrictDTO, ShopCategoryDTO, ShopSubCategoryDTO, PaymentMethodDTO, CuisineTypeDTO, resolveShopCityLabel, resolveShopDistrictLabel } from "@/services/shopService"
 import { compressImage } from "@/utils/imageCompression"
 import { PaymentService } from "@/services/paymentService"
-import { userService } from "@/services/userService"
 import { Loader } from "@/components/ui/loader"
 import { toast } from "sonner"
 import { handleApiError } from "@/lib/error-utils"
@@ -46,17 +45,108 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AsyncSelectField } from "@/components/common/AsyncSelectField"
 
 import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-
 import { shopFormSchema, ShopFormValues } from "@/schemas/shop.schema"
 import { ShopCategoryService } from "@/services/shopCategoryService"
 import { cuisineService } from "@/services/cuisineService"
 import { cityService } from "@/services/cityService"
 import { districtService } from "@/services/districtService"
+import { AdminsService } from "@/services/adminsService"
+import { useAuthStore } from "@/store/useAuthStore"
 
-
+/** Form fields for POST /api/admin/shop-profile — must match CreateAdminShopProfileDto (multipart). */
+function appendCreateAdminShopProfileFields(
+    fd: FormData,
+    p: {
+        nameEn: string
+        nameMm: string
+        nameTh: string
+        shopCategoryId?: number | null
+        shopSubCategoryId: number | null
+        addressEn?: string
+        addressMm: string
+        addressTh: string
+        districtId?: number
+        latitude?: number
+        longitude?: number
+        phone: string
+        email: string
+        descriptionEn: string
+        descriptionMm: string
+        descriptionTh: string
+        hasDelivery: boolean
+        deliveryEnabled: boolean
+        hasParking: boolean
+        hasWifi: boolean
+        isVerified: boolean
+        isActive: boolean
+        cityId: number | null
+        isHalal: boolean
+        isVegetarian: boolean
+        pricePreference: string
+        enableStockCheck: boolean
+        maxItemQuantityPerOrder: number
+        minOrderAmount: number
+        baseDeliveryFee: number
+        cuisineTypeIds: number[]
+        supportedDeliveryTypes: string[]
+        paymentMethodIds: number[]
+        operatingHours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[]
+        assignedAdminId: number | null
+    },
+) {
+    fd.append("nameEn", p.nameEn ?? "")
+    fd.append("nameMm", p.nameMm)
+    fd.append("nameTh", p.nameTh)
+    if (p.shopCategoryId != null && p.shopCategoryId > 0) {
+        fd.append("shopCategoryId", String(p.shopCategoryId))
+    }
+    if (p.shopSubCategoryId != null && p.shopSubCategoryId > 0) {
+        fd.append("shopSubCategoryId", String(p.shopSubCategoryId))
+    }
+    if (p.addressEn) fd.append("addressEn", p.addressEn)
+    fd.append("addressMm", p.addressMm)
+    fd.append("addressTh", p.addressTh)
+    if (p.districtId != null && p.districtId > 0) {
+        fd.append("districtId", String(p.districtId))
+    }
+    if (p.latitude != null && p.latitude !== 0) {
+        fd.append("latitude", String(p.latitude))
+    }
+    if (p.longitude != null && p.longitude !== 0) {
+        fd.append("longitude", String(p.longitude))
+    }
+    fd.append("phone", p.phone)
+    if (p.email) fd.append("email", p.email)
+    fd.append("descriptionEn", p.descriptionEn)
+    fd.append("descriptionMm", p.descriptionMm)
+    fd.append("descriptionTh", p.descriptionTh)
+    fd.append("hasDelivery", String(p.hasDelivery))
+    fd.append("deliveryEnabled", String(p.deliveryEnabled))
+    fd.append("hasParking", String(p.hasParking))
+    fd.append("hasWifi", String(p.hasWifi))
+    fd.append("isVerified", String(p.isVerified))
+    fd.append("isActive", String(p.isActive))
+    if (p.cityId != null && p.cityId > 0) {
+        fd.append("cityId", String(p.cityId))
+    }
+    fd.append("isHalal", String(p.isHalal))
+    fd.append("isVegetarian", String(p.isVegetarian))
+    fd.append("pricePreference", p.pricePreference || "MEDIUM")
+    fd.append("enableStockCheck", String(p.enableStockCheck))
+    fd.append("maxItemQuantityPerOrder", String(p.maxItemQuantityPerOrder))
+    fd.append("minOrderAmount", String(p.minOrderAmount))
+    fd.append("baseDeliveryFee", String(p.baseDeliveryFee))
+    fd.append("cuisineTypeIds", JSON.stringify(p.cuisineTypeIds ?? []))
+    fd.append("supportedDeliveryTypes", JSON.stringify(p.supportedDeliveryTypes ?? []))
+    fd.append("paymentMethodIds", JSON.stringify(p.paymentMethodIds ?? []))
+    fd.append("operatingHours", JSON.stringify(p.operatingHours ?? []))
+    if (p.assignedAdminId != null) {
+        fd.append("assignedAdminId", String(p.assignedAdminId))
+    }
+}
 
 export default function CreateShopRestaurant() {
+    const authUser = useAuthStore((s) => s.user)
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const shopId = searchParams.get("id")
@@ -86,7 +176,6 @@ export default function CreateShopRestaurant() {
 
     const [initialCategoryLabel, setInitialCategoryLabel] = useState<string | null>(null)
     const [initialSubCategoryLabel, setInitialSubCategoryLabel] = useState<string | null>(null)
-    const [selectedOwnerName, setSelectedOwnerName] = useState<string | null>(null)
     const [initialCityLabel, setInitialCityLabel] = useState<string | null>(null)
     const [initialDistrictLabel, setInitialDistrictLabel] = useState<string | null>(null)
 
@@ -140,7 +229,7 @@ export default function CreateShopRestaurant() {
                 { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                 { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
             ],
-            ownerId: undefined,
+            assignedAdminId: undefined,
         },
     })
 
@@ -238,10 +327,10 @@ export default function CreateShopRestaurant() {
                         { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                         { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
                     ],
-                ownerId: shop.ownerId || undefined,
+                assignedAdminId: shop.assignedAdminId ?? undefined,
             })
 
-            setInitialCategoryLabel(shop.shopCategory?.nameEn || shop.categoryEn || shop.category || null);
+            setInitialCategoryLabel(shop.shopCategory?.nameEn || shop.category || null);
             setInitialSubCategoryLabel(
                 (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0
                     ? shop.shopCategory.subCategories[0].nameEn
@@ -249,9 +338,17 @@ export default function CreateShopRestaurant() {
                 shop.subCategory ||
                 null
             );
-            setSelectedOwnerName(shop.ownerName || null);
-            setInitialCityLabel(shop.cityEn || shop.cityMm || null);
-            setInitialDistrictLabel(shop.districtEn || shop.districtMm || null);
+            const setupCity =
+                shop.cityId && setupData?.cities
+                    ? setupData.cities.find((c) => c.id === shop.cityId)
+                    : undefined;
+            setInitialCityLabel(
+                setupCity?.nameEn ||
+                    setupCity?.nameMm ||
+                    resolveShopCityLabel(shop) ||
+                    null,
+            );
+            setInitialDistrictLabel(resolveShopDistrictLabel(shop) || null);
 
             if (shop.cuisineTypes) {
                 setInitialCuisineOptions(shop.cuisineTypes.map((c: any) => ({
@@ -310,11 +407,11 @@ export default function CreateShopRestaurant() {
                         );
                     }
 
-                    // Try by city name
-                    if (!city && shop.city) {
-                        const cityName = shop.city;
+                    // Try by city name (legacy string or nested DTO from API)
+                    const cityNameFromShop = resolveShopCityLabel(shop);
+                    if (!city && cityNameFromShop) {
                         city = setupData.cities.find(c =>
-                            c.nameEn === cityName || c.nameMm === cityName
+                            c.nameEn === cityNameFromShop || c.nameMm === cityNameFromShop
                         );
                     }
 
@@ -409,9 +506,8 @@ export default function CreateShopRestaurant() {
                     { dayOfWeek: 5, openTime: "09:00", closeTime: "21:00", isClosed: false },
                     { dayOfWeek: 6, openTime: "09:00", closeTime: "21:00", isClosed: false },
                 ],
-                ownerId: undefined,
+                assignedAdminId: undefined,
             })
-            setSelectedOwnerName(null)
             setInitialCategoryLabel(null)
             setInitialSubCategoryLabel(null)
             setInitialCuisineOptions([])
@@ -433,72 +529,109 @@ export default function CreateShopRestaurant() {
     const onSubmit: SubmitHandler<ShopFormValues> = async (data) => {
         setSubmitting(true)
         try {
-            // Create FormData
-            const formData = new FormData();
-
-            const payloadData = {
-                nameEn: data.nameEn,
-                nameMm: data.nameMm || "",
-                nameTh: data.nameTh || "",
-                shopCategoryId: data.shopCategoryId,
-                shopSubCategoryId: data.shopSubCategoryId || null,
-                addressEn: data.addressEn,
-                addressMm: data.addressMm || "",
-                addressTh: data.addressTh || "",
-                districtId: data.districtId,
-                latitude: data.latitude,
-                longitude: data.longitude,
-                phone: data.phone || "",
-                email: data.email || "",
-                descriptionEn: data.descriptionEn || "",
-                descriptionMm: data.descriptionMm || "",
-                descriptionTh: data.descriptionTh || "",
-                hasDelivery: data.hasDelivery ?? false,
-                deliveryEnabled: data.deliveryEnabled ?? false,
-                hasParking: data.hasParking ?? false,
-                hasWifi: data.hasWifi ?? false,
-                isVerified: data.isVerified ?? false,
-                isActive: data.isActive ?? true,
-                cityId: selectedCityId,
-                isHalal: data.isHalal ?? false,
-                isVegetarian: data.isVegetarian ?? false,
-                pricePreference: data.pricePreference || "MEDIUM",
-                enableStockCheck: data.enableStockCheck ?? false,
-                maxItemQuantityPerOrder: data.maxItemQuantityPerOrder || 10,
-                minOrderAmount: data.minOrderAmount || 1,
-                baseDeliveryFee: data.baseDeliveryFee || 0,
-                cuisineTypeIds: data.cuisineTypeIds,
-                mealTypes: data.mealTypes,
-                supportedDeliveryTypes: data.supportedDeliveryTypes,
-                paymentMethodIds: data.paymentMethodIds,
-                operatingHours: data.operatingHours,
-                ownerId: data.ownerId || null,
-            };
-
-            formData.append("data", new Blob([JSON.stringify(payloadData)], {
-                type: "application/json"
-            }));
-
-            // Append Logo Photo
-            if (logoFile) {
-                formData.append("logoPhoto", logoFile);
-            }
-
-            // Append Cover Photo
-            if (coverFile) {
-                formData.append("coverPhoto", coverFile);
-            }
-
-            // Append Gallery Photos
-            galleryFiles.forEach((file) => {
-                formData.append("galleryPhotos", file);
-            });
-
             if (isEditMode && shopId) {
+                const payloadData = {
+                    nameEn: data.nameEn,
+                    nameMm: data.nameMm || "",
+                    nameTh: data.nameTh || "",
+                    shopCategoryId: data.shopCategoryId,
+                    shopSubCategoryId: data.shopSubCategoryId || null,
+                    addressEn: data.addressEn,
+                    addressMm: data.addressMm || "",
+                    addressTh: data.addressTh || "",
+                    districtId: data.districtId,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    phone: data.phone || "",
+                    email: data.email || "",
+                    descriptionEn: data.descriptionEn || "",
+                    descriptionMm: data.descriptionMm || "",
+                    descriptionTh: data.descriptionTh || "",
+                    hasDelivery: data.hasDelivery ?? false,
+                    deliveryEnabled: data.deliveryEnabled ?? false,
+                    hasParking: data.hasParking ?? false,
+                    hasWifi: data.hasWifi ?? false,
+                    isVerified: data.isVerified ?? false,
+                    isActive: data.isActive ?? true,
+                    cityId: selectedCityId,
+                    isHalal: data.isHalal ?? false,
+                    isVegetarian: data.isVegetarian ?? false,
+                    pricePreference: data.pricePreference || "MEDIUM",
+                    enableStockCheck: data.enableStockCheck ?? false,
+                    maxItemQuantityPerOrder: data.maxItemQuantityPerOrder || 10,
+                    minOrderAmount: data.minOrderAmount || 1,
+                    baseDeliveryFee: data.baseDeliveryFee || 0,
+                    cuisineTypeIds: data.cuisineTypeIds,
+                    mealTypes: data.mealTypes,
+                    supportedDeliveryTypes: data.supportedDeliveryTypes,
+                    paymentMethodIds: data.paymentMethodIds,
+                    operatingHours: data.operatingHours,
+                    assignedAdminId: data.assignedAdminId ?? null,
+                };
+                const formData = new FormData();
+                formData.append("data", new Blob([JSON.stringify(payloadData)], {
+                    type: "application/json"
+                }));
+                if (logoFile) {
+                    formData.append("logoPhoto", logoFile);
+                }
+                if (coverFile) {
+                    formData.append("coverPhoto", coverFile);
+                }
+                galleryFiles.forEach((file) => {
+                    formData.append("galleryPhotos", file);
+                });
                 const numericId = parseInt(shopId, 10)
                 await ShopService.updateShop(numericId, formData)
                 toast.success("Shop updated successfully!")
             } else {
+                const formData = new FormData();
+                appendCreateAdminShopProfileFields(formData, {
+                    nameEn: data.nameEn ?? "",
+                    nameMm: data.nameMm || "",
+                    nameTh: data.nameTh || "",
+                    shopCategoryId: data.shopCategoryId,
+                    shopSubCategoryId: data.shopSubCategoryId ?? null,
+                    addressEn: data.addressEn,
+                    addressMm: data.addressMm || "",
+                    addressTh: data.addressTh || "",
+                    districtId: data.districtId ?? undefined,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    phone: data.phone || "",
+                    email: data.email || "",
+                    descriptionEn: data.descriptionEn || "",
+                    descriptionMm: data.descriptionMm || "",
+                    descriptionTh: data.descriptionTh || "",
+                    hasDelivery: data.hasDelivery ?? false,
+                    deliveryEnabled: data.deliveryEnabled ?? false,
+                    hasParking: data.hasParking ?? false,
+                    hasWifi: data.hasWifi ?? false,
+                    isVerified: data.isVerified ?? false,
+                    isActive: data.isActive ?? true,
+                    cityId: selectedCityId,
+                    isHalal: data.isHalal ?? false,
+                    isVegetarian: data.isVegetarian ?? false,
+                    pricePreference: data.pricePreference || "MEDIUM",
+                    enableStockCheck: data.enableStockCheck ?? false,
+                    maxItemQuantityPerOrder: data.maxItemQuantityPerOrder || 10,
+                    minOrderAmount: data.minOrderAmount || 1,
+                    baseDeliveryFee: data.baseDeliveryFee || 0,
+                    cuisineTypeIds: data.cuisineTypeIds,
+                    supportedDeliveryTypes: data.supportedDeliveryTypes,
+                    paymentMethodIds: data.paymentMethodIds,
+                    operatingHours: data.operatingHours,
+                    assignedAdminId: data.assignedAdminId ?? null,
+                });
+                if (logoFile) {
+                    formData.append("logoPhoto", logoFile);
+                }
+                if (coverFile) {
+                    formData.append("coverPhoto", coverFile);
+                }
+                galleryFiles.forEach((file) => {
+                    formData.append("galleryPhotos", file);
+                });
                 await ShopService.createShop(formData)
                 toast.success("Shop created successfully!")
             }
@@ -751,40 +884,46 @@ export default function CreateShopRestaurant() {
 
                                         <FormField
                                             control={form.control}
-                                            name="ownerId"
+                                            name="assignedAdminId"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Shop Owner</FormLabel>
+                                                    <FormLabel>Shop admin</FormLabel>
                                                     <FormControl>
-                                                        <AsyncSelectField
-                                                            label="Shop Owner"
-                                                            hideLabel
-                                                            fetchFunction={async (page, size, search) => {
-                                                                const results = await userService.getShopOwners(page - 1, size, search || "");
-                                                                return {
-                                                                    data: results.content.map(u => ({ label: u.fullName || u.username || `User ${u.id}`, value: String(u.id) })),
-                                                                    totalCount: results.totalElements,
-                                                                };
-                                                            }}
-                                                            value={field.value ? String(field.value) : ""}
-                                                            onValueChange={(val) => {
-                                                                if (val) {
-                                                                    field.onChange(Number(val));
-                                                                } else {
-                                                                    field.onChange(null);
-                                                                    setSelectedOwnerName(null);
+                                                            <AsyncSelectField
+                                                                label="Shop admin"
+                                                                hideLabel
+                                                                showAllOption
+                                                                allOptionLabel="Select admin"
+                                                                fetchFunction={async (page, size, search) => {
+                                                                    const results = await AdminsService.getAdminsPaginated({
+                                                                        page,
+                                                                        size,
+                                                                        search: search || undefined,
+                                                                    });
+                                                                    return {
+                                                                        data: results.content.map((a) => ({
+                                                                            label: AdminsService.adminSelectLabel(a),
+                                                                            value: String(a.id),
+                                                                        })),
+                                                                        totalCount: results.totalElements,
+                                                                    };
+                                                                }}
+                                                                value={field.value != null ? String(field.value) : ""}
+                                                                onValueChange={(val) =>
+                                                                    field.onChange(val ? Number(val) : undefined)
                                                                 }
-                                                            }}
-                                                            initialValue={field.value ? {
-                                                                label: selectedOwnerName || "Selected Owner",
-                                                                value: String(field.value)
-                                                            } : undefined}
-                                                            placeholder="Select Shop Owner"
-                                                        />
+                                                                initialValue={
+                                                                    field.value != null
+                                                                        ? {
+                                                                              label: `Admin #${field.value}`,
+                                                                              value: String(field.value),
+                                                                          }
+                                                                        : undefined
+                                                                }
+                                                                placeholder="Search by name, email, or username…"
+                                                            />
+                                                        
                                                     </FormControl>
-                                                    <FormDescription>
-                                                        Assign a registered shop owner to this establishment.
-                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
