@@ -33,6 +33,8 @@ export const config = {
       shopProfile: {
         create: '/api/admin/shop-profile',
         list: '/api/admin/shop-profile',
+        changeStatus: (id: number) =>
+          `/api/admin/shop-profile/${id}/change-status`,
       },
       shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
       payment: {

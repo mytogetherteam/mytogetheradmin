@@ -26,6 +26,7 @@ export const shopFormSchema = z.object({
     descriptionTh: z.string().optional().or(z.literal("")),
     hasDelivery: z.boolean().default(false),
     deliveryEnabled: z.boolean().default(false),
+    isPickUp: z.boolean().default(false),
     hasParking: z.boolean().default(false),
     hasWifi: z.boolean().default(false),
     isVerified: z.boolean().default(false),
@@ -38,8 +39,6 @@ export const shopFormSchema = z.object({
     minOrderAmount: z.coerce.number().default(1),
     baseDeliveryFee: z.coerce.number().default(0),
     cuisineTypeIds: z.array(z.number()).default([]),
-    mealTypes: z.array(z.string()).default([]),
-    supportedDeliveryTypes: z.array(z.string()).default([]),
     paymentMethodIds: z.array(z.number()).default([]),
     operatingHours: z.array(z.object({
         dayOfWeek: z.number(),

@@ -1,5 +1,6 @@
 import { apiClient, ApiResponseData } from './apiClient';
 import { config } from '@/config/config';
+import { api } from '@/utils/axios';
 
 // API Response Interfaces
 export type ApiResponse<T> = ApiResponseData<T>;
@@ -69,6 +70,7 @@ export interface Shop {
   descriptionEn?: string;
   hasDelivery?: boolean;
   deliveryEnabled?: boolean;
+  isPickUp?: boolean;
   hasParking?: boolean;
   hasWifi?: boolean;
   isVerified?: boolean;
@@ -540,7 +542,53 @@ export const ShopService = {
       params.set('search', search.trim());
     }
     const url = `${config.endpoints.admin.shopProfile.list}?${params.toString()}`;
-    return apiClient.get<AdminShopProfileListResponse>(url);
+    const { data: raw } = await api.get<unknown>(url);
+
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'success' in raw &&
+      (raw as { success?: unknown }).success === true &&
+      'data' in raw &&
+      'meta' in raw &&
+      Array.isArray((raw as { data: unknown }).data)
+    ) {
+      const body = raw as {
+        data: AdminShopProfileListItem[];
+        meta: {
+          current_page: number;
+          last_page: number;
+          per_page: number;
+          total: number;
+        };
+      };
+      return {
+        content: body.data,
+        totalElements: body.meta.total,
+        totalPages: body.meta.last_page,
+        page: body.meta.current_page,
+        size: body.meta.per_page,
+        numberOfElements: body.data.length,
+      };
+    }
+
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'content' in raw &&
+      Array.isArray((raw as { content: unknown }).content)
+    ) {
+      return raw as AdminShopProfileListResponse;
+    }
+
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      page: 1,
+      size,
+      numberOfElements: 0,
+    };
   },
 
   /**
@@ -602,12 +650,14 @@ export const ShopService = {
   },
 
   /**
-   * Toggle shop active/inactive status
-   * PUT /api/admin/shops/{id}/status
+   * Toggle shop active/inactive status (Nest: isActive only).
+   * PATCH /api/admin/shop-profile/{id}/change-status
    */
   toggleShopStatus: async (id: number, active: boolean): Promise<void> => {
-    // The endpoint expects ?active=true/false as a query parameter
-    await apiClient.put(`${config.endpoints.shops.status(id)}?active=${active}`);
+    await apiClient.patch(
+      config.endpoints.admin.shopProfile.changeStatus(id),
+      { isActive: active },
+    );
   },
 
   /**
