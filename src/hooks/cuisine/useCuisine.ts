@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { cuisineService } from '@/services/cuisineService';
+import { toast } from 'sonner';
+import { handleApiError } from '@/lib/error-utils';
+import { useNavigate } from 'react-router-dom';
 
 export const cuisineKeys = {
   all: ['cuisines'] as const,
-
 };
 
 export function useCuisines(params?: { page?: number; size?: number; search?: string }) {
@@ -18,5 +20,48 @@ export function useCuisine(id: number) {
     queryKey: [...cuisineKeys.all, id],
     queryFn: () => cuisineService.getCuisineById(id),
     enabled: !!id,
+  });
+}
+
+export function useCreateCuisineMutation() {
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: (data: FormData) => cuisineService.createCuisine(data),
+    onSuccess: () => {
+      toast.success('Cuisine created successfully');
+      navigate('/cuisines/manage');
+    },
+    onError: (error) => {
+      handleApiError(error, 'Failed to create cuisine');
+    },
+  });
+}
+
+export function useUpdateCuisineMutation() {
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FormData }) =>
+      cuisineService.updateCuisine(id, data),
+    onSuccess: () => {
+      toast.success('Cuisine updated successfully');
+      navigate('/cuisines/manage');
+    },
+    onError: (error) => {
+      handleApiError(error, 'Failed to update cuisine');
+    },
+  });
+}
+
+export function useDeleteCuisineMutation() {
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: (id: number) => cuisineService.deleteCuisine(id),
+    onSuccess: () => {
+      toast.success('Cuisine deleted successfully');
+      navigate('/cuisines/manage');
+    },
+    onError: (error) => {
+      handleApiError(error, 'Failed to delete cuisine');
+    },
   });
 }

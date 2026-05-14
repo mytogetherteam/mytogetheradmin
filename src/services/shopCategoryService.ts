@@ -72,7 +72,7 @@ export const ShopCategoryService = {
         from: number | null;
         to: number | null;
       }
-    >(() => api.get(url));
+    >(() => api.get(url), { preservePaginatedMeta: true });
 
     if (
       response &&
@@ -160,10 +160,39 @@ export const ShopCategoryService = {
     const queryString = queryParams.toString();
     if (queryString) url += `?${queryString}`;
 
-    const response = await handleApiCall<ShopSubCategoryDTO[] | { content: ShopSubCategoryDTO[]; totalElements: number; totalPages: number }>(
-      () => api.get(url)
-    );
+    const response = await handleApiCall<
+      | ShopSubCategoryDTO[]
+      | { content: ShopSubCategoryDTO[]; totalElements: number; totalPages: number }
+      | {
+          data: ShopSubCategoryDTO[];
+          meta: {
+            current_page: number;
+            from: number | null;
+            last_page: number;
+            per_page: number;
+            to: number | null;
+            total: number;
+          };
+        }
+    >(() => api.get(url), { preservePaginatedMeta: true });
 
+    if (
+      response &&
+      typeof response === 'object' &&
+      'meta' in response &&
+      'data' in response &&
+      Array.isArray((response as { data: unknown }).data)
+    ) {
+      const r = response as {
+        data: ShopSubCategoryDTO[];
+        meta: { total: number; last_page: number };
+      };
+      return {
+        content: r.data,
+        totalElements: r.meta.total,
+        totalPages: r.meta.last_page,
+      };
+    }
     if (Array.isArray(response)) {
       return { content: response, totalElements: response.length, totalPages: 1 };
     }

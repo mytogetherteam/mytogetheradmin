@@ -157,7 +157,7 @@ export default function ManageShopSubCategories() {
                                 <FileSpreadsheet className="h-4 w-4" />
                                 Export
                             </Button>
-                            <Button onClick={() => navigate(`/shop-sub-categories/create${selectedCategoryId ? `?categoryId=${selectedCategoryId}` : ""}`)}>
+                            <Button onClick={() => navigate(`/shop-sub-categories/create`)}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>

@@ -47,7 +47,7 @@ export default function CreateMasterMenuCategory() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const cusRes = await cuisineService.getCuisines(0, 500);
+            const cusRes = await cuisineService.getCuisines({ page: 1, size: 500 });
             setCuisines(cusRes.content?.map(c => ({ id: c.id, nameEn: c.nameEn || c.nameMm || `Cuisine ${c.id}` })) || []);
 
             // If edit mode, load Master Menu Category
