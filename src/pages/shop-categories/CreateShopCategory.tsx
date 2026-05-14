@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { ShopCategoryService } from "@/services/shopCategoryService";
-import { handleApiError } from "@/lib/error-utils";
+import { useState, useEffect } from "react";
 import { compressImage } from "@/utils/imageCompression";
 import {
   useCreateShopCategoryMutation,
   useUpdateShopCategoryMutation,
   useDeleteShopCategoryMutation,
+  useShopCategory,
 } from "@/hooks/shop-categories/useShopCategory";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,8 +40,12 @@ export default function CreateShopCategory() {
   const [displayOrder, setDisplayOrder] = useState<number | "">(1);
   const [isActive, setIsActive] = useState<boolean>(true);
 
-  const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const { data: categoryData, isPending: loadingCategory } = useShopCategory(
+    isEditMode && id ? parseInt(id) : 0
+  );
+  const loading = isEditMode ? loadingCategory : false;
 
   const { mutateAsync: createCategory, isPending: isCreating } =
     useCreateShopCategoryMutation();
@@ -62,29 +65,17 @@ export default function CreateShopCategory() {
     setNameEn(value);
   };
 
-  const loadCategory = useCallback(async (catId: number) => {
-    setLoading(true);
-    try {
-      const cat = await ShopCategoryService.getShopCategoryById(catId);
-      setNameMm(cat.nameMm || "");
-      setNameTh(cat.nameTh || "");
-      setNameEn(cat.nameEn || "");
-      setDisplayOrder(cat.displayOrder || 1);
-      setIsActive(cat.active !== false);
-      if (cat.imageUrl) {
-        setExistingImage(cat.imageUrl);
-      }
-    } catch (error) {
-      handleApiError(error, "Failed to load shop category");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (isEditMode && id) {
-      loadCategory(parseInt(id));
-    } else {
+    if (isEditMode && categoryData) {
+      setNameMm(categoryData.nameMm || "");
+      setNameTh(categoryData.nameTh || "");
+      setNameEn(categoryData.nameEn || "");
+      setDisplayOrder(categoryData.displayOrder || 1);
+      setIsActive(categoryData.active !== false);
+      if (categoryData.imageUrl) {
+        setExistingImage(categoryData.imageUrl);
+      }
+    } else if (!isEditMode) {
       setNameMm("");
       setNameTh("");
       setNameEn("");
@@ -94,7 +85,7 @@ export default function CreateShopCategory() {
       setImageFile(null);
       setImagePreview(null);
     }
-  }, [id, isEditMode]);
+  }, [isEditMode, categoryData]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const originalFile = e.target.files?.[0];

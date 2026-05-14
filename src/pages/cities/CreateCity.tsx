@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
-import { cityService, CreateCityRequest } from "@/services/cityService";
 import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
+import { CreateCityRequest } from "@/services/cityService";
+import { useCity, useCreateCityMutation, useUpdateCityMutation } from "@/hooks/city/useCity";
 
 export default function CreateCity() {
     const navigate = useNavigate();
@@ -19,42 +19,33 @@ export default function CreateCity() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [active, setActive] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+
+    const { data: cityData, isPending: loadingCity } = useCity(isEdit ? parseInt(id!) : 0);
+    const loading = isEdit ? loadingCity : false;
+
+    const { mutateAsync: createCity, isPending: isCreating } = useCreateCityMutation();
+    const { mutateAsync: updateCity, isPending: isUpdating } = useUpdateCityMutation();
+    const submitting = isCreating || isUpdating;
 
     useEffect(() => {
-        if (isEdit) {
-            setLoading(true);
-            cityService.getCityById(parseInt(id!))
-                .then((city) => {
-                    setNameEn(city.nameEn);
-                    setNameMm(city.nameMm);
-                    setNameTh(city.nameTh || "");
-                    setActive(city.active);
-                })
-                .catch((e) => handleApiError(e, "Failed to load city"))
-                .finally(() => setLoading(false));
+        if (isEdit && cityData) {
+            setNameEn(cityData.nameEn);
+            setNameMm(cityData.nameMm);
+            setNameTh(cityData.nameTh || "");
+            setActive(cityData.active ?? true);
         }
-    }, [id, isEdit]);
+    }, [isEdit, cityData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!nameEn.trim() || !nameMm.trim()) return toast.error("Name (EN) and Name (MM) are required");
 
-        setSubmitting(true);
-        try {
-            const data: CreateCityRequest = { nameEn: nameEn.trim(), nameMm: nameMm.trim(), nameTh: nameTh.trim() || undefined, active };
-            if (isEdit) {
-                await cityService.updateCity(parseInt(id!), data);
-                toast.success("City updated successfully");
-            } else {
-                await cityService.createCity(data);
-                toast.success("City created successfully");
-            }
-            navigate("/cities/manage");
-        } catch (e) {
-            handleApiError(e, isEdit ? "Failed to update city" : "Failed to create city");
-        } finally { setSubmitting(false); }
+        const data: CreateCityRequest = { nameEn: nameEn.trim(), nameMm: nameMm.trim(), nameTh: nameTh.trim() || undefined, active };
+        if (isEdit) {
+            await updateCity({ id: parseInt(id!), data });
+        } else {
+            await createCity(data);
+        }
     };
 
     if (loading) {
