@@ -169,17 +169,19 @@ export default function CreateShopSubCategory() {
       return;
     }
 
-    const dtoData: ShopSubCategoryRequest = {
-      nameMm,
-      nameTh,
-      nameEn,
-      active: isActive,
-      displayOrder: displayOrder === "" || Number(displayOrder) < 1 ? 1 : Number(displayOrder),
-    };
-
     const formData = new FormData();
-    formData.append("data", JSON.stringify(dtoData));
-    if (imageFile) formData.append("image", imageFile);
+    formData.append("nameEn", nameEn || "");
+    formData.append("nameMm", nameMm || "");
+    formData.append("nameTh", nameTh || "");
+    formData.append(
+      "displayOrder",
+      String(displayOrder === "" || Number(displayOrder) < 1 ? 1 : Number(displayOrder))
+    );
+    formData.append("active", isActive as any);
+
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
 
     if (isEditMode && id) {
       await updateSubCategory({ id: parseInt(id), data: formData });

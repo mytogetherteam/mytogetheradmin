@@ -56,7 +56,11 @@ export default function ManageCuisines() {
     const fetchCuisines = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await cuisineService.getCuisines(page, 10, searchTerm);
+            const data = await cuisineService.getCuisines({
+                page: page + 1,
+                size: 10,
+                search: searchTerm || undefined,
+            });
             setCuisines(data.content);
             setTotalPages(data.totalPages);
         } catch (error) {
@@ -162,8 +166,8 @@ export default function ManageCuisines() {
                                             <TableCell>{cuisine.nameMm}</TableCell>
                                             <TableCell>{cuisine.nameTh}</TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <Badge variant={cuisine.isActive ? "default" : "secondary"} className={cuisine.isActive ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
-                                                    {cuisine.isActive ? "Active" : "Inactive"}
+                                                <Badge variant={cuisine.active !== false ? "default" : "secondary"} className={cuisine.active !== false ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
+                                                    {cuisine.active !== false ? "Active" : "Inactive"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>{cuisine.displayOrder}</TableCell>

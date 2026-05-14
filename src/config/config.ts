@@ -26,6 +26,10 @@ export const config = {
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
+      cuisines: {
+        list: '/api/admin/cuisines',
+        detail: (id: number) => `/api/admin/cuisines/${id}`,
+      },
       shopProfile: {
         create: '/api/admin/shop-profile',
         list: '/api/admin/shop-profile',
@@ -40,10 +44,6 @@ export const config = {
 
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
-        cuisines: {
-          list: '/api/admin/cuisines',
-          detail: (id: number) => `/api/admin/cuisines/${id}`,
-        }
       },
       cities: {
         list: '/api/admin/cities',

@@ -3,12 +3,21 @@ import axios from 'axios';
 import { ApiError } from '@/services/apiClient';
 import { getHumanMessageFromNestHttpBody } from '@/lib/nestHttpBody';
 
+export type HandleApiCallOptions = {
+  /**
+   * When the server returns `{ success, data, meta }` (Nest paginated `ApiResponse`),
+   * return `{ data, meta }` instead of unwrapping to `data` only.
+   */
+  preservePaginatedMeta?: boolean;
+};
+
 /**
  * Runs an axios-style request, maps HTTP / Nest errors to {@link ApiError},
  * and unwraps `{ success, data }` response bodies when present.
  */
 export async function handleApiCall<T>(
   requestFn: () => Promise<{ data: unknown }>,
+  options?: HandleApiCallOptions,
 ): Promise<T> {
   let json: unknown;
   try {
@@ -50,6 +59,14 @@ export async function handleApiCall<T>(
       );
     }
     if ('data' in body && 'success' in body) {
+      if (
+        options?.preservePaginatedMeta &&
+        'meta' in body &&
+        body.meta != null &&
+        typeof body.meta === 'object'
+      ) {
+        return { data: body.data, meta: body.meta } as T;
+      }
       return body.data as T;
     }
   }
