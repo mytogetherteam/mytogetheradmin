@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useShopCategories } from "@/hooks/shop-categories/useShopCategory";
 import {
     Table,
     TableBody,
@@ -32,21 +33,17 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { ShopCategoryService, ShopCategoryDTO } from "@/services/shopCategoryService";
+import { ShopCategoryService } from "@/services/shopCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 
 export default function ManageShopCategories() {
     const navigate = useNavigate();
-    const [categories, setCategories] = useState<ShopCategoryDTO[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-    const [totalItems, setTotalItems] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
 
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
     const isFirstSearchDebounce = useRef(true);
@@ -62,27 +59,19 @@ export default function ManageShopCategories() {
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
 
-    const loadCategories = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await ShopCategoryService.getShopCategories({
-                page: currentPage,
-                size: pageSize,
-                search: debouncedSearch.trim() || undefined,
-            });
-            setCategories(res.content || []);
-            setTotalItems(res.totalElements ?? 0);
-            setTotalPages(Math.max(1, res.totalPages ?? 1));
-        } catch (e) {
-            handleApiError(e, "Failed to load shop categories");
-        } finally {
-            setLoading(false);
-        }
-    }, [debouncedSearch, currentPage, pageSize]);
+    const {
+        data,
+        isPending: loading,
+        refetch,
+    } = useShopCategories({
+        page: currentPage,
+        size: pageSize,
+        search: debouncedSearch.trim() || undefined,
+    });
 
-    useEffect(() => {
-        void loadCategories();
-    }, [loadCategories]);
+    const categories = data?.content || [];
+    const totalItems = data?.totalElements ?? 0;
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
 
     useEffect(() => {
         if (!loading && currentPage > totalPages) {
@@ -120,7 +109,7 @@ export default function ManageShopCategories() {
             await ShopCategoryService.deleteShopCategory(deleteDialog.id);
             toast.success("Shop category deleted successfully");
             setDeleteDialog({ open: false, id: 0, name: "" });
-            loadCategories();
+            void refetch();
         } catch (e) {
             handleApiError(e, "Failed to delete shop category");
         } finally {

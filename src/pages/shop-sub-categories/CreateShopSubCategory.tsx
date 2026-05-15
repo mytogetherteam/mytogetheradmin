@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ShopCategoryService,
   ShopCategoryDTO,
-  ShopSubCategoryRequest,
 } from "@/services/shopCategoryService";
 import { handleApiError } from "@/lib/error-utils";
 import { compressImage } from "@/utils/imageCompression";
@@ -33,6 +32,7 @@ import {
   useCreateShopSubCategoryMutation,
   useUpdateShopSubCategoryMutation,
   useDeleteShopSubCategoryMutation,
+  useShopSubCategory,
 } from "@/hooks/shop-sub-categories/useShopSubCategory";
 
 export default function CreateShopSubCategory() {
@@ -42,8 +42,11 @@ export default function CreateShopSubCategory() {
   const categoryIdFromUrl = searchParams.get("categoryId");
   const isEditMode = !!id;
 
-  const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const { data: subCategoryData, isPending: loadingSubCategory } =
+    useShopSubCategory(isEditMode && id ? parseInt(id) : 0);
+  const loading = isEditMode ? loadingSubCategory : false;
 
   // Mutation hooks
   const { mutateAsync: createSubCategory, isPending: isCreating } =
@@ -77,24 +80,6 @@ export default function CreateShopSubCategory() {
   const [isActive, setIsActive] = useState(true);
   const [displayOrder, setDisplayOrder] = useState<number | "">(1);
 
-  const loadSubCategory = useCallback(async (subId: number) => {
-    setLoading(true);
-    try {
-      const subCat = await ShopCategoryService.getShopSubCategoryById(subId);
-      setNameMm(subCat.nameMm || "");
-      setNameTh(subCat.nameTh || "");
-      setNameEn(subCat.nameEn || subCat.name || "");
-      setIsActive(subCat.active !== false);
-      setDisplayOrder(subCat.displayOrder || 1);
-      setSelectedCategoryId(subCat.categoryId?.toString() || "");
-      if (subCat.imageUrl) setExistingImage(subCat.imageUrl);
-    } catch (error) {
-      handleApiError(error, "Failed to load sub-category");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const loadCategories = useCallback(async () => {
     try {
       const res = await ShopCategoryService.getShopCategories({
@@ -119,10 +104,16 @@ export default function CreateShopSubCategory() {
   }, [loadCategories]);
 
   useEffect(() => {
-    if (isEditMode && id) {
-      loadSubCategory(parseInt(id));
+    if (isEditMode && subCategoryData) {
+      setNameMm(subCategoryData.nameMm || "");
+      setNameTh(subCategoryData.nameTh || "");
+      setNameEn(subCategoryData.nameEn || subCategoryData.name || "");
+      setIsActive(subCategoryData.active !== false);
+      setDisplayOrder(subCategoryData.displayOrder || 1);
+      setSelectedCategoryId(subCategoryData.categoryId?.toString() || "");
+      if (subCategoryData.imageUrl) setExistingImage(subCategoryData.imageUrl);
     }
-  }, [id, isEditMode, loadSubCategory]);
+  }, [isEditMode, subCategoryData]);
 
   const fetchSearchCategories = async (
     page: number,

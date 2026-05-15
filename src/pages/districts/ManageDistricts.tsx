@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,60 +18,55 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
-import { districtService, DistrictDTO } from "@/services/districtService";
-import { cityService, CityDTO } from "@/services/cityService";
-import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
+import { useCities } from "@/hooks/city/useCity";
+import { useDistricts, useDeleteDistrictMutation } from "@/hooks/district/useDistrict";
 import * as XLSX from "xlsx";
 
 export default function ManageDistricts() {
     const navigate = useNavigate();
-    const [districts, setDistricts] = useState<DistrictDTO[]>([]);
-    const [cities, setCities] = useState<CityDTO[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCityId, setSelectedCityId] = useState<number | undefined>(undefined);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
-    const [deleting, setDeleting] = useState(false);
 
-    const loadCities = useCallback(async () => {
-        try {
-            const res = await cityService.getCities(0, 500);
-            setCities(res.content || []);
-        } catch { /* ignore */ }
-    }, []);
-
-    const loadDistricts = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await districtService.getDistricts(0, 500, searchTerm, selectedCityId);
-            setDistricts(res.content || []);
-        } catch (e) {
-            handleApiError(e, "Failed to load districts");
-        } finally { setLoading(false); }
-    }, [searchTerm, selectedCityId]);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => { loadCities(); }, []);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+    const isFirstSearchDebounce = useRef(true);
 
     useEffect(() => {
-        const timer = setTimeout(() => loadDistricts(), 500);
+        const delayMs = isFirstSearchDebounce.current ? 0 : 500;
+        isFirstSearchDebounce.current = false;
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), delayMs);
         return () => clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchTerm, selectedCityId]);
+    }, [searchTerm]);
+
+    const { data: citiesData } = useCities({ page: 1, size: 500 });
+    const cities = citiesData?.content || [];
+
+    const { data, isPending: loading } = useDistricts({
+        page: currentPage,
+        size: pageSize,
+        search: debouncedSearch.trim() || undefined,
+        cityId: selectedCityId,
+    });
+
+    const { mutateAsync: deleteDistrict, isPending: deleting } = useDeleteDistrictMutation();
+
+    const districts = data?.content || [];
+    const totalItems = data?.totalElements ?? 0;
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
+
+    useEffect(() => {
+        if (!loading && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [loading, currentPage, totalPages]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedDistricts = sortData(districts, sortConfig);
-
-    const totalItems = sortedDistricts.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentDistricts = sortedDistricts.slice(startIndex, endIndex);
+    const currentDistricts = sortedDistricts;
 
     const exportToExcel = () => {
         const data = sortedDistricts.map((d) => ({
@@ -87,15 +82,9 @@ export default function ManageDistricts() {
     };
 
     const handleDeleteConfirm = async () => {
-        setDeleting(true);
-        try {
-            await districtService.deleteDistrict(deleteDialog.id);
-            toast.success("District deleted successfully");
-            setDeleteDialog({ open: false, id: 0, name: "" });
-            loadDistricts();
-        } catch (e) {
-            handleApiError(e, "Failed to delete district");
-        } finally { setDeleting(false); }
+        if (!deleteDialog.id) return;
+        await deleteDistrict(deleteDialog.id);
+        setDeleteDialog({ open: false, id: 0, name: "" });
     };
 
     return (

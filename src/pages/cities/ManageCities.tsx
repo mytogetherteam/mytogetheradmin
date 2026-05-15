@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,48 +15,49 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
-import { cityService, CityDTO } from "@/services/cityService";
-import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
+import { useCities, useDeleteCityMutation } from "@/hooks/city/useCity";
 import * as XLSX from "xlsx";
 
 export default function ManageCities() {
     const navigate = useNavigate();
-    const [cities, setCities] = useState<CityDTO[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
-    const [deleting, setDeleting] = useState(false);
 
-    const loadCities = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await cityService.getCities(0, 500, searchTerm);
-            setCities(res.content || []);
-        } catch (e) {
-            handleApiError(e, "Failed to load cities");
-        } finally {
-            setLoading(false);
-        }
-    }, [searchTerm]);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+    const isFirstSearchDebounce = useRef(true);
 
     useEffect(() => {
-        const timer = setTimeout(() => loadCities(), 500);
+        const delayMs = isFirstSearchDebounce.current ? 0 : 500;
+        isFirstSearchDebounce.current = false;
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), delayMs);
         return () => clearTimeout(timer);
-    }, [loadCities]);
+    }, [searchTerm]);
+
+    const { data, isPending: loading } = useCities({
+        page: currentPage,
+        size: pageSize,
+        search: debouncedSearch.trim() || undefined,
+    });
+
+    const { mutateAsync: deleteCity, isPending: deleting } = useDeleteCityMutation();
+
+    const cities = data?.content || [];
+    const totalItems = data?.totalElements ?? 0;
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
+
+    useEffect(() => {
+        if (!loading && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [loading, currentPage, totalPages]);
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedCities = sortData(cities, sortConfig);
-
-    const totalItems = sortedCities.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentCities = sortedCities.slice(startIndex, endIndex);
+    const currentCities = sortedCities;
 
     const exportToExcel = () => {
         const data = sortedCities.map((c) => ({
@@ -70,15 +71,9 @@ export default function ManageCities() {
     };
 
     const handleDeleteConfirm = async () => {
-        setDeleting(true);
-        try {
-            await cityService.deleteCity(deleteDialog.id);
-            toast.success("City deleted successfully");
-            setDeleteDialog({ open: false, id: 0, name: "" });
-            loadCities();
-        } catch (e) {
-            handleApiError(e, "Failed to delete city");
-        } finally { setDeleting(false); }
+        if (!deleteDialog.id) return;
+        await deleteCity(deleteDialog.id);
+        setDeleteDialog({ open: false, id: 0, name: "" });
     };
 
     return (

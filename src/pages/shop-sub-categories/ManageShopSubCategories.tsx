@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useShopSubCategoriesByCategory } from "@/hooks/shop-sub-categories/useShopSubCategory";
 import {
     Table,
     TableBody,
@@ -31,24 +32,12 @@ export default function ManageShopSubCategories() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
     const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string; value: string } | null>(null);
 
-    const [subCategories, setSubCategories] = useState<ShopSubCategoryDTO[]>([]);
-    const [loading, setLoading] = useState(false);
-
     const [sortConfig, setSortConfig] = useState<{ key: keyof ShopSubCategoryDTO; direction: "asc" | "desc" } | null>(null);
 
     // Load Categories on Mount
     useEffect(() => {
         loadCategories();
     }, []);
-
-    // Load SubCategories when Category Select Changes
-    useEffect(() => {
-        if (selectedCategoryId) {
-            fetchSubCategories(parseInt(selectedCategoryId));
-        } else {
-            setSubCategories([]);
-        }
-    }, [selectedCategoryId]);
 
     const loadCategories = async () => {
         try {
@@ -65,21 +54,12 @@ export default function ManageShopSubCategories() {
         }
     };
 
-    const fetchSubCategories = async (catId: number) => {
-        setLoading(true);
-        try {
-            const data = await ShopCategoryService.getShopSubCategoriesByCategory(catId);
-            if (Array.isArray(data)) {
-                setSubCategories(data);
-            } else {
-                setSubCategories([]);
-            }
-        } catch (error) {
-            handleApiError(error, "Failed to load shop sub-categories");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { data, isPending, refetch } = useShopSubCategoriesByCategory(
+        selectedCategoryId ? parseInt(selectedCategoryId) : null
+    );
+
+    const loading = selectedCategoryId ? isPending : false;
+    const subCategories = data || [];
 
     const handleSort = (key: keyof ShopSubCategoryDTO) => {
         let direction: "asc" | "desc" = "asc";
@@ -132,9 +112,7 @@ export default function ManageShopSubCategories() {
         try {
             await ShopCategoryService.deleteShopSubCategory(id);
             toast.success("Deleted successfully");
-            if (selectedCategoryId) {
-                fetchSubCategories(parseInt(selectedCategoryId));
-            }
+            void refetch();
         } catch (error) {
             handleApiError(error, "Failed to delete shop sub-category");
         }

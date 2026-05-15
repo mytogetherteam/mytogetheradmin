@@ -9,10 +9,10 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
-import { districtService, CreateDistrictRequest } from "@/services/districtService";
-import { cityService, CityDTO } from "@/services/cityService";
+import { CreateDistrictRequest } from "@/services/districtService";
 import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
+import { useCities } from "@/hooks/city/useCity";
+import { useDistrict, useCreateDistrictMutation, useUpdateDistrictMutation } from "@/hooks/district/useDistrict";
 
 export type CreateDistrictFormData = CreateDistrictRequest;
 
@@ -21,7 +21,9 @@ export default function CreateDistrict() {
     const { id } = useParams();
     const isEdit = !!id;
 
-    const [cities, setCities] = useState<CityDTO[]>([]);
+    const { data: citiesData } = useCities({ page: 1, size: 500 });
+    const cities = citiesData?.content || [];
+
     const [cityId, setCityId] = useState<number | undefined>(undefined);
     const [nameEn, setNameEn] = useState("");
     const [nameMm, setNameMm] = useState("");
@@ -29,58 +31,45 @@ export default function CreateDistrict() {
     const [latitude, setLatitude] = useState("");
     const [longitude, setLongitude] = useState("");
     const [active, setActive] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+
+    const { data: districtData, isPending: loadingDistrict } = useDistrict(isEdit ? parseInt(id!) : 0);
+    const loading = isEdit ? loadingDistrict : false;
+
+    const { mutateAsync: createDistrict, isPending: isCreating } = useCreateDistrictMutation();
+    const { mutateAsync: updateDistrict, isPending: isUpdating } = useUpdateDistrictMutation();
+    const submitting = isCreating || isUpdating;
 
     useEffect(() => {
-        cityService.getCities(0, 500).then((res) => setCities(res.content || [])).catch(() => { });
-    }, []);
-
-    useEffect(() => {
-        if (isEdit) {
-            setLoading(true);
-            districtService.getDistrictById(parseInt(id!))
-                .then((d) => {
-                    setCityId(d.cityId);
-                    setNameEn(d.nameEn);
-                    setNameMm(d.nameMm);
-                    setNameTh(d.nameTh || "");
-                    setLatitude(d.latitude ? String(d.latitude) : "");
-                    setLongitude(d.longitude ? String(d.longitude) : "");
-                    setActive(d.active);
-                })
-                .catch((e) => handleApiError(e, "Failed to load district"))
-                .finally(() => setLoading(false));
+        if (isEdit && districtData) {
+            setCityId(districtData.cityId);
+            setNameEn(districtData.nameEn);
+            setNameMm(districtData.nameMm);
+            setNameTh(districtData.nameTh || "");
+            setLatitude(districtData.latitude ? String(districtData.latitude) : "");
+            setLongitude(districtData.longitude ? String(districtData.longitude) : "");
+            setActive(districtData.active ?? true);
         }
-    }, [id, isEdit]);
+    }, [isEdit, districtData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!cityId) return toast.error("Please select a city");
         if (!nameEn.trim() || !nameMm.trim()) return toast.error("Name (EN) and Name (MM) are required");
 
-        setSubmitting(true);
-        try {
-            const data: CreateDistrictFormData = {
-                cityId,
-                nameEn: nameEn.trim(),
-                nameMm: nameMm.trim(),
-                nameTh: nameTh.trim() || undefined,
-                latitude: latitude ? parseFloat(latitude) : undefined,
-                longitude: longitude ? parseFloat(longitude) : undefined,
-                active,
-            };
-            if (isEdit) {
-                await districtService.updateDistrict(parseInt(id!), data);
-                toast.success("District updated successfully");
-            } else {
-                await districtService.createDistrict(data);
-                toast.success("District created successfully");
-            }
-            navigate("/districts/manage");
-        } catch (e) {
-            handleApiError(e, isEdit ? "Failed to update district" : "Failed to create district");
-        } finally { setSubmitting(false); }
+        const data: CreateDistrictFormData = {
+            cityId,
+            nameEn: nameEn.trim(),
+            nameMm: nameMm.trim(),
+            nameTh: nameTh.trim() || undefined,
+            latitude: latitude ? parseFloat(latitude) : undefined,
+            longitude: longitude ? parseFloat(longitude) : undefined,
+            active,
+        };
+        if (isEdit) {
+            await updateDistrict({ id: parseInt(id!), data });
+        } else {
+            await createDistrict(data);
+        }
     };
 
     if (loading) {

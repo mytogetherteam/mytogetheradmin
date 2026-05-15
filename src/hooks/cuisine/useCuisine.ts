@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cuisineService } from '@/services/cuisineService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
@@ -25,10 +25,12 @@ export function useCuisine(id: number) {
 
 export function useCreateCuisineMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: FormData) => cuisineService.createCuisine(data),
     onSuccess: () => {
       toast.success('Cuisine created successfully');
+      void queryClient.invalidateQueries({ queryKey: cuisineKeys.all });
       navigate('/cuisines/manage');
     },
     onError: (error) => {
@@ -39,11 +41,13 @@ export function useCreateCuisineMutation() {
 
 export function useUpdateCuisineMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: FormData }) =>
       cuisineService.updateCuisine(id, data),
     onSuccess: () => {
       toast.success('Cuisine updated successfully');
+      void queryClient.invalidateQueries({ queryKey: cuisineKeys.all });
       navigate('/cuisines/manage');
     },
     onError: (error) => {
@@ -54,10 +58,12 @@ export function useUpdateCuisineMutation() {
 
 export function useDeleteCuisineMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => cuisineService.deleteCuisine(id),
     onSuccess: () => {
       toast.success('Cuisine deleted successfully');
+      void queryClient.invalidateQueries({ queryKey: cuisineKeys.all });
       navigate('/cuisines/manage');
     },
     onError: (error) => {

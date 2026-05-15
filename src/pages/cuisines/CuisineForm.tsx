@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { cuisineService, CuisineDTO } from "@/services/cuisineService";
+import { CuisineDTO } from "@/services/cuisineService";
 import {
   Card,
   CardContent,
@@ -20,9 +20,8 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import { useCreateCuisineMutation, useUpdateCuisineMutation } from "@/hooks/cuisine/useCuisine";
+import { useCreateCuisineMutation, useUpdateCuisineMutation, useCuisine } from "@/hooks/cuisine/useCuisine";
 
 export default function CuisineForm() {
   const { id } = useParams<{ id: string }>();
@@ -30,9 +29,13 @@ export default function CuisineForm() {
   const isEditMode = !!id;
 
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(isEditMode);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const { data: cuisineData, isPending: fetchingCuisine } = useCuisine(
+    isEditMode ? Number(id) : 0
+  );
+  const fetching = isEditMode ? fetchingCuisine : false;
 
   const { mutateAsync: createCuisine, isPending: isCreating } = useCreateCuisineMutation();
   const { mutateAsync: updateCuisine, isPending: isUpdating } = useUpdateCuisineMutation();
@@ -51,28 +54,17 @@ export default function CuisineForm() {
   });
 
   useEffect(() => {
-    if (isEditMode) {
-      const fetchCuisine = async () => {
-        try {
-          const data = await cuisineService.getCuisineById(Number(id));
-          setFormData({
-            nameEn: data.nameEn ?? "",
-            nameMm: data.nameMm ?? "",
-            nameTh: data.nameTh ?? "",
-            active: data.active ?? true,
-            displayOrder: data.displayOrder || 1,
-          });
-          if (data.imageUrl) setImagePreview(data.imageUrl);
-        } catch (error) {
-          handleApiError(error, "Failed to load cuisine details");
-          navigate("/cuisines/manage");
-        } finally {
-          setFetching(false);
-        }
-      };
-      fetchCuisine();
+    if (isEditMode && cuisineData) {
+      setFormData({
+        nameEn: cuisineData.nameEn ?? "",
+        nameMm: cuisineData.nameMm ?? "",
+        nameTh: cuisineData.nameTh ?? "",
+        active: cuisineData.active ?? true,
+        displayOrder: cuisineData.displayOrder || 1,
+      });
+      if (cuisineData.imageUrl) setImagePreview(cuisineData.imageUrl);
     }
-  }, [id, isEditMode, navigate]);
+  }, [isEditMode, cuisineData]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

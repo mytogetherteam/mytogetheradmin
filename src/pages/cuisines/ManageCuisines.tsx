@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { cuisineService, CuisineDTO } from "@/services/cuisineService";
+import { cuisineService } from "@/services/cuisineService";
+import { useCuisines } from "@/hooks/cuisine/useCuisine";
 import {
     Table,
     TableBody,
@@ -10,6 +11,7 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { TableImage } from "@/components/TableImage";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -46,40 +48,43 @@ import { handleApiError } from "@/lib/error-utils";
 
 export default function ManageCuisines() {
     const navigate = useNavigate();
-    const [cuisines, setCuisines] = useState<CuisineDTO[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    const fetchCuisines = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await cuisineService.getCuisines({
-                page: page + 1,
-                size: 10,
-                search: searchTerm || undefined,
-            });
-            setCuisines(data.content);
-            setTotalPages(data.totalPages);
-        } catch (error) {
-            handleApiError(error, "Failed to load cuisines");
-        } finally {
-            setLoading(false);
-        }
-    }, [page, searchTerm]);
+    const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+    const isFirstSearchDebounce = useRef(true);
 
     useEffect(() => {
-        fetchCuisines();
-    }, [page, searchTerm, fetchCuisines]);
+        const delayMs = isFirstSearchDebounce.current ? 0 : 500;
+        isFirstSearchDebounce.current = false;
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), delayMs);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const { data, isPending: loading, refetch } = useCuisines({
+        page: currentPage,
+        size: pageSize,
+        search: debouncedSearch.trim() || undefined,
+    });
+
+    const cuisines = data?.content || [];
+    const totalItems = data?.totalElements ?? 0;
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
+
+    useEffect(() => {
+        if (!loading && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [loading, currentPage, totalPages]);
 
     const handleDelete = async () => {
         if (!deleteId) return;
         try {
             await cuisineService.deleteCuisine(deleteId);
             toast.success("Cuisine deleted successfully");
-            fetchCuisines();
+            void refetch();
         } catch (error) {
             handleApiError(error, "Failed to delete cuisine");
         } finally {
@@ -209,29 +214,17 @@ export default function ManageCuisines() {
                         </Table>
                     </div>
 
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-end space-x-2 py-4">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(p => Math.max(0, p - 1))}
-                                disabled={page === 0}
-                            >
-                                Previous
-                            </Button>
-                            <div className="text-sm font-medium">
-                                Page {page + 1} of {totalPages}
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                                disabled={page === totalPages - 1}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
+                    <DataTablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                        }}
+                    />
                 </CardContent>
             </Card>
 

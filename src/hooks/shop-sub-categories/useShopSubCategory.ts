@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShopCategoryService } from '@/services/shopCategoryService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
@@ -10,11 +10,13 @@ export const shopSubCategoryKeys = {
 
 export function useCreateShopSubCategoryMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ categoryId, data }: { categoryId: number; data: FormData }) =>
       ShopCategoryService.createShopSubCategory(categoryId, data),
     onSuccess: () => {
       toast.success('Sub-category created successfully');
+      void queryClient.invalidateQueries({ queryKey: shopSubCategoryKeys.all });
       navigate('/shop-sub-categories/manage');
     },
     onError: (error) => {
@@ -25,11 +27,13 @@ export function useCreateShopSubCategoryMutation() {
 
 export function useUpdateShopSubCategoryMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: FormData }) =>
       ShopCategoryService.updateShopSubCategory(id, data),
     onSuccess: () => {
       toast.success('Sub-category updated successfully');
+      void queryClient.invalidateQueries({ queryKey: shopSubCategoryKeys.all });
       navigate('/shop-sub-categories/manage');
     },
     onError: (error) => {
@@ -40,10 +44,12 @@ export function useUpdateShopSubCategoryMutation() {
 
 export function useDeleteShopSubCategoryMutation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => ShopCategoryService.deleteShopSubCategory(id),
     onSuccess: () => {
       toast.success('Sub-category deleted successfully');
+      void queryClient.invalidateQueries({ queryKey: shopSubCategoryKeys.all });
       navigate('/shop-sub-categories/manage');
     },
     onError: (error) => {
@@ -58,3 +64,20 @@ export function useShopSubCategories(params?: { page?: number; size?: number; se
     queryFn: () => ShopCategoryService.getShopSubCategoriesPaginated(params),
   });
 }
+
+export function useShopSubCategoriesByCategory(categoryId: number | null) {
+  return useQuery({
+    queryKey: [...shopSubCategoryKeys.all, 'by-category', categoryId],
+    queryFn: () => categoryId ? ShopCategoryService.getShopSubCategoriesByCategory(categoryId) : Promise.resolve([]),
+    enabled: !!categoryId,
+  });
+}
+
+export function useShopSubCategory(id: number) {
+  return useQuery({
+    queryKey: [...shopSubCategoryKeys.all, id],
+    queryFn: () => ShopCategoryService.getShopSubCategoryById(id),
+    enabled: !!id,
+  });
+}
+
