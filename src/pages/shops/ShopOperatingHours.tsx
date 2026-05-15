@@ -1,104 +1,82 @@
-import { useEffect, useState, useMemo } from "react"
-import { ShopService, OperatingHour, Shop, resolveShopCityLabel, resolveShopDistrictLabel } from "@/services/shopService"
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+    resolveShopCityLabel,
+    resolveShopDistrictLabel,
+} from "@/services/shopService"
+import {
+    useAdminShopProfilesBareInfiniteFetcher,
+    useShopOperatingHoursQuery,
+    useUpdateShopOperatingHoursMutation,
+    defaultOperatingWeek,
+    mapApiOperatingHoursToForm,
+    type AdminShopProfileDropdownShop,
+} from "@/hooks/shops"
+import {
+    operatingHoursFormSchema,
+    type OperatingHoursFormValues,
+} from "@/schemas/operatingHours.schema"
+import {
+    OPERATING_DAY_LABELS,
+    ShopOperationRow,
+} from "@/components/shop/ShopOperationRow"
+import { Form } from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader } from "@/components/ui/loader"
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select"
-import { MapPin, Clock, Store } from "lucide-react"
-import { handleApiError } from "@/lib/error-utils"
-
-const daysOfWeekMap: Record<number, string> = {
-    1: "Monday",
-    2: "Tuesday",
-    3: "Wednesday",
-    4: "Thursday",
-    5: "Friday",
-    6: "Saturday",
-    7: "Sunday",
-    0: "Sunday",
-}
-
-type DropdownShop = Shop & { dropdownLabel: string; [key: string]: unknown };
+import { MapPin, Clock, Store, Save, RotateCcw } from "lucide-react"
 
 export default function ShopOperatingHours() {
+    const { fetchShops } = useAdminShopProfilesBareInfiniteFetcher()
+    const [selectedShop, setSelectedShop] = useState<AdminShopProfileDropdownShop | null>(null)
 
-    const [selectedShop, setSelectedShop] = useState<DropdownShop | null>(null)
-    const [operatingHours, setOperatingHours] = useState<OperatingHour[]>([])
+    const selectedShopId = selectedShop?.id ?? null
 
-    const [loadingHours, setLoadingHours] = useState(false)
+    const {
+        data: operatingHoursData,
+        isPending: loadingHours,
+        isError: operatingHoursError,
+    } = useShopOperatingHoursQuery(selectedShopId)
+
+    const updateMutation = useUpdateShopOperatingHoursMutation()
+
+    const form = useForm<OperatingHoursFormValues>({
+        resolver: zodResolver(operatingHoursFormSchema),
+        defaultValues: { operatingHours: defaultOperatingWeek() },
+    })
+
+    const { reset } = form
 
     useEffect(() => {
-        if (selectedShop) {
-            loadOperatingHours(selectedShop.id)
-        } else {
-            setOperatingHours([])
+        if (!selectedShopId) {
+            reset({ operatingHours: defaultOperatingWeek() })
+            return
         }
-    }, [selectedShop])
+        if (loadingHours || operatingHoursData === undefined) return
+        reset({
+            operatingHours: mapApiOperatingHoursToForm(operatingHoursData),
+        })
+    }, [selectedShopId, loadingHours, operatingHoursData, reset])
 
-    const fetchShops = async (page: number, size: number, search: string) => {
-        const response = await ShopService.getAllShops(page, size, search)
-        return {
-            ...response,
-            content: (response.content || []).map(shop => {
-                const cityPart = resolveShopCityLabel(shop);
-                return {
-                    ...shop,
-                    dropdownLabel: `${shop.nameEn || shop.nameMm || shop.name}${cityPart ? ` - ${cityPart}` : ""}`,
-                };
-            }) as DropdownShop[]
-        }
+    const handleReset = () => {
+        reset({
+            operatingHours: mapApiOperatingHoursToForm(operatingHoursData ?? []),
+        })
     }
 
-    const loadOperatingHours = async (shopId: number) => {
-        setLoadingHours(true)
-        try {
+    const onSubmit = form.handleSubmit((values) => {
+        if (!selectedShop) return
+        updateMutation.mutate({
+            shopId: selectedShop.id,
+            operatingHours: values.operatingHours,
+        })
+    })
 
-            const data = await ShopService.getShopOperatingHours(shopId)
-            setOperatingHours(Array.isArray(data) ? data : [])
-        } catch (error) {
-            handleApiError(error, "Failed to load operating hours for this shop")
-            setOperatingHours([])
-        } finally {
-            setLoadingHours(false)
-        }
-    }
-
-
-    const formatTimeObj = (timeVal: string | { hour: number; minute: number } | undefined) => {
-        if (!timeVal) return ""
-        if (typeof timeVal === 'string') return timeVal.slice(0, 5); // From "HH:mm:ss" to "HH:mm"
-        
-        const pad = (num: number) => String(num).padStart(2, '0')
-        // Check if it has hour/minute structure
-        if (typeof timeVal.hour === 'number' && typeof timeVal.minute === 'number') {
-            return `${pad(timeVal.hour)}:${pad(timeVal.minute)}`
-        }
-        return String(timeVal)
-    }
-
-    const formatTime = (timeStr: string | undefined, timeValue: string | { hour: number; minute: number } | undefined) => {
-        if (timeStr) return timeStr;
-        if (timeValue) return formatTimeObj(timeValue);
-        return "";
-    }
-
-    // Sort operating hours by dayOfWeek (Monday(1) to Sunday(7 or 0 -> treat as 7))
-    const sortedHours = useMemo(() => {
-        if (!operatingHours.length) return [];
-        return [...operatingHours].sort((a, b) => {
-            const dayA = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
-            const dayB = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
-            return dayA - dayB;
-        });
-    }, [operatingHours]);
+    const isSaving = updateMutation.isPending
+    const isDirty = form.formState.isDirty
 
     return (
         <div className="container mx-auto py-10 max-w-5xl">
@@ -111,7 +89,7 @@ export default function ShopOperatingHours() {
                                 Shop Operating Hours
                             </CardTitle>
                             <CardDescription className="text-sm mt-1">
-                                View operating hours for verified shops and restaurants.
+                                View and update operating hours for shops and restaurants.
                             </CardDescription>
                         </div>
                     </div>
@@ -124,7 +102,7 @@ export default function ShopOperatingHours() {
                             valueKey="id"
                             labelKey="dropdownLabel"
                             selectedValue={selectedShop}
-                            onChange={(item) => setSelectedShop(item as DropdownShop)}
+                            onChange={(item) => setSelectedShop(item as AdminShopProfileDropdownShop)}
                             placeholder="-- Select a Shop --"
                             className="w-full md:w-[400px]"
                         />
@@ -145,7 +123,9 @@ export default function ShopOperatingHours() {
                                         {[resolveShopDistrictLabel(selectedShop), resolveShopCityLabel(selectedShop)].filter(Boolean).join(", ") || "No location provided"}
                                     </div>
                                     <div className="mt-2 flex gap-2">
-                                        <Badge variant="outline" className="capitalize text-[10px] py-0">{selectedShop.category}</Badge>
+                                        {selectedShop.category ? (
+                                            <Badge variant="outline" className="capitalize text-[10px] py-0">{selectedShop.category}</Badge>
+                                        ) : null}
                                         <Badge className={`text-[10px] py-0 ${selectedShop.isActive !== false ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}`} variant="secondary">
                                             {selectedShop.isActive !== false ? "Active" : "Inactive"}
                                         </Badge>
@@ -156,63 +136,57 @@ export default function ShopOperatingHours() {
                     </div>
 
                     {selectedShop ? (
-                        loadingHours ? (
+                        operatingHoursError ? (
+                            <div className="text-center py-12 border rounded-md bg-destructive/5">
+                                <p className="text-sm text-destructive">
+                                    Failed to load operating hours for this shop.
+                                </p>
+                            </div>
+                        ) : loadingHours ? (
                             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                 <Loader size="lg" className="mb-4" />
                                 <p>Loading business hours...</p>
                             </div>
-                        ) : operatingHours.length > 0 ? (
-                            <div className="rounded-md border overflow-hidden">
-                                <Table>
-                                    <TableHeader className="bg-muted/50">
-                                        <TableRow>
-                                            <TableHead className="w-[150px] font-semibold text-foreground">Day</TableHead>
-                                            <TableHead className="font-semibold text-foreground">Status</TableHead>
-                                            <TableHead className="font-semibold text-foreground">Opening Time</TableHead>
-                                            <TableHead className="font-semibold text-foreground">Closing Time</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedHours.map((hour, index) => {
-                                            const dayName = daysOfWeekMap[hour.dayOfWeek] || `Day ${hour.dayOfWeek}`
-                                            const openTime = formatTime(hour.openTime, hour.openingTime)
-                                            const closeTime = formatTime(hour.closeTime, hour.closingTime)
-
-                                            return (
-                                                <TableRow key={index} className="hover:bg-muted/30">
-                                                    <TableCell className="font-medium">{dayName}</TableCell>
-                                                    <TableCell>
-                                                        {hour.isClosed ? (
-                                                            <Badge variant="secondary" className="bg-red-50 text-red-600 hover:bg-red-50 font-medium border-red-100">Closed</Badge>
-                                                        ) : (
-                                                            <Badge variant="secondary" className="bg-green-50 text-green-600 hover:bg-green-50 font-medium border-green-100">Open</Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono text-sm">
-                                                        {hour.isClosed ? <span className="text-muted-foreground">—</span> : (openTime || "N/A")}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono text-sm">
-                                                        {hour.isClosed ? <span className="text-muted-foreground">—</span> : (closeTime || "N/A")}
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
                         ) : (
-                            <div className="text-center py-12 border rounded-md bg-muted/10">
-                                <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
-                                <h3 className="text-lg font-medium text-foreground">No Operating Hours Set</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    This shop hasn't configured its operating hours yet.
-                                </p>
-                            </div>
+                            <Form {...form}>
+                                <form onSubmit={onSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {OPERATING_DAY_LABELS.map((_, index) => (
+                                            <ShopOperationRow key={index} dayIndex={index} />
+                                        ))}
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
+                                        <Button type="submit" disabled={isSaving || !isDirty}>
+                                            {isSaving ? (
+                                                <>
+                                                    <Loader size="sm" className="mr-2" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="h-4 w-4 mr-2" />
+                                                    Save hours
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={isSaving || !isDirty}
+                                            onClick={handleReset}
+                                        >
+                                            <RotateCcw className="h-4 w-4 mr-2" />
+                                            Reset
+                                        </Button>
+                                    </div>
+                                </form>
+                            </Form>
                         )
                     ) : (
                         <div className="text-center py-16 border rounded-md border-dashed">
                             <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-10" />
-                            <p className="text-muted-foreground">Please select a shop from the dropdown above to view its operating hours.</p>
+                            <p className="text-muted-foreground">Please select a shop from the dropdown above to view and edit its operating hours.</p>
                         </div>
                     )}
                 </CardContent>

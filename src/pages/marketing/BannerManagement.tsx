@@ -209,21 +209,13 @@ function ShopDetailSheet({
                     <div>
                         <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Features</h3>
                         <div className="grid grid-cols-3 gap-2">
-                            <BoolBadge value={shop.hasDelivery} label="Delivery" />
+                            <BoolBadge value={shop.deliveryEnabled} label="Delivery" />
                             <BoolBadge value={shop.hasWifi} label="WiFi" />
                             <BoolBadge value={shop.hasParking} label="Parking" />
                             <BoolBadge value={shop.isHalal} label="Halal" />
                             <BoolBadge value={shop.isVegetarian} label="Vegetarian" />
                             <BoolBadge value={shop.isVerified} label="Verified" />
                         </div>
-                    </div>
-
-                    {/* Delivery Info */}
-                    <div>
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Delivery Info</h3>
-                        <InfoRow label="Base Delivery Fee" value={shop.baseDeliveryFee != null ? `${shop.baseDeliveryFee} MMK` : null} />
-                        <InfoRow label="Min Order Amount" value={shop.minOrderAmount != null ? `${shop.minOrderAmount} MMK` : null} />
-                        <InfoRow label="Max Qty / Order" value={shop.maxItemQuantityPerOrder} />
                     </div>
 
                     {/* Location */}

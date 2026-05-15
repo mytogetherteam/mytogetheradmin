@@ -8,6 +8,7 @@ export function useShopRestaurantEditLabels() {
     const [initialSubCategoryLabel, setInitialSubCategoryLabel] = useState<string | null>(null)
     const [initialCityLabel, setInitialCityLabel] = useState<string | null>(null)
     const [initialDistrictLabel, setInitialDistrictLabel] = useState<string | null>(null)
+    const [initialAssignedAdminLabel, setInitialAssignedAdminLabel] = useState<string | null>(null)
 
     const resetEditLabels = useCallback(() => {
         setInitialCategoryLabel(null)
@@ -15,14 +16,21 @@ export function useShopRestaurantEditLabels() {
         setInitialCuisineOptions([])
         setInitialCityLabel(null)
         setInitialDistrictLabel(null)
+        setInitialAssignedAdminLabel(null)
     }, [])
 
-    const hydrateEditLabelsFromShop = useCallback((shop: ShopDetail) => {
+    const hydrateEditLabelsFromShop = useCallback(
+        (shop: ShopDetail, extras?: { assignedAdminLabel?: string | null }) => {
         setInitialCategoryLabel(shop.shopCategory?.nameEn || shop.category || null)
+        const subs = shop.shopCategory?.subCategories
+        const preferredSub =
+            shop.shopSubCategoryId != null && subs?.length
+                ? subs.find((s) => s.id === shop.shopSubCategoryId) ?? subs[0]
+                : subs?.[0]
         setInitialSubCategoryLabel(
-            (shop.shopCategory?.subCategories && shop.shopCategory.subCategories.length > 0
-                ? shop.shopCategory.subCategories[0].nameEn
-                : null) ||
+            preferredSub?.nameEn ||
+                preferredSub?.nameMm ||
+                preferredSub?.name ||
                 shop.subCategory ||
                 null,
         )
@@ -37,7 +45,10 @@ export function useShopRestaurantEditLabels() {
                 })),
             )
         }
-    }, [])
+        setInitialAssignedAdminLabel(extras?.assignedAdminLabel ?? null)
+    },
+    [],
+    )
 
     return {
         initialCuisineOptions,
@@ -45,6 +56,7 @@ export function useShopRestaurantEditLabels() {
         initialSubCategoryLabel,
         initialCityLabel,
         initialDistrictLabel,
+        initialAssignedAdminLabel,
         resetEditLabels,
         hydrateEditLabelsFromShop,
     }

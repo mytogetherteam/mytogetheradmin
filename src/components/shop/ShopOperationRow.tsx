@@ -1,5 +1,7 @@
 import type { ShopFormValues } from "@/schemas/shop.schema"
 import { useFormContext, useWatch } from "react-hook-form"
+
+type OperatingHoursFormSlice = Pick<ShopFormValues, "operatingHours">
 import {
     FormControl,
     FormField,
@@ -20,7 +22,7 @@ export const OPERATING_DAY_LABELS = [
 ] as const
 
 export function ShopOperationRow({ dayIndex }: { dayIndex: number }) {
-    const { control } = useFormContext<ShopFormValues>()
+    const { control } = useFormContext<OperatingHoursFormSlice>()
     const isClosed = !!useWatch({
         control,
         name: `operatingHours.${dayIndex}.isClosed`,
