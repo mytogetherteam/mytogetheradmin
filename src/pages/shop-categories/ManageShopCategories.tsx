@@ -90,7 +90,7 @@ export default function ManageShopCategories() {
             Name: c.name,
             "Name (MM)": c.nameMm || "",
             "Name (EN)": c.nameEn || "",
-            "Is Active": c.active !== false ? "Yes" : "No",
+            "Is Active": c.isActive !== false ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -194,8 +194,8 @@ export default function ManageShopCategories() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                            {cat.active !== false ? "Active" : "Inactive"}
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                                            {cat.isActive !== false ? "Active" : "Inactive"}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-right">

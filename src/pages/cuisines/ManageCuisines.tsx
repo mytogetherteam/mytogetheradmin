@@ -171,8 +171,8 @@ export default function ManageCuisines() {
                                             <TableCell>{cuisine.nameMm}</TableCell>
                                             <TableCell>{cuisine.nameTh}</TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <Badge variant={cuisine.active !== false ? "default" : "secondary"} className={cuisine.active !== false ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
-                                                    {cuisine.active !== false ? "Active" : "Inactive"}
+                                                <Badge variant={cuisine.isActive !== false ? "default" : "secondary"} className={cuisine.isActive !== false ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" : ""}>
+                                                    {cuisine.isActive !== false ? "Active" : "Inactive"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>{cuisine.displayOrder}</TableCell>

@@ -121,7 +121,7 @@ export interface DistrictDTO {
   nameTh?: string;
   latitude?: number;
   longitude?: number;
-  active: boolean;
+  isActive: boolean;
 }
 
 export interface CityDTO {
@@ -130,7 +130,7 @@ export interface CityDTO {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  active: boolean;
+  isActive: boolean;
   districts?: DistrictDTO[];
 }
 
@@ -190,6 +190,7 @@ export interface CuisineTypeDTO {
   imageUrl?: string;
   regionId?: number;
   regionName?: string;
+  isActive: boolean;
 }
 
 export interface EnumOptionDTO {
@@ -207,7 +208,7 @@ export interface PaymentMethodDTO {
   nameTh?: string;
   iconUrl?: string;
   qrUrl?: string;
-  active: boolean;
+  isActive: boolean;
   displayOrder: number;
 }
 
@@ -226,7 +227,7 @@ export interface ShopCategoryDTO {
   nameMm: string;
   nameTh?: string;
   iconUrl?: string;
-  active: boolean;
+  isActive: boolean;
   subCategories?: ShopSubCategoryDTO[];
 }
 
@@ -772,7 +773,7 @@ export const ShopService = {
       id: m.paymentMethodId,
       code: m.paymentMethodCode,
       name: m.paymentMethodName,
-      active: m.isActive ?? false,
+      isActive: m.isActive ?? false,
       // Default other required fields if missing
       displayOrder: m.displayOrder || 1
     }));

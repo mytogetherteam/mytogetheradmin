@@ -98,7 +98,7 @@ export default function ManageShopSubCategories() {
             "Name (MM)": c.nameMm || "",
             "Name (EN)": c.nameEn || "",
             "Display Order": c.displayOrder,
-            IsActive: c.active !== false ? 'Yes' : 'No'
+            IsActive: c.isActive !== false ? 'Yes' : 'No'
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -196,7 +196,7 @@ export default function ManageShopSubCategories() {
                                                     Order <ArrowUpDown className="h-3 w-3" />
                                                 </div>
                                             </TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("active")}>
+                                            <TableHead className="cursor-pointer" onClick={() => handleSort("isActive")}>
                                                 Status
                                             </TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
@@ -230,9 +230,9 @@ export default function ManageShopSubCategories() {
                                                     </TableCell>
                                                     <TableCell>{sub.displayOrder}</TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                                                             }`}>
-                                                            {sub.active !== false ? "Active" : "Inactive"}
+                                                            {sub.isActive !== false ? "Active" : "Inactive"}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

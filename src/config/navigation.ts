@@ -136,8 +136,8 @@ export const navigationConfig: NavGroup[] = [
         title: "Payment Methods",
         roles: AdminRole.ADMIN,
         items: [
-            { title: "Create Payment Method", url: "/payment/methods/create", icon: Plus, tooltip: "Create Payment Method" },
-            { title: "Manage PaymentMethods", url: "/payment/methods", icon: Settings2, tooltip: "Manage Payment Methods" } // Matches Manage PaymentMethods literal string in original
+            { title: "Create Payment Method", url: "/payment-methods/create", icon: Plus, tooltip: "Create Payment Method" },
+            { title: "Manage PaymentMethods", url: "/payment-methods/manage", icon: Settings2, tooltip: "Manage Payment Methods" } // Matches Manage PaymentMethods literal string in original
         ]
     },
     {

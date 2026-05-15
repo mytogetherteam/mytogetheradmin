@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useForm, Controller, Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ShopCategoryService,
   ShopCategoryDTO,
@@ -27,13 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import {
   useCreateShopSubCategoryMutation,
   useUpdateShopSubCategoryMutation,
   useDeleteShopSubCategoryMutation,
   useShopSubCategory,
 } from "@/hooks/shop-sub-categories/useShopSubCategory";
+
+import { shopSubCategorySchema, type ShopSubCategoryFormValues } from "@/schemas/shop-sub-category.schema";
 
 export default function CreateShopSubCategory() {
   const navigate = useNavigate();
@@ -64,21 +67,32 @@ export default function CreateShopSubCategory() {
     [key: string]: unknown;
   };
   const [categories, setCategories] = useState<DropdownCategory[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
-    categoryIdFromUrl || "",
-  );
 
   // Image state
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImage, setExistingImage] = useState<string | null>(null);
 
-  // Form State
-  const [nameMm, setNameMm] = useState("");
-  const [nameTh, setNameTh] = useState("");
-  const [nameEn, setNameEn] = useState("");
-  const [isActive, setIsActive] = useState(true);
-  const [displayOrder, setDisplayOrder] = useState<number | "">(1);
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<ShopSubCategoryFormValues>({
+    resolver: zodResolver(shopSubCategorySchema) as Resolver<ShopSubCategoryFormValues>,
+    defaultValues: {
+      categoryId: categoryIdFromUrl ? parseInt(categoryIdFromUrl) : 0,
+      nameEn: "",
+      nameMm: "",
+      nameTh: "",
+      displayOrder: 1,
+      isActive: true,
+    },
+  });
+
+  const nameEn = watch("nameEn");
 
   const loadCategories = useCallback(async () => {
     try {
@@ -105,15 +119,17 @@ export default function CreateShopSubCategory() {
 
   useEffect(() => {
     if (isEditMode && subCategoryData) {
-      setNameMm(subCategoryData.nameMm || "");
-      setNameTh(subCategoryData.nameTh || "");
-      setNameEn(subCategoryData.nameEn || subCategoryData.name || "");
-      setIsActive(subCategoryData.active !== false);
-      setDisplayOrder(subCategoryData.displayOrder || 1);
-      setSelectedCategoryId(subCategoryData.categoryId?.toString() || "");
+      reset({
+        categoryId: subCategoryData.categoryId || 0,
+        nameEn: subCategoryData.nameEn || subCategoryData.name || "",
+        nameMm: subCategoryData.nameMm || "",
+        nameTh: subCategoryData.nameTh || "",
+        displayOrder: subCategoryData.displayOrder || 1,
+        isActive: subCategoryData.isActive !== false,
+      });
       if (subCategoryData.imageUrl) setExistingImage(subCategoryData.imageUrl);
     }
-  }, [isEditMode, subCategoryData]);
+  }, [isEditMode, subCategoryData, reset]);
 
   const fetchSearchCategories = async (
     page: number,
@@ -152,23 +168,13 @@ export default function CreateShopSubCategory() {
     setExistingImage(null);
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const catId = parseInt(selectedCategoryId);
-    if (!catId && !isEditMode) {
-      toast.error("Please select a parent category");
-      return;
-    }
-
+  const onSubmit = async (values: ShopSubCategoryFormValues) => {
     const formData = new FormData();
-    formData.append("nameEn", nameEn || "");
-    formData.append("nameMm", nameMm || "");
-    formData.append("nameTh", nameTh || "");
-    formData.append(
-      "displayOrder",
-      String(displayOrder === "" || Number(displayOrder) < 1 ? 1 : Number(displayOrder))
-    );
-    formData.append("active", isActive as any);
+    formData.append("nameEn", values.nameEn);
+    formData.append("nameMm", values.nameMm || "");
+    formData.append("nameTh", values.nameTh || "");
+    formData.append("displayOrder", String(values.displayOrder));
+    formData.append("isActive", String(values.isActive));
 
     if (imageFile) {
       formData.append("image", imageFile);
@@ -177,7 +183,7 @@ export default function CreateShopSubCategory() {
     if (isEditMode && id) {
       await updateSubCategory({ id: parseInt(id), data: formData });
     } else {
-      await createSubCategory({ categoryId: catId, data: formData });
+      await createSubCategory({ categoryId: values.categoryId, data: formData });
     }
   };
 
@@ -216,25 +222,32 @@ export default function CreateShopSubCategory() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={onSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-2">
               <Label>Parent Shop Category</Label>
-              <InfiniteSearchableSelect
-                fetchData={fetchSearchCategories}
-                valueKey="id"
-                labelKey="dropdownLabel"
-                selectedValue={
-                  categories.find((c) => String(c.id) === selectedCategoryId) ||
-                  ((selectedCategoryId
-                    ? { id: Number(selectedCategoryId) }
-                    : null) as DropdownCategory | null)
-                }
-                onChange={(item) =>
-                  setSelectedCategoryId(item ? String(item.id) : "")
-                }
-                placeholder="Select a Category"
-                disabled={isEditMode}
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <InfiniteSearchableSelect
+                    fetchData={fetchSearchCategories}
+                    valueKey="id"
+                    labelKey="dropdownLabel"
+                    selectedValue={
+                      categories.find((c) => c.id === field.value) ||
+                      ((field.value
+                        ? { id: field.value }
+                        : null) as DropdownCategory | null)
+                    }
+                    onChange={(item) =>
+                      field.onChange(item ? item.id : 0)
+                    }
+                    placeholder="Select a Category"
+                    disabled={isEditMode}
+                  />
+                )}
               />
+              {errors.categoryId && <p className="text-xs text-destructive">{errors.categoryId.message}</p>}
               {isEditMode && (
                 <p className="text-xs text-muted-foreground">
                   Category cannot be changed during edit.
@@ -246,10 +259,9 @@ export default function CreateShopSubCategory() {
               <Label htmlFor="nameEn">Name (English)</Label>
               <Input
                 id="nameEn"
-                value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
-                required
+                {...register("nameEn")}
               />
+              {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,18 +269,28 @@ export default function CreateShopSubCategory() {
                 <Label htmlFor="nameMm">Name (Myanmar)</Label>
                 <Input
                   id="nameMm"
-                  value={nameMm}
-                  onChange={(e) => setNameMm(e.target.value)}
+                  {...register("nameMm")}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nameTh">Name (Thai)</Label>
                 <Input
                   id="nameTh"
-                  value={nameTh}
-                  onChange={(e) => setNameTh(e.target.value)}
+                  {...register("nameTh")}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="displayOrder">Display Order</Label>
+              <Input
+                id="displayOrder"
+                type="text"
+                inputMode="numeric"
+                {...register("displayOrder")}
+                placeholder="1"
+              />
+              {errors.displayOrder && <p className="text-xs text-destructive">{errors.displayOrder.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -307,10 +329,16 @@ export default function CreateShopSubCategory() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isActive"
-                checked={isActive}
-                onCheckedChange={(checked) => setIsActive(checked === true)}
+              <Controller
+                name="isActive"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="isActive"
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                )}
               />
               <Label htmlFor="isActive" className="cursor-pointer">
                 Active Status
@@ -340,11 +368,7 @@ export default function CreateShopSubCategory() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={
-                    !nameEn ||
-                    submitting ||
-                    (!selectedCategoryId && !isEditMode)
-                  }
+                  disabled={submitting}
                 >
                   {submitting
                     ? "Saving..."
@@ -389,3 +413,4 @@ export default function CreateShopSubCategory() {
     </div>
   );
 }
+

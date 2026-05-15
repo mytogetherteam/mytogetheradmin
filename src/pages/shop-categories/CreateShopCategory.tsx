@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useForm, Controller, Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { compressImage } from "@/utils/imageCompression";
 import {
   useCreateShopCategoryMutation,
@@ -28,17 +30,13 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
+import { shopCategorySchema, type ShopCategoryFormValues } from "@/schemas/shop-category.schema";
+
 export default function CreateShopCategory() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
   const isEditMode = !!id;
-
-  const [nameMm, setNameMm] = useState("");
-  const [nameTh, setNameTh] = useState("");
-  const [nameEn, setNameEn] = useState("");
-  const [displayOrder, setDisplayOrder] = useState<number | "">(1);
-  const [isActive, setIsActive] = useState<boolean>(true);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -61,31 +59,52 @@ export default function CreateShopCategory() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImage, setExistingImage] = useState<string | null>(null);
 
-  const handleNameEnChange = (value: string) => {
-    setNameEn(value);
-  };
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<ShopCategoryFormValues>({
+    resolver: zodResolver(shopCategorySchema) as Resolver<ShopCategoryFormValues>,
+    defaultValues: {
+      nameEn: "",
+      nameMm: "",
+      nameTh: "",
+      displayOrder: 1,
+      isActive: true,
+    },
+  });
+
+  const nameEn = watch("nameEn");
+  const nameMm = watch("nameMm");
 
   useEffect(() => {
     if (isEditMode && categoryData) {
-      setNameMm(categoryData.nameMm || "");
-      setNameTh(categoryData.nameTh || "");
-      setNameEn(categoryData.nameEn || "");
-      setDisplayOrder(categoryData.displayOrder || 1);
-      setIsActive(categoryData.active !== false);
+      reset({
+        nameEn: categoryData.nameEn || "",
+        nameMm: categoryData.nameMm || "",
+        nameTh: categoryData.nameTh || "",
+        displayOrder: categoryData.displayOrder || 1,
+        isActive: categoryData.isActive !== false,
+      });
       if (categoryData.imageUrl) {
         setExistingImage(categoryData.imageUrl);
       }
     } else if (!isEditMode) {
-      setNameMm("");
-      setNameTh("");
-      setNameEn("");
-      setDisplayOrder(1);
-      setIsActive(true);
+      reset({
+        nameEn: "",
+        nameMm: "",
+        nameTh: "",
+        displayOrder: 1,
+        isActive: true,
+      });
       setExistingImage(null);
       setImageFile(null);
       setImagePreview(null);
     }
-  }, [isEditMode, categoryData]);
+  }, [isEditMode, categoryData, reset]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const originalFile = e.target.files?.[0];
@@ -104,18 +123,13 @@ export default function CreateShopCategory() {
     setExistingImage(null);
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const onSubmit = async (values: ShopCategoryFormValues) => {
     const formData = new FormData();
-    formData.append("nameEn", nameEn || "");
-    formData.append("nameMm", nameMm || "");
-    formData.append("nameTh", nameTh || "");
-    formData.append(
-      "displayOrder",
-      String(displayOrder === "" || displayOrder < 1 ? 1 : displayOrder)
-    );
-    formData.append("active", isActive as any);
+    formData.append("nameEn", values.nameEn);
+    formData.append("nameMm", values.nameMm || "");
+    formData.append("nameTh", values.nameTh || "");
+    formData.append("displayOrder", String(values.displayOrder));
+    formData.append("isActive", String(values.isActive));
 
     if (imageFile) {
       formData.append("image", imageFile);
@@ -163,24 +177,22 @@ export default function CreateShopCategory() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={onSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="categoryNameEn">Name (English)</Label>
+                <Label htmlFor="nameEn">Name (English)</Label>
                 <Input
-                  id="categoryNameEn"
-                  value={nameEn}
-                  onChange={(e) => handleNameEnChange(e.target.value)}
+                  id="nameEn"
+                  {...register("nameEn")}
                   placeholder="e.g. Restaurant"
-                  required
                 />
+                {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="categoryNameMm">Name (Myanmar)</Label>
+                <Label htmlFor="nameMm">Name (Myanmar)</Label>
                 <Input
-                  id="categoryNameMm"
-                  value={nameMm}
-                  onChange={(e) => setNameMm(e.target.value)}
+                  id="nameMm"
+                  {...register("nameMm")}
                   placeholder="e.g. စားသောက်ဆိုင်"
                 />
               </div>
@@ -190,37 +202,32 @@ export default function CreateShopCategory() {
                   id="displayOrder"
                   type="text"
                   inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={displayOrder}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/^0+(?!$)/, "");
-                    if (val === "" || /^\d+$/.test(val)) {
-                      setDisplayOrder(val === "" ? "" : parseInt(val, 10));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (displayOrder === "" || displayOrder < 1)
-                      setDisplayOrder(1);
-                  }}
+                  {...register("displayOrder")}
                   placeholder="1"
                 />
+                {errors.displayOrder && <p className="text-xs text-destructive">{errors.displayOrder.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="categoryNameTh">Name (Thai)</Label>
+                <Label htmlFor="nameTh">Name (Thai)</Label>
                 <Input
-                  id="categoryNameTh"
-                  value={nameTh}
-                  onChange={(e) => setNameTh(e.target.value)}
+                  id="nameTh"
+                  {...register("nameTh")}
                   placeholder="e.g. ร้านอาหาร"
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Switch
-                id="isActive"
-                checked={isActive}
-                onCheckedChange={setIsActive}
+              <Controller
+                name="isActive"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="isActive"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
               />
               <Label htmlFor="isActive">Active Status</Label>
             </div>
@@ -290,7 +297,7 @@ export default function CreateShopCategory() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!nameEn || submitting}>
+                <Button type="submit" disabled={submitting}>
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -339,3 +346,4 @@ export default function CreateShopCategory() {
     </div>
   );
 }
+

@@ -73,7 +73,7 @@ export default function ManageDistricts() {
             ID: d.id, "City": d.cityNameEn || d.cityId, "Name (EN)": d.nameEn,
             "Name (MM)": d.nameMm, "Name (TH)": d.nameTh || "",
             Latitude: d.latitude || "", Longitude: d.longitude || "",
-            Active: d.active ? "Yes" : "No",
+            Active: d.isActive ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -148,8 +148,8 @@ export default function ManageDistricts() {
                                                 <TableCell className="font-medium">{d.nameEn}</TableCell>
                                                 <TableCell>{d.nameMm}</TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${d.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                        {d.active ? "Active" : "Inactive"}
+                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${d.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                                        {d.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
