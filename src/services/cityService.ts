@@ -8,7 +8,7 @@ export interface CityDTO {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  active: boolean;
+  isActive: boolean;
 }
 
 export interface CityPage {
@@ -29,7 +29,7 @@ export interface CreateCityRequest {
   nameEn: string;
   nameMm: string;
   nameTh?: string;
-  active?: boolean;
+  isActive?: boolean;
 }
 
 class CityService {

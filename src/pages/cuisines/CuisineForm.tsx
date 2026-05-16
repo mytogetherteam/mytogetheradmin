@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { CuisineDTO } from "@/services/cuisineService";
+import { useForm, Controller, Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
   CardContent,
@@ -23,6 +24,8 @@ import {
 import { handleApiError } from "@/lib/error-utils";
 import { useCreateCuisineMutation, useUpdateCuisineMutation, useCuisine } from "@/hooks/cuisine/useCuisine";
 
+import { cuisineSchema, type CuisineFormValues } from "@/schemas/cuisine.schema";
+
 export default function CuisineForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,30 +44,35 @@ export default function CuisineForm() {
   const { mutateAsync: updateCuisine, isPending: isUpdating } = useUpdateCuisineMutation();
   const submitting = loading || isCreating || isUpdating;
 
-  type FormDataType = Omit<CuisineDTO, "id" | "displayOrder"> & {
-    displayOrder: number | "";
-  };
-
-  const [formData, setFormData] = useState<FormDataType>({
-    nameEn: "",
-    nameMm: "",
-    nameTh: "",
-    active: true,
-    displayOrder: 1,
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<CuisineFormValues>({
+    resolver: zodResolver(cuisineSchema) as Resolver<CuisineFormValues>,
+    defaultValues: {
+      nameEn: "",
+      nameMm: "",
+      nameTh: "",
+      isActive: true,
+      displayOrder: 1,
+    },
   });
 
   useEffect(() => {
     if (isEditMode && cuisineData) {
-      setFormData({
+      reset({
         nameEn: cuisineData.nameEn ?? "",
         nameMm: cuisineData.nameMm ?? "",
         nameTh: cuisineData.nameTh ?? "",
-        active: cuisineData.active ?? true,
+        isActive: cuisineData.isActive ?? true,
         displayOrder: cuisineData.displayOrder || 1,
       });
       if (cuisineData.imageUrl) setImagePreview(cuisineData.imageUrl);
     }
-  }, [isEditMode, cuisineData]);
+  }, [isEditMode, cuisineData, reset]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,20 +91,15 @@ export default function CuisineForm() {
     setImagePreview(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: CuisineFormValues) => {
     setLoading(true);
-
     try {
       const payload = new FormData();
-      payload.append("nameEn", formData.nameEn || "");
-      payload.append("nameMm", formData.nameMm || "");
-      payload.append("nameTh", formData.nameTh || "");
-      payload.append("active", String(formData.active));
-      payload.append(
-        "displayOrder",
-        String(formData.displayOrder === "" || Number(formData.displayOrder) < 1 ? 1 : Number(formData.displayOrder))
-      );
+      payload.append("nameEn", values.nameEn);
+      payload.append("nameMm", values.nameMm || "");
+      payload.append("nameTh", values.nameTh || "");
+      payload.append("isActive", String(values.isActive));
+      payload.append("displayOrder", String(values.displayOrder));
 
       if (imageFile) {
         payload.append("image", imageFile);
@@ -143,7 +146,7 @@ export default function CuisineForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <Card className="border-t-4 border-t-primary">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -204,26 +207,16 @@ export default function CuisineForm() {
                 <Input
                   id="nameEn"
                   placeholder="e.g. Italian"
-                  value={formData.nameEn}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData((prev) => ({
-                      ...prev,
-                      nameEn: value,
-                    }));
-                  }}
-                  required
+                  {...register("nameEn")}
                 />
+                {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nameMm">Name (Myanmar)</Label>
                 <Input
                   id="nameMm"
                   placeholder="အီတလီ"
-                  value={formData.nameMm}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nameMm: e.target.value })
-                  }
+                  {...register("nameMm")}
                 />
               </div>
               <div className="space-y-2">
@@ -231,10 +224,7 @@ export default function CuisineForm() {
                 <Input
                   id="nameTh"
                   placeholder="อาหารอิตาเลี่ยน"
-                  value={formData.nameTh}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nameTh: e.target.value })
-                  }
+                  {...register("nameTh")}
                 />
               </div>
             </div>
@@ -246,39 +236,24 @@ export default function CuisineForm() {
                   id="displayOrder"
                   type="text"
                   inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={formData.displayOrder}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "" || /^\d+$/.test(val)) {
-                      const numeric = val === "" ? "" : parseInt(val, 10);
-                      setFormData((prev) => ({
-                        ...prev,
-                        displayOrder: numeric,
-                      }));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (
-                      formData.displayOrder === "" ||
-                      (typeof formData.displayOrder === "number" &&
-                        formData.displayOrder < 1)
-                    ) {
-                      setFormData({ ...formData, displayOrder: 1 });
-                    }
-                  }}
+                  {...register("displayOrder")}
                   placeholder="1"
                 />
+                {errors.displayOrder && <p className="text-xs text-destructive">{errors.displayOrder.message}</p>}
               </div>
               <div className="flex items-center space-x-2 pt-8">
-                <Switch
-                  id="active"
-                  checked={formData.active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, active: checked })
-                  }
+                <Controller
+                  name="isActive"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="isActive"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
                 />
-                <Label htmlFor="active">Active Status</Label>
+                <Label htmlFor="isActive">Active Status</Label>
               </div>
             </div>
 
@@ -303,3 +278,4 @@ export default function CuisineForm() {
     </div>
   );
 }
+

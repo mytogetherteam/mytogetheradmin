@@ -1,0 +1,11 @@
+import { z } from "zod";
+
+export const shopCategorySchema = z.object({
+  nameEn: z.string().min(1, "Name (English) is required"),
+  nameMm: z.string().optional(),
+  nameTh: z.string().optional(),
+  displayOrder: z.coerce.number().min(1, "Display order must be at least 1").default(1),
+  isActive: z.boolean().default(true),
+});
+
+export type ShopCategoryFormValues = z.infer<typeof shopCategorySchema>;

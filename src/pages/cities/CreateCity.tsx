@@ -1,24 +1,22 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useForm, Controller, Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
-import { toast } from "sonner";
 import { CreateCityRequest } from "@/services/cityService";
 import { useCity, useCreateCityMutation, useUpdateCityMutation } from "@/hooks/city/useCity";
+
+import { citySchema, type CityFormValues } from "@/schemas/city.schema";
 
 export default function CreateCity() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEdit = !!id;
-
-    const [nameEn, setNameEn] = useState("");
-    const [nameMm, setNameMm] = useState("");
-    const [nameTh, setNameTh] = useState("");
-    const [active, setActive] = useState(true);
 
     const { data: cityData, isPending: loadingCity } = useCity(isEdit ? parseInt(id!) : 0);
     const loading = isEdit ? loadingCity : false;
@@ -27,20 +25,38 @@ export default function CreateCity() {
     const { mutateAsync: updateCity, isPending: isUpdating } = useUpdateCityMutation();
     const submitting = isCreating || isUpdating;
 
+    const {
+        register,
+        handleSubmit,
+        control,
+        reset,
+        formState: { errors },
+    } = useForm<CityFormValues>({
+        resolver: zodResolver(citySchema) as Resolver<CityFormValues>,
+        defaultValues: {
+            nameEn: "",
+            nameMm: "",
+            nameTh: "",
+            isActive: true,
+        },
+    });
+
     useEffect(() => {
         if (isEdit && cityData) {
-            setNameEn(cityData.nameEn);
-            setNameMm(cityData.nameMm);
-            setNameTh(cityData.nameTh || "");
-            setActive(cityData.active ?? true);
+            reset({
+                nameEn: cityData.nameEn,
+                nameMm: cityData.nameMm,
+                nameTh: cityData.nameTh || "",
+                isActive: cityData.isActive ?? true,
+            });
         }
-    }, [isEdit, cityData]);
+    }, [isEdit, cityData, reset]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!nameEn.trim() || !nameMm.trim()) return toast.error("Name (EN) and Name (MM) are required");
-
-        const data: CreateCityRequest = { nameEn: nameEn.trim(), nameMm: nameMm.trim(), nameTh: nameTh.trim() || undefined, active };
+    const onSubmit = async (values: CityFormValues) => {
+        const data: CreateCityRequest = {
+            ...values,
+            nameTh: values.nameTh || undefined,
+        };
         if (isEdit) {
             await updateCity({ id: parseInt(id!), data });
         } else {
@@ -68,28 +84,50 @@ export default function CreateCity() {
                     <CardDescription>{isEdit ? "Update city information." : "Add a new city to the platform."}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="nameEn">Name (English) *</Label>
-                                <Input id="nameEn" placeholder="e.g. Yangon" value={nameEn} onChange={(e) => {
-                                    setNameEn(e.target.value);
-                                }} required />
+                                <Input
+                                    id="nameEn"
+                                    placeholder="e.g. Yangon"
+                                    {...register("nameEn")}
+                                />
+                                {errors.nameEn && <p className="text-xs text-destructive">{errors.nameEn.message}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nameMm">Name (Myanmar) *</Label>
-                                <Input id="nameMm" placeholder="e.g. ရန်ကုန်" value={nameMm} onChange={(e) => setNameMm(e.target.value)} required />
+                                <Input
+                                    id="nameMm"
+                                    placeholder="e.g. ရန်ကုန်"
+                                    {...register("nameMm")}
+                                />
+                                {errors.nameMm && <p className="text-xs text-destructive">{errors.nameMm.message}</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="nameTh">Name (Thai)</Label>
-                                <Input id="nameTh" placeholder="Optional" value={nameTh} onChange={(e) => setNameTh(e.target.value)} />
+                                <Input
+                                    id="nameTh"
+                                    placeholder="Optional"
+                                    {...register("nameTh")}
+                                />
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <Switch id="active" checked={active} onCheckedChange={setActive} />
-                            <Label htmlFor="active" className="cursor-pointer">Active</Label>
+                            <Controller
+                                name="isActive"
+                                control={control}
+                                render={({ field }) => (
+                                    <Switch
+                                        id="isActive"
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                )}
+                            />
+                            <Label htmlFor="isActive" className="cursor-pointer">Active</Label>
                         </div>
                         <div className="flex gap-3 pt-4">
                             <Button type="submit" disabled={submitting} className="flex-1">
@@ -103,3 +141,4 @@ export default function CreateCity() {
         </div>
     );
 }
+

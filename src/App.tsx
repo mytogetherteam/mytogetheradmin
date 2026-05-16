@@ -91,8 +91,8 @@ const FeatureFlags = lazy(() => import("@/pages/system/FeatureFlags"));
 const SystemHealth = lazy(() => import("@/pages/system/SystemHealth"));
 
 // Payment
-const PaymentMethods = lazy(() => import("@/pages/payment/PaymentMethods"));
-const PaymentMethodForm = lazy(() => import("@/pages/payment/PaymentMethodForm"));
+const PaymentMethods = lazy(() => import("@/pages/payment-methods/PaymentMethods"));
+const PaymentMethodForm = lazy(() => import("@/pages/payment-methods/PaymentMethodForm"));
 const ManageShopPaymentTypes = lazy(() => import("@/pages/shop-payment-types/ManageShopPaymentTypes"));
 const CreateShopPaymentType = lazy(() => import("@/pages/shop-payment-types/CreateShopPaymentType"));
 
@@ -221,9 +221,9 @@ function App() {
                     <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                     <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
                     <Route path="/import/single-shop-excel" element={<SingleShopExcelImport />} />
-                    <Route path="/payment/methods" element={<PaymentMethods />} />
-                    <Route path="/payment/methods/create" element={<PaymentMethodForm />} />
-                    <Route path="/payment/methods/edit/:id" element={<PaymentMethodForm />} />
+                    <Route path="/payment-methods/manage" element={<PaymentMethods />} />
+                    <Route path="/payment-methods/create" element={<PaymentMethodForm />} />
+                    <Route path="/payment-methods/edit/:id" element={<PaymentMethodForm />} />
                     <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
                     <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                     <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
