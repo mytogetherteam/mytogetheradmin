@@ -15,6 +15,7 @@ import {
     useUpdateShopMutation,
     useShopRestaurantEditQuery,
 } from "./mutations"
+import { usePaymentMethods } from "@/hooks/payment-methods/usePaymentMethod"
 import { buildShopRestaurantSubmitFormData } from "./buildShopFormData"
 import { createModeShopFormValues, useShopRestaurantForm } from "./useShopRestaurantForm"
 import { useShopRestaurantEditLabels } from "./useShopRestaurantEditLabels"
@@ -87,7 +88,12 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
 
     /** Reference data for labels (e.g. shop categories). Populate via `PaymentService.getShopFormData` when wired. */
     const setupData: ShopFormDataDTO | null = null
-    const paymentMethods: PaymentMethodDTO[] = []
+    const { data: paymentMethodsResponse } = usePaymentMethods({
+        page: 0,
+        size: 200,
+        isActive: true,
+    })
+    const paymentMethods: PaymentMethodDTO[] = paymentMethodsResponse?.content ?? []
 
     const numericEditId =
         shopId && !Number.isNaN(parseInt(shopId, 10)) ? parseInt(shopId, 10) : null

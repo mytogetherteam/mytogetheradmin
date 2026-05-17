@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   PaymentMethodService,
   CreatePaymentMethodRequest,
+  type PaymentMethodListParams,
   UpdatePaymentMethodRequest,
 } from "@/services/paymentMethodService";
 import { toast } from "sonner";
@@ -11,17 +12,13 @@ import { useNavigate } from "react-router-dom";
 export const paymentKeys = {
   all: ["payment-methods"] as const,
   lists: () => [...paymentKeys.all, "list"] as const,
-  list: (params: { page: number; size: number; search?: string }) =>
+  list: (params: PaymentMethodListParams) =>
     [...paymentKeys.lists(), params] as const,
   details: () => [...paymentKeys.all, "detail"] as const,
   detail: (id: number) => [...paymentKeys.details(), id] as const,
 };
 
-export function usePaymentMethods(params: {
-  page: number;
-  size: number;
-  search?: string;
-}) {
+export function usePaymentMethods(params: PaymentMethodListParams) {
   return useQuery({
     queryKey: paymentKeys.list(params),
     queryFn: () => PaymentMethodService.getPaymentMethods(params),

@@ -29,8 +29,8 @@ export function DeleteShopDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete shop?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently remove <strong>{state.name}</strong> and its related data
-            where the API allows. This cannot be undone.
+            Are you sure you want to delete <strong>{state.name}</strong>?
+            This will hide the shop from public listings (soft delete), but its data will remain in the system.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

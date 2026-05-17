@@ -7,6 +7,26 @@ export interface OperatingHour {
     isClosed: boolean;
 }
 
+const shopPaymentMethodSchema = z.object({
+    paymentMethodId: z.number(),
+    accountName: z.string().trim().min(1, "Account name is required"),
+    accountNumber: z.string().trim().min(1, "Account / phone number is required"),
+    displayOrder: z.coerce.number().default(0),
+    isActive: z.boolean().default(true),
+    qr: z.string().optional().nullable(),
+    qrFile: z.any().optional(),
+});
+
+const requiredPositiveNumber = (message: string) =>
+    z.preprocess(
+        (value) => {
+            if (value === "" || value === undefined || value === null) return undefined
+            const n = Number(value)
+            return Number.isFinite(n) ? n : value
+        },
+        z.number({ error: message }).min(1, message).optional(),
+    ).refine((value) => value !== undefined, { message })
+
 export const shopFormSchema = z.object({
     nameEn: z.string().optional(),
     nameMm: z.string().optional().or(z.literal("")),
@@ -36,13 +56,14 @@ export const shopFormSchema = z.object({
     enableStockCheck: z.boolean().default(false),
     cuisineTypeIds: z.array(z.number()).default([]),
     paymentMethodIds: z.array(z.number()).default([]),
+    shopPaymentMethods: z.array(shopPaymentMethodSchema).default([]),
     operatingHours: z.array(z.object({
         dayOfWeek: z.number(),
         openTime: z.string(),
         closeTime: z.string(),
         isClosed: z.boolean()
     })).default([]),
-    assignedAdminId: z.coerce.number().optional().nullable(),
+    assignedAdminId: requiredPositiveNumber("Shop admin is required"),
 });
 
 export type ShopFormValues = z.infer<typeof shopFormSchema>;

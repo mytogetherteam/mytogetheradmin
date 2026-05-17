@@ -37,6 +37,7 @@ export {
 export { useShopRestaurantMedia, type ShopRestaurantMediaHydrateInput } from './restaurant-form/useShopRestaurantMedia';
 export { useShopRestaurantLocationPickers } from './restaurant-form/useShopRestaurantLocationPickers';
 export { useShopRestaurantEditLabels } from './restaurant-form/useShopRestaurantEditLabels';
+export { useShopRestaurantPaymentMethods } from './restaurant-form/useShopRestaurantPaymentMethods';
 
 // Operating hours
 export { useShopOperatingHoursQuery } from './operating-hours/useShopOperatingHoursQuery';

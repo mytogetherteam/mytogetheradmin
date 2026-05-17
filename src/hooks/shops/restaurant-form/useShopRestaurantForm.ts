@@ -42,6 +42,7 @@ export const defaultShopFormValues: ShopFormValues = {
   enableStockCheck: false,
   cuisineTypeIds: [],
   paymentMethodIds: [],
+  shopPaymentMethods: [],
   operatingHours: defaultOperatingWeek(),
   assignedAdminId: undefined,
 };

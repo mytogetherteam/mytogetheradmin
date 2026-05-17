@@ -6,7 +6,7 @@ import { DeleteShopDialog } from '@/components/shop/manage/DeleteShopDialog';
 import { useManageShopRestaurant } from '@/hooks/shops/profiles/useManageShopRestaurant';
 
 export default function ManageShopRestaurant() {
-  const { table, pagination, search, deleteDialog, actions } =
+  const { table, pagination, search, deleteDialog, filters, actions } =
     useManageShopRestaurant();
 
   return (
@@ -17,12 +17,12 @@ export default function ManageShopRestaurant() {
           onSearchChange={search.onSearchChange}
           onExport={actions.onExport}
           onCreateShop={actions.onCreateShop}
+          filters={filters}
         />
         <CardContent>
           <ShopTable
             shopList={table.shopRows}
             isLoading={table.shopsLoading}
-            variant="adminList"
             selectedShopId={table.selectedShopId}
             sortConfig={table.sortConfig}
             onSort={actions.onSort}
@@ -30,7 +30,7 @@ export default function ManageShopRestaurant() {
             onToggleStatus={actions.onToggleStatus}
             onToggleVerified={actions.onToggleVerified}
             onEditShop={actions.onEditShop}
-            onOpenReject={()=>console.log('open reject')}
+            onOpenReject={() => console.log('open reject')}
             onOpenDelete={actions.onOpenDelete}
           />
           {!table.shopsLoading && (

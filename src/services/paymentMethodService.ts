@@ -27,6 +27,13 @@ export interface UpdatePaymentMethodRequest {
   isActive?: boolean;
 }
 
+export type PaymentMethodListParams = {
+  page?: number;
+  size?: number;
+  search?: string;
+  isActive?: boolean;
+};
+
 export const PaymentMethodService = {
   /**
    * Get all reference data for the shop form
@@ -59,13 +66,14 @@ export const PaymentMethodService = {
   /**
    * Get all payment methods
    */
-  getPaymentMethods: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: PaymentMethodDTO[]; totalElements: number; totalPages: number }> => {
+  getPaymentMethods: async (params?: PaymentMethodListParams): Promise<{ content: PaymentMethodDTO[]; totalElements: number; totalPages: number }> => {
     let url = config.endpoints.admin.payment.paymentMethods;
     const queryParams = new URLSearchParams();
     if (params) {
       if (params.page !== undefined) queryParams.append('page', (params.page + 1).toString()); // NestJS is 1-based in some parts or wait...
       if (params.size !== undefined) queryParams.append('size', params.size.toString());
       if (params.search !== undefined) queryParams.append('search', params.search);
+      if (params.isActive !== undefined) queryParams.append('isActive', String(params.isActive));
     }
     const queryString = queryParams.toString();
     if (queryString) {

@@ -18,7 +18,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
@@ -37,8 +37,9 @@ import { ShopCategoryService } from "@/services/shopCategoryService"
 import { cuisineService } from "@/services/cuisineService"
 import { cityService } from "@/services/cityService"
 import { AdminsService } from "@/services/adminsService"
-import { useCreateShopRestaurant } from "@/hooks/shops"
+import { useCreateShopRestaurant, useShopRestaurantPaymentMethods } from "@/hooks/shops"
 import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOperationRow"
+import { ShopPaymentQrPreview } from "@/components/shop/ShopPaymentQrPreview"
 import { Loader } from "@/components/ui/loader"
 
 export default function CreateShopRestaurant() {
@@ -80,7 +81,17 @@ export default function CreateShopRestaurant() {
         setDeleteDialogOpen,
         clearLogoMedia,
         clearCoverMedia,
-    } = actions
+    } = actions;
+
+    const {
+        selectedShopPaymentMethods,
+        sortedShopPaymentMethods,
+        activeShopPaymentMethod,
+        setActivePaymentMethodId,
+        setShopPaymentMethods,
+        updateShopPaymentMethod,
+        handleInvalidSubmit,
+    } = useShopRestaurantPaymentMethods(form)
 
     return (
         <div className="container mx-auto py-10 max-w-5xl">
@@ -100,7 +111,7 @@ export default function CreateShopRestaurant() {
                 </div>
             ) : (
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)} className="space-y-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left Column - Main Info */}
                         <div className="lg:col-span-2 space-y-8">
@@ -406,26 +417,26 @@ export default function CreateShopRestaurant() {
                                                 )}
                                             />
 
-                                            <div className="space-y-4 pt-4">
+                                            <div className="contents">
                                                 <FormField
                                                     control={form.control}
                                                     name="paymentMethodIds"
                                                     render={() => (
-                                                        <FormItem>
+                                                        <>
+                                                        <FormItem className="pt-4">
                                                             <div className="mb-4">
                                                                 <FormLabel className="text-base">Payment Methods</FormLabel>
                                                                 <FormDescription>
                                                                     Select payment methods supported by this shop.
                                                                 </FormDescription>
                                                             </div>
-                                                            <div className="flex flex-wrap gap-4 pt-2">
-                                                                {(paymentMethods || []).map((method: PaymentMethodDTO) => (
-                                                                    <FormField
-                                                                        key={method.id}
-                                                                        control={form.control}
-                                                                        name="paymentMethodIds"
-                                                                        render={({ field }) => {
-                                                                            return (
+                                                            <div className="space-y-4 pt-2">
+                                                                <FormField
+                                                                    control={form.control}
+                                                                    name="paymentMethodIds"
+                                                                    render={({ field }) => (
+                                                                        <div className="flex flex-wrap gap-4">
+                                                                            {(paymentMethods || []).map((method: PaymentMethodDTO) => (
                                                                                 <FormItem
                                                                                     key={method.id}
                                                                                     className="flex flex-row items-start space-x-3 space-y-0"
@@ -434,14 +445,40 @@ export default function CreateShopRestaurant() {
                                                                                         <Checkbox
                                                                                             checked={(field.value as number[])?.includes(method.id)}
                                                                                             onCheckedChange={(checked) => {
-                                                                                                const current = (field.value as number[]) || [];
-                                                                                                return checked
-                                                                                                    ? field.onChange([...current, method.id])
-                                                                                                    : field.onChange(
-                                                                                                        current.filter(
-                                                                                                            (value: number) => value !== method.id
-                                                                                                        )
-                                                                                                    );
+                                                                                                const current = (field.value as number[]) || []
+                                                                                                const isChecked = checked === true
+                                                                                                const nextIds = isChecked
+                                                                                                    ? [...current, method.id]
+                                                                                                    : current.filter((value: number) => value !== method.id)
+
+                                                                                                field.onChange(nextIds)
+
+                                                                                                if (isChecked) {
+                                                                                                    const exists = selectedShopPaymentMethods.some(
+                                                                                                        (detail) => detail.paymentMethodId === method.id,
+                                                                                                    )
+                                                                                                    if (!exists) {
+                                                                                                        setShopPaymentMethods([
+                                                                                                            ...selectedShopPaymentMethods,
+                                                                                                            {
+                                                                                                                paymentMethodId: method.id,
+                                                                                                                accountName: "",
+                                                                                                                accountNumber: "",
+                                                                                                                displayOrder: selectedShopPaymentMethods.length,
+                                                                                                                isActive: true,
+                                                                                                                qr: null,
+                                                                                                            },
+                                                                                                        ])
+                                                                                                    }
+                                                                                                    setActivePaymentMethodId(method.id)
+                                                                                                    return
+                                                                                                }
+
+                                                                                                setShopPaymentMethods(
+                                                                                                    selectedShopPaymentMethods.filter(
+                                                                                                        (detail) => detail.paymentMethodId !== method.id,
+                                                                                                    ),
+                                                                                                )
                                                                                             }}
                                                                                         />
                                                                                     </FormControl>
@@ -457,13 +494,209 @@ export default function CreateShopRestaurant() {
                                                                                         <span className="truncate">{method.code || method.name}</span>
                                                                                     </FormLabel>
                                                                                 </FormItem>
-                                                                            );
-                                                                        }}
-                                                                    />
-                                                                ))}
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                />
                                                             </div>
                                                             <FormMessage />
                                                         </FormItem>
+                                                        {activeShopPaymentMethod && (
+                                                                    <div className="space-y-3 rounded-lg border bg-muted/20 p-3 md:col-span-2">
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {sortedShopPaymentMethods.map((detail) => {
+                                                                                const method = paymentMethods.find(
+                                                                                    (item) => item.id === detail.paymentMethodId,
+                                                                                )
+                                                                                const label =
+                                                                                    method?.code || method?.name || `Payment ${detail.paymentMethodId}`
+                                                                                const isActive = detail.paymentMethodId === activeShopPaymentMethod.paymentMethodId
+
+                                                                                return (
+                                                                                    <Button
+                                                                                        key={detail.paymentMethodId}
+                                                                                        type="button"
+                                                                                        variant={isActive ? "default" : "outline"}
+                                                                                        size="sm"
+                                                                                        className="h-8 gap-1.5 px-2"
+                                                                                        onClick={() => setActivePaymentMethodId(detail.paymentMethodId)}
+                                                                                    >
+                                                                                        {method?.iconUrl && (
+                                                                                            <img
+                                                                                                src={method.iconUrl}
+                                                                                                alt={label}
+                                                                                                className="h-4 w-4 object-contain"
+                                                                                                onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                                                            />
+                                                                                        )}
+                                                                                        <span className="max-w-[110px] truncate">{label}</span>
+                                                                                    </Button>
+                                                                                )
+                                                                            })}
+                                                                        </div>
+
+                                                                        {(() => {
+                                                                            const detail = activeShopPaymentMethod
+                                                                            const method = paymentMethods.find(
+                                                                                (item) => item.id === detail.paymentMethodId,
+                                                                            )
+                                                                            const label =
+                                                                                method?.code || method?.name || `Payment ${detail.paymentMethodId}`
+                                                                            const detailIndex = selectedShopPaymentMethods.findIndex(
+                                                                                (item) => item.paymentMethodId === detail.paymentMethodId,
+                                                                            )
+                                                                            const detailErrors =
+                                                                                detailIndex >= 0
+                                                                                    ? form.formState.errors.shopPaymentMethods?.[detailIndex]
+                                                                                    : undefined
+
+                                                                            return (
+                                                                                <Card className="border-solid shadow-none">
+                                                                                    <CardHeader className="p-4 pb-2">
+                                                                                        <CardTitle className="flex items-center gap-2 text-base">
+                                                                                            {method?.iconUrl && (
+                                                                                                <img
+                                                                                                    src={method.iconUrl}
+                                                                                                    alt={label}
+                                                                                                    className="h-5 w-5 object-contain"
+                                                                                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                                                                />
+                                                                                            )}
+                                                                                            {label} Info
+                                                                                        </CardTitle>
+                                                                                        <CardDescription>
+                                                                                            Add details for the selected payment method only.
+                                                                                        </CardDescription>
+                                                                                    </CardHeader>
+                                                                                    <CardContent className="grid gap-3 p-4 pt-2">
+                                                                                        <div className="grid gap-3 sm:grid-cols-2">
+                                                                                            <FormItem>
+                                                                                                <FormLabel>Account Name</FormLabel>
+                                                                                                <FormControl>
+                                                                                                    <Input
+                                                                                                        value={detail.accountName ?? ""}
+                                                                                                        placeholder="e.g. My Together Cafe"
+                                                                                                        onChange={(event) =>
+                                                                                                            updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                                accountName: event.target.value,
+                                                                                                            })
+                                                                                                        }
+                                                                                                    />
+                                                                                                </FormControl>
+                                                                                                {detailErrors?.accountName?.message && (
+                                                                                                    <p className="text-sm font-medium text-destructive">
+                                                                                                        {detailErrors.accountName.message}
+                                                                                                    </p>
+                                                                                                )}
+                                                                                            </FormItem>
+                                                                                            <FormItem>
+                                                                                                <FormLabel>Account / Phone Number</FormLabel>
+                                                                                                <FormControl>
+                                                                                                    <Input
+                                                                                                        value={detail.accountNumber ?? ""}
+                                                                                                        placeholder="e.g. 09123456789"
+                                                                                                        onChange={(event) =>
+                                                                                                            updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                                accountNumber: event.target.value,
+                                                                                                            })
+                                                                                                        }
+                                                                                                    />
+                                                                                                </FormControl>
+                                                                                                {detailErrors?.accountNumber?.message && (
+                                                                                                    <p className="text-sm font-medium text-destructive">
+                                                                                                        {detailErrors.accountNumber.message}
+                                                                                                    </p>
+                                                                                                )}
+                                                                                            </FormItem>
+                                                                                        </div>
+                                                                                        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                                                                                            <FormItem>
+                                                                                                <FormLabel>Display Order</FormLabel>
+                                                                                                <FormControl>
+                                                                                                    <Input
+                                                                                                        type="number"
+                                                                                                        min={0}
+                                                                                                        value={detail.displayOrder ?? 0}
+                                                                                                        onFocus={(event) => event.currentTarget.select()}
+                                                                                                        onChange={(event) => {
+                                                                                                            const displayOrder = Number(event.target.value) || 0
+                                                                                                            event.currentTarget.value = String(displayOrder)
+                                                                                                            updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                                displayOrder,
+                                                                                                            })
+                                                                                                        }}
+                                                                                                    />
+                                                                                                </FormControl>
+                                                                                            </FormItem>
+                                                                                            <FormItem className="flex items-center gap-3 pb-2">
+                                                                                                <FormControl>
+                                                                                                    <Switch
+                                                                                                        checked={detail.isActive ?? true}
+                                                                                                        onCheckedChange={(isActive) =>
+                                                                                                            updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                                isActive,
+                                                                                                            })
+                                                                                                        }
+                                                                                                    />
+                                                                                                </FormControl>
+                                                                                                <FormLabel className="cursor-pointer whitespace-nowrap">
+                                                                                                    Active for shop
+                                                                                                </FormLabel>
+                                                                                            </FormItem>
+                                                                                        </div>
+                                                                                        <FormItem>
+                                                                                            <FormLabel>QR Image</FormLabel>
+                                                                                            <FormControl>
+                                                                                                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-5 transition-colors hover:bg-muted/50 cursor-pointer relative">
+                                                                                                    <Input
+                                                                                                        type="file"
+                                                                                                        accept="image/*"
+                                                                                                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                                                                                                        onChange={(event) =>
+                                                                                                            updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                                qrFile: event.target.files?.[0],
+                                                                                                            })
+                                                                                                        }
+                                                                                                    />
+                                                                                                    <div className="pointer-events-none space-y-2 text-center">
+                                                                                                        <div className="flex justify-center">
+                                                                                                            <Upload className="h-8 w-8 text-muted-foreground" />
+                                                                                                        </div>
+                                                                                                        <div className="text-sm font-medium">
+                                                                                                            Click to upload QR image
+                                                                                                        </div>
+                                                                                                        <div className="text-xs text-muted-foreground">
+                                                                                                            Image file only
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </FormControl>
+                                                                                            {(detail.qr || detail.qrFile) && (
+                                                                                                <FormDescription>
+                                                                                                    {detail.qrFile instanceof File
+                                                                                                        ? `Selected: ${detail.qrFile.name}`
+                                                                                                        : "Existing QR image will be kept unless you upload a new one."}
+                                                                                                </FormDescription>
+                                                                                            )}
+                                                                                            <ShopPaymentQrPreview
+                                                                                                file={detail.qrFile instanceof File ? detail.qrFile : undefined}
+                                                                                                existingUrl={detail.qr}
+                                                                                                label={label}
+                                                                                                onRemove={() =>
+                                                                                                    updateShopPaymentMethod(detail.paymentMethodId, {
+                                                                                                        qr: null,
+                                                                                                        qrFile: undefined,
+                                                                                                    })
+                                                                                                }
+                                                                                            />
+                                                                                        </FormItem>
+                                                                                    </CardContent>
+                                                                                </Card>
+                                                                            )
+                                                                        })()}
+                                                                    </div>
+                                                                )}
+                                                        </>
                                                     )}
                                                 />
                                             </div>

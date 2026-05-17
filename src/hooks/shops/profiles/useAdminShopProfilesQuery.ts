@@ -10,15 +10,21 @@ export function useAdminShopProfilesQuery(
   page: number,
   size: number,
   search: string,
+  categoryId?: number,
+  isActive?: boolean,
+  isVerified?: boolean,
   includes: AdminShopProfileListIncludes = adminShopProfilesManageListIncludes,
 ) {
   return useQuery({
-    queryKey: adminShopProfilesQueryKey(page, size, search, includes),
+    queryKey: adminShopProfilesQueryKey(page, size, search, categoryId, isActive, isVerified, includes),
     queryFn: () =>
       ShopService.getAdminShopProfiles(
         page,
         size,
         search.trim() || undefined,
+        categoryId,
+        isActive,
+        isVerified,
         includes,
       ),
   });
