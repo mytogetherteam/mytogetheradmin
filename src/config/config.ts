@@ -47,6 +47,9 @@ export const config = {
         cuisineTypeDetail: (id: number) => `/api/admin/setup/cuisine-types/${id}`,
         paymentMethods: '/api/admin/payment-methods',
         paymentMethod: (id: number) => `/api/admin/payment-methods/${id}`,
+        shopPaymentMethods: '/api/admin/shop-payment-methods',
+        shopPaymentMethodsByShop: (shopId: number) => `/api/admin/shop-payment-methods/shop/${shopId}`,
+        replaceShopPaymentMethods: (shopId: number) => `/api/admin/shop-payment-methods/${shopId}`,
 
         shopPaymentTypes: (shopId: number) => `/api/admin/shops/${shopId}/payment-types`,
         shopPaymentType: (shopId: number, id: number) => `/api/admin/shops/${shopId}/payment-types/${id}`,
