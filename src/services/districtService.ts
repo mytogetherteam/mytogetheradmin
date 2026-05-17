@@ -12,7 +12,7 @@ export interface DistrictDTO {
   nameTh?: string;
   latitude?: number;
   longitude?: number;
-  active: boolean;
+  isActive: boolean;
 }
 
 export interface DistrictPage {
@@ -36,7 +36,7 @@ export interface CreateDistrictRequest {
   nameTh?: string;
   latitude?: number;
   longitude?: number;
-  active?: boolean;
+  isActive?: boolean;
 }
 
 class DistrictService {

@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { api } from '@/utils/axios';
 import { config } from '@/config/config';
 import { 
   CityDTO, 
@@ -14,7 +15,7 @@ export interface CreatePaymentMethodRequest {
   nameMm?: string;
   nameTh?: string;
   displayOrder?: number;
-  active?: boolean;
+  isActive?: boolean;
 }
 
 export interface UpdatePaymentMethodRequest {
@@ -23,10 +24,10 @@ export interface UpdatePaymentMethodRequest {
   nameMm?: string;
   nameTh?: string;
   displayOrder?: number;
-  active?: boolean;
+  isActive?: boolean;
 }
 
-export const PaymentService = {
+export const PaymentMethodService = {
   /**
    * Get all reference data for the shop form
    */
@@ -60,17 +61,32 @@ export const PaymentService = {
    */
   getPaymentMethods: async (params?: { page?: number; size?: number; search?: string }): Promise<{ content: PaymentMethodDTO[]; totalElements: number; totalPages: number }> => {
     let url = config.endpoints.admin.payment.paymentMethods;
+    const queryParams = new URLSearchParams();
     if (params) {
-      const queryParams = new URLSearchParams();
-      if (params.page !== undefined) queryParams.append('page', params.page.toString());
+      if (params.page !== undefined) queryParams.append('page', (params.page + 1).toString()); // NestJS is 1-based in some parts or wait...
       if (params.size !== undefined) queryParams.append('size', params.size.toString());
       if (params.search !== undefined) queryParams.append('search', params.search);
-      const queryString = queryParams.toString();
-      if (queryString) {
-        url += `?${queryString}`;
-      }
     }
-    return apiClient.get(url);
+    const queryString = queryParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+    
+    const { data: response } = await api.get<any>(url);
+    
+    if (response && response.success && response.data) {
+      return {
+        content: response.data,
+        totalElements: response.meta?.total || response.data.length,
+        totalPages: response.meta?.last_page || 1,
+      };
+    }
+
+    return {
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+    };
   },
 
   /**

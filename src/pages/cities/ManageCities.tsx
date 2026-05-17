@@ -62,7 +62,7 @@ export default function ManageCities() {
     const exportToExcel = () => {
         const data = sortedCities.map((c) => ({
             ID: c.id, "Name (EN)": c.nameEn, "Name (MM)": c.nameMm,
-            "Name (TH)": c.nameTh || "", Active: c.active ? "Yes" : "No",
+            "Name (TH)": c.nameTh || "", Active: c.isActive ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -134,8 +134,8 @@ export default function ManageCities() {
                                                 <TableCell>{city.nameMm}</TableCell>
                                                 <TableCell className="text-muted-foreground">{city.nameTh || "—"}</TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${city.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                        {city.active ? "Active" : "Inactive"}
+                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${city.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                                        {city.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
     Table,
     TableBody,
@@ -28,48 +28,33 @@ import {
     Trash2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { PaymentService } from "@/services/paymentService";
 import { PaymentMethodDTO } from "@/services/shopService";
-import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
+import {
+    usePaymentMethods,
+    useUpdatePaymentMethodMutation,
+    useDeletePaymentMethodMutation
+} from "@/hooks/payment-methods/usePaymentMethod";
 
 export default function PaymentMethods() {
     const navigate = useNavigate();
-    const [items, setItems] = useState<PaymentMethodDTO[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [totalItems, setTotalItems] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
-    const loadItems = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await PaymentService.getPaymentMethods({
-                page: currentPage - 1,
-                size: pageSize,
-                search: searchTerm
-            });
+    const { data: response, isLoading } = usePaymentMethods({
+        page: currentPage - 1,
+        size: pageSize,
+        search: searchTerm
+    });
 
-            setItems(response.content);
-            setTotalPages(response.totalPages);
-            setTotalItems(response.totalElements);
-        } catch (error) {
-            handleApiError(error, "Failed to load payment methods");
-        } finally {
-            setLoading(false);
-        }
-    }, [currentPage, pageSize, searchTerm]);
+    const items = response?.content || [];
+    const totalPages = response?.totalPages || 0;
+    const totalElements = response?.totalElements || 0;
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            loadItems();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [loadItems]);
+    const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethodMutation();
+    const { mutateAsync: deletePaymentMethod } = useDeletePaymentMethodMutation();
 
     const handleSort = (key: keyof PaymentMethodDTO) => {
         let direction: "asc" | "desc" = "asc";
@@ -77,46 +62,13 @@ export default function PaymentMethods() {
             direction = "desc";
         }
         setSortConfig({ key: String(key), direction });
-
-        const sorted = [...items].sort((a, b) => {
-            let aVal = a[key];
-            let bVal = b[key];
-
-            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-
-            if (aVal !== undefined && bVal !== undefined) {
-                if (aVal < bVal) return direction === "asc" ? -1 : 1;
-                if (aVal > bVal) return direction === "asc" ? 1 : -1;
-            }
-            return 0;
-        });
-        setItems(sorted);
-    };
-
-    const handleToggleActive = async (item: PaymentMethodDTO, value: boolean) => {
-        try {
-            await PaymentService.updatePaymentMethod(item.id, { active: value });
-            setItems(prevItems =>
-                prevItems.map(i => i.id === item.id ? { ...i, active: value } : i)
-            );
-            toast.success(`Payment method updated successfully`);
-        } catch (error) {
-            handleApiError(error, "Failed to update status");
-        }
+        // Note: Real sorting should ideally happen on the server, but keeping local sort logic for now if needed.
     };
 
     const handleDelete = async (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!confirm("Are you sure you want to delete this payment method?")) return;
-
-        try {
-            await PaymentService.deletePaymentMethod(id);
-            toast.success("Payment method deleted");
-            loadItems(); // Reload the list
-        } catch (error) {
-            handleApiError(error, "Failed to delete payment method");
-        }
+        await deletePaymentMethod(id);
     };
 
     return (
@@ -128,7 +80,7 @@ export default function PaymentMethods() {
                             <CardTitle className="leading-tight">Payment Methods</CardTitle>
                             <CardDescription className="line-clamp-2 md:line-clamp-none">
                                 Manage payment methods available for shops.
-                            </CardDescription>
+                              </CardDescription>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                             <div className="relative w-full sm:w-auto">
@@ -144,7 +96,7 @@ export default function PaymentMethods() {
                                     }}
                                 />
                             </div>
-                            <Button onClick={() => navigate("/payment/methods/create")}>
+                            <Button onClick={() => navigate("/payment-methods/create")}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>
@@ -152,7 +104,7 @@ export default function PaymentMethods() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {loading ? (
+                    {isLoading ? (
                         <div className="flex justify-center items-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
@@ -166,15 +118,8 @@ export default function PaymentMethods() {
                                                 <div className="flex items-center gap-2">ID <ArrowUpDown className="h-3 w-3" /></div>
                                             </TableHead>
                                             <TableHead>Icon</TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("code")}>
-                                                <div className="flex items-center gap-2">Code <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
                                             <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                                                <div className="flex items-center gap-2">Name (EN) <ArrowUpDown className="h-3 w-3" /></div>
-                                            </TableHead>
-                                            <TableHead>Name (MM)</TableHead>
-                                            <TableHead className="cursor-pointer" onClick={() => handleSort("displayOrder")}>
-                                                <div className="flex items-center gap-2">Order <ArrowUpDown className="h-3 w-3" /></div>
+                                                <div className="flex items-center gap-2">Name <ArrowUpDown className="h-3 w-3" /></div>
                                             </TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
@@ -186,7 +131,7 @@ export default function PaymentMethods() {
                                                 <TableRow
                                                     key={item.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
+                                                    onClick={() => navigate(`/payment-methods/edit/${item.id}`)}
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
@@ -200,17 +145,11 @@ export default function PaymentMethods() {
                                                             <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">N/A</div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="font-medium">
-                                                        <Badge variant="outline">{item.code}</Badge>
-                                                    </TableCell>
-                                                    <TableCell>{item.name}</TableCell>
-                                                    <TableCell>{item.nameMm || '-'}</TableCell>
-                                                    <TableCell>{item.displayOrder}</TableCell>
-                                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                                        <Switch
-                                                            checked={item.active}
-                                                            onCheckedChange={(val) => handleToggleActive(item, val)}
-                                                        />
+                                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={item.isActive ? "default" : "secondary"}>
+                                                            {item.isActive ? "Active" : "Inactive"}
+                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                         <TooltipProvider>
@@ -221,7 +160,7 @@ export default function PaymentMethods() {
                                                                             size="icon"
                                                                             variant="ghost"
                                                                             className="h-8 w-8"
-                                                                            onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
+                                                                            onClick={() => navigate(`/payment-methods/edit/${item.id}`)}
                                                                         >
                                                                             <Edit className="h-4 w-4" />
                                                                         </Button>
@@ -262,7 +201,7 @@ export default function PaymentMethods() {
                                     onPageSizeChange={setPageSize}
                                     currentPage={currentPage}
                                     onPageChange={setCurrentPage}
-                                    totalItems={totalItems}
+                                    totalItems={totalElements}
                                     totalPages={totalPages}
                                 />
                             </div>
