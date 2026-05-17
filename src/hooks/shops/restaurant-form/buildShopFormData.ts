@@ -29,7 +29,7 @@ export type AdminShopProfileFormFields = {
   pricePreference: string;
   enableStockCheck: boolean;
   cuisineTypeIds: number[];
-  paymentMethodIds: number[];
+  shopPaymentMethods: ShopFormValues['shopPaymentMethods'];
   operatingHours: {
     dayOfWeek: number;
     openTime: string;
@@ -84,7 +84,25 @@ export function appendCreateAdminShopProfileFields(
   fd.append('pricePreference', p.pricePreference || 'MEDIUM');
   fd.append('enableStockCheck', String(p.enableStockCheck));
   fd.append('cuisineTypeIds', JSON.stringify(p.cuisineTypeIds ?? []));
-  fd.append('paymentMethodIds', JSON.stringify(p.paymentMethodIds ?? []));
+  const paymentQrFiles: File[] = [];
+  const shopPaymentMethods = (p.shopPaymentMethods ?? []).map((method) => {
+    const qrFile = method.qrFile instanceof File ? method.qrFile : undefined;
+    const qrFileIndex = qrFile ? paymentQrFiles.push(qrFile) - 1 : undefined;
+
+    return {
+      paymentMethodId: method.paymentMethodId,
+      accountName: method.accountName || undefined,
+      accountNumber: method.accountNumber || undefined,
+      displayOrder: method.displayOrder ?? 0,
+      status: method.isActive ?? true,
+      qrImage: method.qr || undefined,
+      ...(qrFileIndex !== undefined ? { qrFileIndex } : {}),
+    };
+  });
+  fd.append('shopPaymentMethods', JSON.stringify(shopPaymentMethods));
+  paymentQrFiles.forEach((file) => {
+    fd.append('paymentQrImages', file);
+  });
   fd.append('operatingHours', JSON.stringify(p.operatingHours ?? []));
   if (p.assignedAdminId != null) {
     fd.append('assignedAdminId', String(p.assignedAdminId));
@@ -124,7 +142,7 @@ export function shopFormValuesToAdminProfileFields(
     pricePreference: data.pricePreference || 'MEDIUM',
     enableStockCheck: data.enableStockCheck ?? false,
     cuisineTypeIds: data.cuisineTypeIds,
-    paymentMethodIds: data.paymentMethodIds,
+    shopPaymentMethods: data.shopPaymentMethods,
     operatingHours: data.operatingHours,
     assignedAdminId: data.assignedAdminId ?? null,
   };

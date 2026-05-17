@@ -7,6 +7,7 @@ import {
   type ShopSubCategoryDTO,
   type ShopProfileOperatingHour,
   type ShopCuisineAssignment,
+  type ShopPaymentMethodAssignment,
 } from '@/services/shopService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
@@ -35,6 +36,7 @@ function mapNestedCuisineToDto(
       c.region && typeof c.region === 'object'
         ? (c.region.name ?? undefined)
         : undefined,
+    isActive: c.isActive ?? c.active ?? true,
   };
 }
 
@@ -47,6 +49,45 @@ function cuisineTypesFromAdminShopProfile(shop: ShopDetail): CuisineTypeDTO[] {
       .filter((x): x is CuisineTypeDTO => x != null);
   }
   return shop.cuisineTypes?.length ? [...shop.cuisineTypes] : [];
+}
+
+function paymentMethodIdsFromAdminShopProfile(shop: ShopDetail): number[] {
+  const rows: ShopPaymentMethodAssignment[] | undefined = shop.shopPaymentMethods;
+  if (rows?.length) {
+    return [...rows]
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+      .map((row) => row.paymentMethodId)
+      .filter((id) => Number.isFinite(id) && id > 0);
+  }
+  if (shop.paymentMethodIds?.length) return [...shop.paymentMethodIds];
+  return shop.paymentMethods?.map((method) => method.id) ?? [];
+}
+
+function shopPaymentMethodsFromAdminShopProfile(
+  shop: ShopDetail,
+): ShopFormValues['shopPaymentMethods'] {
+  const rows: ShopPaymentMethodAssignment[] | undefined = shop.shopPaymentMethods;
+  if (rows?.length) {
+    return [...rows]
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+      .map((row, index) => ({
+        paymentMethodId: row.paymentMethodId,
+        accountName: row.accountName ?? '',
+        accountNumber: row.accountNumber ?? '',
+        displayOrder: row.displayOrder ?? index,
+        isActive: row.isActive ?? true,
+        qr: row.qr ?? null,
+      }));
+  }
+
+  return paymentMethodIdsFromAdminShopProfile(shop).map((paymentMethodId, displayOrder) => ({
+    paymentMethodId,
+    accountName: '',
+    accountNumber: '',
+    displayOrder,
+    isActive: true,
+    qr: null,
+  }));
 }
 
 function mapAdminSubToShopSub(s: AdminShopSubCategoryDTO): ShopSubCategoryDTO {
@@ -97,7 +138,7 @@ async function enrichShopForEditLabels(
           name: '',
           nameEn: '',
           nameMm: '',
-          active: true,
+          isActive: true,
           subCategories: [subDto],
         },
   };
@@ -155,6 +196,8 @@ export async function fetchShopRestaurantEditBundle(
 
   const cuisineTypesJoined = cuisineTypesFromAdminShopProfile(shop);
   const cuisineIdsRaw = cuisineTypesJoined.length > 0 ? cuisineTypesJoined.map((c) => c.id): [];
+  const paymentMethodIds = paymentMethodIdsFromAdminShopProfile(shop);
+  const shopPaymentMethods = shopPaymentMethodsFromAdminShopProfile(shop);
 
   const assignedAdminId = shop.adminShops?.[0]?.adminId ?? undefined;
 
@@ -213,7 +256,8 @@ export async function fetchShopRestaurantEditBundle(
       cuisineIdsRaw.length > 0
         ? cuisineIdsRaw
         : (enrichedShop.cuisineTypes?.map((c) => c.id) ?? []),
-    paymentMethodIds: [],
+    paymentMethodIds,
+    shopPaymentMethods,
     operatingHours: operatingHoursForForm,
     assignedAdminId,
   };

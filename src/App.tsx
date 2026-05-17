@@ -23,8 +23,6 @@ const UserDetail = lazy(() => import("@/pages/users/UserDetail"));
 // Shops
 const ManageShopRestaurant = lazy(() => import("@/pages/shops/ManageShopRestaurant"));
 const CreateShopRestaurant = lazy(() => import("@/pages/shops/CreateShopRestaurant"));
-const VettingQueue = lazy(() => import("@/pages/shops/VettingQueue"));
-const ShopProfileSettings = lazy(() => import("@/pages/shops/ShopProfileSettings"));
 const ShopOperatingHours = lazy(() => import("@/pages/shops/ShopOperatingHours"));
 
 // Import
@@ -153,7 +151,6 @@ function App() {
                     <Route path="/shops/create" element={<CreateShopRestaurant />} />
                     <Route path="/shops/manage" element={<ManageShopRestaurant />} />
                     <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
-                    <Route path="/shops/vetting" element={<VettingQueue />} />
                     <Route path="/users/manage" element={<ManageUsers />} />
                     <Route path="/users/:id" element={<UserDetail />} />
                     <Route path="/menus/approvals" element={<MenuApprovals />} />
@@ -236,7 +233,6 @@ function App() {
                 </Route>
 
                 {/* Shared/Uncategorized */}
-                <Route path="/shops/profile/settings" element={<ShopProfileSettings />} />
             </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

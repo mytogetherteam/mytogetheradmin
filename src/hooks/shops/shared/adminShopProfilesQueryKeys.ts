@@ -32,9 +32,12 @@ export function adminShopProfilesQueryKey(
   page: number,
   size: number,
   search: string,
+  categoryId?: number,
+  isActive?: boolean,
+  isVerified?: boolean,
   includes: AdminShopProfileListIncludes = adminShopProfilesManageListIncludes,
 ) {
-  return [...adminShopProfilesQueryRoot, { page, size, search, includes }] as const;
+  return [...adminShopProfilesQueryRoot, { page, size, search, categoryId, isActive, isVerified, includes }] as const;
 }
 
 export const shopOperatingHoursQueryRoot = [

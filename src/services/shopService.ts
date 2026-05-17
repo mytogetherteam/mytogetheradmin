@@ -469,6 +469,20 @@ export interface ShopCuisineAssignment {
   };
 }
 
+export interface ShopPaymentMethodAssignment {
+  shopId: number;
+  paymentMethodId: number;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  displayOrder?: number | null;
+  isActive?: boolean;
+  qr?: string | null;
+  paymentMethod?: PaymentMethodDTO & {
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}
+
 export interface ShopSubcategoryRef {
   id: number;
   nameEn?: string | null;
@@ -501,6 +515,7 @@ export interface ShopDetail extends Shop {
   operatingHours?: (OperatingHour | ShopProfileOperatingHour)[];
   adminShops?: AdminShopAssignment[];
   shopCuisines?: ShopCuisineAssignment[];
+  shopPaymentMethods?: ShopPaymentMethodAssignment[];
   createdAt?: string;
   updatedAt?: string;
   paymentQrUrl?: string | null;
@@ -627,6 +642,9 @@ export const ShopService = {
     page: number = 1,
     size: number = 20,
     search?: string,
+    categoryId?: number,
+    isActive?: boolean,
+    isVerified?: boolean,
     includes: AdminShopProfileListIncludes = {},
   ): Promise<AdminShopProfileListResponse> => {
     const { data: raw } = await api.post<unknown>(
@@ -635,6 +653,9 @@ export const ShopService = {
         page,
         size,
         ...(search?.trim() ? { search: search.trim() } : {}),
+        ...(categoryId !== undefined ? { categoryId } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
+        ...(isVerified !== undefined ? { isVerified } : {}),
         ...includes,
       },
     );
@@ -700,7 +721,7 @@ export const ShopService = {
    * Delete a shop
    */
   deleteShop: async (id: number): Promise<void> => {
-    const endpoint = config.endpoints.shops.detail(id);
+    const endpoint = config.endpoints.admin.shopProfile.detail(id);
     await apiClient.delete(endpoint);
   },
 

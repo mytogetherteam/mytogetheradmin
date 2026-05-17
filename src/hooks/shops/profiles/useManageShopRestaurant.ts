@@ -35,10 +35,17 @@ export function useManageShopRestaurant() {
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ShopActionDialogState>(closedDialog);
 
+  const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [activeFilter, setActiveFilter] = useState<boolean | undefined>();
+  const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>();
+
   const { data: shopListData, isPending: shopsLoading } = useAdminShopProfilesQuery(
     currentPage,
     pageSize,
     debouncedSearch,
+    selectedCategory,
+    activeFilter,
+    verifiedFilter,
     adminShopProfilesManageListIncludes,
   );
 
@@ -168,6 +175,14 @@ export function useManageShopRestaurant() {
       isLoading: deleteShopMutation.isPending,
       onOpenChange: (open: boolean) => !open && closeDeleteDialog(),
       onConfirm: handleDeleteConfirm,
+    },
+    filters: {
+      selectedCategory,
+      activeFilter,
+      verifiedFilter,
+      setSelectedCategory: (val?: number) => { setSelectedCategory(val); setCurrentPage(1); },
+      setActiveFilter: (val?: boolean) => { setActiveFilter(val); setCurrentPage(1); },
+      setVerifiedFilter: (val?: boolean) => { setVerifiedFilter(val); setCurrentPage(1); },
     },
     actions: {
       onToggleStatus: handleToggleStatus,
