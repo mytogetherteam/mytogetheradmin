@@ -21,6 +21,7 @@ export const config = {
       auditLogs: '/api/admin/audit-logs',
       admins: {
         list: '/api/admin/admins',
+        detail: (id: number) => `/api/admin/admins/${id}`,
       },
       shopCategories: '/api/admin/shop-categories',
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
@@ -32,7 +33,10 @@ export const config = {
       },
       shopProfile: {
         create: '/api/admin/shop-profile',
-        list: '/api/admin/shop-profile',
+        list: '/api/admin/shop-profile/list',
+        detail: (id: number) => `/api/admin/shop-profile/${id}`,
+        operatingHours: (id: number) =>
+          `/api/admin/shop-profile/${id}/operating-hours`,
         changeStatus: (id: number) =>
           `/api/admin/shop-profile/${id}/change-status`,
       },

@@ -24,7 +24,6 @@ export const shopFormSchema = z.object({
     descriptionEn: z.string().optional(),
     descriptionMm: z.string().optional().or(z.literal("")),
     descriptionTh: z.string().optional().or(z.literal("")),
-    hasDelivery: z.boolean().default(false),
     deliveryEnabled: z.boolean().default(false),
     isPickUp: z.boolean().default(false),
     hasParking: z.boolean().default(false),
@@ -35,9 +34,6 @@ export const shopFormSchema = z.object({
     isVegetarian: z.boolean().default(false),
     pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
     enableStockCheck: z.boolean().default(false),
-    maxItemQuantityPerOrder: z.number().default(10),
-    minOrderAmount: z.coerce.number().default(1),
-    baseDeliveryFee: z.coerce.number().default(0),
     cuisineTypeIds: z.array(z.number()).default([]),
     paymentMethodIds: z.array(z.number()).default([]),
     operatingHours: z.array(z.object({

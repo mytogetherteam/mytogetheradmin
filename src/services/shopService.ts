@@ -68,7 +68,6 @@ export interface Shop {
   descriptionMm?: string;
   descriptionTh?: string;
   descriptionEn?: string;
-  hasDelivery?: boolean;
   deliveryEnabled?: boolean;
   isPickUp?: boolean;
   hasParking?: boolean;
@@ -78,9 +77,6 @@ export interface Shop {
   isHalal?: boolean;
   isVegetarian?: boolean;
   enableStockCheck?: boolean;
-  maxItemQuantityPerOrder?: number;
-  minOrderAmount?: number;
-  baseDeliveryFee?: number;
   pricePreference?: 'LOW' | 'MEDIUM' | 'HIGH';
   pricePreferenceMm?: string;
   pricePreferenceTh?: string;
@@ -106,19 +102,17 @@ export interface Shop {
   menuCategoryCount?: number;
   menuItemCount?: number;
   cuisineId?: number;
-  /** Admin id (admin table) linked via AdminShop; replaces legacy owner user id. */
-  assignedAdminId?: number;
 }
 
 export interface DistrictDTO {
   id: number;
   cityId: number;
-  name: string;
+  name?: string;
   cityNameEn?: string;
   cityName?: string;
-  nameEn: string;
-  nameMm: string;
-  nameTh?: string;
+  nameEn?: string | null;
+  nameMm?: string | null;
+  nameTh?: string | null;
   latitude?: number;
   longitude?: number;
   isActive: boolean;
@@ -132,6 +126,8 @@ export interface CityDTO {
   nameTh?: string;
   isActive: boolean;
   districts?: DistrictDTO[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** City label from nested `city` (Prisma/API) or legacy string `city`. */
@@ -222,10 +218,10 @@ interface ShopPaymentMethodResponse {
 
 export interface ShopCategoryDTO {
   id: number;
-  name: string;
-  nameEn: string;
-  nameMm: string;
-  nameTh?: string;
+  name?: string;
+  nameEn?: string | null;
+  nameMm?: string | null;
+  nameTh?: string | null;
   iconUrl?: string;
   isActive: boolean;
   subCategories?: ShopSubCategoryDTO[];
@@ -243,7 +239,15 @@ export interface ShopSubCategoryDTO {
   displayOrder?: number;
 }
 
-/** Row from GET /api/admin/shop-profile (includes joined shopCategory). */
+export interface AdminShopProfileListIncludes {
+  withOperationHours?: boolean;
+  withCity?: boolean;
+  withDistrict?: boolean;
+  withGalleries?: boolean;
+  withShopCategory?: boolean;
+}
+
+/** Row from POST /api/admin/shop-profile/list (relations optional). */
 export interface AdminShopProfileListItem {
   id: number;
   nameEn: string;
@@ -257,6 +261,10 @@ export interface AdminShopProfileListItem {
   isActive: boolean;
   isVerified: boolean;
   categoryId?: number | null;
+  districtEn?: string | null;
+  districtMm?: string | null;
+  districtTh?: string | null;
+  cityId?: number | null;
   shopCategory?: ShopCategoryDTO | null;
   city?: CityDTO | null;
   district?: DistrictDTO | null;
@@ -287,7 +295,11 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     shopCategory: row.shopCategory ?? undefined,
     category: row.shopCategory?.nameEn ?? '',
     district: row.district ?? undefined,
+    districtEn: row.districtEn ?? undefined,
+    districtMm: row.districtMm ?? undefined,
+    districtTh: row.districtTh ?? undefined,
     city: row.city ?? undefined,
+    cityId: row.cityId ?? undefined,
     isActive: row.isActive,
     isVerified: row.isVerified,
   };
@@ -405,19 +417,93 @@ export interface OperatingHourRequest {
   isClosed?: boolean;
 }
 
+/** Operating hours row from admin shop profile (Nest/Prisma). */
+export interface ShopProfileOperatingHour {
+  id: number;
+  shopId: number;
+  dayOfWeek: number;
+  openTimeHour: number;
+  openTimeMin: number;
+  closeTimeHour: number;
+  closeTimeMin: number;
+  isClosed: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopGalleryItem {
+  id: number;
+  shopId: number;
+  imageUrl: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopProfileAdmin {
+  id: number;
+  email: string;
+  name: string | null;
+  username: string | null;
+}
+
+export interface AdminShopAssignment {
+  id: number;
+  adminId: number;
+  shopId: number;
+  createdAt?: string;
+  updatedAt?: string;
+  admin?: ShopProfileAdmin;
+}
+
+export interface ShopCuisineAssignment {
+  shopId: number;
+  cuisineTypeId: number;
+  displayOrder?: number | null;
+  createdAt?: string;
+  cuisineType?: CuisineTypeDTO & {
+    active?: boolean;
+    displayOrder?: number | null;
+    createdAt?: string;
+    updatedAt?: string;
+    region?: { id: number; name?: string | null } | null;
+  };
+}
+
+export interface ShopSubcategoryRef {
+  id: number;
+  nameEn?: string | null;
+  nameMm?: string | null;
+  nameTh?: string | null;
+  imageUrl?: string | null;
+  active?: boolean;
+  displayOrder?: number | null;
+  categoryId: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Full shop profile from GET /api/admin/shop-profile/:id (and related detail endpoints). */
 export interface ShopDetail extends Shop {
-  latitude: number;
-  longitude: number;
+  categoryId?: number;
+  subCategoryId?: number;
+  slug?: string | null;
+  googleMapsLink?: string | null;
+  viewCount?: number;
+  currency?: string | null;
   shopCategory?: ShopCategoryDTO;
+  shopSubcategory?: ShopSubcategoryRef;
   shopCategoryId?: number;
   shopSubCategoryId?: number;
   photos?: Photo[];
+  galleries?: ShopGalleryItem[];
   menuCategories?: MenuCategory[];
   recentReviews?: Review[];
-  operatingHours?: OperatingHour[];
+  operatingHours?: (OperatingHour | ShopProfileOperatingHour)[];
+  adminShops?: AdminShopAssignment[];
+  shopCuisines?: ShopCuisineAssignment[];
   createdAt?: string;
   updatedAt?: string;
-  paymentQrUrl?: string;
+  paymentQrUrl?: string | null;
   cuisineTypes?: CuisineTypeDTO[];
   cuisineTypeIds?: number[];
   mealTypes?: string[];
@@ -460,11 +546,18 @@ export const ShopService = {
   },
 
   /**
-   * Get shop by ID with full details
+   * Get shop by ID with full details (legacy Spring path).
    */
   getShopById: async (id: number): Promise<ShopDetail> => {
     const endpoint = config.endpoints.shops.detail(id);
     return apiClient.get<ShopDetail>(endpoint);
+  },
+
+  /**
+   * Get admin shop profile by id (Nest `/api/admin/shop-profile/:id`).
+   */
+  getAdminShopProfileById: async (id: number): Promise<ShopDetail> => {
+    return apiClient.get<ShopDetail>(config.endpoints.admin.shopProfile.detail(id));
   },
 
   /**
@@ -528,22 +621,23 @@ export const ShopService = {
 
   /**
    * SuperAdmin: paginated shop profiles from Prisma (admin shop-profile API).
-   * Page is 1-based (matches backend).
+   * Page is 1-based (matches backend). Relations are opt-in via POST body flags.
    */
   getAdminShopProfiles: async (
     page: number = 1,
     size: number = 20,
     search?: string,
+    includes: AdminShopProfileListIncludes = {},
   ): Promise<AdminShopProfileListResponse> => {
-    const params = new URLSearchParams({
-      page: String(page),
-      size: String(size),
-    });
-    if (search?.trim()) {
-      params.set('search', search.trim());
-    }
-    const url = `${config.endpoints.admin.shopProfile.list}?${params.toString()}`;
-    const { data: raw } = await api.get<unknown>(url);
+    const { data: raw } = await api.post<unknown>(
+      config.endpoints.admin.shopProfile.list,
+      {
+        page,
+        size,
+        ...(search?.trim() ? { search: search.trim() } : {}),
+        ...includes,
+      },
+    );
 
     if (
       raw &&
@@ -596,8 +690,10 @@ export const ShopService = {
    * Update an existing shop
    */
   updateShop: async (id: number, updates: FormData): Promise<ShopDetail> => {
-    const endpoint = config.endpoints.shops.detail(id);
-    return apiClient.put<ShopDetail>(endpoint, updates);
+    return apiClient.put<ShopDetail>(
+      config.endpoints.admin.shopProfile.detail(id),
+      updates,
+    );
   },
 
   /**
@@ -651,22 +747,30 @@ export const ShopService = {
   },
 
   /**
-   * Toggle shop active/inactive status (Nest: isActive only).
+   * Update shop active / verified flags.
    * PATCH /api/admin/shop-profile/{id}/change-status
    */
-  toggleShopStatus: async (id: number, active: boolean): Promise<void> => {
+  toggleShopStatus: async (
+    id: number,
+    body: { isActive: boolean; isVerified?: boolean },
+  ): Promise<void> => {
+    const payload: { isActive: boolean; isVerified?: boolean } = {
+      isActive: body.isActive,
+    };
+    if (body.isVerified !== undefined) {
+      payload.isVerified = body.isVerified;
+    }
     await apiClient.patch(
       config.endpoints.admin.shopProfile.changeStatus(id),
-      { isActive: active },
+      payload,
     );
   },
 
   /**
-   * Verify a shop
-   * POST /api/admin/shops/{id}/verify
+   * Approve / verify a shop (same change-status endpoint as toggle).
    */
   verifyShop: async (id: number): Promise<void> => {
-    await apiClient.post(config.endpoints.shops.verify(id));
+    await ShopService.toggleShopStatus(id, { isActive: true, isVerified: true });
   },
 
   /**
@@ -753,11 +857,38 @@ export const ShopService = {
   },
 
   /**
-   * Get operating hours for a specific shop (admin)
-   * GET /api/admin/shops/{id}/operating-hours
+   * Get operating hours for a specific shop (admin shop-profile API).
+   * GET /api/admin/shop-profile/{id}/operating-hours
+   */
+  getAdminShopOperatingHours: async (
+    shopId: number,
+  ): Promise<OperatingHour[]> => {
+    const { data: raw } = await api.get<unknown>(
+      config.endpoints.admin.shopProfile.operatingHours(shopId),
+    );
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'success' in raw &&
+      (raw as { success?: unknown }).success === true &&
+      'data' in raw &&
+      Array.isArray((raw as { data: unknown }).data)
+    ) {
+      return (raw as { data: OperatingHour[] }).data;
+    }
+
+    if (Array.isArray(raw)) {
+      return raw as OperatingHour[];
+    }
+
+    return [];
+  },
+
+  /**
+   * @deprecated Use getAdminShopOperatingHours (shop-profile API).
    */
   getShopOperatingHours: async (shopId: number): Promise<OperatingHour[]> => {
-    return apiClient.get<OperatingHour[]>(config.endpoints.shops.operatingHours(shopId));
+    return ShopService.getAdminShopOperatingHours(shopId);
   },
 
   /**

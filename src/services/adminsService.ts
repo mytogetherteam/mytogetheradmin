@@ -46,5 +46,16 @@ export const AdminsService = {
     return handleApiCall(() => api.get(`${url}?${qs}`));
   },
 
+  getAdminById: async (id: number): Promise<PlatformAdminDTO | null> => {
+    if (!Number.isFinite(id) || id < 1) return null;
+    try {
+      return await handleApiCall<PlatformAdminDTO>(() =>
+        api.get(config.endpoints.admin.admins.detail(id)),
+      );
+    } catch {
+      return null;
+    }
+  },
+
   adminSelectLabel,
 };

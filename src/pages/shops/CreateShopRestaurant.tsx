@@ -9,7 +9,6 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { PriceInput } from "@/components/ui/PriceInput"
 import { Textarea } from "@/components/ui/textarea"
 import {
     Select,
@@ -21,7 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Upload, X, Truck, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
+import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
 import {
     Dialog,
@@ -33,14 +32,14 @@ import {
 } from "@/components/ui/dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AsyncSelectField } from "@/components/common/AsyncSelectField"
-
 import { Checkbox } from "@/components/ui/checkbox"
 import { ShopCategoryService } from "@/services/shopCategoryService"
 import { cuisineService } from "@/services/cuisineService"
 import { cityService } from "@/services/cityService"
 import { AdminsService } from "@/services/adminsService"
-import { useCreateShopRestaurant } from "@/hooks/shops/useCreateShopRestaurant"
+import { useCreateShopRestaurant } from "@/hooks/shops"
 import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOperationRow"
+import { Loader } from "@/components/ui/loader"
 
 export default function CreateShopRestaurant() {
     const { form, ui, actions } = useCreateShopRestaurant()
@@ -62,7 +61,9 @@ export default function CreateShopRestaurant() {
         initialSubCategoryLabel,
         initialCityLabel,
         initialDistrictLabel,
+        initialAssignedAdminLabel,
         isSubmitting,
+        isLoadingShopEdit,
     } = ui
 
     const {
@@ -92,6 +93,12 @@ export default function CreateShopRestaurant() {
                 </p>
             </div>
 
+            {isLoadingShopEdit ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-24 text-muted-foreground">
+                    <Loader size="lg" />
+                    <p className="text-sm">Loading shop…</p>
+                </div>
+            ) : (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -293,7 +300,9 @@ export default function CreateShopRestaurant() {
                                                             initialValue={
                                                                 field.value != null
                                                                     ? {
-                                                                            label: `Admin #${field.value}`,
+                                                                            label:
+                                                                                initialAssignedAdminLabel ||
+                                                                                `Admin #${field.value}`,
                                                                             value: String(field.value),
                                                                         }
                                                                     : undefined
@@ -846,58 +855,6 @@ export default function CreateShopRestaurant() {
 
                                     <Separator />
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="minOrderAmount"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Min Order Amount</FormLabel>
-                                                    <FormControl>
-                                                        <PriceInput
-                                                            placeholder="0"
-                                                            value={field.value || ""}
-                                                            onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="baseDeliveryFee"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Base Delivery Fee</FormLabel>
-                                                    <FormControl>
-                                                        <PriceInput
-                                                            placeholder="0"
-                                                            value={field.value || ""}
-                                                            onValueChange={(val) => field.onChange(val === "" ? undefined : parseFloat(val))}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="maxItemQuantityPerOrder"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Max Qty Per Order</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="number" placeholder="10" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    <Separator />
-
                                     <FormField
                                         control={form.control}
                                         name="deliveryEnabled"
@@ -937,7 +894,6 @@ export default function CreateShopRestaurant() {
                                 </CardHeader>
                                 <CardContent className="grid gap-4">
                                     {([
-                                        { name: "hasDelivery", label: "Delivery Available", icon: Truck },
                                         { name: "hasParking", label: "Parking Available", icon: Car },
                                         { name: "hasWifi", label: "Free Wifi", icon: Wifi },
                                         { name: "isHalal", label: "Halal Certified", icon: Utensils },
@@ -993,6 +949,7 @@ export default function CreateShopRestaurant() {
                     </div>
                 </form>
             </Form>
+            )}
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <DialogContent>
