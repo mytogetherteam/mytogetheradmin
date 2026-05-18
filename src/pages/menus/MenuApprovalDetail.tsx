@@ -117,7 +117,7 @@ export default function MenuApprovalDetail() {
         try {
             const data = JSON.parse(jsonString);
             if (Array.isArray(data) && data.length === 0) return null;
-            
+
             return (
                 <Card className="mt-4">
                     <CardHeader className="py-3">
@@ -173,11 +173,11 @@ export default function MenuApprovalDetail() {
                             </Button>
                         </>
                     ) : (
-                        <Badge 
-                            variant="secondary" 
+                        <Badge
+                            variant="secondary"
                             className={
-                                approval.status === "APPROVED" 
-                                    ? "bg-green-100 text-green-800 border-green-200" 
+                                approval.status === "APPROVED"
+                                    ? "bg-green-100 text-green-800 border-green-200"
                                     : "bg-red-100 text-red-800 border-red-200"
                             }
                         >
@@ -231,9 +231,9 @@ export default function MenuApprovalDetail() {
                                             <p className="text-lg font-semibold">{approval.nameTh || "-"}</p>
                                         </div>
                                     </div>
-                                    
+
                                     <Separator />
-                                    
+
                                     <div className="space-y-3">
                                         <div>
                                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">English Description</p>
@@ -372,9 +372,9 @@ export default function MenuApprovalDetail() {
                                     <p className="text-xs text-muted-foreground font-mono">ID: {approval.shopId}</p>
                                 </div>
                             </div>
-                            
+
                             <Separator />
-                            
+
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-1">
                                     <p className="text-xs font-medium text-muted-foreground">Request ID</p>
@@ -390,12 +390,6 @@ export default function MenuApprovalDetail() {
                                     <p className="text-xs font-medium text-muted-foreground">Menu Category ID</p>
                                     <p className="text-sm font-mono">{approval.menuCategoryId}</p>
                                 </div>
-                                {approval.masterMenuItemId && (
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-medium text-muted-foreground">Master Item ID</p>
-                                        <p className="text-sm font-mono">{approval.masterMenuItemId}</p>
-                                    </div>
-                                )}
                                 {approval.masterCategoryId && (
                                     <div className="space-y-1">
                                         <p className="text-xs font-medium text-muted-foreground">Master Category ID</p>
@@ -405,7 +399,7 @@ export default function MenuApprovalDetail() {
                             </div>
 
                             <Separator />
-                            
+
                             <div className="flex items-center gap-3">
                                 <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                                 <div>
@@ -413,7 +407,7 @@ export default function MenuApprovalDetail() {
                                     <p className="text-sm text-muted-foreground">{formatDate(approval.submittedAt)}</p>
                                 </div>
                             </div>
-                            
+
                             {approval.approvedAt && (
                                 <>
                                     <div className="flex items-center gap-3">
@@ -425,7 +419,7 @@ export default function MenuApprovalDetail() {
                                     </div>
                                 </>
                             )}
-                            
+
                             {approval.rejectedReason && (
                                 <>
                                     <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-100">

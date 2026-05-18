@@ -18,11 +18,31 @@ import {
     FileSpreadsheet,
     Trash2,
     Pencil,
+    GripVertical,
 } from "lucide-react";
-import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead } from "@/components/SortableTableHead";
 import { TableImage } from "@/components/TableImage";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+import { useNavigate } from "react-router-dom";
+import { MasterMenuCategoryService, MasterMenuCategoryDTO } from "@/services/masterMenuCategoryService";
+import { toast } from "sonner";
+import { handleApiError } from "@/lib/error-utils";
+import * as XLSX from "xlsx";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
     Dialog,
     DialogContent,
@@ -31,34 +51,66 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { useNavigate } from "react-router-dom";
-import { MasterMenuCategoryService, MasterMenuCategoryDTO } from "@/services/masterMenuCategoryService";
-import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
-import * as XLSX from "xlsx";
+
+function SortableRow({
+    category,
+    children,
+}: {
+    category: MasterMenuCategoryDTO;
+    children: (args: {
+        setActivatorNodeRef: (el: HTMLElement | null) => void;
+        attributes: ReturnType<typeof useSortable>["attributes"];
+        listeners: ReturnType<typeof useSortable>["listeners"];
+        isDragging: boolean;
+    }) => React.ReactNode;
+}) {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+        useSortable({ id: category.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : undefined,
+        position: "relative",
+        background: isDragging ? "hsl(var(--muted) / 0.5)" : undefined,
+    };
+
+    return (
+        <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/50 transition-colors">
+            {children({ setActivatorNodeRef, attributes, listeners, isDragging })}
+        </TableRow>
+    );
+}
 
 export default function ManageMasterMenuCategories() {
     const navigate = useNavigate();
     const [categories, setCategories] = useState<MasterMenuCategoryDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [reordering, setReordering] = useState(false);
 
-    // Delete confirmation dialog
-    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({
+        open: false,
+        id: 0,
+        name: "",
+    });
     const [deleting, setDeleting] = useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     const loadCategories = useCallback(async () => {
         setLoading(true);
         try {
             const res = await MasterMenuCategoryService.getMasterMenuCategories({
-                page: 0, 
-                size: 200,
-                search: searchTerm
+                page: 0,
+                size: 500,
+                search: searchTerm,
             });
-            setCategories(res.content || []);
+            const list = res.content || [];
+            setCategories([...list].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
         } catch (e) {
             handleApiError(e, "Failed to load master menu categories");
         } finally {
@@ -73,18 +125,8 @@ export default function ManageMasterMenuCategories() {
         return () => clearTimeout(timer);
     }, [searchTerm, loadCategories]);
 
-    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
-
-    const sortedCategories = sortData(categories, sortConfig);
-
-    const totalItems = sortedCategories.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentItems = sortedCategories.slice(startIndex, endIndex);
-
     const exportToExcel = () => {
-        const data = sortedCategories.map((c) => ({
+        const data = categories.map((c) => ({
             ID: c.id,
             "Name (EN)": c.nameEn || "",
             "Name (MM)": c.nameMm || "",
@@ -118,6 +160,29 @@ export default function ManageMasterMenuCategories() {
         }
     };
 
+    const onDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = categories.findIndex((c) => c.id === active.id);
+        const newIndex = categories.findIndex((c) => c.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
+
+        const previous = [...categories];
+        const next = arrayMove(categories, oldIndex, newIndex);
+        setCategories(next);
+        setReordering(true);
+        try {
+            await MasterMenuCategoryService.reorderMasterMenuCategories(next.map((c) => c.id));
+            toast.success("Order updated");
+        } catch (e) {
+            setCategories(previous);
+            handleApiError(e, "Failed to update order");
+        } finally {
+            setReordering(false);
+        }
+    };
+
     return (
         <div className="container mx-auto py-10 max-w-7xl">
             <Card className="flex flex-col h-full">
@@ -126,7 +191,7 @@ export default function ManageMasterMenuCategories() {
                         <div className="flex-1 min-w-0">
                             <CardTitle className="leading-tight">Manage Master Menu Categories</CardTitle>
                             <CardDescription className="line-clamp-2 md:line-clamp-none">
-                                Global category dictionary mapping for items.
+                                Global category dictionary mapping for items. Drag rows by the handle to set display order.
                             </CardDescription>
                         </div>
 
@@ -139,7 +204,6 @@ export default function ManageMasterMenuCategories() {
                                     value={searchTerm}
                                     onChange={(e) => {
                                         setSearchTerm(e.target.value);
-                                        setCurrentPage(1);
                                     }}
                                 />
                             </div>
@@ -162,114 +226,217 @@ export default function ManageMasterMenuCategories() {
                     ) : (
                         <>
                             <div className="rounded-md border overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
-                                            <TableHead>Image</TableHead>
-                                            <SortableTableHead label="Name" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
-                                            <TableHead>Cuisine Type</TableHead>
-                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {currentItems.length > 0 ? (
-                                            currentItems.map((category) => (
-                                                <TableRow
-                                                    key={category.id}
-                                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/master-menu-categories/create?id=${category.id}`)}
-                                                >
-                                                    <TableCell className="font-mono text-xs">{category.id}</TableCell>
-                                                    <TableCell>
-                                                        <TableImage src={category.imageUrl} alt={category.nameEn || "Category"} size="sm" />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="font-medium">{category.nameEn || category.nameMm || category.nameTh || `Category ${category.id}`}</div>
-                                                        {(category.nameMm || category.nameTh) && (
-                                                            <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                                                {category.nameMm && <span>{category.nameMm}</span>}
-                                                                {category.nameTh && <span>• {category.nameTh}</span>}
-                                                            </div>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {category.cuisineTypeNameEn || category.cuisineTypeId ? (
-                                                            <span className="text-sm px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
-                                                                {category.cuisineTypeNameEn || `ID: ${category.cuisineTypeId}`}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">-</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>{category.displayOrder || 0}</TableCell>
-                                                    <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${category.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                            {category.isActive !== false ? "Active" : "Inactive"}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <TooltipProvider>
-                                                            <div className="flex justify-end gap-1">
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 p-0"
-                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/master-menu-categories/create?id=${category.id}`); }}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Edit Category</TooltipContent>
-                                                                </Tooltip>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 p-0 text-destructive"
-                                                                            onClick={(e) => handleDeleteClick(e, category.id, category.nameEn || category.nameMm || category.nameTh || `Category ${category.id}`)}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Delete Category</TooltipContent>
-                                                                </Tooltip>
-                                                            </div>
-                                                        </TooltipProvider>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                                    <Table>
+                                        <TableHeader>
                                             <TableRow>
-                                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                                                    No master menu categories found.
-                                                </TableCell>
+                                                <TableHead className="w-10" aria-label="Reorder" />
+                                                <TableHead className="w-[80px]">ID</TableHead>
+                                                <TableHead>Image</TableHead>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Cuisine Type</TableHead>
+                                                <TableHead>Order</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <SortableContext
+                                                items={categories.map((c) => c.id)}
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                {categories.length > 0 ? (
+                                                    categories.map((category) => (
+                                                        <SortableRow key={category.id} category={category}>
+                                                            {({ setActivatorNodeRef, attributes, listeners }) => (
+                                                                <>
+                                                                    <TableCell className="w-10 p-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            ref={setActivatorNodeRef}
+                                                                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded"
+                                                                            disabled={reordering}
+                                                                            {...attributes}
+                                                                            {...listeners}
+                                                                        >
+                                                                            <GripVertical className="h-5 w-5" />
+                                                                        </button>
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="font-mono text-xs cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {category.id}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <TableImage
+                                                                            src={category.imageUrl}
+                                                                            alt={category.nameEn || "Category"}
+                                                                            size="sm"
+                                                                        />
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <div className="font-medium">
+                                                                            {category.nameEn ||
+                                                                                category.nameMm ||
+                                                                                category.nameTh ||
+                                                                                `Category ${category.id}`}
+                                                                        </div>
+                                                                        {(category.nameMm || category.nameTh) && (
+                                                                            <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
+                                                                                {category.nameMm && (
+                                                                                    <span>{category.nameMm}</span>
+                                                                                )}
+                                                                                {category.nameTh && (
+                                                                                    <span>• {category.nameTh}</span>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {category.cuisineTypeNameEn ||
+                                                                            category.cuisineTypeId ? (
+                                                                            <span className="text-sm px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
+                                                                                {category.cuisineTypeNameEn ||
+                                                                                    `ID: ${category.cuisineTypeId}`}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                -
+                                                                            </span>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {category.displayOrder ?? 0}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() =>
+                                                                            navigate(
+                                                                                `/master-menu-categories/create?id=${category.id}`,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <span
+                                                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${category.isActive !== false
+                                                                                    ? "bg-green-100 text-green-800"
+                                                                                    : "bg-red-100 text-red-800"
+                                                                                }`}
+                                                                        >
+                                                                            {category.isActive !== false
+                                                                                ? "Active"
+                                                                                : "Inactive"}
+                                                                        </span>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        <TooltipProvider>
+                                                                            <div className="flex justify-end gap-1">
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            className="h-8 w-8 p-0"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                navigate(
+                                                                                                    `/master-menu-categories/create?id=${category.id}`,
+                                                                                                );
+                                                                                            }}
+                                                                                        >
+                                                                                            <Pencil className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent>
+                                                                                        Edit Category
+                                                                                    </TooltipContent>
+                                                                                </Tooltip>
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            className="h-8 w-8 p-0 text-destructive"
+                                                                                            onClick={(e) =>
+                                                                                                handleDeleteClick(
+                                                                                                    e,
+                                                                                                    category.id,
+                                                                                                    category.nameEn ||
+                                                                                                    category.nameMm ||
+                                                                                                    category.nameTh ||
+                                                                                                    `Category ${category.id}`,
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <Trash2 className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent>
+                                                                                        Delete Category
+                                                                                    </TooltipContent>
+                                                                                </Tooltip>
+                                                                            </div>
+                                                                        </TooltipProvider>
+                                                                    </TableCell>
+                                                                </>
+                                                            )}
+                                                        </SortableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell
+                                                            colSpan={8}
+                                                            className="h-24 text-center text-muted-foreground"
+                                                        >
+                                                            No master menu categories found.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </SortableContext>
+                                        </TableBody>
+                                    </Table>
+                                </DndContext>
                             </div>
-
-                            {/* Pagination */}
-                            <DataTablePagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                totalItems={totalItems}
-                                pageSize={pageSize}
-                                onPageChange={setCurrentPage}
-                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-                            />
+                            {reordering && (
+                                <p className="text-xs text-muted-foreground mt-2">Saving order…</p>
+                            )}
                         </>
                     )}
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
                 <DialogContent>
                     <DialogHeader>

@@ -26,16 +26,6 @@ export interface ItemTag {
     icon?: string;
 }
 
-export interface MasterItem {
-    id: number;
-    name: string;
-    nameEn?: string;
-    nameMm?: string;
-    nameTh?: string;
-    masterCategoryId?: number;
-    masterCategoryName?: string;
-}
-
 export interface ComboComponent {
     id?: number;
     includedItemId: number;
@@ -71,6 +61,7 @@ export interface MenuItem {
     imageUrl?: string;
     imageUrls?: string[];
     isVegetarian?: boolean;
+    isHalal?: boolean;
     isSpicy?: boolean;
     isAvailable?: boolean;
     isRecommended?: boolean;
@@ -78,6 +69,7 @@ export interface MenuItem {
     isHotDeal?: boolean;
     isCombo?: boolean;
     displayOrder?: number;
+    publishStatus?: string;
     optionGroups?: OptionGroup[];
     variants?: Variant[];
     shopName?: string;
@@ -86,8 +78,6 @@ export interface MenuItem {
     mealTypes?: string[];
     tagIds?: number[];
     tags?: ItemTag[];
-    masterItemId?: number;
-    masterItemName?: string;
     masterCategoryId?: number;
     masterCategoryName?: string;
     components?: ComboComponent[];
@@ -159,7 +149,6 @@ export const menuService = {
         if (shopId) endpoint += `&shopId=${shopId}&shop_id=${shopId}`;
         if (categoryId) endpoint += `&categoryId=${categoryId}&category_id=${categoryId}`;
         if (masterCategoryId) endpoint += `&masterCategoryId=${masterCategoryId}&master_category_id=${masterCategoryId}`;
-        console.log("FETCHING MENU ITEMS:", endpoint); 
         return apiClient.get<PageableResponse<MenuItem>>(endpoint);
     },
 
@@ -192,17 +181,10 @@ export const menuService = {
     },
 
     getAllItemTags: async (): Promise<ItemTag[]> => {
-        const response = await apiClient.get<ItemTag[] | { content: ItemTag[] }>(config.endpoints.admin.menu.itemTags.base);
+        const base = config.endpoints.admin.menu.itemTags.base;
+        const params = new URLSearchParams({ onlyActive: 'true', page: '0', size: '500' });
+        const response = await apiClient.get<ItemTag[] | { content: ItemTag[] }>(`${base}?${params.toString()}`);
         return Array.isArray(response) ? response : (response as { content?: ItemTag[] }).content || [];
-    },
-
-    searchMasterItems: async (search = '', page = 0, size = 20): Promise<{ content: MasterItem[], last: boolean }> => {
-        const url = `${config.endpoints.admin.menu.masterItems.search}?search=${encodeURIComponent(search)}&page=${page}&size=${size}`;
-        const response = await apiClient.get<MasterItem[] | { content: MasterItem[], last: boolean }>(url);
-        if (Array.isArray(response)) {
-            return { content: response, last: true };
-        }
-        return { content: (response as { content?: MasterItem[] }).content || [], last: (response as { last?: boolean }).last ?? true };
     },
 
     getAllMasterMenuCategories: async (page = 0, size = 50): Promise<{ content: { id: number; nameEn?: string; name: string }[], last: boolean }> => {

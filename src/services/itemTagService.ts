@@ -41,7 +41,7 @@ export const ItemTagService = {
       url += `?${queryString}`;
     }
     const response = await apiClient.get<ItemTagDTO[] | { content: ItemTagDTO[]; totalElements: number; totalPages: number }>(url);
-    
+
     // Handle both paginated and flat array responses
     if (Array.isArray(response)) {
       return {
@@ -50,11 +50,11 @@ export const ItemTagService = {
         totalPages: 1
       };
     }
-    
+
     if (response && response.content) {
       return response;
     }
-    
+
     return {
       content: [],
       totalElements: 0,
@@ -88,5 +88,9 @@ export const ItemTagService = {
    */
   deleteItemTag: async (id: number): Promise<void> => {
     return apiClient.delete<void>(config.endpoints.admin.menu.itemTags.detail(id));
+  },
+
+  reorderItemTags: async (ids: number[]): Promise<void> => {
+    await apiClient.post<void>(config.endpoints.admin.menu.itemTags.reorder, { ids });
   },
 };

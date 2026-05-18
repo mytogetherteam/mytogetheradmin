@@ -30,7 +30,6 @@ export interface MenuApprovalDTO {
   isCombo?: boolean;
   status: string; // "PENDING_APPROVAL", "APPROVED", "REJECTED"
   requestType: string; // "CREATE", "UPDATE", etc.
-  masterMenuItemId?: number;
   masterCategoryId?: number;
   menuCategoryId: number;
   mealTypes?: string;
@@ -81,16 +80,16 @@ export interface CategoryApprovalDTO {
 // If you use standard pagination later, it might be wrapped in standard PaginatedResponse.
 // We'll return just the array for now as specified by your JSON sample structure.
 export interface PaginatedResponse<T> {
-    content: T[];
-    totalElements?: number;
-    totalPages?: number;
+  content: T[];
+  totalElements?: number;
+  totalPages?: number;
 }
 
 export interface MenuApprovalResponse {
-    success: boolean;
-    message: string;
-    details: string;
-    data: MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO>;
+  success: boolean;
+  message: string;
+  details: string;
+  data: MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO>;
 }
 
 export const menuApprovalService = {
@@ -105,20 +104,20 @@ export const menuApprovalService = {
     const response = await apiClient.get<MenuApprovalDTO[] | PaginatedResponse<MenuApprovalDTO> | { data: PaginatedResponse<MenuApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.list}?${params.toString()}`
     );
-    
+
     if (Array.isArray(response)) {
-        return response;
+      return response;
     }
 
     if (response && typeof response === 'object') {
-        if ('data' in response && response.data && 'content' in response.data) {
-            return response.data.content;
-        }
-        if ('content' in response) {
-            return response.content;
-        }
+      if ('data' in response && response.data && 'content' in response.data) {
+        return response.data.content;
+      }
+      if ('content' in response) {
+        return response.content;
+      }
     }
-    
+
     return [];
   },
 
@@ -156,11 +155,11 @@ export const menuApprovalService = {
     const response = await apiClient.get<PaymentApprovalDTO[] | PaginatedResponse<PaymentApprovalDTO> | { data: PaginatedResponse<PaymentApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.payments.list}?${params.toString()}`
     );
-    
+
     if (Array.isArray(response)) return response;
     if (response && typeof response === 'object') {
-        if ('data' in response && response.data && 'content' in response.data) return response.data.content;
-        if ('content' in response) return response.content;
+      if ('data' in response && response.data && 'content' in response.data) return response.data.content;
+      if ('content' in response) return response.content;
     }
     return [];
   },
@@ -199,11 +198,11 @@ export const menuApprovalService = {
     const response = await apiClient.get<CategoryApprovalDTO[] | PaginatedResponse<CategoryApprovalDTO> | { data: PaginatedResponse<CategoryApprovalDTO> }>(
       `${config.endpoints.admin.menu.approvals.categories.list}?${params.toString()}`
     );
-    
+
     if (Array.isArray(response)) return response;
     if (response && typeof response === 'object') {
-        if ('data' in response && response.data && 'content' in response.data) return response.data.content;
-        if ('content' in response) return response.content;
+      if ('data' in response && response.data && 'content' in response.data) return response.data.content;
+      if ('content' in response) return response.content;
     }
     return [];
   },

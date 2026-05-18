@@ -113,21 +113,19 @@ export const config = {
       menu: {
         categories: '/api/admin/menu-categories',
         categoryDetail: (id: number) => `/api/admin/menu-categories/${id}`,
+        categoryReorder: '/api/admin/menu-categories/reorder',
         shopCategories: (shopId: number) => `/api/admin/menu-categories/shop/${shopId}`,
         items: '/api/admin/items',
         itemDetail: (id: number) => `/api/admin/items/${id}`,
         itemTags: {
           base: '/api/admin/item-tags',
           detail: (id: number) => `/api/admin/item-tags/${id}`,
-        },
-        masterItems: {
-          base: '/api/admin/master-items',
-          detail: (id: number) => `/api/admin/master-items/${id}`,
-          search: '/api/admin/master-items/search',
+          reorder: '/api/admin/item-tags/reorder',
         },
         masterMenuCategories: {
           base: '/api/admin/master-menu-categories',
           detail: (id: number) => `/api/admin/master-menu-categories/${id}`,
+          reorder: '/api/admin/master-menu-categories/reorder',
         },
         itemActions: {
           recommended: (id: number) => `/api/admin/items/${id}/recommended`,
@@ -237,7 +235,7 @@ export const config = {
       search: '/api/admin/search',
     },
     shops: {
-      list: '/api/admin/shops',
+      list: '/api/admin/shop-profile',
       detail: (id: number) => `/api/admin/shops/${id}`,
       status: (id: number) => `/api/admin/shops/${id}/status`,
       verify: (id: number) => `/api/admin/shops/${id}/verify`,

@@ -29,7 +29,6 @@ export default function CreateMasterMenuCategory() {
     const [nameMm, setNameMm] = useState("");
     const [nameTh, setNameTh] = useState("");
     const [nameEn, setNameEn] = useState("");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [cuisineTypeId, setCuisineTypeId] = useState<number | "">(0);
     const [cuisines, setCuisines] = useState<{ id: number; nameEn: string }[]>([]);
@@ -56,7 +55,6 @@ export default function CreateMasterMenuCategory() {
                 setNameMm(cat.nameMm || "");
                 setNameTh(cat.nameTh || "");
                 setNameEn(cat.nameEn || "");
-                setDisplayOrder(cat.displayOrder || 1);
                 setIsActive(cat.isActive !== false);
                 if (cat.cuisineTypeId) {
                     setCuisineTypeId(cat.cuisineTypeId);
@@ -78,7 +76,6 @@ export default function CreateMasterMenuCategory() {
             setNameMm("");
             setNameTh("");
             setNameEn("");
-            setDisplayOrder(1);
             setIsActive(true);
             setCuisineTypeId(0);
             setExistingImage(null);
@@ -109,17 +106,19 @@ export default function CreateMasterMenuCategory() {
 
         setSubmitting(true);
         try {
-            const dtoData = {
+            const dtoData: Record<string, unknown> = {
                 nameMm: nameMm || "",
                 nameTh: nameTh || "",
-                nameEn: nameEn || "",
-                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
+                nameEn: nameEn.trim(),
                 isActive: isActive,
-                cuisineTypeId: cuisineTypeId || 0,
             };
+            const cid = typeof cuisineTypeId === "number" && cuisineTypeId > 0 ? cuisineTypeId : undefined;
+            if (cid !== undefined) {
+                dtoData.cuisineTypeId = cid;
+            }
 
             const formData = new FormData();
-            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+            formData.append("data", JSON.stringify(dtoData));
 
             if (imageFile) {
                 formData.append("image", imageFile);
@@ -220,26 +219,6 @@ export default function CreateMasterMenuCategory() {
                                     onChange={(item: { id: number; nameEn: string } | null) => setCuisineTypeId(item ? item.id : (0 as number | ""))}
                                     placeholder="Select cuisine type..."
                                     className="font-normal text-left px-3"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="displayOrder">Display Order</Label>
-                                <Input
-                                    id="displayOrder"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={displayOrder}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/^0+(?!$)/, "");
-                                        if (val === "" || /^\d+$/.test(val)) {
-                                            setDisplayOrder(val === "" ? "" : parseInt(val, 10));
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
-                                    }}
-                                    placeholder="1"
                                 />
                             </div>
                         </div>

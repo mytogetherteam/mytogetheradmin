@@ -18,11 +18,9 @@ import {
     FileSpreadsheet,
     Trash2,
     Pencil,
+    GripVertical,
 } from "lucide-react";
-import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead } from "@/components/SortableTableHead";
 import { TableImage } from "@/components/TableImage";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import {
     Dialog,
     DialogContent,
@@ -36,29 +34,91 @@ import { ItemTagService, ItemTagDTO } from "@/services/itemTagService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+function SortableRow({
+    tag,
+    children,
+}: {
+    tag: ItemTagDTO;
+    children: (args: {
+        setActivatorNodeRef: (el: HTMLElement | null) => void;
+        attributes: ReturnType<typeof useSortable>["attributes"];
+        listeners: ReturnType<typeof useSortable>["listeners"];
+    }) => React.ReactNode;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        setActivatorNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: tag.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : undefined,
+        position: "relative",
+        background: isDragging ? "hsl(var(--muted) / 0.5)" : undefined,
+    };
+
+    return (
+        <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/50 transition-colors">
+            {children({ setActivatorNodeRef, attributes, listeners })}
+        </TableRow>
+    );
+}
 
 export default function ManageItemTags() {
     const navigate = useNavigate();
     const [tags, setTags] = useState<ItemTagDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const [reordering, setReordering] = useState(false);
 
-    // Delete confirmation dialog
-    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({
+        open: false,
+        id: 0,
+        name: "",
+    });
     const [deleting, setDeleting] = useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     const loadTags = useCallback(async () => {
         setLoading(true);
         try {
             const res = await ItemTagService.getItemTags({
-                page: 0, // Since frontend sorting is used, load a larger set or adjust API
-                size: 200,
-                search: searchTerm
+                page: 0,
+                size: 500,
+                search: searchTerm,
             });
-            setTags(res.content || []);
+            const list = res.content || [];
+            setTags(
+                [...list].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)),
+            );
         } catch (e) {
             handleApiError(e, "Failed to load item tags");
         } finally {
@@ -67,30 +127,19 @@ export default function ManageItemTags() {
     }, [searchTerm]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            loadTags();
-        }, 500);
+        const timer = setTimeout(() => loadTags(), 500);
         return () => clearTimeout(timer);
     }, [searchTerm, loadTags]);
 
-    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
-
-    const sortedTags = sortData(tags, sortConfig);
-
-    const totalItems = sortedTags.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentTags = sortedTags.slice(startIndex, endIndex);
-
     const exportToExcel = () => {
-        const data = sortedTags.map((t) => ({
+        const data = tags.map((t) => ({
             ID: t.id,
             "Name (EN)": t.nameEn || "",
             "Name (MM)": t.nameMm || "",
             "Name (TH)": t.nameTh || "",
             "Tag Type": t.tagType || "",
             "Color Code": t.colorCode || "",
+            "Display Order": t.displayOrder ?? "",
             "Is Active": t.isActive !== false ? "Yes" : "No",
         }));
         const ws = XLSX.utils.json_to_sheet(data);
@@ -118,6 +167,29 @@ export default function ManageItemTags() {
         }
     };
 
+    const onDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = tags.findIndex((t) => t.id === active.id);
+        const newIndex = tags.findIndex((t) => t.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
+
+        const previous = [...tags];
+        const next = arrayMove(tags, oldIndex, newIndex);
+        setTags(next);
+        setReordering(true);
+        try {
+            await ItemTagService.reorderItemTags(next.map((t) => t.id));
+            toast.success("Order updated");
+        } catch (e) {
+            setTags(previous);
+            handleApiError(e, "Failed to update order");
+        } finally {
+            setReordering(false);
+        }
+    };
+
     return (
         <div className="container mx-auto py-10 max-w-7xl">
             <Card className="flex flex-col h-full">
@@ -126,7 +198,7 @@ export default function ManageItemTags() {
                         <div className="flex-1 min-w-0">
                             <CardTitle className="leading-tight">Manage Item Discovery Tags</CardTitle>
                             <CardDescription className="line-clamp-2 md:line-clamp-none">
-                                Global discovery tags for items (e.g., Mala, Keto, Halal).
+                                Global discovery tags for items. Drag rows by the handle to set display order.
                             </CardDescription>
                         </div>
 
@@ -137,10 +209,7 @@ export default function ManageItemTags() {
                                     placeholder="Search tags..."
                                     className="pl-8 w-full sm:w-[200px] lg:w-[300px]"
                                     value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        setCurrentPage(1);
-                                    }}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                             <Button variant="outline" className="gap-2 shrink-0" onClick={exportToExcel}>
@@ -162,119 +231,177 @@ export default function ManageItemTags() {
                     ) : (
                         <>
                             <div className="rounded-md border overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
-                                            <TableHead>Icon</TableHead>
-                                            <SortableTableHead label="Name" sortKey="nameEn" sortConfig={sortConfig} onSort={handleSort} />
-                                            <TableHead>Tag Type</TableHead>
-                                            <TableHead>Color</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {currentTags.length > 0 ? (
-                                            currentTags.map((tag) => (
-                                                <TableRow
-                                                    key={tag.id}
-                                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
-                                                >
-                                                    <TableCell className="font-mono text-xs">{tag.id}</TableCell>
-                                                    <TableCell>
-                                                        <TableImage src={tag.iconUrl} alt={tag.nameEn || "Tag"} size="sm" />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="font-medium">{tag.nameEn || tag.nameMm || tag.nameTh || `Tag ${tag.id}`}</div>
-                                                        {(tag.nameMm || tag.nameTh) && (
-                                                            <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                                                {tag.nameMm && <span>{tag.nameMm}</span>}
-                                                                {tag.nameTh && <span>• {tag.nameTh}</span>}
-                                                            </div>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="text-sm border px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
-                                                            {tag.tagType || "Default"}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {tag.colorCode ? (
-                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-                                                                <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: tag.colorCode }}></div>
-                                                                {tag.colorCode}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">-</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tag.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                            {tag.isActive !== false ? "Active" : "Inactive"}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <TooltipProvider>
-                                                            <div className="flex justify-end gap-1">
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 p-0"
-                                                                            onClick={(e) => { e.stopPropagation(); navigate(`/item-tags/create?id=${tag.id}`); }}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Edit Tag</TooltipContent>
-                                                                </Tooltip>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-8 w-8 p-0 text-destructive"
-                                                                            onClick={(e) => handleDeleteClick(e, tag.id, tag.nameEn || tag.nameMm || tag.nameTh || `Tag ${tag.id}`)}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>Delete Tag</TooltipContent>
-                                                                </Tooltip>
-                                                            </div>
-                                                        </TooltipProvider>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                                    <Table>
+                                        <TableHeader>
                                             <TableRow>
-                                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                                                    No item tags found.
-                                                </TableCell>
+                                                <TableHead className="w-10" aria-label="Reorder" />
+                                                <TableHead className="w-[80px]">ID</TableHead>
+                                                <TableHead>Icon</TableHead>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Tag Type</TableHead>
+                                                <TableHead>Color</TableHead>
+                                                <TableHead>Order</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <SortableContext items={tags.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                                                {tags.length > 0 ? (
+                                                    tags.map((tag) => (
+                                                        <SortableRow key={tag.id} tag={tag}>
+                                                            {({ setActivatorNodeRef, attributes, listeners }) => (
+                                                                <>
+                                                                    <TableCell className="w-10 p-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            ref={setActivatorNodeRef}
+                                                                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded disabled:opacity-40"
+                                                                            disabled={reordering}
+                                                                            {...attributes}
+                                                                            {...listeners}
+                                                                        >
+                                                                            <GripVertical className="h-5 w-5" />
+                                                                        </button>
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="font-mono text-xs cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        {tag.id}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        <TableImage src={tag.iconUrl} alt={tag.nameEn || "Tag"} size="sm" />
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        <div className="font-medium">
+                                                                            {tag.nameEn || tag.nameMm || tag.nameTh || `Tag ${tag.id}`}
+                                                                        </div>
+                                                                        {(tag.nameMm || tag.nameTh) && (
+                                                                            <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
+                                                                                {tag.nameMm && <span>{tag.nameMm}</span>}
+                                                                                {tag.nameTh && <span>• {tag.nameTh}</span>}
+                                                                            </div>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        <span className="text-sm border px-2 py-0.5 rounded text-muted-foreground bg-muted/20">
+                                                                            {tag.tagType || "Default"}
+                                                                        </span>
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        {tag.colorCode ? (
+                                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                                                                                <div
+                                                                                    className="w-4 h-4 rounded-full border shadow-sm"
+                                                                                    style={{ backgroundColor: tag.colorCode }}
+                                                                                />
+                                                                                {tag.colorCode}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-xs text-muted-foreground">-</span>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="text-muted-foreground cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        {tag.displayOrder ?? "—"}
+                                                                    </TableCell>
+                                                                    <TableCell
+                                                                        className="cursor-pointer"
+                                                                        onClick={() => navigate(`/item-tags/create?id=${tag.id}`)}
+                                                                    >
+                                                                        <span
+                                                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tag.isActive !== false
+                                                                                    ? "bg-green-100 text-green-800"
+                                                                                    : "bg-red-100 text-red-800"
+                                                                                }`}
+                                                                        >
+                                                                            {tag.isActive !== false ? "Active" : "Inactive"}
+                                                                        </span>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        <TooltipProvider>
+                                                                            <div className="flex justify-end gap-1">
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            className="h-8 w-8 p-0"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                navigate(`/item-tags/create?id=${tag.id}`);
+                                                                                            }}
+                                                                                        >
+                                                                                            <Pencil className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent>Edit Tag</TooltipContent>
+                                                                                </Tooltip>
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            className="h-8 w-8 p-0 text-destructive"
+                                                                                            onClick={(e) =>
+                                                                                                handleDeleteClick(
+                                                                                                    e,
+                                                                                                    tag.id,
+                                                                                                    tag.nameEn ||
+                                                                                                    tag.nameMm ||
+                                                                                                    tag.nameTh ||
+                                                                                                    `Tag ${tag.id}`,
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <Trash2 className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent>Delete Tag</TooltipContent>
+                                                                                </Tooltip>
+                                                                            </div>
+                                                                        </TooltipProvider>
+                                                                    </TableCell>
+                                                                </>
+                                                            )}
+                                                        </SortableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                                            No item tags found.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </SortableContext>
+                                        </TableBody>
+                                    </Table>
+                                </DndContext>
                             </div>
-
-                            {/* Pagination */}
-                            <DataTablePagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                totalItems={totalItems}
-                                pageSize={pageSize}
-                                onPageChange={setCurrentPage}
-                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-                            />
+                            {reordering && (
+                                <p className="text-xs text-muted-foreground mt-2">Saving order…</p>
+                            )}
                         </>
                     )}
                 </CardContent>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
                 <DialogContent>
                     <DialogHeader>
@@ -284,7 +411,9 @@ export default function ManageItemTags() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>
+                            Cancel
+                        </Button>
                         <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
                             {deleting ? "Deleting..." : "Delete"}
                         </Button>
