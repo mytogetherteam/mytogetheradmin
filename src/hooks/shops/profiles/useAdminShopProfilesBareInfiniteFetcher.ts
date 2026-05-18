@@ -1,15 +1,18 @@
-import { useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import type { PageableResponse } from '@/components/ui/infinite-searchable-select';
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { PageableResponse } from "@/components/ui/infinite-searchable-select";
 import {
   ShopService,
   Shop,
   mapAdminShopProfileRowToShop,
-} from '@/services/shopService';
+} from "@/services/shopService";
 import {
-  adminShopProfilesBareListIncludes,
   adminShopProfilesQueryKey,
-} from '@/hooks/shops/shared/adminShopProfilesQueryKeys';
+} from "@/hooks/shops/shared/adminShopProfilesQueryKeys";
+
+const adminShopProfilesDropdownIncludes = {
+  withDistrict: true,
+} as const;
 
 export type AdminShopProfileDropdownShop = Shop & {
   dropdownLabel: string;
@@ -20,14 +23,20 @@ function mapRowToDropdownShop(
   row: Parameters<typeof mapAdminShopProfileRowToShop>[0],
 ): AdminShopProfileDropdownShop {
   const shop = mapAdminShopProfileRowToShop(row);
+  const shopName = shop.nameEn || shop.nameMm || shop.name || `Shop #${shop.id}`;
+  const districtName =
+    (typeof shop.district === "object" ? shop.district?.nameEn : undefined) ||
+    shop.districtEn ||
+    shop.districtMm ||
+    shop.districtTh;
+
   return {
     ...shop,
-    dropdownLabel:
-      shop.nameEn || shop.nameMm || shop.name || `Shop #${shop.id}`,
+    dropdownLabel: districtName ? `${shopName} (${districtName})` : shopName,
   };
 }
 
-/** Infinite-select fetcher for bare admin shop profiles (no relations). */
+/** Infinite-select fetcher for admin shop profiles with labels for dropdowns. */
 export function useAdminShopProfilesBareInfiniteFetcher() {
   const queryClient = useQueryClient();
 
@@ -44,14 +53,20 @@ export function useAdminShopProfilesBareInfiniteFetcher() {
           apiPage,
           size,
           trimmedSearch,
-          adminShopProfilesBareListIncludes,
+          undefined,
+          undefined,
+          undefined,
+          adminShopProfilesDropdownIncludes,
         ),
         queryFn: () =>
           ShopService.getAdminShopProfiles(
             apiPage,
             size,
             trimmedSearch || undefined,
-            adminShopProfilesBareListIncludes,
+            undefined,
+            undefined,
+            undefined,
+            adminShopProfilesDropdownIncludes,
           ),
       });
 

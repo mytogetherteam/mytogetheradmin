@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     Table,
     TableBody,
@@ -12,6 +13,14 @@ import {
     CardContent,
     CardHeader,
 } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -32,18 +41,24 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPaymentTypeService";
-import { ShopService } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from 'xlsx';
 import { TableImage } from "@/components/TableImage";
+import {
+    useAdminShopProfilesBareInfiniteFetcher,
+    type AdminShopProfileDropdownShop,
+    shopRestaurantEditQueryKey,
+} from "@/hooks/shops";
+import { shopPaymentTypeKeys } from "@/hooks/shop-payment-types/useShopPaymentType";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
-    const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(
+    const queryClient = useQueryClient();
+    const [selectedShopData, setSelectedShopData] = useState<AdminShopProfileDropdownShop | null>(
         localStorage.getItem("manage_payment_shop_data") ? JSON.parse(localStorage.getItem("manage_payment_shop_data")!) : null
     );
-    const selectedShopId = selectedShopData?.value || "";
+    const selectedShopId = selectedShopData?.id?.toString() || "";
     const [items, setItems] = useState<ShopPaymentTypeDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_payment_page")) || 1);
@@ -53,37 +68,25 @@ export default function ManageShopPaymentTypes() {
         localStorage.getItem("lastSelectedPaymentTypeId") ? Number(localStorage.getItem("lastSelectedPaymentTypeId")) : null
     );
     const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_payment_search") || "");
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
+    const [deleting, setDeleting] = useState(false);
+    const { fetchShops: fetchShopData } = useAdminShopProfilesBareInfiniteFetcher();
 
-    // Initial load: Fetch just one page of shops to get the first shop as default selection
     useEffect(() => {
         const initDefaultShop = async () => {
             if (selectedShopData) return;
             try {
-                const response = await ShopService.getAllShops(0, 5);
-                if (response.content.length > 0) {
-                    const firstShop = response.content[0];
-                    setSelectedShopData({
-                        label: firstShop.nameEn || firstShop.name,
-                        value: String(firstShop.id)
-                    });
+                const response = await fetchShopData(0, 5, "");
+                const firstShop = response.content[0];
+                if (firstShop) {
+                    setSelectedShopData(firstShop);
                 }
             } catch (error) {
                 console.error("Failed to init default shop", error);
             }
         };
         initDefaultShop();
-    }, [selectedShopData]); // Only on mount or if selectedShopData is missing
-
-    const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
-        const res = await ShopService.getAllShops(page, size, search);
-        return {
-            content: (res?.content || []).map(s => ({
-                label: s.nameEn || s.name || `Shop #${s.id}`,
-                value: String(s.id),
-            })),
-            last: res ? page + 1 >= (res.totalPages ?? 1) : true,
-        };
-    }, []);
+    }, [fetchShopData, selectedShopData]);
 
     const loadItems = useCallback(async (shopId: number) => {
         setLoading(true);
@@ -143,22 +146,49 @@ export default function ManageShopPaymentTypes() {
             })], { type: 'application/json' });
             formData.append('data', requestBlob);
 
-            await ShopPaymentTypeService.updateShopPaymentType(item.shopId, item.id, formData);
-            setItems(prev => prev.map(i => i.id === item.id ? { ...i, isActive: value } : i));
+            const updated = await ShopPaymentTypeService.updateShopPaymentType(item.shopId, item.id, formData);
+            setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+            queryClient.setQueryData(
+                shopPaymentTypeKeys.detail(item.shopId, item.id),
+                updated,
+            );
+            void queryClient.invalidateQueries({
+                queryKey: shopPaymentTypeKeys.byShop(item.shopId),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: shopRestaurantEditQueryKey(item.shopId),
+            });
             toast.success("Status updated");
         } catch (error) {
             handleApiError(error, "Failed to update status");
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this shop payment type?")) return;
+    const handleDeleteClick = (id: number, name: string) => {
+        setDeleteDialog({ open: true, id, name });
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!selectedShopId) return;
+        setDeleting(true);
         try {
-            await ShopPaymentTypeService.deleteShopPaymentType(parseInt(selectedShopId), id);
+            await ShopPaymentTypeService.deleteShopPaymentType(parseInt(selectedShopId), deleteDialog.id);
             toast.success("Deleted successfully");
-            loadItems(parseInt(selectedShopId));
+            queryClient.removeQueries({
+                queryKey: shopPaymentTypeKeys.detail(parseInt(selectedShopId), deleteDialog.id),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: shopPaymentTypeKeys.byShop(parseInt(selectedShopId)),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: shopRestaurantEditQueryKey(parseInt(selectedShopId)),
+            });
+            setDeleteDialog({ open: false, id: 0, name: "" });
+            void loadItems(parseInt(selectedShopId));
         } catch (error) {
             handleApiError(error, "Failed to delete");
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -177,7 +207,7 @@ export default function ManageShopPaymentTypes() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "ShopPaymentTypes");
 
-        const shopName = selectedShopData?.label || 'Shop';
+        const shopName = selectedShopData?.dropdownLabel || 'Shop';
         XLSX.writeFile(wb, `PaymentTypes_${shopName}.xlsx`);
     };
 
@@ -210,10 +240,10 @@ export default function ManageShopPaymentTypes() {
                             </div>
                             <InfiniteSearchableSelect
                                 fetchData={fetchShopData}
-                                valueKey="value"
-                                labelKey="label"
+                                valueKey="id"
+                                labelKey="dropdownLabel"
                                 selectedValue={selectedShopData}
-                                onChange={(item) => setSelectedShopData(item as { label: string; value: string } | null)}
+                                onChange={setSelectedShopData}
                                 placeholder="Choose a shop"
                             />
                         </div>
@@ -311,7 +341,7 @@ export default function ManageShopPaymentTypes() {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                                onClick={() => handleDelete(item.id)}
+                                                                onClick={() => handleDeleteClick(item.id, item.paymentMethodName)}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -342,6 +372,22 @@ export default function ManageShopPaymentTypes() {
                     )}
                 </CardContent>
             </Card>
+            <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Shop Payment Type?</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
+                            {deleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

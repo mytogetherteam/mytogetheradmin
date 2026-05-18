@@ -9,6 +9,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
@@ -31,6 +39,8 @@ export default function ManageShopSubCategories() {
     const navigate = useNavigate();
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
     const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string; value: string } | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
+    const [deleting, setDeleting] = useState(false);
 
     const [sortConfig, setSortConfig] = useState<{ key: keyof ShopSubCategoryDTO; direction: "asc" | "desc" } | null>(null);
 
@@ -106,15 +116,22 @@ export default function ManageShopSubCategories() {
         XLSX.writeFile(wb, "ShopSubCategories.xlsx");
     };
 
-    const handleDelete = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteClick = async (e: React.MouseEvent, id: number, name: string) => {
         e.stopPropagation();
-        if (!confirm("Are you sure you want to delete this shop sub-category?")) return;
+        setDeleteDialog({ open: true, id, name });
+    };
+
+    const handleDeleteConfirm = async () => {
+        setDeleting(true);
         try {
-            await ShopCategoryService.deleteShopSubCategory(id);
+            await ShopCategoryService.deleteShopSubCategory(deleteDialog.id);
             toast.success("Deleted successfully");
+            setDeleteDialog({ open: false, id: 0, name: "" });
             void refetch();
         } catch (error) {
             handleApiError(error, "Failed to delete shop sub-category");
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -251,7 +268,7 @@ export default function ManageShopSubCategories() {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                                onClick={(e) => handleDelete(e, sub.id)}
+                                                                onClick={(e) => handleDeleteClick(e, sub.id, sub.nameEn || sub.name || `Sub-Category ${sub.id}`)}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -273,6 +290,22 @@ export default function ManageShopSubCategories() {
                     )}
                 </CardContent>
             </Card>
+            <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Shop Sub-Category?</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
+                            {deleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -17,8 +17,15 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     Plus,
     Search,
@@ -32,7 +39,6 @@ import { PaymentMethodDTO } from "@/services/shopService";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import {
     usePaymentMethods,
-    useUpdatePaymentMethodMutation,
     useDeletePaymentMethodMutation
 } from "@/hooks/payment-methods/usePaymentMethod";
 
@@ -42,6 +48,7 @@ export default function PaymentMethods() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
 
     const { data: response, isLoading } = usePaymentMethods({
         page: currentPage - 1,
@@ -53,8 +60,7 @@ export default function PaymentMethods() {
     const totalPages = response?.totalPages || 0;
     const totalElements = response?.totalElements || 0;
 
-    const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethodMutation();
-    const { mutateAsync: deletePaymentMethod } = useDeletePaymentMethodMutation();
+    const { mutateAsync: deletePaymentMethod, isPending: deleting } = useDeletePaymentMethodMutation();
 
     const handleSort = (key: keyof PaymentMethodDTO) => {
         let direction: "asc" | "desc" = "asc";
@@ -65,10 +71,14 @@ export default function PaymentMethods() {
         // Note: Real sorting should ideally happen on the server, but keeping local sort logic for now if needed.
     };
 
-    const handleDelete = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteClick = (e: React.MouseEvent, id: number, name: string) => {
         e.stopPropagation();
-        if (!confirm("Are you sure you want to delete this payment method?")) return;
-        await deletePaymentMethod(id);
+        setDeleteDialog({ open: true, id, name });
+    };
+
+    const handleDeleteConfirm = async () => {
+        await deletePaymentMethod(deleteDialog.id);
+        setDeleteDialog({ open: false, id: 0, name: "" });
     };
 
     return (
@@ -173,7 +183,7 @@ export default function PaymentMethods() {
                                                                             size="icon"
                                                                             variant="ghost"
                                                                             className="h-8 w-8 text-destructive"
-                                                                            onClick={(e) => handleDelete(e, item.id)}
+                                                                            onClick={(e) => handleDeleteClick(e, item.id, item.name)}
                                                                         >
                                                                             <Trash2 className="h-4 w-4" />
                                                                         </Button>
@@ -209,6 +219,22 @@ export default function PaymentMethods() {
                     )}
                 </CardContent>
             </Card>
+            <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Payment Method?</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
+                            {deleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
