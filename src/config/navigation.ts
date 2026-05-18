@@ -89,15 +89,6 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Create Menu Item", url: "/menus/items/create", icon: Plus },
                     { title: "Manage Menu Items", url: "/menus/items/manage", icon: List }
                 ]
-            },
-            {
-                title: "Master Menu Items",
-                icon: Tags,
-                tooltip: "Master Menu Items",
-                items: [
-                    { title: "Create Master Item", url: "/master-items/create", icon: Plus },
-                    { title: "Manage Master Items", url: "/master-items/manage", icon: List }
-                ]
             }
         ]
     },

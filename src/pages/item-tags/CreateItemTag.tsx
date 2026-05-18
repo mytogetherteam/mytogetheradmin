@@ -29,7 +29,6 @@ export default function CreateItemTag() {
     const [nameEn, setNameEn] = useState("");
     const [tagType, setTagType] = useState("");
     const [colorCode, setColorCode] = useState("#000000");
-    const [displayOrder, setDisplayOrder] = useState<number | "">(1);
     const [isActive, setIsActive] = useState<boolean>(true);
 
     const [loading, setLoading] = useState(false);
@@ -51,7 +50,6 @@ export default function CreateItemTag() {
             setNameEn(tag.nameEn || "");
             setTagType(tag.tagType || "");
             setColorCode(tag.colorCode || "#000000");
-            setDisplayOrder(tag.displayOrder || 1);
             setIsActive(tag.isActive !== false);
             if (tag.iconUrl) {
                 setExistingImage(tag.iconUrl);
@@ -72,7 +70,6 @@ export default function CreateItemTag() {
             setNameEn("");
             setTagType("");
             setColorCode("#000000");
-            setDisplayOrder(1);
             setIsActive(true);
             setExistingImage(null);
             setImageFile(null);
@@ -104,15 +101,15 @@ export default function CreateItemTag() {
             const dtoData = {
                 nameMm: nameMm || "",
                 nameTh: nameTh || "",
-                nameEn: nameEn || "",
+                nameEn: nameEn.trim(),
                 tagType: tagType || "",
                 colorCode: colorCode || "",
-                displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
                 isActive: isActive,
             };
 
             const formData = new FormData();
-            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+            // Plain string so Multer + FileInterceptor('image') treat `data` as a text field, not a second upload
+            formData.append("data", JSON.stringify(dtoData));
 
             if (imageFile) {
                 formData.append("image", imageFile);
@@ -176,7 +173,7 @@ export default function CreateItemTag() {
                     <form className="space-y-6" onSubmit={onSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="tagNameEn">Name (English)</Label>
+                                <Label htmlFor="tagNameEn">Name (English) <span className="text-destructive">*</span></Label>
                                 <Input
                                     id="tagNameEn"
                                     value={nameEn}
@@ -230,26 +227,6 @@ export default function CreateItemTag() {
                                         className="flex-1 font-mono"
                                     />
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="displayOrder">Display Order</Label>
-                                <Input
-                                    id="displayOrder"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={displayOrder}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/^0+(?!$)/, "");
-                                        if (val === "" || /^\d+$/.test(val)) {
-                                            setDisplayOrder(val === "" ? "" : parseInt(val, 10));
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
-                                    }}
-                                    placeholder="1"
-                                />
                             </div>
                         </div>
 
@@ -321,7 +298,7 @@ export default function CreateItemTag() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    disabled={!nameEn || submitting}
+                                    disabled={!nameEn.trim() || submitting}
                                 >
                                     {submitting ? (
                                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>

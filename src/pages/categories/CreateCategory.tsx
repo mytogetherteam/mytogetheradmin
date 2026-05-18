@@ -26,11 +26,9 @@ export default function CreateCategory() {
   const id = searchParams.get("id");
   const isEditMode = !!id;
 
-  const [name, setName] = useState("");
   const [nameMm, setNameMm] = useState("");
   const [nameTh, setNameTh] = useState("");
   const [nameEn, setNameEn] = useState("");
-  const [displayOrder, setDisplayOrder] = useState<number | "">(1);
   const [isActive, setIsActive] = useState<boolean>(true);
   const [shopId, setShopId] = useState("");
   const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
@@ -54,11 +52,9 @@ export default function CreateCategory() {
       loadCategory(parseInt(id));
     } else {
       // Reset form for create mode
-      setName("");
       setNameMm("");
       setNameTh("");
       setNameEn("");
-      setDisplayOrder(1);
       setIsActive(true);
       setShopId("");
       setSelectedShopData(null);
@@ -81,16 +77,14 @@ export default function CreateCategory() {
     setLoading(true);
     try {
       const cat = await ShopService.getCategoryById(catId);
-      setName(cat.nameEn || cat.name || "");
       setNameMm(cat.nameMm || "");
       setNameTh(cat.nameTh || "");
       setNameEn(cat.nameEn || "");
-      setDisplayOrder(cat.displayOrder || 1);
       setIsActive(cat.isActive !== false);
       if (cat.shopId) {
         setShopId(cat.shopId.toString());
         setSelectedShopData({ label: cat.shopName || `Shop #${cat.shopId}`, value: cat.shopId.toString() });
-        
+
         // Fetch real name if backend didn't provide it
         if (!cat.shopName) {
           ShopService.getShopById(cat.shopId).then((shop) => {
@@ -142,17 +136,16 @@ export default function CreateCategory() {
     setSubmitting(true);
     try {
       const dtoData: Record<string, unknown> = {
-        nameEn: name || nameEn || "",
+        nameEn: nameEn.trim(),
         nameMm: nameMm || "",
         nameTh: nameTh || "",
-        displayOrder: displayOrder === "" || displayOrder < 1 ? 1 : displayOrder,
         isActive: isActive,
         shopId: shopId ? parseInt(shopId) : undefined
       };
 
 
       const formData = new FormData();
-      formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+      formData.append("data", JSON.stringify(dtoData));
 
       if (imageFile) {
         formData.append("image", imageFile);
@@ -230,12 +223,12 @@ export default function CreateCategory() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="categoryName">Name</Label>
+              <div className="space-y-2">
+                <Label htmlFor="categoryNameEn">Name (English) <span className="text-destructive">*</span></Label>
                 <Input
-                  id="categoryName"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  id="categoryNameEn"
+                  value={nameEn}
+                  onChange={(e) => setNameEn(e.target.value)}
                   placeholder="e.g. Appetizers"
                   required
                 />
@@ -250,41 +243,12 @@ export default function CreateCategory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="categoryNameEn">Name (English)</Label>
-                <Input
-                  id="categoryNameEn"
-                  value={nameEn}
-                  onChange={(e) => setNameEn(e.target.value)}
-                  placeholder="e.g. Appetizers"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="categoryNameTh">Name (Thai)</Label>
                 <Input
                   id="categoryNameTh"
                   value={nameTh}
                   onChange={(e) => setNameTh(e.target.value)}
                   placeholder="e.g. อาหารเรียกน้ำย่อย"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="displayOrder">Display Order</Label>
-                <Input
-                  id="displayOrder"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={displayOrder}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/^0+(?!$)/, "");
-                    if (val === "" || /^\d+$/.test(val)) {
-                      setDisplayOrder(val === "" ? "" : parseInt(val, 10));
-                    }
-                  }}
-                  onBlur={() => {
-                    if (displayOrder === "" || displayOrder < 1) setDisplayOrder(1);
-                  }}
-                  placeholder="1"
                 />
               </div>
             </div>
@@ -361,7 +325,7 @@ export default function CreateCategory() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!name || submitting}
+                  disabled={!nameEn.trim() || !shopId || submitting}
                 >
                   {submitting ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
@@ -379,7 +343,7 @@ export default function CreateCategory() {
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
               This action cannot be undone. This will permanently delete the menu category
-              <strong> {name}</strong> and remove its data from the server.
+              <strong> {nameEn || nameMm || nameTh || "this category"}</strong> and remove its data from the server.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

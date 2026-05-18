@@ -31,7 +31,6 @@ import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { menuService, MenuItem } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
-import { MasterItemService } from "@/services/masterItemService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { toast } from "sonner";
@@ -68,7 +67,6 @@ export default function ManageMenuItems() {
     );
 
     const [extraCategoryNames, setExtraCategoryNames] = useState<Record<number, string>>({});
-    const [extraMasterItemNames, setExtraMasterItemNames] = useState<Record<number, string>>({});
     const [extraMasterCategoryNames, setExtraMasterCategoryNames] = useState<Record<number, string>>({});
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
@@ -84,9 +82,9 @@ export default function ManageMenuItems() {
         return {
             content: res.content.map((cat: { id?: number; menuCategoryId?: number; categoryId?: number; nameEn?: string; name?: string; nameMm?: string; nameTh?: string }) => {
                 const catId = cat.id || cat.menuCategoryId || cat.categoryId;
-                return { 
-                    label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category", 
-                    value: String(catId) 
+                return {
+                    label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category",
+                    value: String(catId)
                 };
             }),
             last: res.last
@@ -108,8 +106,8 @@ export default function ManageMenuItems() {
         setLoading(true);
         try {
             const response = await menuService.getAllMenuItems(
-                currentPage - 1, 
-                pageSize, 
+                currentPage - 1,
+                pageSize,
                 searchTerm,
                 shopId ? parseInt(shopId) : undefined,
                 categoryId ? parseInt(categoryId) : undefined,
@@ -118,47 +116,40 @@ export default function ManageMenuItems() {
             if (response && response.content !== undefined) {
                 const list = response.content;
                 setItems(list);
-                
+
                 // Fetch missing names
                 const missingCategories = new Set<number>();
-                const missingMasterItems = new Set<number>();
                 const missingMasterCategories = new Set<number>();
 
                 list.forEach(item => {
                     const typedItem = item as any;
                     const catId = item.menuCategoryId || typedItem.categoryId;
                     if (catId && !item.categoryName && !item.menuCategoryName) missingCategories.add(catId);
-                    if (item.masterItemId && !item.masterItemName) missingMasterItems.add(item.masterItemId);
                     if (item.masterCategoryId && !item.masterCategoryName) missingMasterCategories.add(item.masterCategoryId);
                 });
 
                 missingCategories.forEach(id => {
                     ShopService.getCategoryById(id).then((cat: any) => {
                         setExtraCategoryNames(prev => ({ ...prev, [id]: cat.nameEn || cat.nameMm || cat.name || `Category ${id}` }));
-                    }).catch(() => {});
-                });
-                missingMasterItems.forEach(id => {
-                    MasterItemService.getMasterItemById(id).then(mi => {
-                        setExtraMasterItemNames(prev => ({ ...prev, [id]: mi.nameEn || mi.nameMm || mi.nameTh || String(id) }));
-                    }).catch(() => {});
+                    }).catch(() => { });
                 });
                 missingMasterCategories.forEach(id => {
                     MasterMenuCategoryService.getMasterMenuCategoryById(id).then((mc: any) => {
                         setExtraMasterCategoryNames(prev => ({ ...prev, [id]: mc.nameEn || mc.nameMm || mc.nameTh || mc.name || String(id) }));
-                    }).catch(() => {});
+                    }).catch(() => { });
                 });
-                
+
                 // Robustly resolve total items and pages locally to bypass typescript error:
                 const resAny = response as { total?: number; count?: number; totalCount?: number; lastPage?: number; page?: { totalElements?: number; totalPages?: number; } };
                 const returnedTotalElements = resAny.page?.totalElements ?? response.totalElements ?? resAny.total ?? resAny.count ?? resAny.totalCount;
                 const total = returnedTotalElements !== undefined ? returnedTotalElements : list.length;
-                
+
                 const returnedTotalPages = resAny.page?.totalPages ?? response.totalPages ?? resAny.lastPage;
                 const pages = returnedTotalPages !== undefined ? returnedTotalPages : Math.max(1, Math.ceil(total / pageSize));
-                
+
                 setTotalItems(total);
                 setTotalPages(pages);
-                
+
                 // If the backend didn't provide total count info but returned more items than pageSize, 
                 // we treat it as client paginated to be safe
                 setIsClientPaginated(returnedTotalElements === undefined && list.length > pageSize);
@@ -197,7 +188,7 @@ export default function ManageMenuItems() {
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
     const sortedItems = sortData(items, sortConfig);
-    const displayItems = isClientPaginated 
+    const displayItems = isClientPaginated
         ? sortedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize)
         : sortedItems;
 
@@ -246,8 +237,7 @@ export default function ManageMenuItems() {
                 Currency: i.currency,
                 Shop: i.shopName || i.shopId,
                 Category: i.categoryName || i.menuCategoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
-                'Master Category': i.masterCategoryName || extraMasterCategoryNames[i.masterCategoryId!] || i.masterCategoryId || '-',
-                'Master Item': i.masterItemName || extraMasterItemNames[i.masterItemId!] || i.masterItemId || '-'
+                'Master Category': i.masterCategoryName || extraMasterCategoryNames[i.masterCategoryId!] || i.masterCategoryId || '-'
             }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
@@ -359,7 +349,6 @@ export default function ManageMenuItems() {
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Category</TableHead>
                                             <TableHead>M. Category</TableHead>
-                                            <TableHead>M. Item</TableHead>
                                             <TableHead>Flags</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -377,9 +366,9 @@ export default function ManageMenuItems() {
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
-                                                        <TableImage 
-                                                            src={item.imageUrl || item.imageUrls?.[0]} 
-                                                            alt={item.nameEn || item.name} 
+                                                        <TableImage
+                                                            src={item.imageUrl || item.imageUrls?.[0]}
+                                                            alt={item.nameEn || item.name}
                                                         />
                                                     </TableCell>
                                                     <TableCell>
@@ -414,15 +403,6 @@ export default function ManageMenuItems() {
                                                             <span className="text-muted-foreground text-xs">-</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        {(item.masterItemName || item.masterItemId) ? (
-                                                            <Badge variant="outline" className="font-normal whitespace-nowrap bg-muted/20">
-                                                                {item.masterItemName || extraMasterItemNames[item.masterItemId!] || item.masterItemId}
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground text-xs">-</span>
-                                                        )}
-                                                    </TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex flex-col gap-2">
                                                             <div className="flex items-center justify-between gap-2 max-w-[120px]">
@@ -443,7 +423,7 @@ export default function ManageMenuItems() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                                     No results found.
                                                 </TableCell>
                                             </TableRow>

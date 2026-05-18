@@ -5,21 +5,12 @@ import { PriceInput } from "@/components/ui/PriceInput";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
+import { Upload, X, Loader2, Trash2, Plus, FolderTree } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { menuService } from "@/services/menuService";
+import { menuService, Variant, ItemTag, ComboComponent } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
-import { MasterItemService } from "@/services/masterItemService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
@@ -33,7 +24,14 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
-import { OptionGroup, Variant, Option, ItemTag, ComboComponent } from "@/services/menuService";
+import { CreateMenuItemSortableRow } from "@/pages/menus/components/CreateMenuItemSortableRow";
+import type { AddonRow, CategoryResponse, TagResponse } from "@/pages/menus/create-menu-item.types";
+import {
+    optionGroupsToAddonRows,
+    resolveMenuItemImageUrl,
+    variantsFromApiResponse,
+} from "@/pages/menus/create-menu-item-mappers";
+import { buildAdminMenuItemDataJson } from "@/pages/menus/create-menu-item-payload";
 import {
     DndContext,
     closestCenter,
@@ -48,124 +46,7 @@ import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
-    useSortable,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from "lucide-react";
-
-interface CategoryResponse {
-    id?: number;
-    menuCategoryId?: number;
-    categoryId?: number;
-    nameEn?: string;
-    name?: string;
-    nameMm?: string;
-    nameTh?: string;
-}
-
-interface TagResponse {
-    id?: number;
-}
-
-interface OptionGroupResponse {
-    id?: number;
-    nameEn?: string;
-    name_en?: string;
-    nameMm?: string;
-    name_mm?: string;
-    nameTh?: string;
-    name_th?: string;
-    isRequired?: boolean;
-    is_required?: boolean;
-    minSelection?: number;
-    min_selection?: number;
-    maxSelection?: number;
-    max_selection?: number;
-    displayOrder?: number;
-    display_order?: number;
-    groupType?: "SINGLE_SELECT" | "MULTI_SELECT" | string;
-    group_type?: string;
-    options?: OptionResponse[];
-}
-
-interface OptionResponse {
-    id?: number;
-    nameEn?: string;
-    name_en?: string;
-    nameMm?: string;
-    name_mm?: string;
-    nameTh?: string;
-    name_th?: string;
-    price?: number;
-    isAvailable?: boolean;
-    is_available?: boolean;
-    displayOrder?: number;
-    display_order?: number;
-    linkedMenuItemId?: number;
-    linked_menu_item_id?: number;
-}
-
-interface VariantResponse {
-    id?: number;
-    nameEn?: string;
-    name_en?: string;
-    nameMm?: string;
-    name_mm?: string;
-    nameTh?: string;
-    name_th?: string;
-    price?: number;
-    isAvailable?: boolean;
-    is_available?: boolean;
-    displayOrder?: number;
-    display_order?: number;
-}
-
-interface ItemResponse {
-    image_url?: string;
-    mediaUrl?: string;
-    media_url?: string;
-}
-
-interface SortableItemProps {
-    id: string;
-    children: React.ReactNode;
-    className?: string;
-}
-
-function SortableItem({ id, children, className }: SortableItemProps) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 50 : undefined,
-    };
-
-    return (
-        <div ref={setNodeRef} style={style} className={className}>
-            <div className="flex items-start gap-2">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="mt-3 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-primary transition-colors"
-                >
-                    <GripVertical className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 
 export default function CreateMenuItem() {
     const navigate = useNavigate();
@@ -185,34 +66,29 @@ export default function CreateMenuItem() {
     const [descriptionMm, setDescriptionMm] = useState("");
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
+    /** Selling price (discount price). */
     const [price, setPrice] = useState("");
     const [originalPrice, setOriginalPrice] = useState("");
-    const [discountAmount, setDiscountAmount] = useState("");
-    const [discountPercentage, setDiscountPercentage] = useState("");
-    const [currency, setCurrency] = useState("THB");
+    /** Not shown in UI; kept from loaded item or schema default for API. */
+    const [currency, setCurrency] = useState("฿");
     const [categoryId, setCategoryId] = useState("");
     const [shopId, setShopId] = useState("");
     const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
     const [isVegetarian, setIsVegetarian] = useState(false);
-    const [isSpicy, setIsSpicy] = useState(false);
+    const [isHalal, setIsHalal] = useState(false);
 
     const [isAvailable, setIsAvailable] = useState(true);
     const [isCombo, setIsCombo] = useState(false);
-    const [isPopular, setIsPopular] = useState(false);
-    const [isHotDeal, setIsHotDeal] = useState(false);
     const [isRecommended, setIsRecommended] = useState(false);
-    const [displayOrder, setDisplayOrder] = useState<string>("1");
+    const [publishPublished, setPublishPublished] = useState(false);
 
-    // Meal Types
-    const [mealTypes, setMealTypes] = useState<string[]>([]);
+    // Meal Types — hidden from form; API receives []
 
     // Tags
     const [availableTags, setAvailableTags] = useState<ItemTag[]>([]);
     const [tagIds, setTagIds] = useState<number[]>([]);
 
-    // Master Item / Category linking
-    const [masterItemId, setMasterItemId] = useState<string>("");
-    const [selectedMasterItemData, setSelectedMasterItemData] = useState<{ label: string, value: string } | null>(null);
+    // Master category linking (global taxonomy)
     const [masterCategoryId, setMasterCategoryId] = useState<string>("");
     const [selectedMasterCategoryData, setSelectedMasterCategoryData] = useState<{ label: string, value: string } | null>(null);
 
@@ -220,7 +96,8 @@ export default function CreateMenuItem() {
     const [comboComponents, setComboComponents] = useState<ComboComponent[]>([]);
 
     // Data for dropdowns
-    const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+    // Add-ons (sent as one option group of extras)
+    const [addons, setAddons] = useState<AddonRow[]>([]);
     const [variants, setVariants] = useState<Variant[]>([]);
 
     // Selected items full data for InfiniteSearchableSelect display
@@ -260,9 +137,9 @@ export default function CreateMenuItem() {
         return {
             content: res.content.map((cat: CategoryResponse) => {
                 const categoryId = cat.id || cat.menuCategoryId || cat.categoryId;
-                return { 
-                    label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category", 
-                    value: String(categoryId) 
+                return {
+                    label: cat.nameEn || cat.name || cat.nameMm || cat.nameTh || "Unnamed Category",
+                    value: String(categoryId)
                 };
             }),
             last: res.last
@@ -272,14 +149,6 @@ export default function CreateMenuItem() {
     // Fetch item tags on mount
     useEffect(() => {
         menuService.getAllItemTags().then(setAvailableTags).catch((e) => handleApiError(e, "Failed to load item tags"));
-    }, []);
-
-    const fetchMasterItemData = useCallback(async (page: number, size: number, search: string) => {
-        const res = await menuService.searchMasterItems(search, page, size);
-        return {
-            content: res.content.map(item => ({ label: item.nameEn || item.name, value: String(item.id) })),
-            last: res.last
-        };
     }, []);
 
     const fetchMasterCategoryData = useCallback(async (page: number, size: number, search: string) => {
@@ -294,11 +163,10 @@ export default function CreateMenuItem() {
     }, []);
 
     const fetchComboItemData = useCallback(async (page: number, size: number, search: string) => {
-        console.log("Combo item fetching with shopId:", shopId, "parsed:", shopId ? parseInt(shopId) : "undefined");
         const res = await menuService.getAllMenuItems(
-            page, 
-            size, 
-            search, 
+            page,
+            size,
+            search,
             shopId ? parseInt(shopId) : undefined
         );
         return {
@@ -306,12 +174,6 @@ export default function CreateMenuItem() {
             last: res.last
         };
     }, [shopId]);
-
-    const toggleMealType = (type: string) => {
-        setMealTypes(prev =>
-            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-        );
-    };
 
     const toggleTag = (tagId: number) => {
         setTagIds(prev =>
@@ -349,9 +211,7 @@ export default function CreateMenuItem() {
             // Format price with commas safely
             setPrice(item.price != null ? Number(item.price).toLocaleString() : "0");
             setOriginalPrice(item.originalPrice != null ? Number(item.originalPrice).toLocaleString() : "");
-            setDiscountAmount(item.discountAmount != null ? Number(item.discountAmount).toLocaleString() : "");
-            setDiscountPercentage(item.discountPercentage != null ? Number(item.discountPercentage).toLocaleString() : "");
-            setCurrency(item.currency || "THB");
+            setCurrency(item.currency || "฿");
             if (item.shopId) {
                 setShopId(item.shopId.toString());
                 setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
@@ -380,28 +240,13 @@ export default function CreateMenuItem() {
             }
 
             setIsVegetarian(item.isVegetarian || false);
-            setIsSpicy(item.isSpicy || false);
+            setIsHalal((item as { isHalal?: boolean }).isHalal || false);
             setIsAvailable(item.isAvailable !== false);
             setIsCombo(item.isCombo || false);
-            setIsPopular(item.isPopular || false);
-            setIsHotDeal(item.isHotDeal || false);
             setIsRecommended(item.isRecommended || false);
-            setDisplayOrder(String(item.displayOrder || 1));
-            setMealTypes(item.mealTypes || []);
+            const pub = (item as { publishStatus?: string }).publishStatus;
+            setPublishPublished(pub === "PUBLISHED");
             setTagIds(item.tagIds?.map(Number) || (item.tags ? item.tags.map((t: TagResponse) => Number(t.id)) : []));
-            if (item.masterItemId) {
-                setMasterItemId(String(item.masterItemId));
-                const label = item.masterItemName || `Master Item #${item.masterItemId}`;
-                setSelectedMasterItemData({ label, value: String(item.masterItemId) });
-
-                // Fetch real name if backend didn't provide it
-                if (!item.masterItemName) {
-                    MasterItemService.getMasterItemById(item.masterItemId).then((m) => {
-                        setMasterItemId(m.id.toString());
-                        setSelectedMasterItemData({ label: m.nameEn || m.nameMm || `Item ${m.id}`, value: String(m.id) });
-                    }).catch((e) => handleApiError(e, "Failed to load master item details"));
-                }
-            }
             if (item.masterCategoryId) {
                 setMasterCategoryId(String(item.masterCategoryId));
                 const label = item.masterCategoryName || `Master Category #${item.masterCategoryId}`;
@@ -416,42 +261,10 @@ export default function CreateMenuItem() {
                 }
             }
             setComboComponents(item.components || []);
-            const mappedOptionGroups = (item.optionGroups || []).map((og: OptionGroupResponse) => ({
-                id: og.id,
-                nameEn: og.nameEn || og.name_en || "",
-                nameMm: og.nameMm || og.name_mm || "",
-                nameTh: og.nameTh || og.name_th || "",
-                isRequired: og.isRequired ?? og.is_required ?? false,
-                minSelection: og.minSelection ?? og.min_selection ?? 0,
-                maxSelection: og.maxSelection ?? og.max_selection ?? 1,
-                displayOrder: og.displayOrder ?? og.display_order ?? 1,
-                groupType: (og.groupType || og.group_type || "SINGLE_SELECT") as "SINGLE_SELECT" | "MULTI_SELECT",
-                options: (og.options || []).map((opt: OptionResponse) => ({
-                    id: opt.id,
-                    nameEn: opt.nameEn || opt.name_en || "",
-                    nameMm: opt.nameMm || opt.name_mm || "",
-                    nameTh: opt.nameTh || opt.name_th || "",
-                    price: opt.price ?? 0,
-                    isAvailable: opt.isAvailable ?? opt.is_available ?? true,
-                    displayOrder: opt.displayOrder ?? opt.display_order ?? 1,
-                    linkedMenuItemId: opt.linkedMenuItemId ?? opt.linked_menu_item_id,
-                }))
-            }));
+            setAddons(optionGroupsToAddonRows(item.optionGroups || []));
+            setVariants(variantsFromApiResponse(item.variants || []));
 
-            const mappedVariants = (item.variants || []).map((v: VariantResponse) => ({
-                id: v.id,
-                nameEn: v.nameEn || v.name_en || "",
-                nameMm: v.nameMm || v.name_mm || "",
-                nameTh: v.nameTh || v.name_th || "",
-                price: v.price ?? 0,
-                isAvailable: v.isAvailable ?? v.is_available ?? true,
-                displayOrder: v.displayOrder ?? v.display_order ?? 1,
-            }));
-
-            setOptionGroups(mappedOptionGroups);
-            setVariants(mappedVariants);
-
-            const resolvedImageUrl = item.imageUrl || (item as ItemResponse).image_url || (item as ItemResponse).mediaUrl || (item as ItemResponse).media_url;
+            const resolvedImageUrl = resolveMenuItemImageUrl(item);
             if (resolvedImageUrl) {
                 setExistingImage(resolvedImageUrl);
             }
@@ -475,35 +288,27 @@ export default function CreateMenuItem() {
             setDescriptionEn("");
             setPrice("");
             setOriginalPrice("");
-            setDiscountAmount("");
-            setDiscountPercentage("");
-            setCurrency("THB");
+            setCurrency("฿");
             setCategoryId("");
             setShopId("");
             setSelectedShopData(null);
             setSelectedCategoryData(null);
             setIsVegetarian(false);
-            setIsSpicy(false);
+            setIsHalal(false);
 
             setIsAvailable(true);
             setIsCombo(false);
-            setIsPopular(false);
-            setIsHotDeal(false);
             setIsRecommended(false);
-            setDisplayOrder("1");
-            setMealTypes([]);
+            setPublishPublished(false);
             setTagIds([]);
-            setMasterItemId("");
-            setSelectedMasterItemData(null);
             setMasterCategoryId("");
             setSelectedMasterCategoryData(null);
             setComboComponents([]);
             setImageFile(null);
             setImagePreview(null);
             setExistingImage(null);
-            setOptionGroups([]);
+            setAddons([]);
             setVariants([]);
-            setSelectedCategoryData(null);
         }
     }, [id, isEditMode, loadItem]);
 
@@ -528,50 +333,29 @@ export default function CreateMenuItem() {
 
     // handlePriceChange removed in favor of PriceInput
 
-    const addOptionGroup = () => {
-        setOptionGroups([...optionGroups, {
-            nameEn: "",
-            isRequired: false,
-            minSelection: 0,
-            maxSelection: 1,
-            displayOrder: optionGroups.length + 1,
-            groupType: "SINGLE_SELECT",
-            options: [{ nameEn: "", price: 0, isAvailable: true, displayOrder: 1 }]
-        }]);
+    const addAddon = () => {
+        setAddons((prev) => [...prev, { nameEn: "", nameMm: "", nameTh: "", price: 0, isAvailable: true }]);
     };
 
-    const removeOptionGroup = (index: number) => {
-        const updated = optionGroups.filter((_, i) => i !== index);
-        // Re-calculate orders
-        const reordered = updated.map((og, i) => ({ ...og, displayOrder: i + 1 }));
-        setOptionGroups(reordered);
+    const removeAddon = (index: number) => {
+        setAddons((prev) => prev.filter((_, i) => i !== index));
     };
 
-    const updateOptionGroup = (index: number, updates: Partial<OptionGroup>) => {
-        const newGroups = [...optionGroups];
-        newGroups[index] = { ...newGroups[index], ...updates };
-        setOptionGroups(newGroups);
+    const updateAddon = (index: number, updates: Partial<AddonRow>) => {
+        setAddons((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], ...updates };
+            return next;
+        });
     };
 
-    const addOption = (groupIndex: number) => {
-        const newGroups = [...optionGroups];
-        const nextOrder = newGroups[groupIndex].options.length + 1;
-        newGroups[groupIndex].options.push({ nameEn: "", price: 0, isAvailable: true, displayOrder: nextOrder });
-        setOptionGroups(newGroups);
-    };
-
-    const removeOption = (groupIndex: number, optionIndex: number) => {
-        const newGroups = [...optionGroups];
-        const updatedOptions = newGroups[groupIndex].options.filter((_, i) => i !== optionIndex);
-        // Re-calculate orders
-        newGroups[groupIndex].options = updatedOptions.map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
-        setOptionGroups(newGroups);
-    };
-
-    const updateOption = (groupIndex: number, optionIndex: number, updates: Partial<Option>) => {
-        const newGroups = [...optionGroups];
-        newGroups[groupIndex].options[optionIndex] = { ...newGroups[groupIndex].options[optionIndex], ...updates };
-        setOptionGroups(newGroups);
+    const handleAddonDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = addons.findIndex((_, i) => `addon-${i}` === active.id);
+            const newIndex = addons.findIndex((_, i) => `addon-${i}` === over.id);
+            setAddons(arrayMove(addons, oldIndex, newIndex));
+        }
     };
 
     const addVariant = () => {
@@ -591,30 +375,6 @@ export default function CreateMenuItem() {
         setVariants(newVariants);
     };
 
-    const handleOptionGroupDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const oldIndex = optionGroups.findIndex((_, i) => `og-${i}` === active.id);
-            const newIndex = optionGroups.findIndex((_, i) => `og-${i}` === over.id);
-            const newArray = arrayMove(optionGroups, oldIndex, newIndex);
-            setOptionGroups(newArray.map((og, i) => ({ ...og, displayOrder: i + 1 })));
-        }
-    };
-
-    const handleOptionDragEnd = (groupIndex: number, event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const options = optionGroups[groupIndex].options;
-            const oldIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === active.id);
-            const newIndex = options.findIndex((_, i) => `opt-${groupIndex}-${i}` === over.id);
-            const newArray = arrayMove(options, oldIndex, newIndex);
-
-            const newGroups = [...optionGroups];
-            newGroups[groupIndex].options = newArray.map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
-            setOptionGroups(newGroups);
-        }
-    };
-
     const handleVariantDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
@@ -630,146 +390,34 @@ export default function CreateMenuItem() {
 
         setSubmitting(true);
         try {
-            const dtoData = {
-                name: nameEn,
-                nameEn: nameEn,
-                name_en: nameEn, // snake_case backup
-                nameMm: nameMm || "",
-                name_mm: nameMm || "",
-                nameTh: nameTh || "",
-                name_th: nameTh || "",
-                description: descriptionEn || "",
-                descriptionMm: descriptionMm || "",
-                description_mm: descriptionMm || "",
-                descriptionTh: descriptionTh || "",
-                description_th: descriptionTh || "",
-                descriptionEn: descriptionEn || "",
-                description_en: descriptionEn || "",
-                price: Number(price.replace(/,/g, "")) || 0,
-                originalPrice: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
-                original_price: originalPrice ? Number(originalPrice.replace(/,/g, "")) : 0,
-                discountPercentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
-                discount_percentage: discountPercentage ? Number(discountPercentage.replace(/,/g, "")) : 0,
-                currency: currency || "THB",
-                menuCategoryId: Number(categoryId),
-                menu_category_id: Number(categoryId),
-                categoryId: Number(categoryId), // Fallback in case of categoryId
-                category_id: Number(categoryId),
-                shopId: Number(shopId),
-                shop_id: Number(shopId),
-                isVegetarian: isVegetarian,
-                is_vegetarian: isVegetarian,
-                isSpicy: isSpicy,
-                is_spicy: isSpicy,
-                isAvailable: isAvailable,
-                is_available: isAvailable,
-                isCombo: isCombo,
-                is_combo: isCombo,
-                isPopular: isPopular,
-                is_popular: isPopular,
-                isHotDeal: isHotDeal,
-                is_hot_deal: isHotDeal,
-                isRecommended: isRecommended,
-                is_recommended: isRecommended,
-                displayOrder: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
-                display_order: Number(displayOrder) >= 1 ? Number(displayOrder) : 1,
-                mealTypes: mealTypes,
-                meal_types: mealTypes,
-                tagIds: tagIds,
-                tag_ids: tagIds,
-                masterItemId: masterItemId ? Number(masterItemId) : undefined,
-                master_item_id: masterItemId ? Number(masterItemId) : undefined,
-                masterCategoryId: masterCategoryId ? Number(masterCategoryId) : undefined,
-                master_category_id: masterCategoryId ? Number(masterCategoryId) : undefined,
-                components: isCombo ? comboComponents.map((c, i) => {
-                    const mappedComponent = { ...c, displayOrder: i + 1 };
-                    if (!(isEditMode && id)) {
-                        delete mappedComponent.id;
-                    }
-                    return mappedComponent;
-                }) : [],
-                optionGroups: optionGroups.map(og => ({
-                    id: (isEditMode && id) ? og.id : undefined,
-                    name: og.nameEn || og.name || "",
-                    nameEn: og.nameEn || og.name || "",
-                    nameMm: og.nameMm || "",
-                    nameTh: og.nameTh || "",
-                    displayOrder: og.displayOrder || 0,
-                    maxSelection: og.maxSelection || 0,
-                    minSelection: og.minSelection || 0,
-                    isRequired: og.isRequired ?? false,
-                    groupType: og.groupType || "SINGLE_SELECT",
-                    // snake_case for backend compatibility
-                    name_en: og.nameEn || og.name || "",
-                    name_mm: og.nameMm || "",
-                    name_th: og.nameTh || "",
-                    display_order: og.displayOrder || 0,
-                    max_selection: og.maxSelection || 0,
-                    min_selection: og.minSelection || 0,
-                    is_required: og.isRequired ?? false,
-                    group_type: og.groupType || "SINGLE_SELECT",
-                    options: og.options.map(opt => ({
-                        id: (isEditMode && id) ? opt.id : undefined,
-                        name: opt.nameEn || opt.name || "",
-                        nameEn: opt.nameEn || opt.name || "",
-                        nameMm: opt.nameMm || "",
-                        nameTh: opt.nameTh || "",
-                        price: opt.price || 0,
-                        displayPrice: opt.displayPrice || "",
-                        linkedMenuItemId: opt.linkedMenuItemId,
-                        displayOrder: opt.displayOrder || 0,
-                        isAvailable: opt.isAvailable ?? true,
-                        // snake_case for backend compatibility
-                        name_en: opt.nameEn || opt.name || "",
-                        name_mm: opt.nameMm || "",
-                        name_th: opt.nameTh || "",
-                        display_price: opt.displayPrice || "",
-                        linked_menu_item_id: opt.linkedMenuItemId,
-                        display_order: opt.displayOrder || 0,
-                        is_available: opt.isAvailable ?? true
-                    }))
-                })),
-                option_groups: optionGroups.map(og => ({
-                    id: (isEditMode && id) ? og.id : undefined,
-                    name_en: og.nameEn || og.name || "",
-                    name_mm: og.nameMm || "",
-                    name_th: og.nameTh || "",
-                    display_order: og.displayOrder || 0,
-                    max_selection: og.maxSelection || 0,
-                    min_selection: og.minSelection || 0,
-                    is_required: og.isRequired ?? false,
-                    group_type: og.groupType || "SINGLE_SELECT",
-                    options: og.options.map(opt => ({
-                        id: (isEditMode && id) ? opt.id : undefined,
-                        name_en: opt.nameEn || opt.name || "",
-                        name_mm: opt.nameMm || "",
-                        name_th: opt.nameTh || "",
-                        price: opt.price || 0,
-                        linked_menu_item_id: opt.linkedMenuItemId,
-                        display_order: opt.displayOrder || 0,
-                        is_available: opt.isAvailable ?? true
-                    }))
-                })),
-                variants: variants.map(v => ({
-                    id: (isEditMode && id) ? v.id : undefined,
-                    name: v.nameEn || v.name || "",
-                    nameEn: v.nameEn || v.name || "",
-                    nameMm: v.nameMm || "",
-                    nameTh: v.nameTh || "",
-                    price: v.price || 0,
-                    isAvailable: v.isAvailable !== false,
-                    displayOrder: v.displayOrder || 0,
-                    // snake_case for backend compatibility
-                    name_en: v.nameEn || v.name || "",
-                    name_mm: v.nameMm || "",
-                    name_th: v.nameTh || "",
-                    is_available: v.isAvailable !== false,
-                    display_order: v.displayOrder || 0
-                }))
-            };
+            const dtoData = buildAdminMenuItemDataJson({
+                nameEn,
+                nameMm,
+                nameTh,
+                descriptionEn,
+                descriptionMm,
+                descriptionTh,
+                priceInput: price,
+                originalPriceInput: originalPrice,
+                currency,
+                categoryId,
+                shopId,
+                isVegetarian,
+                isHalal,
+                isAvailable,
+                isCombo,
+                isRecommended,
+                publishPublished,
+                tagIds,
+                masterCategoryId,
+                comboComponents,
+                addons,
+                variants,
+                editingExistingItem: isEditMode && !!id,
+            });
 
             const formData = new FormData();
-            formData.append("data", new Blob([JSON.stringify(dtoData)], { type: 'application/json' }));
+            formData.append("data", JSON.stringify(dtoData));
 
             if (imageFile) {
                 formData.append("image", imageFile);
@@ -788,7 +436,7 @@ export default function CreateMenuItem() {
                     setSubmitting(false);
                     return;
                 }
-                
+
                 await menuService.updateMenuItem(parseInt(id), formData);
                 toast.success("Item updated successfully");
             } else {
@@ -878,6 +526,10 @@ export default function CreateMenuItem() {
                                 <h3 className="text-lg font-medium">Names & Descriptions</h3>
 
                                 <div className="space-y-2">
+                                    <Label>Name (English)</Label>
+                                    <Input value={nameEn} onChange={e => setNameEn(e.target.value)} required placeholder="e.g. Cheese Burger" />
+                                </div>
+                                <div className="space-y-2">
                                     <Label>Name (Myanmar)</Label>
                                     <Input value={nameMm} onChange={e => setNameMm(e.target.value)} placeholder="e.g. ချိစ်ဘာဂါ" />
                                 </div>
@@ -886,8 +538,8 @@ export default function CreateMenuItem() {
                                     <Input value={nameTh} onChange={e => setNameTh(e.target.value)} placeholder="e.g. ชีสเบอร์เกอร์" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Name (English) / Default</Label>
-                                    <Input value={nameEn} onChange={e => setNameEn(e.target.value)} required placeholder="e.g. Cheese Burger" />
+                                    <Label>Description (English)</Label>
+                                    <Textarea value={descriptionEn} onChange={e => setDescriptionEn(e.target.value)} placeholder="" rows={2} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Description (Myanmar)</Label>
@@ -897,64 +549,13 @@ export default function CreateMenuItem() {
                                     <Label>Description (Thai)</Label>
                                     <Textarea value={descriptionTh} onChange={e => setDescriptionTh(e.target.value)} placeholder="" rows={2} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Description (English) / Default</Label>
-                                    <Textarea value={descriptionEn} onChange={e => setDescriptionEn(e.target.value)} placeholder="" rows={2} />
-                                </div>
                             </div>
 
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Pricing & Details</h3>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Display Order</Label>
-                                        <Input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={displayOrder}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                if (val === "" || /^\d+$/.test(val)) {
-                                                    setDisplayOrder(val);
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const val = e.target.value;
-                                                if (val === "" || val === "0") {
-                                                    setDisplayOrder("1");
-                                                }
-                                            }}
-                                            placeholder="1"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>Currency</Label>
-                                        <Select value={currency} onValueChange={setCurrency}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select Currency" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="MMK">MMK (K)</SelectItem>
-                                                <SelectItem value="USD">USD ($)</SelectItem>
-                                                <SelectItem value="THB">THB (฿)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 mt-4">
-                                    <div className="space-y-2">
-                                        <Label>Base Price</Label>
-                                        <PriceInput
-                                            value={price}
-                                            onValueChange={setPrice}
-                                            required
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Original Price</Label>
+                                        <Label>Original price</Label>
                                         <PriceInput
                                             value={originalPrice}
                                             onValueChange={setOriginalPrice}
@@ -962,69 +563,45 @@ export default function CreateMenuItem() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Discount Amount</Label>
+                                        <Label>Discount price</Label>
                                         <PriceInput
-                                            value={discountAmount}
-                                            onValueChange={setDiscountAmount}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Discount (%)</Label>
-                                        <PriceInput
-                                            value={discountPercentage}
-                                            onValueChange={setDiscountPercentage}
+                                            value={price}
+                                            onValueChange={setPrice}
+                                            required
                                             placeholder="0"
                                         />
                                     </div>
                                 </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Discount price is the amount customers pay. Original price is optional (e.g. before discount).
+                                </p>
 
                                 <h3 className="text-lg font-medium mt-6">Flags & Status</h3>
-                                <div className="grid grid-cols-2 gap-y-4 gap-x-8 p-4 bg-muted/30 rounded-lg">
-                                    <div className="flex items-center space-x-3">
+                                <p className="text-xs text-muted-foreground -mt-4 mb-2">Availability, visibility, dietary flags, recommendation, and combo.</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 p-4 bg-muted/30 rounded-lg">
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                                        <Label htmlFor="available" className="font-medium cursor-pointer">{isAvailable ? "Available" : "Unavailable"}</Label>
                                         <Switch checked={isAvailable} onCheckedChange={setIsAvailable} id="available" />
-                                        <Label htmlFor="available" className="font-medium cursor-pointer">Available</Label>
                                     </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isVegetarian} onCheckedChange={setIsVegetarian} id="veg" />
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                                        <Label htmlFor="published" className="font-medium cursor-pointer">{publishPublished ? "Published" : "Unpublished"}</Label>
+                                        <Switch checked={publishPublished} onCheckedChange={setPublishPublished} id="published" />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
                                         <Label htmlFor="veg" className="font-medium cursor-pointer">Vegetarian</Label>
+                                        <Switch checked={isVegetarian} onCheckedChange={setIsVegetarian} id="veg" />
                                     </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isSpicy} onCheckedChange={setIsSpicy} id="spicy" />
-                                        <Label htmlFor="spicy" className="font-medium cursor-pointer">Spicy / Hot</Label>
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                                        <Label htmlFor="halal" className="font-medium cursor-pointer">Halal</Label>
+                                        <Switch checked={isHalal} onCheckedChange={setIsHalal} id="halal" />
                                     </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isCombo} onCheckedChange={(val) => { setIsCombo(val); if (!val) setComboComponents([]); }} id="combo" />
-                                        <Label htmlFor="combo" className="font-medium cursor-pointer">Combo Meal</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isPopular} onCheckedChange={setIsPopular} id="popular" />
-                                        <Label htmlFor="popular" className="font-medium cursor-pointer">Popular Item</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isHotDeal} onCheckedChange={setIsHotDeal} id="hotdeal" />
-                                        <Label htmlFor="hotdeal" className="font-medium cursor-pointer">Hot Deal</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <Switch checked={isRecommended} onCheckedChange={setIsRecommended} id="recommended" />
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
                                         <Label htmlFor="recommended" className="font-medium cursor-pointer">Recommended</Label>
+                                        <Switch checked={isRecommended} onCheckedChange={setIsRecommended} id="recommended" />
                                     </div>
-                                </div>
-
-                                {/* Meal Types */}
-                                <div className="space-y-2 mt-4">
-                                    <Label className="text-sm font-medium">Meal Types</Label>
-                                    <div className="flex gap-6 p-3 bg-muted/20 rounded-lg">
-                                        {[{ value: 'BREAKFAST', label: 'Breakfast' }, { value: 'LUNCH', label: 'Lunch' }, { value: 'DINNER', label: 'Dinner' }].map(mt => (
-                                            <div key={mt.value} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`meal-${mt.value}`}
-                                                    checked={mealTypes.includes(mt.value)}
-                                                    onCheckedChange={() => toggleMealType(mt.value)}
-                                                />
-                                                <Label htmlFor={`meal-${mt.value}`} className="cursor-pointer text-sm font-medium">{mt.label}</Label>
-                                            </div>
-                                        ))}
+                                    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/80 px-3 py-2">
+                                        <Label htmlFor="combo" className="font-medium cursor-pointer">Combo set</Label>
+                                        <Switch checked={isCombo} onCheckedChange={(val) => { setIsCombo(val); if (!val) setComboComponents([]); }} id="combo" />
                                     </div>
                                 </div>
                             </div>
@@ -1060,9 +637,9 @@ export default function CreateMenuItem() {
                             <div className="space-y-4 bg-muted/5 p-4 rounded-xl border border-dashed">
                                 <div>
                                     <h3 className="text-xl font-bold">Catalogue & Category Links</h3>
-                                    <p className="text-sm text-muted-foreground">Select a category for this item and optionally link it to a global master item/category.</p>
+                                    <p className="text-sm text-muted-foreground">Select a shop category for this item and optionally link it to a global master category.</p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-6">
+                                <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <Label className="text-primary font-bold">Category</Label>
                                         <InfiniteSearchableSelect
@@ -1077,35 +654,19 @@ export default function CreateMenuItem() {
                                             placeholder="Select Category"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-dashed">
-                                        <div className="space-y-2">
-                                            <Label>Master Item</Label>
-                                            <InfiniteSearchableSelect
-                                                fetchData={fetchMasterItemData}
-                                                valueKey="value"
-                                                labelKey="label"
-                                                selectedValue={selectedMasterItemData}
-                                                onChange={(item) => {
-                                                    setMasterItemId(item?.value || "");
-                                                    setSelectedMasterItemData(item);
-                                                }}
-                                                placeholder="Search master items..."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Master Category</Label>
-                                            <InfiniteSearchableSelect
-                                                fetchData={fetchMasterCategoryData}
-                                                valueKey="value"
-                                                labelKey="label"
-                                                selectedValue={selectedMasterCategoryData}
-                                                onChange={(item) => {
-                                                    setMasterCategoryId(item?.value || "");
-                                                    setSelectedMasterCategoryData(item);
-                                                }}
-                                                placeholder="Search master categories..."
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <Label>Master Category</Label>
+                                        <InfiniteSearchableSelect
+                                            fetchData={fetchMasterCategoryData}
+                                            valueKey="value"
+                                            labelKey="label"
+                                            selectedValue={selectedMasterCategoryData}
+                                            onChange={(item) => {
+                                                setMasterCategoryId(item?.value || "");
+                                                setSelectedMasterCategoryData(item);
+                                            }}
+                                            placeholder="Search master categories..."
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -1203,235 +764,71 @@ export default function CreateMenuItem() {
                             <Card className="border-dashed bg-muted/5">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <div>
-                                        <CardTitle className="text-base">Option Groups</CardTitle>
-                                        <CardDescription>Groups of extras like "Toppings", "Sizes", etc.</CardDescription>
+                                        <CardTitle className="text-base">Add on</CardTitle>
+                                        <CardDescription>Name (English, Myanmar, Thai), price, and availability.</CardDescription>
                                     </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={addOptionGroup} className="gap-2">
-                                        <Plus className="h-4 w-4" /> Add Group
+                                    <Button type="button" variant="outline" size="sm" onClick={addAddon} className="gap-2">
+                                        <Plus className="h-4 w-4" /> Add add-on
                                     </Button>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <DndContext
                                         sensors={sensors}
                                         collisionDetection={closestCenter}
-                                        onDragEnd={handleOptionGroupDragEnd}
+                                        onDragEnd={handleAddonDragEnd}
                                     >
                                         <SortableContext
-                                            items={optionGroups.map((_, i) => `og-${i}`)}
+                                            items={addons.map((_, i) => `addon-${i}`)}
                                             strategy={verticalListSortingStrategy}
                                         >
-                                            {optionGroups.length === 0 ? (
+                                            {addons.length === 0 ? (
                                                 <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
-                                                    No option groups added.
+                                                    No add-ons added.
                                                 </div>
                                             ) : (
-                                                <div className="space-y-4">
-                                                    {optionGroups.map((group, gIdx) => (
-                                                        <SortableItem key={`og-${gIdx}`} id={`og-${gIdx}`}>
-                                                            <div className="p-4 border rounded-xl bg-card shadow-sm space-y-4 relative group/og">
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive h-8 w-8"
-                                                                    onClick={() => removeOptionGroup(gIdx)}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-
-                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mr-8">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (EN)</Label>
-                                                                        <Input
-                                                                            value={group.nameEn}
-                                                                            onChange={e => updateOptionGroup(gIdx, { nameEn: e.target.value })}
-                                                                            placeholder="e.g. Toppings"
-                                                                        />
+                                                <div className="space-y-3">
+                                                    {addons.map((addon, idx) => (
+                                                        <CreateMenuItemSortableRow key={`addon-${idx}`} id={`addon-${idx}`}>
+                                                            <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4 shadow-sm">
+                                                                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
+                                                                    <div className="space-y-1">
+                                                                        <Label className="text-xs text-muted-foreground">Name (English)</Label>
+                                                                        <Input value={addon.nameEn} onChange={e => updateAddon(idx, { nameEn: e.target.value })} placeholder="English" />
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (MM)</Label>
-                                                                        <Input
-                                                                            value={group.nameMm}
-                                                                            onChange={e => updateOptionGroup(gIdx, { nameMm: e.target.value })}
-                                                                            placeholder="အပိုဆောင်း"
-                                                                        />
+                                                                    <div className="space-y-1">
+                                                                        <Label className="text-xs text-muted-foreground">Name (Myanmar)</Label>
+                                                                        <Input value={addon.nameMm} onChange={e => updateAddon(idx, { nameMm: e.target.value })} placeholder="Myanmar" />
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Name (TH)</Label>
-                                                                        <Input
-                                                                            value={group.nameTh}
-                                                                            onChange={e => updateOptionGroup(gIdx, { nameTh: e.target.value })}
-                                                                            placeholder="ท็อปปิ้ง"
-                                                                        />
+                                                                    <div className="space-y-1">
+                                                                        <Label className="text-xs text-muted-foreground">Name (Thai)</Label>
+                                                                        <Input value={addon.nameTh} onChange={e => updateAddon(idx, { nameTh: e.target.value })} placeholder="Thai" />
                                                                     </div>
                                                                 </div>
-                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Group Type</Label>
-                                                                        <Select
-                                                                            value={group.groupType || "SINGLE_SELECT"}
-                                                                            onValueChange={val => updateOptionGroup(gIdx, { groupType: val as "SINGLE_SELECT" | "MULTI_SELECT" })}
-                                                                        >
-                                                                            <SelectTrigger className="h-10">
-                                                                                <SelectValue />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="SINGLE_SELECT">Single Select</SelectItem>
-                                                                                <SelectItem value="MULTI_SELECT">Multi Select</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
+                                                                <div className="flex flex-wrap items-center gap-3">
+                                                                    <div className="space-y-1 w-32">
+                                                                        <Label className="text-xs text-muted-foreground">Price</Label>
+                                                                        <Input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={addon.price === 0 ? "" : addon.price}
+                                                                            onChange={e => {
+                                                                                const val = e.target.value;
+                                                                                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                                                    updateAddon(idx, { price: parseFloat(val) || 0 });
+                                                                                }
+                                                                            }}
+                                                                        />
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase text-muted-foreground">Selection Mode</Label>
-                                                                        <div className="flex items-center gap-4 h-10">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <Switch
-                                                                                    checked={group.isRequired}
-                                                                                    onCheckedChange={val => updateOptionGroup(gIdx, { isRequired: val })}
-                                                                                    id={`req-${gIdx}`}
-                                                                                />
-                                                                                <Label htmlFor={`req-${gIdx}`} className="text-sm cursor-pointer">Required</Label>
-                                                                            </div>
-                                                                        </div>
+                                                                    <div className="flex items-center gap-2 pb-1">
+                                                                        <Switch checked={addon.isAvailable} onCheckedChange={v => updateAddon(idx, { isAvailable: v })} id={`addon-avail-${idx}`} />
+                                                                        <Label htmlFor={`addon-avail-${idx}`} className="text-sm cursor-pointer whitespace-nowrap">Available</Label>
                                                                     </div>
-                                                                    <div className="grid grid-cols-2 gap-2">
-                                                                        <div className="space-y-1">
-                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Min Selection</Label>
-                                                                            <Input
-                                                                                type="text"
-                                                                                inputMode="numeric"
-                                                                                pattern="[0-9]*"
-                                                                                value={group.minSelection}
-                                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                                                                onChange={e => {
-                                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
-                                                                                    if (val === "" || /^\d+$/.test(val)) {
-                                                                                        updateOptionGroup(gIdx, { minSelection: parseInt(val) || 0 });
-                                                                                    }
-                                                                                }}
-                                                                                className="h-8"
-                                                                            />
-                                                                        </div>
-                                                                        <div className="space-y-1">
-                                                                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Max Selection</Label>
-                                                                            <Input
-                                                                                type="text"
-                                                                                inputMode="numeric"
-                                                                                pattern="[0-9]*"
-                                                                                value={group.maxSelection}
-                                                                                onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                                                                onChange={e => {
-                                                                                    const val = e.target.value.replace(/^0+(?!$)/, "");
-                                                                                    if (val === "" || /^\d+$/.test(val)) {
-                                                                                        updateOptionGroup(gIdx, { maxSelection: parseInt(val) || 1 });
-                                                                                    }
-                                                                                }}
-                                                                                className="h-8"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="space-y-2 pl-4 border-l-2 border-primary/20">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <Label className="text-xs font-bold">Options</Label>
-                                                                        <Button type="button" variant="ghost" size="sm" onClick={() => addOption(gIdx)} className="h-7 text-xs gap-1 text-primary">
-                                                                            <Plus className="h-3 w-3" /> Add Option
-                                                                        </Button>
-                                                                    </div>
-                                                                    <DndContext
-                                                                        sensors={sensors}
-                                                                        collisionDetection={closestCenter}
-                                                                        onDragEnd={(e) => handleOptionDragEnd(gIdx, e)}
-                                                                    >
-                                                                        <SortableContext
-                                                                            items={group.options.map((_, i) => `opt-${gIdx}-${i}`)}
-                                                                            strategy={verticalListSortingStrategy}
-                                                                        >
-                                                                            <div className="space-y-2">
-                                                                                {group.options.map((opt, oIdx) => (
-                                                                                    <SortableItem key={`opt-${gIdx}-${oIdx}`} id={`opt-${gIdx}-${oIdx}`}>
-                                                                                        <div className="flex flex-wrap items-center gap-2 bg-muted/20 p-2 rounded-lg relative group/opt">
-                                                                                            <Input
-                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                                                placeholder="Name (EN)"
-                                                                                                value={opt.nameEn}
-                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameEn: e.target.value })}
-                                                                                            />
-                                                                                            <Input
-                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                                                placeholder="Name (MM)"
-                                                                                                value={opt.nameMm}
-                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameMm: e.target.value })}
-                                                                                            />
-                                                                                            <Input
-                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                                                placeholder="Name (TH)"
-                                                                                                value={opt.nameTh}
-                                                                                                onChange={e => updateOption(gIdx, oIdx, { nameTh: e.target.value })}
-                                                                                            />
-                                                                                            <div className="flex items-center gap-1 w-20">
-                                                                                                <span className="text-xs text-muted-foreground">Order:</span>
-                                                                                                <Input
-                                                                                                    type="text"
-                                                                                                    inputMode="numeric"
-                                                                                                    pattern="[0-9]*"
-                                                                                                    className="h-8 text-sm px-1 text-center"
-                                                                                                    value={opt.displayOrder}
-                                                                                                    onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                                                                                    onChange={e => {
-                                                                                                        const val = e.target.value.replace(/^0+(?!$)/, "");
-                                                                                                        if (val === "" || /^\d+$/.test(val)) {
-                                                                                                            updateOption(gIdx, oIdx, { displayOrder: parseInt(val) || 1 });
-                                                                                                        }
-                                                                                                    }}
-                                                                                                />
-                                                                                            </div>
-                                                                                            <div className="flex items-center gap-1 w-28">
-                                                                                                <span className="text-xs text-muted-foreground font-mono">+</span>
-                                                                                                <Input
-                                                                                                    type="text"
-                                                                                                    inputMode="decimal"
-                                                                                                    className="h-8 text-sm px-2"
-                                                                                                    placeholder="Price"
-                                                                                                    value={opt.price === 0 ? "" : opt.price}
-                                                                                                    onChange={e => {
-                                                                                                        const val = e.target.value;
-                                                                                                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                                                                                                            updateOption(gIdx, oIdx, { price: parseFloat(val) || 0 });
-                                                                                                        }
-                                                                                                    }}
-                                                                                                />
-                                                                                            </div>
-                                                                                            <Input
-                                                                                                className="flex-1 min-w-[120px] h-8 text-sm"
-                                                                                                placeholder="Display Price (e.g. 1,500 THB)"
-                                                                                                value={opt.displayPrice || ""}
-                                                                                                onChange={e => updateOption(gIdx, oIdx, { displayPrice: e.target.value })}
-                                                                                            />
-                                                                                            <Switch
-                                                                                                checked={opt.isAvailable}
-                                                                                                onCheckedChange={val => updateOption(gIdx, oIdx, { isAvailable: val })}
-                                                                                            />
-                                                                                            <Button
-                                                                                                type="button"
-                                                                                                variant="ghost"
-                                                                                                size="icon"
-                                                                                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                                                                                onClick={() => removeOption(gIdx, oIdx)}
-                                                                                                disabled={group.options.length <= 1}
-                                                                                            >
-                                                                                                <X className="h-3 w-3" />
-                                                                                            </Button>
-                                                                                        </div>
-                                                                                    </SortableItem>
-                                                                                ))}
-                                                                            </div>
-                                                                        </SortableContext>
-                                                                    </DndContext>
+                                                                    <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeAddon(idx)}>
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
                                                                 </div>
                                                             </div>
-                                                        </SortableItem>
+                                                        </CreateMenuItemSortableRow>
                                                     ))}
                                                 </div>
                                             )}
@@ -1467,7 +864,7 @@ export default function CreateMenuItem() {
                                             ) : (
                                                 <div className="space-y-4">
                                                     {variants.map((variant, vIdx) => (
-                                                        <SortableItem key={`var-${vIdx}`} id={`var-${vIdx}`}>
+                                                        <CreateMenuItemSortableRow key={`var-${vIdx}`} id={`var-${vIdx}`}>
                                                             <div className="flex flex-wrap items-center gap-2 bg-card border p-3 rounded-xl shadow-sm relative group/var">
                                                                 <Input
                                                                     className="flex-1 min-w-[140px]"
@@ -1530,7 +927,7 @@ export default function CreateMenuItem() {
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
                                                             </div>
-                                                        </SortableItem>
+                                                        </CreateMenuItemSortableRow>
                                                     ))}
                                                 </div>
                                             )}

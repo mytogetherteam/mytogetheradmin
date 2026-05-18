@@ -40,7 +40,7 @@ export const MasterMenuCategoryService = {
       url += `?${queryString}`;
     }
     const response = await apiClient.get<MasterMenuCategoryDTO[] | { content: MasterMenuCategoryDTO[]; totalElements: number; totalPages: number }>(url);
-    
+
     // Handle both paginated and flat array responses
     if (Array.isArray(response)) {
       return {
@@ -49,11 +49,11 @@ export const MasterMenuCategoryService = {
         totalPages: 1
       };
     }
-    
+
     if (response && response.content) {
       return response;
     }
-    
+
     return {
       content: [],
       totalElements: 0,
@@ -87,5 +87,12 @@ export const MasterMenuCategoryService = {
    */
   deleteMasterMenuCategory: async (id: number): Promise<void> => {
     return apiClient.delete<void>(config.endpoints.admin.menu.masterMenuCategories.detail(id));
+  },
+
+  /**
+   * Reorder master menu categories (full ordered id list).
+   */
+  reorderMasterMenuCategories: async (ids: number[]): Promise<void> => {
+    await apiClient.post<void>(config.endpoints.admin.menu.masterMenuCategories.reorder, { ids });
   },
 };

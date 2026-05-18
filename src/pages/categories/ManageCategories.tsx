@@ -25,39 +25,99 @@ import {
   FileSpreadsheet,
   Trash2,
   Edit,
+  GripVertical,
 } from "lucide-react";
-import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead } from "@/components/SortableTableHead";
-import { TableImage } from "@/components/TableImage";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 import { useNavigate } from "react-router-dom";
 import { ShopService, MenuCategory } from "@/services/shopService";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import * as XLSX from "xlsx";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
+import { TableImage } from "@/components/TableImage";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+function SortableCatRow({
+  cat,
+  children,
+}: {
+  cat: MenuCategory;
+  children: (args: {
+    setActivatorNodeRef: (el: HTMLElement | null) => void;
+    attributes: ReturnType<typeof useSortable>["attributes"];
+    listeners: ReturnType<typeof useSortable>["listeners"];
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: cat.id, disabled: false });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    position: "relative",
+    background: isDragging ? "hsl(var(--muted) / 0.5)" : undefined,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/50 transition-colors">
+      {children({ setActivatorNodeRef, attributes, listeners })}
+    </TableRow>
+  );
+}
 
 export default function ManageCategories() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [shopId, setShopId] = useState<string>("");
-  const [selectedShopData, setSelectedShopData] = useState<{ label: string, value: string } | null>(null);
+  const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+  const [reordering, setReordering] = useState(false);
 
-  // Delete confirmation dialog
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({
+    open: false,
+    id: 0,
+    name: "",
+  });
   const [deleting, setDeleting] = useState(false);
+
+  const canReorder = Boolean(shopId);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await ShopService.getAdminCategories(0, 200, searchTerm, shopId ? parseInt(shopId) : undefined);
+      const res = await ShopService.getAdminCategories(
+        0,
+        500,
+        searchTerm,
+        shopId ? parseInt(shopId, 10) : undefined,
+      );
       const list = res?.content || [];
-      setCategories(Array.isArray(list) ? list : []);
+      const arr = Array.isArray(list) ? list : [];
+      setCategories(
+        [...arr].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)),
+      );
     } catch (e) {
       handleApiError(e, "Failed to load menu categories");
     } finally {
@@ -68,8 +128,8 @@ export default function ManageCategories() {
   const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
     const res = await ShopService.getAllShops(page, size, search);
     return {
-      content: res.content.map(shop => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
-      last: res.last
+      content: res.content.map((shop) => ({ label: shop.nameEn || shop.name, value: String(shop.id) })),
+      last: res.last,
     };
   }, []);
 
@@ -78,25 +138,15 @@ export default function ManageCategories() {
       loadCategories();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm, loadCategories]);
-
-  const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
-
-  const sortedCategories = sortData(categories, sortConfig);
-
-  const totalItems = sortedCategories.length;
-  const totalPages = Math.ceil(totalItems / pageSize) || 1;
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const currentCategories = sortedCategories.slice(startIndex, endIndex);
+  }, [searchTerm, shopId, loadCategories]);
 
   const exportToExcel = () => {
-    const data = sortedCategories.map((c) => ({
+    const data = categories.map((c) => ({
       ID: c.id,
       Shop: c.shopName || c.shopId || "",
-      Name: c.name,
+      "Name (EN)": c.nameEn || c.name || "",
       "Name (MM)": c.nameMm || "",
-      "Name (EN)": c.nameEn || "",
+      "Name (TH)": c.nameTh || "",
       "Display Order": c.displayOrder ?? "",
       "Is Active": c.isActive !== false ? "Yes" : "No",
     }));
@@ -125,6 +175,33 @@ export default function ManageCategories() {
     }
   };
 
+  const onDragEnd = async (event: DragEndEvent) => {
+    if (!canReorder) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const previous = [...categories];
+    const next = arrayMove(categories, oldIndex, newIndex);
+    setCategories(next);
+    setReordering(true);
+    try {
+      await ShopService.reorderMenuCategories(next.map((c) => c.id));
+      toast.success("Order updated");
+    } catch (e) {
+      setCategories(previous);
+      handleApiError(e, "Failed to update order");
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const displayName = (cat: MenuCategory) =>
+    cat.name || cat.nameEn || cat.nameMm || cat.nameTh || `Category ${cat.id}`;
+
   return (
     <div className="container mx-auto py-10 max-w-7xl">
       <Card className="flex flex-col h-full">
@@ -133,7 +210,7 @@ export default function ManageCategories() {
             <div className="flex-1 min-w-0">
               <CardTitle className="leading-tight">Manage Menu Categories</CardTitle>
               <CardDescription className="line-clamp-2 md:line-clamp-none">
-                Manage menu categories for shops and restaurants.
+                Manage menu categories for shops. Filter by shop, then drag rows by the handle to reorder display order for that shop.
               </CardDescription>
             </div>
 
@@ -146,7 +223,6 @@ export default function ManageCategories() {
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
-                    setCurrentPage(1);
                   }}
                 />
               </div>
@@ -160,7 +236,6 @@ export default function ManageCategories() {
                   onChange={(data) => {
                     setShopId(data?.value || "");
                     setSelectedShopData(data);
-                    setCurrentPage(1);
                   }}
                 />
               </div>
@@ -174,6 +249,11 @@ export default function ManageCategories() {
               </Button>
             </div>
           </div>
+          {!canReorder && (
+            <p className="text-sm text-muted-foreground pt-2">
+              Select a shop above to enable drag-and-drop reordering.
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -183,97 +263,244 @@ export default function ManageCategories() {
           ) : (
             <>
               <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
-                      <TableHead>Image</TableHead>
-                      <TableHead>Shop</TableHead>
-                      <SortableTableHead label="Name" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
-                      <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} />
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentCategories.length > 0 ? (
-                      currentCategories.map((cat) => (
-                        <TableRow
-                          key={cat.id}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => navigate(`/categories/create?id=${cat.id}`)}
-                        >
-                          <TableCell className="font-mono text-xs">{cat.id}</TableCell>
-                          <TableCell>
-                            <TableImage src={cat.imageUrl || cat.image || cat.icon} alt={cat.name} size="sm" />
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-xs font-mono text-muted-foreground mb-1">ID: {cat.shopId}</div>
-                            <div className="font-medium text-sm line-clamp-1">{cat.shopName || "Unknown Shop"}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{cat.name}</div>
-                            {(cat.nameMm || cat.nameEn || cat.nameTh) && (
-                              <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
-                                {cat.nameMm && <span>{cat.nameMm}</span>}
-                                {cat.nameTh && <span>• {cat.nameTh}</span>}
-                                {cat.nameEn && <span>• {cat.nameEn}</span>}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{cat.displayOrder ?? "—"}</TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                              {cat.isActive !== false ? "Active" : "Inactive"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); navigate(`/categories/create?id=${cat.id}`); }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                onClick={(e) => handleDeleteClick(e, cat.id, cat.name)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={onDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                          No menu categories found.
-                        </TableCell>
+                        {canReorder && <TableHead className="w-10" aria-label="Reorder" />}
+                        <TableHead className="w-[80px]">ID</TableHead>
+                        <TableHead>Image</TableHead>
+                        <TableHead>Shop</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {canReorder ? (
+                        <SortableContext
+                          items={categories.map((c) => c.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {categories.length > 0 ? (
+                            categories.map((cat) => (
+                              <SortableCatRow key={cat.id} cat={cat}>
+                                {({ setActivatorNodeRef, attributes, listeners }) => (
+                                  <>
+                                    <TableCell className="w-10 p-2">
+                                      <button
+                                        type="button"
+                                        ref={setActivatorNodeRef}
+                                        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded disabled:opacity-40"
+                                        disabled={reordering}
+                                        {...attributes}
+                                        {...listeners}
+                                      >
+                                        <GripVertical className="h-5 w-5" />
+                                      </button>
+                                    </TableCell>
+                                    <TableCell
+                                      className="font-mono text-xs cursor-pointer"
+                                      onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                                    >
+                                      {cat.id}
+                                    </TableCell>
+                                    <TableCell
+                                      className="cursor-pointer"
+                                      onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                                    >
+                                      <TableImage
+                                        src={cat.imageUrl || cat.image || cat.icon}
+                                        alt={displayName(cat)}
+                                        size="sm"
+                                      />
+                                    </TableCell>
+                                    <TableCell
+                                      className="cursor-pointer"
+                                      onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                                    >
+                                      <div className="text-xs font-mono text-muted-foreground mb-1">
+                                        ID: {cat.shopId}
+                                      </div>
+                                      <div className="font-medium text-sm line-clamp-1">
+                                        {cat.shopName || "Unknown Shop"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell
+                                      className="cursor-pointer"
+                                      onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                                    >
+                                      <div className="font-medium">{displayName(cat)}</div>
+                                      {(cat.nameMm || cat.nameEn || cat.nameTh) && (
+                                        <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
+                                          {cat.nameMm && <span>{cat.nameMm}</span>}
+                                          {cat.nameTh && <span>• {cat.nameTh}</span>}
+                                          {cat.nameEn && cat.nameEn !== cat.name && (
+                                            <span>• {cat.nameEn}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                    <TableCell
+                                      className="text-muted-foreground cursor-pointer"
+                                      onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                                    >
+                                      {cat.displayOrder ?? "—"}
+                                    </TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                      <span
+                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false
+                                            ? "bg-green-100 text-green-800"
+                                            : "bg-red-100 text-red-800"
+                                          }`}
+                                      >
+                                        {cat.isActive !== false ? "Active" : "Inactive"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/categories/create?id=${cat.id}`);
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                          onClick={(e) =>
+                                            handleDeleteClick(e, cat.id, displayName(cat))
+                                          }
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </>
+                                )}
+                              </SortableCatRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell
+                                colSpan={8}
+                                className="h-24 text-center text-muted-foreground"
+                              >
+                                No menu categories found.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </SortableContext>
+                      ) : (
+                        <>
+                          {categories.length > 0 ? (
+                            categories.map((cat) => (
+                              <TableRow
+                                key={cat.id}
+                                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => navigate(`/categories/create?id=${cat.id}`)}
+                              >
+                                <TableCell className="font-mono text-xs">{cat.id}</TableCell>
+                                <TableCell>
+                                  <TableImage
+                                    src={cat.imageUrl || cat.image || cat.icon}
+                                    alt={displayName(cat)}
+                                    size="sm"
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-xs font-mono text-muted-foreground mb-1">
+                                    ID: {cat.shopId}
+                                  </div>
+                                  <div className="font-medium text-sm line-clamp-1">
+                                    {cat.shopName || "Unknown Shop"}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{displayName(cat)}</div>
+                                  {(cat.nameMm || cat.nameEn || cat.nameTh) && (
+                                    <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
+                                      {cat.nameMm && <span>{cat.nameMm}</span>}
+                                      {cat.nameTh && <span>• {cat.nameTh}</span>}
+                                      {cat.nameEn && cat.nameEn !== cat.name && (
+                                        <span>• {cat.nameEn}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {cat.displayOrder ?? "—"}
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-red-100 text-red-800"
+                                      }`}
+                                  >
+                                    {cat.isActive !== false ? "Active" : "Inactive"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/categories/create?id=${cat.id}`);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                      onClick={(e) =>
+                                        handleDeleteClick(e, cat.id, displayName(cat))
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell
+                                colSpan={7}
+                                className="h-24 text-center text-muted-foreground"
+                              >
+                                No menu categories found.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </DndContext>
               </div>
-
-              {/* Pagination */}
-              <DataTablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-              />
+              {reordering && (
+                <p className="text-xs text-muted-foreground mt-2">Saving order…</p>
+              )}
             </>
           )}
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
         <DialogContent>
           <DialogHeader>

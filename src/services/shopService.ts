@@ -547,7 +547,8 @@ export const ShopService = {
     active?: boolean,
     sort: string = ""
   ): Promise<PageableResponse<Shop>> => {
-    let endpoint = `${config.endpoints.shops.list}?page=${page}&size=${size}`;
+    const apiPage = page + 1;
+    let endpoint = `${config.endpoints.shops.list}?page=${apiPage}&size=${size}`;
     if (search) {
       endpoint += `&search=${encodeURIComponent(search)}`;
     }
@@ -591,7 +592,7 @@ export const ShopService = {
       if (queryString) {
         url += `?${queryString}`;
       }
-      
+
       const response = await apiClient.get<ShopCategoryDTO[] | { content: ShopCategoryDTO[] }>(url);
       return Array.isArray(response) ? response : (response as { content?: ShopCategoryDTO[] }).content || [];
     } catch {
@@ -616,7 +617,7 @@ export const ShopService = {
       if (queryString) {
         url += `?${queryString}`;
       }
-      
+
       const response = await apiClient.get<ShopSubCategoryDTO[] | { content: ShopSubCategoryDTO[] }>(url);
       return Array.isArray(response) ? response : (response as { content?: ShopSubCategoryDTO[] }).content || [];
     } catch {
@@ -748,13 +749,13 @@ export const ShopService = {
     const endpoint = config.endpoints.shops.categories.detail(id);
     return apiClient.get<MenuCategory>(endpoint);
   },
-  
+
   /**
    * Delete a category
    */
   deleteCategory: async (id: number): Promise<void> => {
-      const endpoint = config.endpoints.shops.categories.detail(id);
-      await apiClient.delete(endpoint);
+    const endpoint = config.endpoints.shops.categories.detail(id);
+    await apiClient.delete(endpoint);
   },
 
   /**
@@ -770,6 +771,17 @@ export const ShopService = {
   /**
    * Update shop active / verified flags.
    * PATCH /api/admin/shop-profile/{id}/change-status
+   * Reorder menu categories within one shop (IDs in display order).
+   */
+  reorderMenuCategories: async (categoryIds: number[]): Promise<void> => {
+    await apiClient.post<void>(config.endpoints.admin.menu.categoryReorder, {
+      categoryIds,
+    });
+  },
+
+  /**
+   * Toggle shop active/inactive status
+   * PUT /api/admin/shops/{id}/status
    */
   toggleShopStatus: async (
     id: number,
@@ -833,9 +845,9 @@ export const ShopService = {
    * Toggle Shop Open/Closed Status
    */
   toggleShopOpenStatus: async (isOpen: boolean, shopId?: number): Promise<ApiResponse<unknown>> => {
-    const baseUrl = shopId 
-        ? `/api/admin/shops/${shopId}/open-status` 
-        : config.endpoints.shops.profile.status;
+    const baseUrl = shopId
+      ? `/api/admin/shops/${shopId}/open-status`
+      : config.endpoints.shops.profile.status;
     return apiClient.put<ApiResponse<unknown>>(`${baseUrl}?isOpen=${isOpen}`);
   },
 
@@ -919,7 +931,7 @@ export const ShopService = {
   getShopPaymentMethods: async (shopId: number): Promise<PaymentMethodDTO[]> => {
     const endpoint = config.endpoints.shops.paymentMethods(shopId);
     const response = await apiClient.get<ShopPaymentMethodResponse[]>(endpoint);
-    
+
     // Map the specific backend response fields to the standard PaymentMethodDTO
     return (response || []).map(m => ({
       id: m.paymentMethodId,
