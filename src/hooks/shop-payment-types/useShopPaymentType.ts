@@ -28,6 +28,14 @@ export function useShopPaymentType(shopId?: number, id?: number) {
   });
 }
 
+export function useShopPaymentTypes(shopId?: number) {
+  return useQuery({
+    queryKey: shopPaymentTypeKeys.byShop(shopId),
+    queryFn: () => ShopPaymentTypeService.getShopPaymentTypes(shopId as number),
+    enabled: typeof shopId === "number" && Number.isFinite(shopId),
+  });
+}
+
 export function useCreateShopPaymentTypeMutation() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -13,14 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AsyncSelectField } from "@/components/common/AsyncSelectField";
+
 import {
   ArrowLeft,
   Loader2,
@@ -33,7 +27,7 @@ import {
 } from "lucide-react";
 import { ShopService } from "@/services/shopService";
 import { compressImage } from "@/utils/imageCompression";
-import { usePaymentMethods } from "@/hooks/payment-methods/usePaymentMethod";
+import { PaymentMethodService } from "@/services/paymentMethodService";
 import {
   useCreateShopPaymentTypeMutation,
   useShopPaymentType,
@@ -64,6 +58,7 @@ export default function CreateShopPaymentType() {
 
   const [selectedShopData, setSelectedShopData] =
     useState<AdminShopProfileDropdownShop | null>(null);
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [existingQrUrl, setExistingQrUrl] = useState<string | null>(null);
   const [isDraggingQr, setIsDraggingQr] = useState(false);
@@ -94,73 +89,20 @@ export default function CreateShopPaymentType() {
   const { fetchShops: fetchShopData } =
     useAdminShopProfilesBareInfiniteFetcher();
 
-  const { data: paymentMethodsResponse, isLoading: paymentMethodsLoading } =
-    usePaymentMethods({
-      page: 0,
-      size: 200,
-      isActive: true,
-    });
   const { data: existingPaymentType, isPending: loadingPaymentType } =
     useShopPaymentType(numericShopId, numericPaymentTypeId);
-  const filteredMethods = useMemo(() => {
-    const methods = paymentMethodsResponse?.content ?? [];
-    if (
-      !existingPaymentType ||
-      methods.some((method) => method.id === existingPaymentType.paymentMethodId)
-    ) {
-      return methods;
-    }
 
-    return [
-      ...methods,
-      {
-        id: existingPaymentType.paymentMethodId,
-        name: existingPaymentType.paymentMethodName,
-        code: existingPaymentType.paymentMethodCode,
-        isActive: existingPaymentType.isActive,
-      },
-    ];
-  }, [existingPaymentType, paymentMethodsResponse?.content]);
   const { mutateAsync: createPaymentType, isPending: isCreating } =
     useCreateShopPaymentTypeMutation();
   const { mutateAsync: updatePaymentType, isPending: isUpdating } =
     useUpdateShopPaymentTypeMutation();
+
   const loading = isEdit ? loadingPaymentType : false;
   const submitting = isCreating || isUpdating;
-  const selectedPaymentMethodLabel =
-    existingPaymentType?.paymentMethodName ||
-    filteredMethods.find(
-      (method) => method.id === existingPaymentType?.paymentMethodId,
-    )?.name;
 
-  useEffect(() => {
-    if (initialShopId && !selectedShopData) {
-      ShopService.getAdminShopProfileById(parseInt(initialShopId, 10))
-        .then((shop) => {
-          const shopName = shop.nameEn || shop.name || `Shop #${shop.id}`;
-          const districtName =
-            (typeof shop.district === "object"
-              ? shop.district?.nameEn
-              : undefined) ||
-            shop.districtEn ||
-            shop.districtMm ||
-            shop.districtTh;
-
-          setSelectedShopData({
-            ...shop,
-            dropdownLabel: districtName
-              ? `${shopName} (${districtName})`
-              : shopName,
-          });
-          setValue("shopId", shop.id);
-        })
-        .catch((e) => console.error("Failed to fetch initial shop details", e));
-    }
-  }, [initialShopId, selectedShopData, setValue]);
 
   useEffect(() => {
     if (!isEdit || !existingPaymentType) return;
-
     reset({
       shopId: existingPaymentType.shopId,
       paymentMethodId: existingPaymentType.paymentMethodId,
@@ -286,17 +228,27 @@ export default function CreateShopPaymentType() {
                     control={control}
                     name="shopId"
                     render={({ field }) => (
-                      <InfiniteSearchableSelect
-                        fetchData={fetchShopData}
-                        valueKey="id"
-                        labelKey="dropdownLabel"
-                        selectedValue={selectedShopData}
-                        onChange={(item) => {
-                          setSelectedShopData(item);
-                          field.onChange(item?.id ?? 0);
+                      <AsyncSelectField
+                        label="Shop / Restaurant"
+                        hideLabel={true}
+                        fetchFunction={async (page: number, pageSize: number, searchTerm?: string) => {
+                          const res = await fetchShopData(page - 1, pageSize, searchTerm || "");
+                          return {
+                            data: res.content.map(shop => ({ value: shop.id.toString(), label: shop.dropdownLabel })),
+                            totalCount: res.totalElements ?? 0,
+                          };
                         }}
+                        value={field.value ? String(field.value) : ""}
+                        onValueChange={(val) => {
+                          field.onChange(val ? parseInt(val, 10) : 0);
+                        }}
+                        initialValue={
+                          selectedShopData
+                            ? { value: String(selectedShopData.id), label: selectedShopData.dropdownLabel }
+                            : undefined
+                        }
                         placeholder="Search shop..."
-                        disabled={isEdit} // Usually shop shouldn't be changed after creation
+                        disabled={isEdit}
                       />
                     )}
                   />
@@ -313,46 +265,36 @@ export default function CreateShopPaymentType() {
                     control={control}
                     name="paymentMethodId"
                     render={({ field }) => (
-                      <Select
+                      <AsyncSelectField
+                        label="Payment Method"
+                        hideLabel={true}
+                        fetchFunction={async (page: number, pageSize: number, searchTerm?: string) => {
+                          const res = await PaymentMethodService.getPaymentMethods({
+                            page: page - 1,
+                            size: pageSize,
+                            search: searchTerm || "",
+                            isActive: true,
+                          });
+                          return {
+                            data: res.content.map(method => ({ value: method.id.toString(), label: method.name })),
+                            totalCount: res.totalElements ?? 0,
+                          };
+                        }}
                         value={field.value ? String(field.value) : ""}
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value, 10))
+                        onValueChange={(val) => {
+                          field.onChange(val ? parseInt(val, 10) : 0);
+                        }}
+                        initialValue={
+                          existingPaymentType
+                            ? {
+                              value: String(existingPaymentType.paymentMethodId),
+                              label: existingPaymentType.paymentMethodName || `Method #${existingPaymentType.paymentMethodId}`
+                            }
+                            : undefined
                         }
-                        disabled={isEdit || paymentMethodsLoading} // Swagger says paymentMethodId is not in Update request
-                      >
-                        <SelectTrigger id="paymentMethod">
-                          {isEdit && selectedPaymentMethodLabel ? (
-                            <span className="truncate">
-                              {selectedPaymentMethodLabel}
-                            </span>
-                          ) : (
-                            <SelectValue
-                              placeholder={
-                                paymentMethodsLoading
-                                  ? "Loading payment methods..."
-                                  : "Select payment method (e.g. KPay)"
-                              }
-                            />
-                          )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredMethods
-                            .filter((m) => m.id !== undefined)
-                            .map((method) => (
-                              <SelectItem
-                                key={method.id}
-                                value={method.id.toString()}
-                              >
-                                {method.name}
-                              </SelectItem>
-                            ))}
-                          {filteredMethods.length === 0 && (
-                            <div className="p-2 text-xs text-center text-muted-foreground">
-                              No active payment methods found.
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select payment method (e.g. KPay)"
+                        disabled={isEdit}
+                      />
                     )}
                   />
                   {!isEdit && errors.paymentMethodId && (
@@ -476,11 +418,10 @@ export default function CreateShopPaymentType() {
                   }}
                   onDragLeave={() => setIsDraggingQr(false)}
                   onDrop={handleQrDrop}
-                  className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/30 cursor-pointer transition-colors ${
-                    isDraggingQr
-                      ? "border-primary bg-primary/10"
-                      : "hover:border-primary/60 hover:bg-muted/50"
-                  }`}
+                  className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/30 cursor-pointer transition-colors ${isDraggingQr
+                    ? "border-primary bg-primary/10"
+                    : "hover:border-primary/60 hover:bg-muted/50"
+                    }`}
                 >
                   {previewUrl || existingQrUrl ? (
                     <div className="relative group">

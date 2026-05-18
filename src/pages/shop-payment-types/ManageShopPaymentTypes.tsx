@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     Table,
@@ -22,23 +22,18 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
     Store,
     QrCode,
     Plus,
-    Search,
     Loader2,
     Edit,
     Trash2
 } from "lucide-react";
-import { DataTablePagination } from "@/components/DataTablePagination";
-import { SortableTableHead } from "@/components/SortableTableHead";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+
 import { useNavigate } from "react-router-dom";
 import { ShopPaymentTypeService, ShopPaymentTypeDTO } from "@/services/shopPaymentTypeService";
 import { toast } from "sonner";
@@ -50,90 +45,19 @@ import {
     type AdminShopProfileDropdownShop,
     shopRestaurantEditQueryKey,
 } from "@/hooks/shops";
-import { shopPaymentTypeKeys } from "@/hooks/shop-payment-types/useShopPaymentType";
+import { shopPaymentTypeKeys, useShopPaymentTypes } from "@/hooks/shop-payment-types/useShopPaymentType";
 
 export default function ManageShopPaymentTypes() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [selectedShopData, setSelectedShopData] = useState<AdminShopProfileDropdownShop | null>(
-        localStorage.getItem("manage_payment_shop_data") ? JSON.parse(localStorage.getItem("manage_payment_shop_data")!) : null
-    );
+    const [selectedShopData, setSelectedShopData] = useState<AdminShopProfileDropdownShop | null>(null);
     const selectedShopId = selectedShopData?.id?.toString() || "";
-    const [items, setItems] = useState<ShopPaymentTypeDTO[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(Number(localStorage.getItem("manage_payment_page")) || 1);
-    const [pageSize, setPageSize] = useState(Number(localStorage.getItem("manage_payment_page_size")) || 20);
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-    const [selectedPaymentTypeId, setSelectedPaymentTypeId] = useState<number | null>(
-        localStorage.getItem("lastSelectedPaymentTypeId") ? Number(localStorage.getItem("lastSelectedPaymentTypeId")) : null
-    );
-    const [searchTerm, setSearchTerm] = useState(localStorage.getItem("manage_payment_search") || "");
+    const { data: items = [], isLoading: loading } = useShopPaymentTypes(selectedShopId ? parseInt(selectedShopId) : undefined);
+    const [selectedPaymentTypeId, setSelectedPaymentTypeId] = useState<number | null>(null);
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({ open: false, id: 0, name: "" });
     const [deleting, setDeleting] = useState(false);
     const { fetchShops: fetchShopData } = useAdminShopProfilesBareInfiniteFetcher();
 
-    useEffect(() => {
-        const initDefaultShop = async () => {
-            if (selectedShopData) return;
-            try {
-                const response = await fetchShopData(0, 5, "");
-                const firstShop = response.content[0];
-                if (firstShop) {
-                    setSelectedShopData(firstShop);
-                }
-            } catch (error) {
-                console.error("Failed to init default shop", error);
-            }
-        };
-        initDefaultShop();
-    }, [fetchShopData, selectedShopData]);
-
-    const loadItems = useCallback(async (shopId: number) => {
-        setLoading(true);
-        try {
-            const data = await ShopPaymentTypeService.getShopPaymentTypes(shopId);
-            setItems(data);
-        } catch (error) {
-            handleApiError(error, "Failed to load payment types");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // Load payment types when shop changes
-    useEffect(() => {
-        if (selectedShopId) {
-            loadItems(parseInt(selectedShopId));
-        } else {
-            setItems([]);
-        }
-    }, [selectedShopId, loadItems]);
-
-    // Persist filters and selection
-    useEffect(() => {
-        localStorage.setItem("manage_payment_shop_data", JSON.stringify(selectedShopData));
-        localStorage.setItem("manage_payment_search", searchTerm);
-        localStorage.setItem("manage_payment_page", String(currentPage));
-        localStorage.setItem("manage_payment_page_size", String(pageSize));
-    }, [selectedShopData, searchTerm, currentPage, pageSize]);
-
-    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
-
-
-    const filteredItems = items.filter(item =>
-        (item.paymentMethodName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.accountName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.accountNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (item.paymentMethodCode?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
-
-    const sortedItems = sortData(filteredItems, sortConfig);
-
-    const totalItems = sortedItems.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalItems);
-    const currentItems = sortedItems.slice(startIndex, endIndex);
 
     const handleToggleActive = async (item: ShopPaymentTypeDTO, value: boolean) => {
         try {
@@ -147,7 +71,6 @@ export default function ManageShopPaymentTypes() {
             formData.append('data', requestBlob);
 
             const updated = await ShopPaymentTypeService.updateShopPaymentType(item.shopId, item.id, formData);
-            setItems(prev => prev.map(i => i.id === item.id ? updated : i));
             queryClient.setQueryData(
                 shopPaymentTypeKeys.detail(item.shopId, item.id),
                 updated,
@@ -184,7 +107,6 @@ export default function ManageShopPaymentTypes() {
                 queryKey: shopRestaurantEditQueryKey(parseInt(selectedShopId)),
             });
             setDeleteDialog({ open: false, id: 0, name: "" });
-            void loadItems(parseInt(selectedShopId));
         } catch (error) {
             handleApiError(error, "Failed to delete");
         } finally {
@@ -247,18 +169,7 @@ export default function ManageShopPaymentTypes() {
                                 placeholder="Choose a shop"
                             />
                         </div>
-                        <div className="flex-1 max-w-md ml-auto">
-                            <div className="text-sm font-medium mb-1.5">Search</div>
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search by name, account..."
-                                    className="pl-8"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                        </div>
+
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -280,23 +191,22 @@ export default function ManageShopPaymentTypes() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/50">
-                                            <SortableTableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-[80px]" />
+                                            <TableHead className="w-[80px]">ID</TableHead>
                                             <TableHead>QR / Method</TableHead>
-                                            <SortableTableHead label="Account Name" sortKey="accountName" sortConfig={sortConfig} onSort={handleSort} />
+                                            <TableHead>Account Name</TableHead>
                                             <TableHead>Account Number</TableHead>
-                                            <SortableTableHead label="Order" sortKey="displayOrder" sortConfig={sortConfig} onSort={handleSort} className="w-[100px]" />
+                                            <TableHead className="w-[100px]">Order</TableHead>
                                             <TableHead className="w-[100px]">Status</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currentItems.length > 0 ? (
-                                            currentItems.map((item) => (
-                                                <TableRow 
-                                                    key={item.id} 
+                                        {items.length > 0 ? (
+                                            items.map((item) => (
+                                                <TableRow
+                                                    key={item.id}
                                                     className={`transition-colors cursor-pointer ${selectedPaymentTypeId === item.id ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted/50'}`}
                                                     onClick={() => {
-                                                        localStorage.setItem("lastSelectedPaymentTypeId", String(item.id));
                                                         setSelectedPaymentTypeId(item.id);
                                                         navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`);
                                                     }}
@@ -304,14 +214,13 @@ export default function ManageShopPaymentTypes() {
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
-                                                            <TableImage 
-                                                                src={item.qrImageUrl} 
-                                                                alt="QR" 
+                                                            <TableImage
+                                                                src={item.qrImageUrl}
+                                                                alt="QR"
                                                                 fallbackIcon={<QrCode className="h-5 w-5 text-muted-foreground opacity-30" />}
                                                             />
                                                             <div>
                                                                 <div className="font-medium">{item.paymentMethodName}</div>
-                                                                <Badge variant="outline" className="text-[10px] h-4">{item.paymentMethodCode}</Badge>
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -330,7 +239,6 @@ export default function ManageShopPaymentTypes() {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => {
-                                                                    localStorage.setItem("lastSelectedPaymentTypeId", String(item.id));
                                                                     setSelectedPaymentTypeId(item.id);
                                                                     navigate(`/shop-payment-types/edit/${item.shopId}/${item.id}`);
                                                                 }}
@@ -352,22 +260,13 @@ export default function ManageShopPaymentTypes() {
                                         ) : (
                                             <TableRow>
                                                 <TableCell colSpan={7} className="h-32 text-center text-muted-foreground font-medium">
-                                                    {searchTerm ? "No payment types match your search." : "This shop has no payment types configured yet."}
+                                                    This shop has no payment types configured yet.
                                                 </TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
                             </div>
-
-                            <DataTablePagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                totalItems={totalItems}
-                                pageSize={pageSize}
-                                onPageChange={setCurrentPage}
-                                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-                            />
                         </>
                     )}
                 </CardContent>
