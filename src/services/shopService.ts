@@ -1,6 +1,7 @@
 import { apiClient, ApiResponseData } from './apiClient';
 import { config } from '@/config/config';
 import { api } from '@/utils/axios';
+import { AdminRoleName } from '@/schemas/assignadmin.schema';
 
 // API Response Interfaces
 export type ApiResponse<T> = ApiResponseData<T>;
@@ -804,6 +805,28 @@ export const ShopService = {
    */
   verifyShop: async (id: number): Promise<void> => {
     await ShopService.toggleShopStatus(id, { isActive: true, isVerified: true });
+  },
+
+  assignAdminToShop: async (
+    id: number,
+    body: {
+      email: string;
+      username?: string;
+      password?: string;
+      name?: string;
+      role: AdminRoleName;
+    },
+  ): Promise<any> => {
+    return apiClient.post(
+      config.endpoints.admin.shopProfile.assignAdmin(id),
+      body,
+    );
+  },
+
+  unassignAdminFromShop: async (shopId: number, adminId: number): Promise<any> => {
+    return apiClient.delete(
+      `/api/admin/shop-profile/${shopId}/assign-admin/${adminId}`
+    );
   },
 
   /**

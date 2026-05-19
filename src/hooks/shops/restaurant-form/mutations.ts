@@ -99,7 +99,7 @@ function mapAdminSubToShopSub(s: AdminShopSubCategoryDTO): ShopSubCategoryDTO {
     nameMm: s.nameMm ?? '',
     nameTh: s.nameTh ?? '',
     imageUrl: s.imageUrl,
-    isActive: s.active ?? true,
+    isActive: s.isActive ?? true,
     categoryId: s.categoryId,
     displayOrder: s.displayOrder ?? 0,
   };
@@ -130,17 +130,17 @@ async function enrichShopForEditLabels(
     subCategory: shop.subCategory ?? subLabel,
     shopCategory: shop.shopCategory
       ? {
-          ...shop.shopCategory,
-          subCategories: mergedSubs,
-        }
+        ...shop.shopCategory,
+        subCategories: mergedSubs,
+      }
       : {
-          id: sub.categoryId,
-          name: '',
-          nameEn: '',
-          nameMm: '',
-          isActive: true,
-          subCategories: [subDto],
-        },
+        id: sub.categoryId,
+        name: '',
+        nameEn: '',
+        nameMm: '',
+        isActive: true,
+        subCategories: [subDto],
+      },
   };
 }
 
@@ -195,7 +195,7 @@ export async function fetchShopRestaurantEditBundle(
   const shopSubCategoryId = shop.subCategoryId ?? undefined;
 
   const cuisineTypesJoined = cuisineTypesFromAdminShopProfile(shop);
-  const cuisineIdsRaw = cuisineTypesJoined.length > 0 ? cuisineTypesJoined.map((c) => c.id): [];
+  const cuisineIdsRaw = cuisineTypesJoined.length > 0 ? cuisineTypesJoined.map((c) => c.id) : [];
   const paymentMethodIds = paymentMethodIdsFromAdminShopProfile(shop);
   const shopPaymentMethods = shopPaymentMethodsFromAdminShopProfile(shop);
 
@@ -206,16 +206,16 @@ export async function fetchShopRestaurantEditBundle(
 
   const initialAssignedAdminLabel: string | null = embeddedAdmin
     ? adminSelectLabel({
-        id: embeddedAdmin.id ?? assignedAdminId ?? 0,
-        email: embeddedAdmin.email ?? '',
-        name: embeddedAdmin.name,
-        username: embeddedAdmin.username,
-        isActive: true,
-        roleId: 0,
-        createdAt: '',
-        updatedAt: '',
-        role: { id: 0, name: '' },
-      } as PlatformAdminDTO)
+      id: embeddedAdmin.id ?? assignedAdminId ?? 0,
+      email: embeddedAdmin.email ?? '',
+      name: embeddedAdmin.name,
+      username: embeddedAdmin.username,
+      isActive: true,
+      roleId: 0,
+      createdAt: '',
+      updatedAt: '',
+      role: { id: 0, name: '' },
+    } as PlatformAdminDTO)
     : null;
 
   const enrichedShop: ShopDetail = {
@@ -259,7 +259,6 @@ export async function fetchShopRestaurantEditBundle(
     paymentMethodIds,
     shopPaymentMethods,
     operatingHours: operatingHoursForForm,
-    assignedAdminId,
   };
 
   const forMedia = {

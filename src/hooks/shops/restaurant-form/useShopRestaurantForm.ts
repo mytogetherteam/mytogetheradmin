@@ -44,7 +44,10 @@ export const defaultShopFormValues: ShopFormValues = {
   paymentMethodIds: [],
   shopPaymentMethods: [],
   operatingHours: defaultOperatingWeek(),
-  assignedAdminId: undefined,
+  adminEmail: '',
+  adminUsername: '',
+  adminPassword: '',
+  adminConfirmPassword: '',
 };
 
 /** Values used when resetting the form in create mode (after leaving edit). */
@@ -55,9 +58,29 @@ export const createModeShopFormValues: ShopFormValues = {
   longitude: 0,
 };
 
-export function useShopRestaurantForm() {
+export function useShopRestaurantForm(isEditMode?: boolean) {
+  let schema = shopFormSchema;
+  if (!isEditMode) {
+    schema = shopFormSchema.refine((data) => {
+      return !!data.adminEmail;
+    }, {
+      message: "Admin email is required",
+      path: ["adminEmail"]
+    }).refine((data) => {
+      return !!data.adminPassword;
+    }, {
+      message: "Admin password is required",
+      path: ["adminPassword"]
+    }).refine((data) => {
+      return !!data.adminConfirmPassword;
+    }, {
+      message: "Confirm password is required",
+      path: ["adminConfirmPassword"]
+    });
+  }
+
   return useForm<ShopFormValues>({
-    resolver: zodResolver(shopFormSchema) as Resolver<ShopFormValues>,
+    resolver: zodResolver(schema) as Resolver<ShopFormValues>,
     /** Full-schema Zod runs on every validation; avoid doing that on each keystroke (use onTouched). */
     mode: 'onTouched',
     reValidateMode: 'onChange',

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -20,23 +21,51 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+<<<<<<< Updated upstream
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
 import ConfirmDialog from "@/components/common/ConfirmDialog"
+=======
+import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Eye, EyeOff, Shield, User, Loader2, Users } from "lucide-react"
+import type { PaymentMethodDTO, ShopDetail } from "@/services/shopService"
+import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+>>>>>>> Stashed changes
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AsyncSelectField } from "@/components/common/AsyncSelectField"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ShopCategoryService } from "@/services/shopCategoryService"
 import { cuisineService } from "@/services/cuisineService"
 import { cityService } from "@/services/cityService"
-import { AdminsService } from "@/services/adminsService"
 import { useCreateShopRestaurant, useShopRestaurantPaymentMethods } from "@/hooks/shops"
 import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOperationRow"
 import { ShopPaymentQrPreview } from "@/components/shop/ShopPaymentQrPreview"
 import { Loader } from "@/components/ui/loader"
 
 export default function CreateShopRestaurant() {
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [adminToUnassign, setAdminToUnassign] = useState<{ id: number; name: string } | null>(null)
     const { form, ui, actions } = useCreateShopRestaurant()
+    const numericShopId = ui.shopId ? parseInt(ui.shopId, 10) : 0
+    const unassignMutation = useUnassignAdminMutation(numericShopId)
     const watchedShopCategoryId = form.watch("shopCategoryId")
     const {
         isEditMode,
@@ -55,7 +84,6 @@ export default function CreateShopRestaurant() {
         initialSubCategoryLabel,
         initialCityLabel,
         initialDistrictLabel,
-        initialAssignedAdminLabel,
         isSubmitting,
         isLoadingShopEdit,
     } = ui
@@ -103,234 +131,28 @@ export default function CreateShopRestaurant() {
                     <p className="text-sm">Loading shop…</p>
                 </div>
             ) : (
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)} className="space-y-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Column - Main Info */}
-                        <div className="lg:col-span-2 space-y-8">
-                            {/* Basic Information */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle>Basic Information</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="nameEn"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Shop Name (English)</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="e.g. My Together Cafe"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)} className="space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Left Column - Main Info */}
+                            <div className="lg:col-span-2 space-y-8">
+                                {/* Basic Information */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle>Basic Information</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-6">
                                         <FormField
                                             control={form.control}
-                                            name="nameMm"
+                                            name="nameEn"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Shop Name (Myanmar)</FormLabel>
+                                                    <FormLabel>Shop Name (English)</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="Enter name in Myanmar" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="nameTh"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Shop Name (Thai)</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Enter name in Thai" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    <FormField
-                                        control={form.control}
-                                        name="shopCategoryId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Category</FormLabel>
-                                                <FormControl>
-                                                    <AsyncSelectField
-                                                        label="Category"
-                                                        hideLabel
-                                                        fetchFunction={async (page, size, search) => {
-                                                            const results = await ShopCategoryService.getShopCategories({
-                                                                page,
-                                                                size,
-                                                                search: search || ""
-                                                            });
-                                                            return {
-                                                                data: results.content.map(c => ({ label: c.nameEn || `Category ${c.id}`, value: String(c.id) })),
-                                                                totalCount: results.totalElements,
-                                                            };
-                                                        }}
-                                                        value={field.value ? String(field.value) : ""}
-                                                        onValueChange={(val) => {
-                                                            const next = val ? Number(val) : undefined
-                                                            field.onChange(next)
-                                                            form.setValue("shopSubCategoryId", undefined)
-                                                        }}
-                                                        initialValue={field.value ? {
-                                                            label: setupData?.shopCategories?.find(c => Number(c.id) === Number(field.value))?.nameEn ||
-                                                                initialCategoryLabel ||
-                                                                "Selected",
-                                                            value: String(field.value)
-                                                        } : undefined}
-                                                        placeholder="Select Category"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="shopSubCategoryId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Sub Category</FormLabel>
-                                                <FormControl>
-                                                    <AsyncSelectField
-                                                        key={`shop-subcat-${watchedShopCategoryId ?? "none"}`}
-                                                        label="Sub Category"
-                                                        hideLabel
-                                                        disabled={!watchedShopCategoryId}
-                                                        fetchFunction={async (page, size, search) => {
-                                                            if (!watchedShopCategoryId) {
-                                                                return { data: [], totalCount: 0 }
-                                                            }
-                                                            const list =
-                                                                await ShopCategoryService.getShopSubCategoriesByCategory(
-                                                                    watchedShopCategoryId,
-                                                                )
-                                                            const term = (search ?? "").trim().toLowerCase()
-                                                            const filtered = !term
-                                                                ? list
-                                                                : list.filter(
-                                                                      (s) =>
-                                                                          (s.nameEn ?? "")
-                                                                              .toLowerCase()
-                                                                              .includes(term) ||
-                                                                          (s.nameMm ?? "")
-                                                                              .toLowerCase()
-                                                                              .includes(term) ||
-                                                                          (s.nameTh ?? "")
-                                                                              .toLowerCase()
-                                                                              .includes(term) ||
-                                                                          String(s.id).includes(term),
-                                                                  )
-                                                            const start = (page - 1) * size
-                                                            const slice = filtered.slice(start, start + size)
-                                                            return {
-                                                                data: slice.map((s) => ({
-                                                                    label:
-                                                                        s.nameEn ||
-                                                                        s.nameMm ||
-                                                                        `SubCategory ${s.id}`,
-                                                                    value: String(s.id),
-                                                                })),
-                                                                totalCount: filtered.length,
-                                                            }
-                                                        }}
-                                                        value={field.value ? String(field.value) : ""}
-                                                        onValueChange={(val) =>
-                                                            field.onChange(val ? Number(val) : undefined)
-                                                        }
-                                                        initialValue={field.value ? {
-                                                            label: initialSubCategoryLabel ||
-                                                                "Selected",
-                                                            value: String(field.value)
-                                                        } : undefined}
-                                                        placeholder={
-                                                            watchedShopCategoryId
-                                                                ? "Select Sub Category (Optional)"
-                                                                : "Select a category first"
-                                                        }
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="assignedAdminId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Shop admin</FormLabel>
-                                                <FormControl>
-                                                        <AsyncSelectField
-                                                            label="Shop admin"
-                                                            hideLabel
-                                                            showAllOption
-                                                            allOptionLabel="Select admin"
-                                                            fetchFunction={async (page, size, search) => {
-                                                                const results = await AdminsService.getAdminsPaginated({
-                                                                    page,
-                                                                    size,
-                                                                    search: search || undefined,
-                                                                });
-                                                                return {
-                                                                    data: results.content.map((a) => ({
-                                                                        label: AdminsService.adminSelectLabel(a),
-                                                                        value: String(a.id),
-                                                                    })),
-                                                                    totalCount: results.totalElements,
-                                                                };
-                                                            }}
-                                                            value={field.value != null ? String(field.value) : ""}
-                                                            onValueChange={(val) =>
-                                                                field.onChange(val ? Number(val) : undefined)
-                                                            }
-                                                            initialValue={
-                                                                field.value != null
-                                                                    ? {
-                                                                            label:
-                                                                                initialAssignedAdminLabel ||
-                                                                                `Admin #${field.value}`,
-                                                                            value: String(field.value),
-                                                                        }
-                                                                    : undefined
-                                                            }
-                                                            placeholder="Search by name, email, or username…"
+                                                        <Input
+                                                            placeholder="e.g. My Together Cafe"
+                                                            {...field}
                                                         />
-                                                    
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Separator className="my-2" />
-
-                                    <div className="space-y-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="descriptionEn"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Description (English)</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -340,12 +162,12 @@ export default function CreateShopRestaurant() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
                                                 control={form.control}
-                                                name="descriptionMm"
+                                                name="nameMm"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Description (Myanmar)</FormLabel>
+                                                        <FormLabel>Shop Name (Myanmar)</FormLabel>
                                                         <FormControl>
-                                                            <Textarea rows={2} className="resize-none" placeholder="Description in Myanmar..." {...field} />
+                                                            <Input placeholder="Enter name in Myanmar" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -353,148 +175,398 @@ export default function CreateShopRestaurant() {
                                             />
                                             <FormField
                                                 control={form.control}
-                                                name="descriptionTh"
+                                                name="nameTh"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Description (Thai)</FormLabel>
+                                                        <FormLabel>Shop Name (Thai)</FormLabel>
                                                         <FormControl>
-                                                            <Textarea rows={2} className="resize-none" placeholder="Description in Thai..." {...field} />
+                                                            <Input placeholder="Enter name in Thai" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
-                                    </div>
 
-                                    {/* Advanced Types: Cuisine, Meal, Delivery */}
-                                    <div className="space-y-4 pt-4 border-t">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="shopCategoryId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Category</FormLabel>
+                                                    <FormControl>
+                                                        <AsyncSelectField
+                                                            label="Category"
+                                                            hideLabel
+                                                            fetchFunction={async (page, size, search) => {
+                                                                const results = await ShopCategoryService.getShopCategories({
+                                                                    page,
+                                                                    size,
+                                                                    search: search || ""
+                                                                });
+                                                                return {
+                                                                    data: results.content.map(c => ({ label: c.nameEn || `Category ${c.id}`, value: String(c.id) })),
+                                                                    totalCount: results.totalElements,
+                                                                };
+                                                            }}
+                                                            value={field.value ? String(field.value) : ""}
+                                                            onValueChange={(val) => {
+                                                                const next = val ? Number(val) : undefined
+                                                                field.onChange(next)
+                                                                form.setValue("shopSubCategoryId", undefined)
+                                                            }}
+                                                            initialValue={field.value ? {
+                                                                label: setupData?.shopCategories?.find(c => Number(c.id) === Number(field.value))?.nameEn ||
+                                                                    initialCategoryLabel ||
+                                                                    "Selected",
+                                                                value: String(field.value)
+                                                            } : undefined}
+                                                            placeholder="Select Category"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="shopSubCategoryId"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Sub Category</FormLabel>
+                                                    <FormControl>
+                                                        <AsyncSelectField
+                                                            key={`shop-subcat-${watchedShopCategoryId ?? "none"}`}
+                                                            label="Sub Category"
+                                                            hideLabel
+                                                            disabled={!watchedShopCategoryId}
+                                                            fetchFunction={async (page, size, search) => {
+                                                                if (!watchedShopCategoryId) {
+                                                                    return { data: [], totalCount: 0 }
+                                                                }
+                                                                const list =
+                                                                    await ShopCategoryService.getShopSubCategoriesByCategory(
+                                                                        watchedShopCategoryId,
+                                                                    )
+                                                                const term = (search ?? "").trim().toLowerCase()
+                                                                const filtered = !term
+                                                                    ? list
+                                                                    : list.filter(
+                                                                        (s) =>
+                                                                            (s.nameEn ?? "")
+                                                                                .toLowerCase()
+                                                                                .includes(term) ||
+                                                                            (s.nameMm ?? "")
+                                                                                .toLowerCase()
+                                                                                .includes(term) ||
+                                                                            (s.nameTh ?? "")
+                                                                                .toLowerCase()
+                                                                                .includes(term) ||
+                                                                            String(s.id).includes(term),
+                                                                    )
+                                                                const start = (page - 1) * size
+                                                                const slice = filtered.slice(start, start + size)
+                                                                return {
+                                                                    data: slice.map((s) => ({
+                                                                        label:
+                                                                            s.nameEn ||
+                                                                            s.nameMm ||
+                                                                            `SubCategory ${s.id}`,
+                                                                        value: String(s.id),
+                                                                    })),
+                                                                    totalCount: filtered.length,
+                                                                }
+                                                            }}
+                                                            value={field.value ? String(field.value) : ""}
+                                                            onValueChange={(val) =>
+                                                                field.onChange(val ? Number(val) : undefined)
+                                                            }
+                                                            initialValue={field.value ? {
+                                                                label: initialSubCategoryLabel ||
+                                                                    "Selected",
+                                                                value: String(field.value)
+                                                            } : undefined}
+                                                            placeholder={
+                                                                watchedShopCategoryId
+                                                                    ? "Select Sub Category (Optional)"
+                                                                    : "Select a category first"
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        {!isEditMode && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/40">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="adminEmail"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Admin Email</FormLabel>
+                                                            <FormControl>
+                                                                <Input type="email" placeholder="admin@example.com" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="adminUsername"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Admin Username (Optional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="admin_username" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="adminPassword"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Admin Password</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Input
+                                                                        type={showPassword ? "text" : "password"}
+                                                                        placeholder="••••••••"
+                                                                        {...field}
+                                                                        className="pr-10"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                                                                        onClick={() => setShowPassword(!showPassword)}
+                                                                    >
+                                                                        {showPassword ? (
+                                                                            <EyeOff className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <Eye className="h-4 w-4" />
+                                                                        )}
+                                                                    </button>
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="adminConfirmPassword"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Confirm Admin Password</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Input
+                                                                        type={showConfirmPassword ? "text" : "password"}
+                                                                        placeholder="••••••••"
+                                                                        {...field}
+                                                                        className="pr-10"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                                                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                                    >
+                                                                        {showConfirmPassword ? (
+                                                                            <EyeOff className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <Eye className="h-4 w-4" />
+                                                                        )}
+                                                                    </button>
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <Separator className="my-2" />
+
+                                        <div className="space-y-4">
                                             <FormField
                                                 control={form.control}
-                                                name="cuisineTypeIds"
-                                                render={({ field, fieldState }) => (
+                                                name="descriptionEn"
+                                                render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Cuisine Types</FormLabel>
+                                                        <FormLabel>Description (English)</FormLabel>
                                                         <FormControl>
-                                                            <AsyncSelectField
-                                                                multiple
-                                                                label="Cuisine Types"
-                                                                hideLabel
-                                                                fetchFunction={async (page, size, search) => {
-                                                                    const results = await cuisineService.getCuisines({
-                                                                        page,
-                                                                        size,
-                                                                        search: search || ""
-                                                                    });
-                                                                    return {
-                                                                        data: results.content.map(c => ({ label: c.nameEn || c.name || `Cuisine ${c.id}`, value: String(c.id) })),
-                                                                        totalCount: results.totalElements,
-                                                                    };
-                                                                }}
-                                                                value={field.value ? field.value.map(String) : []}
-                                                                onValueChange={(vals) => field.onChange(vals.map(Number))}
-                                                                initialValues={field.value?.map(id => {
-                                                                    const cuisine = initialCuisineOptions?.find((c) => Number(c.value) === id);
-                                                                    return {
-                                                                        label: cuisine ? cuisine.label : `Cuisine ${id}`,
-                                                                        value: String(id)
-                                                                    };
-                                                                })}
-                                                                placeholder="Select Cuisines"
-                                                                error={fieldState.error?.message}
-                                                            />
+                                                            <Textarea rows={3} className="resize-none" placeholder="Tell us about the shop in English..." {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
-                                            <div className="contents">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <FormField
                                                     control={form.control}
-                                                    name="paymentMethodIds"
-                                                    render={() => (
-                                                        <>
-                                                        <FormItem className="pt-4">
-                                                            <div className="mb-4">
-                                                                <FormLabel className="text-base">Payment Methods</FormLabel>
-                                                                <FormDescription>
-                                                                    Select payment methods supported by this shop.
-                                                                </FormDescription>
-                                                            </div>
-                                                            <div className="space-y-4 pt-2">
-                                                                <FormField
-                                                                    control={form.control}
-                                                                    name="paymentMethodIds"
-                                                                    render={({ field }) => (
-                                                                        <div className="flex flex-wrap gap-4">
-                                                                            {(paymentMethods || []).map((method: PaymentMethodDTO) => (
-                                                                                <FormItem
-                                                                                    key={method.id}
-                                                                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                                                                >
-                                                                                    <FormControl>
-                                                                                        <Checkbox
-                                                                                            checked={(field.value as number[])?.includes(method.id)}
-                                                                                            onCheckedChange={(checked) => {
-                                                                                                const current = (field.value as number[]) || []
-                                                                                                const isChecked = checked === true
-                                                                                                const nextIds = isChecked
-                                                                                                    ? [...current, method.id]
-                                                                                                    : current.filter((value: number) => value !== method.id)
-
-                                                                                                field.onChange(nextIds)
-
-                                                                                                if (isChecked) {
-                                                                                                    const exists = selectedShopPaymentMethods.some(
-                                                                                                        (detail) => detail.paymentMethodId === method.id,
-                                                                                                    )
-                                                                                                    if (!exists) {
-                                                                                                        setShopPaymentMethods([
-                                                                                                            ...selectedShopPaymentMethods,
-                                                                                                            {
-                                                                                                                paymentMethodId: method.id,
-                                                                                                                accountName: "",
-                                                                                                                accountNumber: "",
-                                                                                                                displayOrder: selectedShopPaymentMethods.length,
-                                                                                                                isActive: true,
-                                                                                                                qr: null,
-                                                                                                            },
-                                                                                                        ])
-                                                                                                    }
-                                                                                                    setActivePaymentMethodId(method.id)
-                                                                                                    return
-                                                                                                }
-
-                                                                                                setShopPaymentMethods(
-                                                                                                    selectedShopPaymentMethods.filter(
-                                                                                                        (detail) => detail.paymentMethodId !== method.id,
-                                                                                                    ),
-                                                                                                )
-                                                                                            }}
-                                                                                        />
-                                                                                    </FormControl>
-                                                                                    <FormLabel className="font-normal cursor-pointer flex items-center gap-2 pr-2">
-                                                                                        {method.iconUrl && (
-                                                                                            <img
-                                                                                                src={method.iconUrl}
-                                                                                                alt={method.code || method.name}
-                                                                                                className="h-5 w-5 object-contain flex-shrink-0"
-                                                                                                onError={(e) => (e.currentTarget.style.display = 'none')}
-                                                                                            />
-                                                                                        )}
-                                                                                        <span className="truncate">{method.code || method.name}</span>
-                                                                                    </FormLabel>
-                                                                                </FormItem>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                />
-                                                            </div>
+                                                    name="descriptionMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Description (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Description in Myanmar..." {...field} />
+                                                            </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
-                                                        {activeShopPaymentMethod && (
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="descriptionTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Description (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Description in Thai..." {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Advanced Types: Cuisine, Meal, Delivery */}
+                                        <div className="space-y-4 pt-4 border-t">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cuisineTypeIds"
+                                                    render={({ field, fieldState }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Cuisine Types</FormLabel>
+                                                            <FormControl>
+                                                                <AsyncSelectField
+                                                                    multiple
+                                                                    label="Cuisine Types"
+                                                                    hideLabel
+                                                                    fetchFunction={async (page, size, search) => {
+                                                                        const results = await cuisineService.getCuisines({
+                                                                            page,
+                                                                            size,
+                                                                            search: search || ""
+                                                                        });
+                                                                        return {
+                                                                            data: results.content.map(c => ({ label: c.nameEn || c.name || `Cuisine ${c.id}`, value: String(c.id) })),
+                                                                            totalCount: results.totalElements,
+                                                                        };
+                                                                    }}
+                                                                    value={field.value ? field.value.map(String) : []}
+                                                                    onValueChange={(vals) => field.onChange(vals.map(Number))}
+                                                                    initialValues={field.value?.map(id => {
+                                                                        const cuisine = initialCuisineOptions?.find((c) => Number(c.value) === id);
+                                                                        return {
+                                                                            label: cuisine ? cuisine.label : `Cuisine ${id}`,
+                                                                            value: String(id)
+                                                                        };
+                                                                    })}
+                                                                    placeholder="Select Cuisines"
+                                                                    error={fieldState.error?.message}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <div className="contents">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="paymentMethodIds"
+                                                        render={() => (
+                                                            <>
+                                                                <FormItem className="pt-4">
+                                                                    <div className="mb-4">
+                                                                        <FormLabel className="text-base">Payment Methods</FormLabel>
+                                                                        <FormDescription>
+                                                                            Select payment methods supported by this shop.
+                                                                        </FormDescription>
+                                                                    </div>
+                                                                    <div className="space-y-4 pt-2">
+                                                                        <FormField
+                                                                            control={form.control}
+                                                                            name="paymentMethodIds"
+                                                                            render={({ field }) => (
+                                                                                <div className="flex flex-wrap gap-4">
+                                                                                    {(paymentMethods || []).map((method: PaymentMethodDTO) => (
+                                                                                        <FormItem
+                                                                                            key={method.id}
+                                                                                            className="flex flex-row items-start space-x-3 space-y-0"
+                                                                                        >
+                                                                                            <FormControl>
+                                                                                                <Checkbox
+                                                                                                    checked={(field.value as number[])?.includes(method.id)}
+                                                                                                    onCheckedChange={(checked) => {
+                                                                                                        const current = (field.value as number[]) || []
+                                                                                                        const isChecked = checked === true
+                                                                                                        const nextIds = isChecked
+                                                                                                            ? [...current, method.id]
+                                                                                                            : current.filter((value: number) => value !== method.id)
+
+                                                                                                        field.onChange(nextIds)
+
+                                                                                                        if (isChecked) {
+                                                                                                            const exists = selectedShopPaymentMethods.some(
+                                                                                                                (detail) => detail.paymentMethodId === method.id,
+                                                                                                            )
+                                                                                                            if (!exists) {
+                                                                                                                setShopPaymentMethods([
+                                                                                                                    ...selectedShopPaymentMethods,
+                                                                                                                    {
+                                                                                                                        paymentMethodId: method.id,
+                                                                                                                        accountName: "",
+                                                                                                                        accountNumber: "",
+                                                                                                                        displayOrder: selectedShopPaymentMethods.length,
+                                                                                                                        isActive: true,
+                                                                                                                        qr: null,
+                                                                                                                    },
+                                                                                                                ])
+                                                                                                            }
+                                                                                                            setActivePaymentMethodId(method.id)
+                                                                                                            return
+                                                                                                        }
+
+                                                                                                        setShopPaymentMethods(
+                                                                                                            selectedShopPaymentMethods.filter(
+                                                                                                                (detail) => detail.paymentMethodId !== method.id,
+                                                                                                            ),
+                                                                                                        )
+                                                                                                    }}
+                                                                                                />
+                                                                                            </FormControl>
+                                                                                            <FormLabel className="font-normal cursor-pointer flex items-center gap-2 pr-2">
+                                                                                                {method.iconUrl && (
+                                                                                                    <img
+                                                                                                        src={method.iconUrl}
+                                                                                                        alt={method.code || method.name}
+                                                                                                        className="h-5 w-5 object-contain flex-shrink-0"
+                                                                                                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                                                                    />
+                                                                                                )}
+                                                                                                <span className="truncate">{method.code || method.name}</span>
+                                                                                            </FormLabel>
+                                                                                        </FormItem>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        />
+                                                                    </div>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                                {activeShopPaymentMethod && (
                                                                     <div className="space-y-3 rounded-lg border bg-muted/20 p-3 md:col-span-2">
                                                                         <div className="flex flex-wrap gap-2">
                                                                             {sortedShopPaymentMethods.map((detail) => {
@@ -689,46 +761,218 @@ export default function CreateShopRestaurant() {
                                                                         })()}
                                                                     </div>
                                                                 )}
-                                                        </>
+                                                            </>
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </CardContent>
+                                </Card>
+
+                                {isEditMode && ui.shop && (
+                                    <Card className="border-solid">
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <Users className="h-5 w-5 text-primary" />
+                                                Shop Administrators
+                                            </CardTitle>
+                                            <CardDescription>
+                                                These administrators have direct access to manage this shop.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {!ui.shop.adminShops || ui.shop.adminShops.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-2xl bg-muted/20 px-4">
+                                                    <div className="p-3 bg-primary/10 rounded-full text-primary mb-3">
+                                                        <Users className="h-5 w-5" />
+                                                    </div>
+                                                    <h4 className="font-semibold text-foreground text-sm">No Administrators Assigned</h4>
+                                                    <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+                                                        This shop doesn't have any dedicated administrators yet.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {ui.shop.adminShops.map((assignment) => {
+                                                        const admin = assignment.admin;
+                                                        if (!admin) return null;
+                                                        const isUnassigning =
+                                                            unassignMutation.isPending &&
+                                                            unassignMutation.variables === admin.id;
+
+                                                        return (
+                                                            <div
+                                                                key={assignment.id}
+                                                                className="flex items-center justify-between p-3.5 border rounded-2xl bg-card hover:border-primary/30 transition-all shadow-sm hover:shadow-md group relative overflow-hidden"
+                                                            >
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    <div className="p-2.5 bg-secondary/85 rounded-xl text-secondary-foreground flex-shrink-0">
+                                                                        {admin.email.includes('op') || admin.username?.includes('op') ? (
+                                                                            <Shield className="h-4 w-4 text-primary" />
+                                                                        ) : (
+                                                                            <User className="h-4 w-4 text-muted-foreground" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="font-semibold text-sm text-foreground truncate">
+                                                                            {admin.name || admin.username || 'Shop Administrator'}
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground truncate">
+                                                                            {admin.email}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl h-9 w-9 transition-colors flex-shrink-0"
+                                                                    disabled={isUnassigning}
+                                                                    onClick={() =>
+                                                                        setAdminToUnassign({
+                                                                            id: admin.id,
+                                                                            name: admin.name || admin.username || admin.email,
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    {isUnassigning ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                {/* Location */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle>Location</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-6">
+                                        <div className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="addressEn"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Address (English)</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressMm"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Myanmar)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Myanmar" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="addressTh"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Address (Thai)</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea rows={2} className="resize-none" placeholder="Full address in Thai" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
                                                     )}
                                                 />
                                             </div>
                                         </div>
-                                    </div>
 
-                                </CardContent>
-                            </Card>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    City
+                                                </label>
+                                                <AsyncSelectField
+                                                    label="City"
+                                                    hideLabel
+                                                    fetchFunction={async (page, size, search) => {
+                                                        const results = await cityService.getCities({
+                                                            page,
+                                                            size,
+                                                            search: search || ""
+                                                        });
+                                                        return {
+                                                            data: results.content.map((c: any) => ({ label: c.nameEn, value: String(c.id) })),
+                                                            totalCount: results.totalElements,
+                                                        };
+                                                    }}
+                                                    value={selectedCityId ? String(selectedCityId) : ""}
+                                                    onValueChange={(val) => val && handleCityChange(Number(val))}
+                                                    initialValue={selectedCityId ? {
+                                                        label: initialCityLabel || "Selected City",
+                                                        value: String(selectedCityId)
+                                                    } : undefined}
+                                                    placeholder="Select City"
+                                                />
+                                            </div>
 
-                            {/* Location */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle>Location</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid gap-6">
-                                    <div className="space-y-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="addressEn"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Address (English)</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea rows={3} className="resize-none" placeholder="Full address in English" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                            <FormField
+                                                control={form.control}
+                                                name="districtId"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>District</FormLabel>
+                                                        <FormControl>
+                                                            <SearchableSelect
+                                                                data={availableDistricts.map(d => ({ label: d.nameEn || d.nameMm || d.name || `District ${d.id}`, value: d.id }))}
+                                                                value="value"
+                                                                labelKey="label"
+                                                                selectedValue={field.value ? {
+                                                                    label: availableDistricts.find(d => d.id === field.value)?.nameEn ||
+                                                                        availableDistricts.find(d => d.id === field.value)?.nameMm ||
+                                                                        initialDistrictLabel ||
+                                                                        "Selected District",
+                                                                    value: field.value
+                                                                } : undefined}
+                                                                onChange={(item) => item && handleDistrictChange(item.value)}
+                                                                placeholder="Select District"
+                                                                disabled={!selectedCityId}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
                                                 control={form.control}
-                                                name="addressMm"
+                                                name="phone"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Address (Myanmar)</FormLabel>
+                                                        <FormLabel>Phone</FormLabel>
                                                         <FormControl>
-                                                            <Textarea rows={2} className="resize-none" placeholder="Full address in Myanmar" {...field} />
+                                                            <Input placeholder="Use commas to add multi phone numbers" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -736,445 +980,355 @@ export default function CreateShopRestaurant() {
                                             />
                                             <FormField
                                                 control={form.control}
-                                                name="addressTh"
+                                                name="email"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Address (Thai)</FormLabel>
+                                                        <FormLabel>Email</FormLabel>
                                                         <FormControl>
-                                                            <Textarea rows={2} className="resize-none" placeholder="Full address in Thai" {...field} />
+                                                            <Input type="email" placeholder="contact@shop.com" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
-                                    </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                City
-                                            </label>
-                                            <AsyncSelectField
-                                                label="City"
-                                                hideLabel
-                                                fetchFunction={async (page, size, search) => {
-                                                    const results = await cityService.getCities({
-                                                        page,
-                                                        size,
-                                                        search: search || ""
-                                                    });
-                                                    return {
-                                                        data: results.content.map((c: any) => ({ label: c.nameEn, value: String(c.id) })),
-                                                        totalCount: results.totalElements,
-                                                    };
-                                                }}
-                                                value={selectedCityId ? String(selectedCityId) : ""}
-                                                onValueChange={(val) => val && handleCityChange(Number(val))}
-                                                initialValue={selectedCityId ? {
-                                                    label: initialCityLabel || "Selected City",
-                                                    value: String(selectedCityId)
-                                                } : undefined}
-                                                placeholder="Select City"
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="latitude"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Latitude</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" step="any" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="longitude"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Longitude</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" step="any" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
                                         </div>
+                                    </CardContent>
+                                </Card>
 
-                                        <FormField
-                                            control={form.control}
-                                            name="districtId"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>District</FormLabel>
-                                                    <FormControl>
-                                                        <SearchableSelect
-                                                            data={availableDistricts.map(d => ({ label: d.nameEn || d.nameMm || d.name || `District ${d.id}`, value: d.id }))}
-                                                            value="value"
-                                                            labelKey="label"
-                                                            selectedValue={field.value ? {
-                                                                label: availableDistricts.find(d => d.id === field.value)?.nameEn ||
-                                                                    availableDistricts.find(d => d.id === field.value)?.nameMm ||
-                                                                    initialDistrictLabel ||
-                                                                    "Selected District",
-                                                                value: field.value
-                                                            } : undefined}
-                                                            onChange={(item) => item && handleDistrictChange(item.value)}
-                                                            placeholder="Select District"
-                                                            disabled={!selectedCityId}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                {/* Operating Hours */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Utensils className="h-5 w-5 text-primary" />
+                                            Operating Hours
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {OPERATING_DAY_LABELS.map((_, index) => (
+                                                <ShopOperationRow key={index} dayIndex={index} />
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="phone"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Phone</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Use commas to add multi phone numbers" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="email"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Email</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="email" placeholder="contact@shop.com" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="latitude"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Latitude</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="number" step="any" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="longitude"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Longitude</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="number" step="any" {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Operating Hours */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Utensils className="h-5 w-5 text-primary" />
-                                        Operating Hours
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {OPERATING_DAY_LABELS.map((_, index) => (
-                                            <ShopOperationRow key={index} dayIndex={index} />
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Right Column - Status, Features, Price, Image */}
-                        <div className="space-y-8">
-                            {/* Media */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle>Media</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-6">
-                                        {/* Logo Photo */}
-                                        <div className="space-y-2">
-                                            <div className="text-sm font-medium">Logo Photo</div>
-                                            <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                    onChange={handleLogoChange}
-                                                />
-                                                <div className="text-center space-y-2 pointer-events-none">
-                                                    <div className="flex justify-center">
-                                                        <Upload className="h-8 w-8 text-muted-foreground" />
+                            {/* Right Column - Status, Features, Price, Image */}
+                            <div className="space-y-8">
+                                {/* Media */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle>Media</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-6">
+                                            {/* Logo Photo */}
+                                            <div className="space-y-2">
+                                                <div className="text-sm font-medium">Logo Photo</div>
+                                                <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
+                                                    <Input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                        onChange={handleLogoChange}
+                                                    />
+                                                    <div className="text-center space-y-2 pointer-events-none">
+                                                        <div className="flex justify-center">
+                                                            <Upload className="h-8 w-8 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-sm font-medium">Click to upload logo</div>
                                                     </div>
-                                                    <div className="text-sm font-medium">Click to upload logo</div>
                                                 </div>
+
+                                                {logoPreview && (
+                                                    <div className="relative w-24 h-24 rounded-md overflow-hidden border mx-auto">
+                                                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-6 w-6 z-20 rounded-full"
+                                                            onClick={(e) => {
+                                                                e.preventDefault()
+                                                                clearLogoMedia()
+                                                            }}
+                                                        >
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {logoPreview && (
-                                                <div className="relative w-24 h-24 rounded-md overflow-hidden border mx-auto">
-                                                    <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        className="absolute top-1 right-1 h-6 w-6 z-20 rounded-full"
-                                                        onClick={(e) => {
-                                                            e.preventDefault()
-                                                            clearLogoMedia()
-                                                        }}
-                                                    >
-                                                        <X className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <div className="text-sm font-medium">Cover Photo (Single)</div>
-                                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                    onChange={handleCoverChange}
-                                                />
-                                                <div className="text-center space-y-2 pointer-events-none">
-                                                    <div className="flex justify-center">
-                                                        <Upload className="h-10 w-10 text-muted-foreground" />
+                                            <div className="space-y-2">
+                                                <div className="text-sm font-medium">Cover Photo (Single)</div>
+                                                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer relative transition-colors">
+                                                    <Input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                        onChange={handleCoverChange}
+                                                    />
+                                                    <div className="text-center space-y-2 pointer-events-none">
+                                                        <div className="flex justify-center">
+                                                            <Upload className="h-10 w-10 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="text-sm font-medium">Click to upload cover photo</div>
+                                                        <div className="text-xs text-muted-foreground">Single file only</div>
                                                     </div>
-                                                    <div className="text-sm font-medium">Click to upload cover photo</div>
-                                                    <div className="text-xs text-muted-foreground">Single file only</div>
                                                 </div>
+
+                                                {coverPreview && (
+                                                    <div className="relative aspect-video rounded-md overflow-hidden border mt-3">
+                                                        <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-6 w-6 z-20 rounded-full"
+                                                            onClick={(e) => {
+                                                                e.preventDefault()
+                                                                clearCoverMedia()
+                                                            }}
+                                                        >
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {coverPreview && (
-                                                <div className="relative aspect-video rounded-md overflow-hidden border mt-3">
-                                                    <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        className="absolute top-1 right-1 h-6 w-6 z-20 rounded-full"
-                                                        onClick={(e) => {
-                                                            e.preventDefault()
-                                                            clearCoverMedia()
-                                                        }}
-                                                    >
-                                                        <X className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            )}
+                                            {/* Gallery Photos */}
+                                            <div className="space-y-2">
+                                                <div className="text-sm font-medium">Gallery Photos</div>
+
+                                                {/* Existing gallery photos */}
+                                                {existingGalleryUrls.length > 0 && (
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {existingGalleryUrls.map((url, index) => (
+                                                            <div key={`existing-${index}`} className="relative aspect-square rounded-md overflow-hidden border">
+                                                                <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-5 w-5 z-20 rounded-full"
+                                                                    onClick={() => removeExistingGalleryPhoto(index)}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* New gallery photos previews */}
+                                                {galleryPreviews.length > 0 && (
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {galleryPreviews.map((preview, index) => (
+                                                            <div key={`new-${index}`} className="relative aspect-square rounded-md overflow-hidden border">
+                                                                <img src={preview} alt={`New gallery ${index + 1}`} className="w-full h-full object-cover" />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    className="absolute top-1 right-1 h-5 w-5 z-20 rounded-full"
+                                                                    onClick={() => removeGalleryPhoto(index)}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Upload button */}
+                                                <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple
+                                                        className="hidden"
+                                                        onChange={handleGalleryChange}
+                                                    />
+                                                    <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                                                    <div className="text-sm font-medium">Add gallery photos</div>
+                                                    <div className="text-xs text-muted-foreground">Multiple files supported</div>
+                                                </label>
+                                            </div>
                                         </div>
+                                    </CardContent>
+                                </Card>
 
-                                        {/* Gallery Photos */}
-                                        <div className="space-y-2">
-                                            <div className="text-sm font-medium">Gallery Photos</div>
-
-                                            {/* Existing gallery photos */}
-                                            {existingGalleryUrls.length > 0 && (
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {existingGalleryUrls.map((url, index) => (
-                                                        <div key={`existing-${index}`} className="relative aspect-square rounded-md overflow-hidden border">
-                                                            <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-5 w-5 z-20 rounded-full"
-                                                                onClick={() => removeExistingGalleryPhoto(index)}
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* New gallery photos previews */}
-                                            {galleryPreviews.length > 0 && (
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {galleryPreviews.map((preview, index) => (
-                                                        <div key={`new-${index}`} className="relative aspect-square rounded-md overflow-hidden border">
-                                                            <img src={preview} alt={`New gallery ${index + 1}`} className="w-full h-full object-cover" />
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                className="absolute top-1 right-1 h-5 w-5 z-20 rounded-full"
-                                                                onClick={() => removeGalleryPhoto(index)}
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Upload button */}
-                                            <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    multiple
-                                                    className="hidden"
-                                                    onChange={handleGalleryChange}
-                                                />
-                                                <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                                                <div className="text-sm font-medium">Add gallery photos</div>
-                                                <div className="text-xs text-muted-foreground">Multiple files supported</div>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Status & Price */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle>Settings</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="isVerified"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>Verified Shop</FormLabel>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Separator />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="pricePreference"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Price Preference</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select price level" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="LOW">Low ($)</SelectItem>
-                                                        <SelectItem value="MEDIUM">Medium ($$)</SelectItem>
-                                                        <SelectItem value="HIGH">High ($$$)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Separator />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="deliveryEnabled"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>Delivery Enabled</FormLabel>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="isPickUp"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
-                                                <div className="space-y-0.5">
-                                                    <FormLabel>PickUp enabled</FormLabel>
-                                                </div>
-                                                <FormControl>
-                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
-
-                            {/* Features */}
-                            <Card className="border-solid">
-                                <CardHeader>
-                                    <CardTitle>Features</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid gap-4">
-                                    {([
-                                        { name: "hasParking", label: "Parking Available", icon: Car },
-                                        { name: "hasWifi", label: "Free Wifi", icon: Wifi },
-                                        { name: "isHalal", label: "Halal Certified", icon: Utensils },
-                                        { name: "isVegetarian", label: "Vegetarian Friendly", icon: Leaf },
-                                    ] as const).map((feature) => (
+                                {/* Status & Price */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle>Settings</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-6">
                                         <FormField
-                                            key={feature.name}
                                             control={form.control}
-                                            name={feature.name}
+                                            name="isVerified"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Verified Shop</FormLabel>
+                                                    </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                     </FormControl>
-                                                    <div className="space-y-1 leading-none flex items-center gap-2">
-                                                        <feature.icon className="h-4 w-4 text-muted-foreground" />
-                                                        <FormLabel>{feature.label}</FormLabel>
-                                                    </div>
                                                 </FormItem>
                                             )}
                                         />
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
 
-                    <div className="flex justify-between items-center pt-6 border-t">
-                        {isEditMode && (
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={() => setDeleteDialogOpen(true)}
-                                disabled={isSubmitting || deleting}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Shop
-                            </Button>
-                        )}
-                        <div className="flex gap-3 ml-auto">
-                            <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                size="lg"
-                                disabled={isSubmitting}
-                                className={isSubmitting ? "bg-gray-400 cursor-not-allowed whitespace-nowrap" : "whitespace-nowrap"}
-                            >
-                                {isSubmitting ? "Saving..." : isEditMode ? "Update Shop" : "Create Shop"}
-                            </Button>
+                                        <Separator />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="pricePreference"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Price Preference</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select price level" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="LOW">Low ($)</SelectItem>
+                                                            <SelectItem value="MEDIUM">Medium ($$)</SelectItem>
+                                                            <SelectItem value="HIGH">High ($$$)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <Separator />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="deliveryEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Delivery Enabled</FormLabel>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="isPickUp"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>PickUp enabled</FormLabel>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </CardContent>
+                                </Card>
+
+                                {/* Features */}
+                                <Card className="border-solid">
+                                    <CardHeader>
+                                        <CardTitle>Features</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4">
+                                        {([
+                                            { name: "hasParking", label: "Parking Available", icon: Car },
+                                            { name: "hasWifi", label: "Free Wifi", icon: Wifi },
+                                            { name: "isHalal", label: "Halal Certified", icon: Utensils },
+                                            { name: "isVegetarian", label: "Vegetarian Friendly", icon: Leaf },
+                                        ] as const).map((feature) => (
+                                            <FormField
+                                                key={feature.name}
+                                                control={form.control}
+                                                name={feature.name}
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                        <FormControl>
+                                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        </FormControl>
+                                                        <div className="space-y-1 leading-none flex items-center gap-2">
+                                                            <feature.icon className="h-4 w-4 text-muted-foreground" />
+                                                            <FormLabel>{feature.label}</FormLabel>
+                                                        </div>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
-                    </div>
-                </form>
-            </Form>
+
+                        <div className="flex justify-between items-center pt-6 border-t">
+                            {isEditMode && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => setDeleteDialogOpen(true)}
+                                    disabled={isSubmitting || deleting}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Shop
+                                </Button>
+                            )}
+                            <div className="flex gap-3 ml-auto">
+                                <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    disabled={isSubmitting}
+                                    className={isSubmitting ? "bg-gray-400 cursor-not-allowed whitespace-nowrap" : "whitespace-nowrap"}
+                                >
+                                    {isSubmitting ? "Saving..." : isEditMode ? "Update Shop" : "Create Shop"}
+                                </Button>
+                            </div>
+                        </div>
+                    </form>
+                </Form>
             )}
             <ConfirmDialog
                 open={deleteDialogOpen}
@@ -1188,6 +1342,35 @@ export default function CreateShopRestaurant() {
                 onCancel={() => setDeleteDialogOpen(false)}
                 onConfirm={handleDelete}
             />
+
+            {/* Unassign Administrator Confirmation Dialog */}
+            <AlertDialog
+                open={adminToUnassign !== null}
+                onOpenChange={(open) => !open && setAdminToUnassign(null)}
+            >
+                <AlertDialogContent className="rounded-2xl max-w-sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-lg">Unassign Administrator</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground">
+                            Are you sure you want to unassign <strong>{adminToUnassign?.name}</strong>? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-2 flex items-center gap-2">
+                        <AlertDialogCancel className="rounded-xl h-10 mt-0">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="rounded-xl h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                if (adminToUnassign) {
+                                    unassignMutation.mutate(adminToUnassign.id);
+                                    setAdminToUnassign(null);
+                                }
+                            }}
+                        >
+                            Unassign
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
     )

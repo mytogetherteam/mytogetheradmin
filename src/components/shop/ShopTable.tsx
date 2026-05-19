@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { Loader } from "@/components/ui/loader";
 import { resolveMediaUrl } from "@/lib/resolveMediaUrl"
 import type { SortConfig } from "@/lib/sort-utils"
-import {  Edit, Trash2 } from "lucide-react"
+import {  Edit, Trash2, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TableImage } from "../TableImage"
 
@@ -46,6 +46,7 @@ export type ShopTableProps = {
     onVerify?: (e: MouseEvent, shop: Shop) => void
     onOpenReject: (e: MouseEvent, shop: Shop) => void
     onOpenDelete: (shop: Shop) => void
+    onAssignAdmin: (shop: Shop) => void
 }
 
 export function ShopTable({
@@ -57,6 +58,7 @@ export function ShopTable({
     onToggleVerified,
     onEditShop,
     onOpenDelete,
+    onAssignAdmin,
 }: ShopTableProps) {
     if (isLoading) {
         return (
@@ -163,6 +165,20 @@ export function ShopTable({
                                                 className="inline-flex flex-nowrap items-center justify-end gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-9 w-9 shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                                                    title="Assign admin"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        onAssignAdmin(shop)
+                                                    }}
+                                                >
+                                                    <UserPlus className="h-4 w-4" />
+                                                </Button>
+
                                                 <Button
                                                     type="button"
                                                     variant="ghost"

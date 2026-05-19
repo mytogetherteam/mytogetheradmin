@@ -36,7 +36,10 @@ export type AdminShopProfileFormFields = {
     closeTime: string;
     isClosed: boolean;
   }[];
-  assignedAdminId: number | null;
+  adminEmail?: string;
+  adminUsername?: string;
+  adminPassword?: string;
+  adminConfirmPassword?: string;
 };
 
 /** Form fields for POST /api/admin/shop-profile — must match CreateAdminShopProfileDto (multipart). */
@@ -104,8 +107,14 @@ export function appendCreateAdminShopProfileFields(
     fd.append('paymentQrImages', file);
   });
   fd.append('operatingHours', JSON.stringify(p.operatingHours ?? []));
-  if (p.assignedAdminId != null) {
-    fd.append('assignedAdminId', String(p.assignedAdminId));
+  if (p.adminEmail) {
+    fd.append('adminEmail', p.adminEmail);
+  }
+  if (p.adminUsername) {
+    fd.append('adminUsername', p.adminUsername);
+  }
+  if (p.adminPassword) {
+    fd.append('adminPassword', p.adminPassword);
   }
 }
 
@@ -144,7 +153,10 @@ export function shopFormValuesToAdminProfileFields(
     cuisineTypeIds: data.cuisineTypeIds,
     shopPaymentMethods: data.shopPaymentMethods,
     operatingHours: data.operatingHours,
-    assignedAdminId: data.assignedAdminId ?? null,
+    adminEmail: data.adminEmail,
+    adminUsername: data.adminUsername,
+    adminPassword: data.adminPassword,
+    adminConfirmPassword: data.adminConfirmPassword,
   };
 }
 

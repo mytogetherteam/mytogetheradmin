@@ -8,6 +8,7 @@ import {
     type ShopFormDataDTO,
     type DistrictDTO,
     type PaymentMethodDTO,
+    type ShopDetail,
 } from "@/services/shopService"
 import { handleApiError } from "@/lib/error-utils"
 import {
@@ -44,6 +45,7 @@ export interface CreateShopRestaurantUiState {
     isSubmitting: boolean
     /** Edit mode: TanStack Query is fetching shop + related data for the form */
     isLoadingShopEdit: boolean
+    shop: ShopDetail | null
 }
 
 export interface CreateShopRestaurantActions {
@@ -78,7 +80,7 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
     const { mutateAsync: updateShop, isPending: isUpdatingShop } = useUpdateShopMutation()
     const isSubmitting = isCreatingShop || isUpdatingShop
 
-    const form = useShopRestaurantForm()
+    const form = useShopRestaurantForm(isEditMode)
     const media = useShopRestaurantMedia()
     const locationPickers = useShopRestaurantLocationPickers(form)
     const editLabels = useShopRestaurantEditLabels()
@@ -110,6 +112,7 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
     useEffect(() => {
         if (!shopEditQuery.data || numericEditId === null) return
         const { shop, formValues, forMedia, initialAssignedAdminLabel } = shopEditQuery.data
+
         form.reset(formValues)
         editLabels.hydrateEditLabelsFromShop(shop, {
             assignedAdminLabel: initialAssignedAdminLabel,
@@ -220,6 +223,7 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
         initialAssignedAdminLabel: editLabels.initialAssignedAdminLabel,
         isSubmitting,
         isLoadingShopEdit: isEditMode && (shopEditQuery.isPending || shopEditQuery.isFetching),
+        shop: shopEditQuery.data?.shop || null,
     }
 
     const actions: CreateShopRestaurantActions = {
