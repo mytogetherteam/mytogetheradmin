@@ -3,10 +3,11 @@ import { ShopTable } from '@/components/shop/ShopTable';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { ManageShopRestaurantHeader } from '@/components/shop/manage/ManageShopRestaurantHeader';
 import { DeleteShopDialog } from '@/components/shop/manage/DeleteShopDialog';
+import { AssignAdminDialog } from '@/components/shop/manage/AssignAdminDialog';
 import { useManageShopRestaurant } from '@/hooks/shops/profiles/useManageShopRestaurant';
 
 export default function ManageShopRestaurant() {
-  const { table, pagination, search, deleteDialog, filters, actions } =
+  const { table, pagination, search, deleteDialog, assignDialog, filters, actions } =
     useManageShopRestaurant();
 
   return (
@@ -32,6 +33,7 @@ export default function ManageShopRestaurant() {
             onEditShop={actions.onEditShop}
             onOpenReject={() => console.log('open reject')}
             onOpenDelete={actions.onOpenDelete}
+            onAssignAdmin={actions.onOpenAssign}
           />
           {!table.shopsLoading && (
             <DataTablePagination
@@ -48,6 +50,12 @@ export default function ManageShopRestaurant() {
       </Card>
 
       <DeleteShopDialog {...deleteDialog} />
+      <AssignAdminDialog
+        state={assignDialog.state}
+        isLoading={assignDialog.isLoading}
+        onOpenChange={assignDialog.onOpenChange}
+        onConfirm={assignDialog.mutate}
+      />
     </div>
   );
 }

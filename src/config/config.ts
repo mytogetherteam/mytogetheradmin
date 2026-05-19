@@ -39,6 +39,8 @@ export const config = {
           `/api/admin/shop-profile/${id}/operating-hours`,
         changeStatus: (id: number) =>
           `/api/admin/shop-profile/${id}/change-status`,
+        assignAdmin: (id: number) =>
+          `/api/admin/shop-profile/${id}/assign-admin`,
       },
       shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
       payment: {

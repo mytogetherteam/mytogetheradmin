@@ -11,6 +11,7 @@ import { useAdminShopProfilesQuery } from './useAdminShopProfilesQuery';
 import { useToggleShopStatusMutation } from './useToggleShopStatusMutation';
 import { exportAdminShopProfilesToExcel } from './exportAdminShopProfiles';
 import { useDeleteShopMutation } from './useDeleteShopMutation';
+import { useAssignAdminMutation } from './useAssignAdminMutation';
 import type { ShopActionDialogState } from './manageShopRestaurantTypes';
 
 export type { ShopActionDialogState } from './manageShopRestaurantTypes';
@@ -34,6 +35,7 @@ export function useManageShopRestaurant() {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ShopActionDialogState>(closedDialog);
+  const [assignDialog, setAssignDialog] = useState<ShopActionDialogState>(closedDialog);
 
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>();
@@ -51,6 +53,7 @@ export function useManageShopRestaurant() {
 
   const toggleShopStatusMutation = useToggleShopStatusMutation();
   const deleteShopMutation = useDeleteShopMutation();
+  const assignAdminMutation = useAssignAdminMutation();
 
   const toggleBusyShopId =
     toggleShopStatusMutation.isPending && toggleShopStatusMutation.variables
@@ -112,6 +115,14 @@ export function useManageShopRestaurant() {
 
   const closeDeleteDialog = useCallback(() => {
     setDeleteDialog(closedDialog());
+  }, []);
+
+  const openAssignDialog = useCallback((shop: Shop) => {
+    setAssignDialog({ open: true, id: shop.id, name: shopDisplayName(shop) });
+  }, []);
+
+  const closeAssignDialog = useCallback(() => {
+    setAssignDialog(closedDialog());
   }, []);
 
   const handleDeleteConfirm = useCallback(() => {
@@ -176,6 +187,12 @@ export function useManageShopRestaurant() {
       onOpenChange: (open: boolean) => !open && closeDeleteDialog(),
       onConfirm: handleDeleteConfirm,
     },
+    assignDialog: {
+      state: assignDialog,
+      isLoading: assignAdminMutation.isPending,
+      onOpenChange: (open: boolean) => !open && closeAssignDialog(),
+      mutate: assignAdminMutation.mutate,
+    },
     filters: {
       selectedCategory,
       activeFilter,
@@ -189,6 +206,7 @@ export function useManageShopRestaurant() {
       onToggleVerified: handleToggleVerified,
       onEditShop: handleEditShop,
       onOpenDelete: openDeleteDialog,
+      onOpenAssign: openAssignDialog,
       onSort: handleSort,
       onCreateShop: handleCreateShop,
       onExport: handleExport,
