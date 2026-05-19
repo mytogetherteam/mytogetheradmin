@@ -165,9 +165,8 @@ export const config = {
           detail: (id: string | number) => `/api/admin/promotions/${id}`,
         },
         banners: {
-          base: '/api/admin/marketing/banners',
-          detail: (id: string) => `/api/admin/marketing/banners/${id}`,
-          toggle: (id: string) => `/api/admin/marketing/banners/${id}/toggle`,
+          base: '/api/admin/banners',
+          detail: (id: string | number) => `/api/admin/banners/${id}`,
         },
         featuredShops: '/api/admin/marketing/featured-shops',
         shopActions: {
