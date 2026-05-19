@@ -1,13 +1,4 @@
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import type { ShopActionDialogState } from '@/hooks/shops/profiles/manageShopRestaurantTypes';
 
 type DeleteShopDialogProps = {
@@ -24,22 +15,16 @@ export function DeleteShopDialog({
   onConfirm,
 }: DeleteShopDialogProps) {
   return (
-    <AlertDialog open={state.open} onOpenChange={onOpenChange}>
-      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete shop?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete <strong>{state.name}</strong>?
-            This will hide the shop from public listings (soft delete), but its data will remain in the system.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-          <Button variant="destructive" disabled={isLoading} onClick={() => void onConfirm()}>
-            {isLoading ? 'Deleting…' : 'Delete shop'}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={state.open}
+      onOpenChange={onOpenChange}
+      title="Delete shop?"
+      description={`Are you sure you want to delete ${state.name}? This will hide the shop from public listings (soft delete), but its data will remain in the system.`}
+      confirmText="Delete shop"
+      cancelText="Cancel"
+      variant="destructive"
+      loading={isLoading}
+      onConfirm={onConfirm}
+    />
   );
 }

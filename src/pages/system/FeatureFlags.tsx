@@ -6,16 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Flag, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 
 export default function FeatureFlags() {
     const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -120,26 +111,18 @@ export default function FeatureFlags() {
                 )}
             </div>
 
-            {/* Delete confirmation dialog */}
-            <AlertDialog open={!!confirmFlag} onOpenChange={(open) => { if (!open) setConfirmFlag(null); }}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Feature Flag</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete <strong>{confirmFlag?.flagKey}</strong>? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={handleDeleteFlag}
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmDialog
+                open={!!confirmFlag}
+                onOpenChange={(open) => { if (!open) setConfirmFlag(null); }}
+                title="Delete Feature Flag"
+                description={`Are you sure you want to delete ${confirmFlag?.flagKey || "this feature flag"}? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                loading={deletingFlag === confirmFlag?.id}
+                onCancel={() => setConfirmFlag(null)}
+                onConfirm={handleDeleteFlag}
+            />
         </div>
     );
 }

@@ -33,16 +33,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 
@@ -228,23 +219,17 @@ export default function ManageCuisines() {
                 </CardContent>
             </Card>
 
-            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the cuisine type
-                            from our servers.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={(open) => !open && setDeleteId(null)}
+                title="Delete Cuisine?"
+                description="This action cannot be undone. This will permanently delete the cuisine type from our servers."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                onCancel={() => setDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

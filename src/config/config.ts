@@ -232,6 +232,12 @@ export const config = {
         lookup: '/api/admin/users/lookup',
         shopOwners: '/api/admin/users/shop-owners',
       },
+      manageUsers: {
+        list: '/api/admin/manage-users',
+        detail: (accountType: string, id: string | number) =>
+          `/api/admin/manage-users/${accountType}/${id}`,
+        roles: '/api/admin/manage-users/roles',
+      },
       search: '/api/admin/search',
     },
     shops: {

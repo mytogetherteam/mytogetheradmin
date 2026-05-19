@@ -10,10 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -175,23 +172,17 @@ export default function CommentBoard() {
                 onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
             />
 
-            {/* Delete Confirm */}
-            <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Comment</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. The comment will be permanently removed.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmDialog
+                open={!!deleteId}
+                onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+                title="Delete Comment"
+                description="This action cannot be undone. The comment will be permanently removed."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                onCancel={() => setDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

@@ -22,14 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+import ConfirmDialog from "@/components/common/ConfirmDialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AsyncSelectField } from "@/components/common/AsyncSelectField"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -1183,34 +1176,18 @@ export default function CreateShopRestaurant() {
                 </form>
             </Form>
             )}
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Shop</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete <strong>{form.getValues("nameEn")}</strong>?
-                            This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setDeleteDialogOpen(false)}
-                            disabled={deleting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={deleting}
-                        >
-                            {deleting ? "Deleting..." : "Delete"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title="Delete Shop"
+                description={`Are you sure you want to delete ${form.getValues("nameEn")}? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                loading={deleting}
+                onCancel={() => setDeleteDialogOpen(false)}
+                onConfirm={handleDelete}
+            />
 
         </div>
     )

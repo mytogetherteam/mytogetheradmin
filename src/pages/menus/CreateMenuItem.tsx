@@ -15,14 +15,7 @@ import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService"
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { compressImage } from "@/utils/imageCompression";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { CreateMenuItemSortableRow } from "@/pages/menus/components/CreateMenuItemSortableRow";
 import type { AddonRow, CategoryResponse, TagResponse } from "@/pages/menus/create-menu-item.types";
@@ -1012,25 +1005,18 @@ export default function CreateMenuItem() {
                 </CardContent>
             </Card>
 
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-destructive">Delete Menu Item</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete this menu item? This action cannot be undone and will remove it from its shop's menu.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
-                            No, keep it
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Yes, delete item
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title="Delete Menu Item"
+                description="Are you sure you want to delete this menu item? This action cannot be undone and will remove it from its shop's menu."
+                confirmText="Yes, delete item"
+                cancelText="No, keep it"
+                variant="destructive"
+                loading={deleting}
+                onCancel={() => setDeleteDialogOpen(false)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

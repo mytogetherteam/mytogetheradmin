@@ -10,14 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, X, Trash2, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { Switch } from "@/components/ui/switch";
 import {
     Select,
@@ -520,22 +513,18 @@ export default function CreatePromotion() {
                 </CardContent>
             </Card>
 
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Promotion</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to permanently delete this promotion block?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting ? "Deleting..." : "Confirm Delete"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title="Delete Promotion"
+                description="Are you sure you want to permanently delete this promotion block?"
+                confirmText="Confirm Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                loading={deleting}
+                onCancel={() => setDeleteDialogOpen(false)}
+                onConfirm={handleDelete}
+            />
         </div>
     );
 }

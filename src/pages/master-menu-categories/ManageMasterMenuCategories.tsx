@@ -43,14 +43,7 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 
 function SortableRow({
     category,
@@ -437,22 +430,18 @@ export default function ManageMasterMenuCategories() {
                 </CardContent>
             </Card>
 
-            <Dialog open={deleteDialog.open} onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Master Menu Category?</DialogTitle>
-                        <DialogDescription>
-                            This will permanently delete <strong>{deleteDialog.name}</strong>. This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })} disabled={deleting}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
-                            {deleting ? "Deleting..." : "Delete"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={deleteDialog.open}
+                onOpenChange={(open) => !deleting && setDeleteDialog((d) => ({ ...d, open }))}
+                title="Delete Master Menu Category?"
+                description={`This will permanently delete ${deleteDialog.name}. This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="destructive"
+                loading={deleting}
+                onCancel={() => setDeleteDialog({ open: false, id: 0, name: "" })}
+                onConfirm={handleDeleteConfirm}
+            />
         </div>
     );
 }

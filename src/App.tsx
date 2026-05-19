@@ -17,7 +17,8 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const AdminProfile = lazy(() => import("@/pages/AdminProfile"));
 
 // Users
-const ManageUsers = lazy(() => import("@/pages/users/ManageUsers"));
+const ManageUsers = lazy(() => import("@/pages/manage-users/ManageUsers"));
+const EditUser = lazy(() => import("@/pages/manage-users/EditUser"));
 const UserDetail = lazy(() => import("@/pages/users/UserDetail"));
 
 // Shops
@@ -150,6 +151,7 @@ function App() {
                 <Route path="/shops/manage" element={<ManageShopRestaurant />} />
                 <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
                 <Route path="/users/manage" element={<ManageUsers />} />
+                <Route path="/users/edit/:accountType/:id" element={<EditUser />} />
                 <Route path="/users/:id" element={<UserDetail />} />
                 <Route path="/menus/approvals" element={<MenuApprovals />} />
                 <Route path="/menus/approvals/menu-items/:id" element={<MenuApprovalDetail />} />
@@ -248,6 +250,7 @@ function App() {
                 <Route path="/shops/manage" element={<ManageShopRestaurant />} />
                 <Route path="/shops/operating-hours" element={<ShopOperatingHours />} />
                 <Route path="/users/manage" element={<ManageUsers />} />
+                <Route path="/users/edit/:accountType/:id" element={<EditUser />} />
                 <Route path="/users/:id" element={<UserDetail />} />
                 <Route path="/menus/approvals" element={<MenuApprovals />} />
                 <Route path="/menus/approvals/menu-items/:id" element={<MenuApprovalDetail />} />
