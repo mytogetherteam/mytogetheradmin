@@ -1,1 +1,1 @@
-export { default } from "@/pages/ManageUsers";
+export { default } from "@/pages/manage-users/ManageUsers";

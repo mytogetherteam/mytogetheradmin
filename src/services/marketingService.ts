@@ -69,7 +69,7 @@ class MarketingService {
     // Backend expects 'data' as a JSON Part
     formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
     if (imageFile) {
-        formData.append('image', imageFile);
+      formData.append('image', imageFile);
     }
     return apiClient.post<Banner>(config.endpoints.admin.marketing.banners.base, formData);
   }
@@ -79,7 +79,7 @@ class MarketingService {
     // Backend expects 'data' as a JSON Part
     formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
     if (imageFile) {
-        formData.append('image', imageFile);
+      formData.append('image', imageFile);
     }
     return apiClient.put<Banner>(config.endpoints.admin.marketing.banners.detail(id), formData);
   }

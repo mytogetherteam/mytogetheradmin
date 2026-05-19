@@ -1,6 +1,16 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { marketingService, Banner, CreateBannerRequest } from "@/services/marketingService";
+import { marketingService } from "@/services/marketingService";
+import type { BannerImage, BannerFormValues } from "@/schemas/banner-image.schema";
+import {
+    useBanners,
+    useCreateBannerMutation,
+    useUpdateBannerMutation,
+    useDeleteBannerMutation,
+} from "@/hooks/banner-images/useBannerImages";
+import { BannerFormDialog } from "@/components/marketing/BannerFormDialog";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { Modal } from "@/components/common/Modal";
 import { ShopService, Shop } from "@/services/shopService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +20,6 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-    Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
-import {
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
@@ -20,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import {
     Megaphone, Plus, Trash2, Star, TrendingUp, ImageIcon, Search,
-    ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Zap, Store, Upload, X,
+    ExternalLink, Phone, Mail, MapPin, CheckCircle2, XCircle, Store,
 } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
@@ -29,38 +36,48 @@ import { SortableTableHead, SortConfig } from "@/components/SortableTableHead";
 import { TableImage } from "@/components/TableImage";
 
 
-interface BannerFormState extends Omit<CreateBannerRequest, "displayOrder"> {
-    displayOrder: number | "";
+/** At most two labels: EN + (MM or TH). MM is preferred when all three exist. */
+function getBannerDisplayName(banner: BannerImage): string {
+    const en = banner.nameEn?.trim();
+    const mm = banner.nameMm?.trim();
+    const th = banner.nameTh?.trim();
+
+    if (en) {
+        const secondary = mm || th;
+        return secondary ? `${en} (${secondary})` : en;
+    }
+    if (mm && th) return `${mm} (${th})`;
+    return mm || th || "Untitled Banner";
 }
 
-const emptyBanner: BannerFormState = {
-    titleMm: "",
-    titleTh: "",
-    titleEn: "",
-    imageUrl: "",
-    linkUrl: "",
-    displayOrder: 1,
-    isActive: true,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: "",
-};
+function BannerCard({
+    banner,
+    onToggle,
+    onEdit,
+    onDelete,
+}: {
+    banner: BannerImage;
+    onToggle: (id: number, active: boolean) => void;
+    onEdit: (banner: BannerImage) => void;
+    onDelete: (id: number, name: string) => void;
+}) {
+    const displayName = getBannerDisplayName(banner);
 
-function BannerCard({ banner, onToggle, onEdit, onDelete }: { banner: Banner; onToggle: (id: string, active: boolean) => void; onEdit: (banner: Banner) => void; onDelete: (id: string) => void }) {
     return (
         <Card className="overflow-hidden">
             <div className="h-36 bg-muted flex items-center justify-center relative">
-                <TableImage src={banner.imageUrl} alt={banner.titleEn || banner.titleMm || "Banner"} className="w-full h-full object-cover rounded-none" />
+                <TableImage src={banner.imageUrl} alt={displayName} className="w-full h-full object-cover rounded-none" />
             </div>
             <CardContent className="pt-3 space-y-2">
                 <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm truncate">{banner.titleEn || banner.titleMm || "Untitled Banner"}</p>
+                    <p className="font-medium text-sm truncate">{displayName}</p>
                     <Switch
                         checked={banner.isActive}
                         onCheckedChange={(checked) => onToggle(banner.id, checked)}
                     />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    {new Date(banner.startDate).toLocaleDateString()} – {new Date(banner.endDate).toLocaleDateString()}
+                    {banner.position} · {new Date(banner.startDate).toLocaleDateString()} – {new Date(banner.endDate).toLocaleDateString()}
                 </p>
                 <div className="flex justify-between items-center w-full gap-2">
                     <Button
@@ -71,7 +88,9 @@ function BannerCard({ banner, onToggle, onEdit, onDelete }: { banner: Banner; on
                     </Button>
                     <Button
                         size="sm" variant="destructive" className="flex-1"
-                        onClick={() => onDelete(banner.id)}
+                        onClick={() =>
+                            onDelete(banner.id, displayName)
+                        }
                     >
                         <Trash2 className="h-3 w-3 mr-1" /> Remove
                     </Button>
@@ -244,14 +263,39 @@ export default function BannerManagement() {
     const activeTab = searchParams.get("tab") || "banners";
 
     // Banners state
-    const [banners, setBanners] = useState<Banner[]>([]);
-    const [bannersLoading, setBannersLoading] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
-    const [form, setForm] = useState<BannerFormState>(emptyBanner);
-    const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [showBannerForm, setShowBannerForm] = useState(false);
+    const [editingBanner, setEditingBanner] = useState<BannerImage | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({
+        open: false,
+        id: 0,
+        name: "",
+    });
+
+    const {
+        data: bannersPage,
+        isPending: bannersLoading,
+        isError: bannersError,
+        error: bannersLoadError,
+        refetch: refetchBanners,
+    } = useBanners({
+        page: 1,
+        size: 100,
+    });
+    const banners = bannersPage?.content ?? [];
+    const sortedBanners = useMemo(
+        () =>
+            [...banners].sort(
+                (a, b) => Number(b.isActive) - Number(a.isActive),
+            ),
+        [banners],
+    );
+
+    const { mutateAsync: createBanner, isPending: creatingBanner } =
+        useCreateBannerMutation();
+    const { mutateAsync: updateBanner, isPending: updatingBanner } =
+        useUpdateBannerMutation();
+    const { mutateAsync: deleteBanner, isPending: deletingBanner } =
+        useDeleteBannerMutation();
 
     // Featured Shops state
     const [shops, setShops] = useState<Shop[]>([]);
@@ -278,20 +322,6 @@ export default function BannerManagement() {
     const handleTabChange = (value: string) => {
         setSearchParams({ tab: value });
     };
-
-    // Load banners
-    const loadBanners = useCallback(async () => {
-        setBannersLoading(true);
-        try {
-            const b = await marketingService.getBanners();
-            setBanners(b);
-        } catch (error) {
-            handleApiError(error, "Failed to load banners");
-            setBanners([]);
-        } finally {
-            setBannersLoading(false);
-        }
-    }, []);
 
     // Load all shops for featured tab
     const loadShops = useCallback(async () => {
@@ -335,116 +365,43 @@ export default function BannerManagement() {
         }
     }, [page, pageSize, sortConfig, activeTab, loadShops]);
 
-    useEffect(() => {
-        if (activeTab === "banners") loadBanners();
-    }, [activeTab, loadBanners]);
-
-    // Banner actions
-    const handleToggle = async (id: string, isActive: boolean) => {
-        try {
-            const bannerToUpdate = banners.find(b => b.id === id);
-            if (!bannerToUpdate) return;
-
-            const requestObj = {
-                titleMm: bannerToUpdate.titleMm,
-                titleTh: bannerToUpdate.titleTh,
-                titleEn: bannerToUpdate.titleEn,
-                linkUrl: bannerToUpdate.linkUrl,
-                displayOrder: bannerToUpdate.displayOrder,
-                isActive: isActive,
-                startDate: bannerToUpdate.startDate,
-                endDate: bannerToUpdate.endDate,
-            };
-
-            const updated = await marketingService.updateBanner(id, requestObj);
-            setBanners((prev) => prev.map((b) => b.id === id ? updated : b));
-            toast.success(`Banner ${isActive ? "activated" : "deactivated"}`);
-        } catch (error) {
-            handleApiError(error, "Failed to update banner");
-        }
+    const handleToggle = async (id: number, isActive: boolean) => {
+        await updateBanner({ id, values: { isActive } });
     };
 
-    const handleDelete = async (id: string) => {
-        try {
-            await marketingService.deleteBanner(id);
-            setBanners((prev) => prev.filter((b) => b.id !== id));
-            toast.success("Banner removed");
-        } catch (error) {
-            handleApiError(error, "Failed to remove banner");
-        }
+    const handleDeleteClick = (id: number, name: string) => {
+        setDeleteDialog({ open: true, id, name });
     };
 
-    const handleEditClick = (banner: Banner) => {
-        setForm({
-            titleMm: banner.titleMm || "",
-            titleTh: banner.titleTh || "",
-            titleEn: banner.titleEn || "",
-            imageUrl: banner.imageUrl || "",
-            linkUrl: banner.linkUrl || "",
-            displayOrder: banner.displayOrder || 1,
-            isActive: banner.isActive,
-            startDate: banner.startDate,
-            endDate: banner.endDate,
-        });
-        setEditingBannerId(banner.id);
-        setImagePreview(banner.imageUrl || null);
-        setImageFile(null);
-        setShowCreate(true);
+    const handleDeleteConfirm = async () => {
+        await deleteBanner(deleteDialog.id);
+        setDeleteDialog({ open: false, id: 0, name: "" });
     };
 
-    const handleCreate = async () => {
-        setSaving(true);
-        try {
-            // Data variable removed
-
-            const safeDisplayOrder = form.displayOrder === "" || (typeof form.displayOrder === "number" && form.displayOrder < 1)
-                ? 1
-                : form.displayOrder;
-
-            const requestObj = {
-                titleMm: form.titleMm,
-                titleTh: form.titleTh,
-                titleEn: form.titleEn,
-                linkUrl: form.linkUrl,
-                displayOrder: safeDisplayOrder as number,
-                isActive: form.isActive,
-                startDate: form.startDate,
-                endDate: form.endDate,
-            };
-
-            if (editingBannerId) {
-                const updatedBanner = await marketingService.updateBanner(editingBannerId, requestObj, imageFile || undefined);
-                setBanners((prev) => prev.map((b) => b.id === editingBannerId ? updatedBanner : b));
-                toast.success("Banner updated");
-            } else {
-                if (!imageFile) {
-                    toast.error("An image is required to create a new banner.");
-                    setSaving(false);
-                    return;
-                }
-                const newBanner = await marketingService.createBanner(requestObj, imageFile);
-                setBanners((prev) => [...prev, newBanner]);
-                toast.success("Banner created");
-            }
-
-            setShowCreate(false);
-            setForm(emptyBanner);
-            setImageFile(null);
-            setImagePreview(null);
-            setEditingBannerId(null);
-        } catch (error) {
-            handleApiError(error, "An error occurred while saving the banner");
-        } finally {
-            setSaving(false);
-        }
+    const handleEditClick = (banner: BannerImage) => {
+        setEditingBanner(banner);
+        setShowBannerForm(true);
     };
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+    const handleOpenCreate = () => {
+        setEditingBanner(null);
+        setShowBannerForm(true);
+    };
+
+    const handleBannerFormSubmit = async (
+        values: BannerFormValues,
+        imageFile?: File,
+    ) => {
+        if (editingBanner) {
+            await updateBanner({
+                id: editingBanner.id,
+                values,
+                imageFile,
+            });
+            return;
         }
+        if (!imageFile) return;
+        await createBanner({ values, imageFile });
     };
 
     // Featured actions
@@ -508,19 +465,25 @@ export default function BannerManagement() {
                 {/* ── Banners Tab ────────────────────────────────────────── */}
                 <TabsContent value="banners" className="mt-4 space-y-4">
                     <div className="flex justify-end">
-                        <Button onClick={() => {
-                            setForm(emptyBanner);
-                            setEditingBannerId(null);
-                            setImagePreview(null);
-                            setImageFile(null);
-                            setShowCreate(true);
-                        }}>
+                        <Button onClick={handleOpenCreate}>
                             <Plus className="h-4 w-4 mr-2" /> New Banner
                         </Button>
                     </div>
                     {bannersLoading ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64" />)}
+                        </div>
+                    ) : bannersError ? (
+                        <div className="text-center py-16 space-y-3">
+                            <p className="text-destructive font-medium">Failed to load banners</p>
+                            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                                {bannersLoadError instanceof Error
+                                    ? bannersLoadError.message
+                                    : "Check that the API is running and the database migration for banner fields is applied."}
+                            </p>
+                            <Button variant="outline" onClick={() => void refetchBanners()}>
+                                Retry
+                            </Button>
                         </div>
                     ) : banners.length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground">
@@ -529,8 +492,8 @@ export default function BannerManagement() {
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {banners.map((b) => (
-                                <BannerCard key={b.id} banner={b} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEditClick} />
+                            {sortedBanners.map((b) => (
+                                <BannerCard key={b.id} banner={b} onToggle={handleToggle} onDelete={handleDeleteClick} onEdit={handleEditClick} />
                             ))}
                         </div>
                     )}
@@ -688,189 +651,63 @@ export default function BannerManagement() {
                 featuringId={featuringId}
             />
 
-            {/* ── Boost Dialog ─────────────────────────────────────────── */}
-            <Dialog open={!!boostShop} onOpenChange={(o) => !o && setBoostShop(null)}>
-                <DialogContent className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-green-600" /> Boost Shop Score
-                        </DialogTitle>
-                        <DialogDescription>
-                            Manually increase the trending score for{" "}
-                            <strong>{boostShop?.nameEn || boostShop?.nameMm}</strong>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                        <label className="text-sm font-medium">Boost Score</label>
-                        <Input
-                            type="number"
-                            min="0.1"
-                            step="0.1"
-                            value={boostScore}
-                            onChange={(e) => setBoostScore(e.target.value)}
-                            placeholder="e.g. 10"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            This score will be added to the shop's current trending score to increase visibility on the platform.
-                        </p>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setBoostShop(null)}>Cancel</Button>
-                        <Button
-                            onClick={handleBoostSubmit}
-                            disabled={boosting || !boostScore}
-                            className="gap-2"
-                        >
-                            <Zap className="h-4 w-4" />
-                            {boosting ? "Boosting..." : "Apply Boost"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* ── Create Banner Dialog ─────────────────────────────────── */}
-            <Dialog open={showCreate} onOpenChange={(o) => {
-                setShowCreate(o);
-                if (!o) {
-                    setEditingBannerId(null);
-                    setForm(emptyBanner);
-                    setImageFile(null);
-                    setImagePreview(null);
+            <Modal
+                open={!!boostShop}
+                onClose={() => setBoostShop(null)}
+                onSubmit={handleBoostSubmit}
+                loading={boosting}
+                title="Boost Shop Score"
+                description={
+                    <>
+                        Manually increase the trending score for{" "}
+                        <strong>{boostShop?.nameEn || boostShop?.nameMm}</strong>.
+                    </>
                 }
-            }}>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>{editingBannerId ? "Edit Banner" : "Create New Banner"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">Title (English)</label>
-                                <Input
-                                    placeholder="English Title"
-                                    value={form.titleEn}
-                                    onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Title (Myanmar)</label>
-                                <Input
-                                    placeholder="မြန်မာခေါင်းစဉ်"
-                                    value={form.titleMm}
-                                    onChange={(e) => setForm((f) => ({ ...f, titleMm: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">Title (Thai)</label>
-                                <Input
-                                    placeholder="ชื่อหัวข้อภาษาไทย"
-                                    value={form.titleTh}
-                                    onChange={(e) => setForm((f) => ({ ...f, titleTh: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">Image</label>
-                                <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                                    {imagePreview ? (
-                                        <div className="relative">
-                                            <img src={imagePreview} alt="Preview" className="h-32 w-full object-cover rounded mx-auto" />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
-                                                className="absolute top-1 right-1 h-6 w-6 p-0"
-                                                onClick={() => { setImageFile(null); setImagePreview(null); }}
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <label className="flex flex-col items-center justify-center gap-2 cursor-pointer">
-                                            <Upload className="h-8 w-8 text-muted-foreground" />
-                                            <p className="text-sm font-medium">Click to upload</p>
-                                            <p className="text-xs text-muted-foreground">PNG, JPG or WebP</p>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={handleImageChange}
-                                            />
-                                        </label>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Display Order</label>
-                                <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    placeholder="1"
-                                    value={form.displayOrder}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "" || /^\d+$/.test(val)) {
-                                            setForm((f) => ({
-                                                ...f,
-                                                displayOrder: val === "" ? "" : parseInt(val, 10),
-                                            } as typeof f));
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        if (form.displayOrder === "" || (typeof form.displayOrder === "number" && form.displayOrder < 1)) {
-                                            setForm((f) => ({ ...f, displayOrder: 1 } as typeof f));
-                                        }
-                                    }}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Link URL (optional)</label>
-                            <Input
-                                placeholder="https://..."
-                                value={form.linkUrl ?? ""}
-                                onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">Start Date</label>
-                                <Input
-                                    type="date"
-                                    value={form.startDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">End Date</label>
-                                <Input
-                                    type="date"
-                                    value={form.endDate}
-                                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => {
-                            setShowCreate(false);
-                            setEditingBannerId(null);
-                            setForm(emptyBanner);
-                            setImageFile(null);
-                            setImagePreview(null);
-                        }}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={!form.titleEn || (!imagePreview && !imageFile) || saving}>
-                            {editingBannerId ? null : <Plus className="h-4 w-4 mr-2" />}
-                            {editingBannerId ? "Update Banner" : "Create Banner"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                submitText="Apply Boost"
+                width="sm:max-w-sm"
+            >
+                <div className="space-y-3">
+                    <label className="text-sm font-medium">Boost Score</label>
+                    <Input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={boostScore}
+                        onChange={(e) => setBoostScore(e.target.value)}
+                        placeholder="e.g. 10"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        This score will be added to the shop&apos;s current trending score to
+                        increase visibility on the platform.
+                    </p>
+                </div>
+            </Modal>
+
+            <BannerFormDialog
+                open={showBannerForm}
+                onOpenChange={(open) => {
+                    setShowBannerForm(open);
+                    if (!open) setEditingBanner(null);
+                }}
+                banner={editingBanner}
+                submitting={creatingBanner || updatingBanner}
+                onSubmit={handleBannerFormSubmit}
+            />
+
+            <ConfirmDialog
+                open={deleteDialog.open}
+                onOpenChange={(open) =>
+                    setDeleteDialog((prev) => ({ ...prev, open }))
+                }
+                title="Delete banner"
+                description={`Remove "${deleteDialog.name}"? This cannot be undone.`}
+                confirmText="Delete"
+                variant="destructive"
+                loading={deletingBanner}
+                onCancel={() => setDeleteDialog({ open: false, id: 0, name: "" })}
+                onConfirm={handleDeleteConfirm}
+            />
         </div>
     );
 }
+

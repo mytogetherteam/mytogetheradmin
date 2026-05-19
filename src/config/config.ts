@@ -165,9 +165,8 @@ export const config = {
           detail: (id: string | number) => `/api/admin/promotions/${id}`,
         },
         banners: {
-          base: '/api/admin/marketing/banners',
-          detail: (id: string) => `/api/admin/marketing/banners/${id}`,
-          toggle: (id: string) => `/api/admin/marketing/banners/${id}/toggle`,
+          base: '/api/admin/banners',
+          detail: (id: string | number) => `/api/admin/banners/${id}`,
         },
         featuredShops: '/api/admin/marketing/featured-shops',
         shopActions: {
@@ -231,6 +230,12 @@ export const config = {
         activity: (id: string | number) => `/api/admin/users/${id}/activity`,
         lookup: '/api/admin/users/lookup',
         shopOwners: '/api/admin/users/shop-owners',
+      },
+      manageUsers: {
+        list: '/api/admin/manage-users',
+        detail: (accountType: string, id: string | number) =>
+          `/api/admin/manage-users/${accountType}/${id}`,
+        roles: '/api/admin/manage-users/roles',
       },
       search: '/api/admin/search',
     },

@@ -8,7 +8,7 @@ export interface CuisineDTO {
   nameEn: string;
   nameMm?: string;
   nameTh?: string;
-  active?: boolean;
+  isActive?: boolean;
   imageUrl?: string;
   displayOrder?: number;
   regionId?: number;
