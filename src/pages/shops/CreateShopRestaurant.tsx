@@ -21,11 +21,6 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-<<<<<<< Updated upstream
-import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2 } from "lucide-react"
-import type { PaymentMethodDTO } from "@/services/shopService"
-import ConfirmDialog from "@/components/common/ConfirmDialog"
-=======
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Eye, EyeOff, Shield, User, Loader2, Users } from "lucide-react"
 import type { PaymentMethodDTO, ShopDetail } from "@/services/shopService"
 import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
@@ -39,15 +34,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
->>>>>>> Stashed changes
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { AsyncSelectField } from "@/components/common/AsyncSelectField"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -58,6 +44,7 @@ import { useCreateShopRestaurant, useShopRestaurantPaymentMethods } from "@/hook
 import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOperationRow"
 import { ShopPaymentQrPreview } from "@/components/shop/ShopPaymentQrPreview"
 import { Loader } from "@/components/ui/loader"
+import ConfirmDialog from "@/components/common/ConfirmDialog"
 
 export default function CreateShopRestaurant() {
     const [showPassword, setShowPassword] = useState(false)
