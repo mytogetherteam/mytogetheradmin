@@ -70,6 +70,11 @@ const PostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
 const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
 const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 
+// Shop feedback
+const ManageShopFeedback = lazy(
+  () => import("@/pages/shop-feedback/ManageShopFeedback"),
+);
+
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
 const Broadcast = lazy(() => import("@/pages/marketing/Broadcast"));
@@ -224,6 +229,7 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
+                <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
@@ -323,6 +329,7 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
+                <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />

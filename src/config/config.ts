@@ -92,6 +92,11 @@ export const config = {
         sightings: '/api/admin/lost-found/sightings',
         sightingDetail: (id: string) => `/api/admin/lost-found/sightings/${id}`,
       },
+      shopFeedback: {
+        list: '/api/admin/shop-feedback',
+        detail: (id: number) => `/api/admin/shop-feedback/${id}`,
+        read: (id: number) => `/api/admin/shop-feedback/${id}/read`,
+      },
       reviews: {
         shops: '/api/admin/reviews/shops',
         shopVisibility: (id: string) => `/api/admin/reviews/shops/${id}/visibility`,

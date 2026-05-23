@@ -8,8 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import ListStateView from "@/components/common/ListStateView";
 import {
   Table,
   TableBody,
@@ -64,56 +64,45 @@ export function FeaturedShopsTab({ enabled }: FeaturedShopsTabProps) {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <SortableTableHead
-                    label="Shop"
-                    sortKey="nameEn"
-                    sortConfig={table.sortConfig}
-                    onSort={actions.onSort}
-                    className="py-3"
-                  />
-                  <SortableTableHead
-                    label="Category"
-                    sortKey="category"
-                    sortConfig={table.sortConfig}
-                    onSort={actions.onSort}
-                  />
-                  <SortableTableHead
-                    label="Status"
-                    sortKey="isActive"
-                    sortConfig={table.sortConfig}
-                    onSort={actions.onSort}
-                  />
-                  <TableHead>Featured</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {table.shopsLoading ? (
-                  [...Array(5)].map((_, i) => (
-                    <TableRow key={i}>
-                      {[...Array(5)].map((__, j) => (
-                        <TableCell key={j}>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : table.shops.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-12 text-muted-foreground"
-                    >
-                      {search.value
-                        ? "No shops matching your search."
-                        : "No shops found."}
-                    </TableCell>
+            <ListStateView
+              isLoading={table.shopsLoading}
+              isError={false}
+              isEmpty={table.shops.length === 0}
+              loadingMessage="Loading shops…"
+              emptyMessage={
+                search.value
+                  ? "No shops matching your search."
+                  : "No shops found."
+              }
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <SortableTableHead
+                      label="Shop"
+                      sortKey="nameEn"
+                      sortConfig={table.sortConfig}
+                      onSort={actions.onSort}
+                      className="py-3"
+                    />
+                    <SortableTableHead
+                      label="Category"
+                      sortKey="category"
+                      sortConfig={table.sortConfig}
+                      onSort={actions.onSort}
+                    />
+                    <SortableTableHead
+                      label="Status"
+                      sortKey="isActive"
+                      sortConfig={table.sortConfig}
+                      onSort={actions.onSort}
+                    />
+                    <TableHead>Featured</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  table.shops.map((shop) => (
+                </TableHeader>
+                <TableBody>
+                  {table.shops.map((shop) => (
                     <TableRow
                       key={shop.id}
                       className="hover:bg-muted/20 transition-colors"
@@ -184,10 +173,10 @@ export function FeaturedShopsTab({ enabled }: FeaturedShopsTabProps) {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            </ListStateView>
           </div>
         </CardContent>
       </Card>

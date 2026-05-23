@@ -26,6 +26,7 @@ import {
     Presentation,
     Flag,
     TicketPercent,
+    MessageSquare,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -181,6 +182,18 @@ export const navigationConfig: NavGroup[] = [
             { title: "User/Shop Reports", url: "/moderation/user-shop", icon: ShieldAlert, tooltip: "User/Shop Reports" },
             { title: "Review Moderation", url: "/review/reviews", icon: ClipboardList, tooltip: "Reviews" }
         ]
+    },
+    {
+        title: "Shop Feedback",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Shop Feedback",
+                url: "/shop-feedback/manage",
+                icon: MessageSquare,
+                tooltip: "Shop Feedback from shop admins",
+            },
+        ],
     },
     {
         title: "Community",

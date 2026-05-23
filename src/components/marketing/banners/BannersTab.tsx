@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ImageIcon, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import ListStateView from "@/components/common/ListStateView";
 import { BannerFormDialog } from "@/components/marketing/BannerFormDialog";
 import { BannerCard } from "./BannerCard";
 import { useBannerManagement } from "@/hooks/banner-images/useBannerManagement";
@@ -17,30 +17,18 @@ export function BannersTab() {
         </Button>
       </div>
 
-      {list.loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-64" />
-          ))}
-        </div>
-      ) : list.isError ? (
-        <div className="text-center py-16 space-y-3">
-          <p className="text-destructive font-medium">Failed to load banners</p>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            {list.error instanceof Error
-              ? list.error.message
-              : "Check that the API is running and the database migration for banner fields is applied."}
-          </p>
-          <Button variant="outline" onClick={() => void list.refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : list.banners.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <ImageIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p>No banners yet. Create your first banner.</p>
-        </div>
-      ) : (
+      <ListStateView
+        isLoading={list.loading}
+        isError={list.isError}
+        isEmpty={list.banners.length === 0}
+        loadingMessage="Loading banners…"
+        errorMessage={
+          list.error instanceof Error
+            ? list.error.message
+            : "Failed to load banners. Check that the API is running and the database migration for banner fields is applied."
+        }
+        emptyMessage="No banners yet. Create your first banner."
+      >
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {list.banners.map((banner) => (
             <BannerCard
@@ -52,7 +40,7 @@ export function BannersTab() {
             />
           ))}
         </div>
-      )}
+      </ListStateView>
 
       <BannerFormDialog
         open={form.open}
