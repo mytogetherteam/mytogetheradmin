@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Eye, EyeOff, Shield, User, Loader2, Users } from "lucide-react"
-import type { PaymentMethodDTO, ShopDetail } from "@/services/shopService"
+import type { PaymentMethodDTO } from "@/services/shopService"
 import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
 import {
     AlertDialog,

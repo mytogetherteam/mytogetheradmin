@@ -264,7 +264,7 @@ export const navigationConfig: NavGroup[] = [
         title: "Data Import",
         roles: AdminRole.ADMIN,
         items: [
-            { title: "Import Single Shop (Excel)", url: "/import/single-shop-excel", icon: FileSpreadsheet, tooltip: "Import Single Shop (Excel)" },
+            { title: "Import Single Shop (Excel)", url: "/import/single-shop-excel", icon: FileSpreadsheet, tooltip: "Excel onboarding API (dry run + create shop)" },
         ]
     },
     {
