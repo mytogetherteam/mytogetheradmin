@@ -25,7 +25,6 @@ import {
   Store,
   Wallet,
 } from "lucide-react";
-import { ShopService } from "@/services/shopService";
 import { compressImage } from "@/utils/imageCompression";
 import { PaymentMethodService } from "@/services/paymentMethodService";
 import {
@@ -35,7 +34,6 @@ import {
 } from "@/hooks/shop-payment-types/useShopPaymentType";
 import {
   useAdminShopProfilesBareInfiniteFetcher,
-  type AdminShopProfileDropdownShop,
 } from "@/hooks/shops";
 import {
   createShopPaymentTypeSchema,
@@ -55,9 +53,6 @@ export default function CreateShopPaymentType() {
       : undefined;
   const numericPaymentTypeId =
     id && !Number.isNaN(parseInt(id, 10)) ? parseInt(id, 10) : undefined;
-
-  const [selectedShopData, setSelectedShopData] =
-    useState<AdminShopProfileDropdownShop | null>(null);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [existingQrUrl, setExistingQrUrl] = useState<string | null>(null);
@@ -242,11 +237,6 @@ export default function CreateShopPaymentType() {
                         onValueChange={(val) => {
                           field.onChange(val ? parseInt(val, 10) : 0);
                         }}
-                        initialValue={
-                          selectedShopData
-                            ? { value: String(selectedShopData.id), label: selectedShopData.dropdownLabel }
-                            : undefined
-                        }
                         placeholder="Search shop..."
                         disabled={isEdit}
                       />

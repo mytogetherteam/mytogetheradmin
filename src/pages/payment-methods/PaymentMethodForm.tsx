@@ -30,7 +30,6 @@ import {
   useCreatePaymentMethodMutation,
   useUpdatePaymentMethodMutation,
 } from "@/hooks/payment-methods/usePaymentMethod";
-import { PaymentMethodDTO } from "@/services/shopService";
 
 export default function PaymentMethodForm() {
   const { id } = useParams<{ id: string }>();

@@ -41,6 +41,10 @@ export const config = {
           `/api/admin/shop-profile/${id}/change-status`,
         assignAdmin: (id: number) =>
           `/api/admin/shop-profile/${id}/assign-admin`,
+        importOnboardingExcel: '/api/admin/shop-profile/import/excel',
+        importOnboardingJson: '/api/admin/shop-profile/import/json',
+        /** Taxonomy lists for onboarding template ReferenceData sample rows */
+        onboardingReferenceLists: '/api/admin/shop-profile/import/onboarding-reference-lists',
       },
       shopSubCategoriesByCategory: (categoryId: number) => `/api/admin/shop-categories/${categoryId}/sub-categories`,
       payment: {

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Upload, X, Loader2, Trash2, Plus, FolderTree } from "lucide-react";
+import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { menuService, Variant, ItemTag, ComboComponent } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";

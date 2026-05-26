@@ -17,16 +17,6 @@ const shopPaymentMethodSchema = z.object({
     qrFile: z.any().optional(),
 });
 
-const requiredPositiveNumber = (message: string) =>
-    z.preprocess(
-        (value) => {
-            if (value === "" || value === undefined || value === null) return undefined
-            const n = Number(value)
-            return Number.isFinite(n) ? n : value
-        },
-        z.number({ error: message }).min(1, message).optional(),
-    ).refine((value) => value !== undefined, { message })
-
 export const shopFormSchema = z.object({
     nameEn: z.string().optional(),
     nameMm: z.string().optional().or(z.literal("")),
