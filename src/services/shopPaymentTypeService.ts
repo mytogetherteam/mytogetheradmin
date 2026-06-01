@@ -58,6 +58,16 @@ interface ShopPaymentTypeUpdatePayload {
   isActive?: boolean;
 }
 
+function extractShopPaymentMethodRows(
+  raw: AdminShopPaymentMethodListResponse,
+): AdminShopPaymentMethodRow[] {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.data)) return raw.data;
+  const pageable = raw as { content?: AdminShopPaymentMethodRow[] };
+  if (Array.isArray(pageable.content)) return pageable.content;
+  return [];
+}
+
 function mapAdminShopPaymentMethodRow(
   row: AdminShopPaymentMethodRow,
 ): ShopPaymentTypeDTO {
@@ -108,9 +118,10 @@ export const ShopPaymentTypeService = {
    */
   getShopPaymentTypes: async (shopId: number): Promise<ShopPaymentTypeDTO[]> => {
     const endpoint = config.endpoints.admin.payment.shopPaymentMethodsByShop(shopId);
-    const raw = await apiClient.get<AdminShopPaymentMethodListResponse>(endpoint);
-    const rows = Array.isArray(raw) ? raw : raw.data;
-    return rows.map(mapAdminShopPaymentMethodRow);
+    const raw = await apiClient.get<AdminShopPaymentMethodListResponse>(endpoint, {
+      params: { page: 1, size: 20 },
+    });
+    return extractShopPaymentMethodRows(raw).map(mapAdminShopPaymentMethodRow);
   },
 
   /**
