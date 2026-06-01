@@ -209,11 +209,14 @@ export default function CreateMenuItem() {
                 setShopId(item.shopId.toString());
                 setSelectedShopData({ label: item.shopName || "Selected Shop", value: item.shopId.toString() });
 
-                // Fetch real name if backend didn't provide it
+                // Fetch real name if backend didn't provide it (Nest: use shop-profile, not legacy /admin/shops)
                 if (!item.shopName || item.shopName === "Selected Shop") {
-                    ShopService.getShopById(item.shopId).then((shop) => {
-                        setSelectedShopData({ label: shop.nameEn || shop.nameMm || `Shop ${shop.id}`, value: String(shop.id) });
-                    }).catch((e) => console.log("Failed to load shop name fallback", e));
+                    ShopService.getAdminShopProfileById(item.shopId).then((shop) => {
+                        setSelectedShopData({
+                            label: shop.nameEn || shop.nameMm || shop.nameTh || `Shop ${shop.id}`,
+                            value: String(shop.id),
+                        });
+                    }).catch((e) => handleApiError(e, "Failed to load shop details"));
                 }
             }
 

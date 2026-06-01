@@ -304,7 +304,7 @@ export default function ManageUsers() {
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Delete User</TooltipContent>
+                                      <TooltipContent>Deactivate user (soft delete)</TooltipContent>
                                     </Tooltip>
                                   )}
                                 </div>
@@ -348,11 +348,11 @@ export default function ManageUsers() {
         onOpenChange={(open) =>
           setDeleteDialog((dialog) => ({ ...dialog, open }))
         }
-        title="Delete User?"
-        description={`This will permanently delete ${
+        title="Deactivate user?"
+        description={`This will soft-delete ${
           deleteDialog.user ? getDisplayName(deleteDialog.user) : "this user"
-        }. This action cannot be undone.`}
-        confirmText="Delete"
+        }: they are removed from this list and cannot sign in. Records are kept in the database.`}
+        confirmText="Deactivate"
         cancelText="Cancel"
         variant="destructive"
         loading={deleting}
