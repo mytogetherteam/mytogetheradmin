@@ -6,6 +6,7 @@ import {
   ShopCategoryDTO,
 } from "@/services/shopCategoryService";
 import { handleApiError } from "@/lib/error-utils";
+import { resolveMediaUrl } from "@/lib/resolveMediaUrl";
 import { compressImage } from "@/utils/imageCompression";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,7 +128,9 @@ export default function CreateShopSubCategory() {
         displayOrder: subCategoryData.displayOrder || 1,
         isActive: subCategoryData.isActive !== false,
       });
-      if (subCategoryData.imageUrl) setExistingImage(subCategoryData.imageUrl);
+      if (subCategoryData.imageUrl) {
+        setExistingImage(resolveMediaUrl(subCategoryData.imageUrl) ?? null);
+      }
     }
   }, [isEditMode, subCategoryData, reset]);
 
@@ -298,7 +301,7 @@ export default function CreateShopSubCategory() {
               {imagePreview || existingImage ? (
                 <div className="relative w-32 h-32 rounded-lg overflow-hidden border">
                   <img
-                    src={imagePreview || `http://localhost:3000/${existingImage}`}
+                    src={imagePreview || existingImage || ""}
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />
