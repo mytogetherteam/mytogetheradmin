@@ -35,6 +35,7 @@ import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService"
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { getMenuItemPriceDisplay } from "@/lib/menu-item-price-display";
 import { Badge } from "@/components/ui/badge";
 
 export default function ManageMenuItems() {
@@ -233,7 +234,8 @@ export default function ManageMenuItems() {
             const data = items.map(i => ({
                 ID: i.id,
                 Name: i.name,
-                Price: i.originalPrice ?? i.price,
+                "Discount price": i.price ?? i.originalPrice,
+                "Original price": i.originalPrice,
                 Currency: i.currency,
                 Shop: i.shopName || i.shopId,
                 Category: i.categoryName || i.menuCategoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
@@ -379,7 +381,21 @@ export default function ManageMenuItems() {
                                                         <div className="text-xs text-muted-foreground/70 truncate max-w-[150px] mt-1">{item.descriptionEn || item.description}</div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">
-                                                        <div>{item.originalPrice ?? item.price ?? "—"} <span className="text-[10px] text-muted-foreground">{item.currency}</span></div>
+                                                        {(() => {
+                                                            const { amount, showStrikethroughOriginal } =
+                                                                getMenuItemPriceDisplay(item);
+                                                            return (
+                                                                <div>
+                                                                    {amount ?? "—"}{" "}
+                                                                    <span className="text-[10px] text-muted-foreground">{item.currency}</span>
+                                                                    {showStrikethroughOriginal && item.originalPrice != null ? (
+                                                                        <span className="block text-[10px] text-muted-foreground line-through">
+                                                                            {item.originalPrice}
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         {(item.smallPrice || item.mediumPrice || item.largePrice) && (
                                                             <div className="text-[10px] text-muted-foreground mt-1">
                                                                 {item.smallPrice && <span>S: {item.smallPrice} </span>}

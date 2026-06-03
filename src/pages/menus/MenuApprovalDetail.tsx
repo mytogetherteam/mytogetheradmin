@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check, X, Store, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { getMenuItemPriceDisplay } from "@/lib/menu-item-price-display";
 
 import {
     AlertDialog,
@@ -259,22 +260,31 @@ export default function MenuApprovalDetail() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</p>
-                                    <p className="text-2xl font-bold text-primary">
-                                        {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(
-                                            approval.originalPrice ?? approval.price ?? 0,
-                                        )}
-                                    </p>
-                                </div>
-                                {(approval.price != null && approval.originalPrice != null && approval.price !== approval.originalPrice) && (
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer pays</p>
-                                        <p className="text-xl font-medium text-green-600">
-                                            {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
-                                        </p>
-                                    </div>
-                                )}
+                                {(() => {
+                                    const { amount, showStrikethroughOriginal } = getMenuItemPriceDisplay(approval);
+                                    const fmt = (n: number) =>
+                                        new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(n);
+                                    return (
+                                        <>
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    {showStrikethroughOriginal ? "Discount price" : "Price"}
+                                                </p>
+                                                <p className="text-2xl font-bold text-primary">
+                                                    {fmt(amount ?? 0)}
+                                                </p>
+                                            </div>
+                                            {showStrikethroughOriginal && approval.originalPrice != null && approval.originalPrice > 0 && (
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Original price</p>
+                                                    <p className="text-xl font-medium text-muted-foreground line-through">
+                                                        {fmt(approval.originalPrice)}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 {(approval.discountAmount || approval.discountPercentage) && (
                                     <>
                                         <div className="space-y-1">
