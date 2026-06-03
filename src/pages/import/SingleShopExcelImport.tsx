@@ -36,6 +36,11 @@ import { adminShopProfilesQueryRoot } from "@/hooks/shops/shared/adminShopProfil
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
+  formatExcelPriceForPreview,
+  isExcelPriceHeader,
+  normalizeExcelPriceValue,
+} from "@/lib/excel-price";
+import {
   ArrowUpDown,
   Download,
   FileUp,
@@ -282,6 +287,11 @@ function formatPreviewCell(
   }
 
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+
+  if (isExcelPriceHeader(header)) {
+    return formatExcelPriceForPreview(v);
+  }
+
   return String(v ?? "");
 }
 
@@ -439,7 +449,11 @@ export default function SingleShopExcelImport() {
       const rowArr = matrix[i] || [];
       const rowObj: ParsedRow = { __excelRow: i + 1 };
       for (let c = 0; c < headers.length; c++) {
-        rowObj[headers[c]] = rowArr[c] ?? null;
+        const header = headers[c];
+        const raw: unknown = rowArr[c] ?? null;
+        rowObj[header] = isExcelPriceHeader(header)
+          ? normalizeExcelPriceValue(raw)
+          : raw;
       }
       rows.push(rowObj);
     }

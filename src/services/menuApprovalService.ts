@@ -19,7 +19,8 @@ export interface MenuApprovalDTO {
   descriptionEn?: string;
   descriptionMm?: string;
   descriptionTh?: string;
-  price: number;
+  /** Computed selling amount from API when discounts apply */
+  price?: number;
   originalPrice?: number;
   discountAmount?: number;
   discountPercentage?: number;

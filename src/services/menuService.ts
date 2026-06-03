@@ -48,7 +48,8 @@ export interface MenuItem {
     descriptionMm?: string;
     descriptionTh?: string;
     descriptionEn?: string;
-    price: number;
+    /** Computed selling amount from API (not a DB column on menu_item). */
+    price?: number;
     originalPrice?: number;
     discountAmount?: number;
     discountPercentage?: number;
