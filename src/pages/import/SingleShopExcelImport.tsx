@@ -96,6 +96,7 @@ const SHEET_CONFIG: Record<
   MenuItems: {
     title: "MenuItems",
     headers: [
+      "master_category_key",
       "menu_name_en",
       "item_name_en",
       "item_name_mm",
