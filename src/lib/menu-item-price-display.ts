@@ -7,15 +7,28 @@ export type MenuItemPriceRow = {
 };
 
 /**
- * Customer-facing amount. Prefer API `price`; otherwise derive from original − discount.
+ * Customer-facing amount. Prefer API `price`; otherwise derive from original − discount
+ * (same rules as Nest `effectiveMenuItemPrice`).
  */
 export function resolveSellingPrice(item: MenuItemPriceRow): number {
-  const original = Number(item.originalPrice) || 0;
-  const discountAmount = Number(item.discountAmount) || 0;
-  if (discountAmount > 0 || discountAmount !== null) {
-    return discountAmount;
+  const apiPrice = Number(item.price);
+  if (Number.isFinite(apiPrice) && apiPrice > 0) {
+    return apiPrice;
   }
-  return original;
+
+  const base = Number(item.originalPrice) || 0;
+  const discountAmount = Number(item.discountAmount) || 0;
+  if (item.discountAmount != null && discountAmount > 0) {
+    const discounted = Math.max(0, base - discountAmount);
+    return discounted > 0 ? discounted : base;
+  }
+
+  const discountPct = Number(item.discountPercentage) || 0;
+  if (item.discountPercentage != null && discountPct > 0) {
+    return Math.max(0, base * (1 - discountPct / 100));
+  }
+
+  return base;
 }
 
 /** When discount price is 0 or equals list price, show list price only (no 0, no strikethrough). */
