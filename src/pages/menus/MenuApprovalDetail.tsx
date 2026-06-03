@@ -260,16 +260,18 @@ export default function MenuApprovalDetail() {
                         <CardContent>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                                 <div className="space-y-1">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Selling Price</p>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</p>
                                     <p className="text-2xl font-bold text-primary">
-                                        {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
+                                        {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(
+                                            approval.originalPrice ?? approval.price ?? 0,
+                                        )}
                                     </p>
                                 </div>
-                                {approval.originalPrice && (
+                                {(approval.price != null && approval.originalPrice != null && approval.price !== approval.originalPrice) && (
                                     <div className="space-y-1">
-                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Original Price</p>
-                                        <p className="text-xl font-medium text-muted-foreground line-through">
-                                            {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.originalPrice)}
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer pays</p>
+                                        <p className="text-xl font-medium text-green-600">
+                                            {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
                                         </p>
                                     </div>
                                 )}

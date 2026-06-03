@@ -233,7 +233,7 @@ export default function ManageMenuItems() {
             const data = items.map(i => ({
                 ID: i.id,
                 Name: i.name,
-                Price: i.price,
+                Price: i.originalPrice ?? i.price,
                 Currency: i.currency,
                 Shop: i.shopName || i.shopId,
                 Category: i.categoryName || i.menuCategoryName || extraCategoryNames[i.menuCategoryId || (i as any).categoryId || -1] || 'Uncategorized',
@@ -379,7 +379,7 @@ export default function ManageMenuItems() {
                                                         <div className="text-xs text-muted-foreground/70 truncate max-w-[150px] mt-1">{item.descriptionEn || item.description}</div>
                                                     </TableCell>
                                                     <TableCell className="font-medium">
-                                                        <div>{item.price} <span className="text-[10px] text-muted-foreground">{item.currency}</span></div>
+                                                        <div>{item.originalPrice ?? item.price ?? "—"} <span className="text-[10px] text-muted-foreground">{item.currency}</span></div>
                                                         {(item.smallPrice || item.mediumPrice || item.largePrice) && (
                                                             <div className="text-[10px] text-muted-foreground mt-1">
                                                                 {item.smallPrice && <span>S: {item.smallPrice} </span>}

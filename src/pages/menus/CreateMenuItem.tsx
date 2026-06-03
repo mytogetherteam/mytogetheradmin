@@ -59,8 +59,6 @@ export default function CreateMenuItem() {
     const [descriptionMm, setDescriptionMm] = useState("");
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
-    /** Selling price (discount price). */
-    const [price, setPrice] = useState("");
     const [originalPrice, setOriginalPrice] = useState("");
     /** Not shown in UI; kept from loaded item or schema default for API. */
     const [currency, setCurrency] = useState("฿");
@@ -202,8 +200,10 @@ export default function CreateMenuItem() {
             setDescriptionTh(item.descriptionTh || "");
             setDescriptionEn(item.descriptionEn || "");
             // Format price with commas safely
-            setPrice(item.price != null ? Number(item.price).toLocaleString() : "0");
-            setOriginalPrice(item.originalPrice != null ? Number(item.originalPrice).toLocaleString() : "");
+            const listPrice = item.originalPrice ?? item.price ?? 0;
+            setOriginalPrice(
+                listPrice != null ? Number(listPrice).toLocaleString() : "",
+            );
             setCurrency(item.currency || "฿");
             if (item.shopId) {
                 setShopId(item.shopId.toString());
@@ -282,7 +282,6 @@ export default function CreateMenuItem() {
             setDescriptionMm("");
             setDescriptionTh("");
             setDescriptionEn("");
-            setPrice("");
             setOriginalPrice("");
             setCurrency("฿");
             setCategoryId("");
@@ -393,7 +392,6 @@ export default function CreateMenuItem() {
                 descriptionEn,
                 descriptionMm,
                 descriptionTh,
-                priceInput: price,
                 originalPriceInput: originalPrice,
                 currency,
                 categoryId,
@@ -549,27 +547,17 @@ export default function CreateMenuItem() {
 
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Pricing & Details</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Original price</Label>
-                                        <PriceInput
-                                            value={originalPrice}
-                                            onValueChange={setOriginalPrice}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Discount price</Label>
-                                        <PriceInput
-                                            value={price}
-                                            onValueChange={setPrice}
-                                            required
-                                            placeholder="0"
-                                        />
-                                    </div>
+                                <div className="space-y-2 max-w-xs">
+                                    <Label>Price</Label>
+                                    <PriceInput
+                                        value={originalPrice}
+                                        onValueChange={setOriginalPrice}
+                                        required
+                                        placeholder="0"
+                                    />
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    Discount price is the amount customers pay. Original price is optional (e.g. before discount).
+                                    Stored as the menu item list price. Optional discounts use discount amount or percentage fields when configured.
                                 </p>
 
                                 <h3 className="text-lg font-medium mt-6">Flags & Status</h3>

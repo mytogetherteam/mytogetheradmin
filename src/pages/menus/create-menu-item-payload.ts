@@ -54,7 +54,7 @@ export interface MenuItemSubmitFormSnapshot {
   descriptionEn: string;
   descriptionMm: string;
   descriptionTh: string;
-  priceInput: string;
+  /** List/base price stored as `menu_item.originalPrice` */
   originalPriceInput: string;
   currency: string;
   categoryId: string;
@@ -75,10 +75,7 @@ export interface MenuItemSubmitFormSnapshot {
 
 /** JSON body for multipart field `data` on POST/PUT /api/admin/items */
 export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot): Record<string, unknown> {
-  const priceNum = numericFromPriceInput(snapshot.priceInput);
-  const originalNum = snapshot.originalPriceInput
-    ? numericFromPriceInput(snapshot.originalPriceInput)
-    : 0;
+  const originalNum = numericFromPriceInput(snapshot.originalPriceInput);
 
   const addonGroupsPayload = buildAddonGroupsPayload(
     snapshot.addons,
@@ -102,7 +99,6 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
     description_th: snapshot.descriptionTh || "",
     descriptionEn: snapshot.descriptionEn || "",
     description_en: snapshot.descriptionEn || "",
-    price: priceNum,
     originalPrice: originalNum,
     original_price: originalNum,
     discountAmount: 0,

@@ -157,8 +157,8 @@ export function MenuItemApprovalsTab() {
                                 />
                             </div>
                             <div className="w-full sm:w-[220px]">
-                                <ShopSelect 
-                                    onSelect={(id) => setShopIdFilter(id ? String(id) : "")} 
+                                <ShopSelect
+                                    onSelect={(id) => setShopIdFilter(id ? String(id) : "")}
                                 />
                             </div>
                         </div>
@@ -220,7 +220,9 @@ export function MenuItemApprovalsTab() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(approval.price)}
+                                                {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(
+                                                    approval.originalPrice ?? approval.price ?? 0,
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 {approval.requestType ? (
@@ -230,8 +232,8 @@ export function MenuItemApprovalsTab() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge 
-                                                    variant="secondary" 
+                                                <Badge
+                                                    variant="secondary"
                                                     className={
                                                         approval.status === "PENDING_APPROVAL" || approval.status === "PENDING"
                                                             ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200"

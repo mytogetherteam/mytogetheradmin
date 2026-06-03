@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { isExcelPriceHeader, normalizeExcelPriceValue } from "@/lib/excel-price";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,7 +71,11 @@ export default function ActivityExcelImport() {
       const rowArr = matrix[i] || [];
       const rowObj: ParsedRow = { __excelRow: i + 1 };
       for (let c = 0; c < headers.length; c++) {
-        rowObj[headers[c]] = rowArr[c] ?? null;
+        const header = headers[c];
+        const raw: unknown = rowArr[c] ?? null;
+        rowObj[header] = isExcelPriceHeader(header)
+          ? normalizeExcelPriceValue(raw)
+          : raw;
       }
       rows.push(rowObj);
     }
