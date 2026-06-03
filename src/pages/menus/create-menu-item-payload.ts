@@ -6,6 +6,10 @@ function numericFromPriceInput(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isBlankPriceInput(value: string): boolean {
+  return value.replace(/,/g, "").trim() === "";
+}
+
 function buildAddonGroupsPayload(addons: AddonRow[], preserveOptionIds: boolean) {
   if (addons.length === 0) return [];
 
@@ -54,8 +58,9 @@ export interface MenuItemSubmitFormSnapshot {
   descriptionEn: string;
   descriptionMm: string;
   descriptionTh: string;
-  /** List/base price stored as `menu_item.originalPrice` */
+  /** List/base price → `menu_item.originalPrice` */
   originalPriceInput: string;
+  discountAmountInput: string;
   currency: string;
   categoryId: string;
   shopId: string;
@@ -76,6 +81,14 @@ export interface MenuItemSubmitFormSnapshot {
 /** JSON body for multipart field `data` on POST/PUT /api/admin/items */
 export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot): Record<string, unknown> {
   const originalNum = numericFromPriceInput(snapshot.originalPriceInput);
+  const discountBlank = isBlankPriceInput(snapshot.discountAmountInput);
+  const discountAmountNum = discountBlank
+    ? 0
+    : numericFromPriceInput(snapshot.discountAmountInput);
+  let discountAmount: number | null = null;
+  if (!discountBlank && discountAmountNum > 0) {
+    discountAmount = discountAmountNum;
+  }
 
   const addonGroupsPayload = buildAddonGroupsPayload(
     snapshot.addons,
@@ -101,10 +114,10 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
     description_en: snapshot.descriptionEn || "",
     originalPrice: originalNum,
     original_price: originalNum,
-    discountAmount: 0,
-    discount_amount: 0,
-    discountPercentage: 0,
-    discount_percentage: 0,
+    discountAmount,
+    discount_amount: discountAmount,
+    discountPercentage: null,
+    discount_percentage: null,
     currency: snapshot.currency || "฿",
     menuCategoryId: Number(snapshot.categoryId),
     menu_category_id: Number(snapshot.categoryId),

@@ -60,6 +60,7 @@ export default function CreateMenuItem() {
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
     const [originalPrice, setOriginalPrice] = useState("");
+    const [discountAmount, setDiscountAmount] = useState("");
     /** Not shown in UI; kept from loaded item or schema default for API. */
     const [currency, setCurrency] = useState("฿");
     const [categoryId, setCategoryId] = useState("");
@@ -112,8 +113,6 @@ export default function CreateMenuItem() {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
-
-
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -199,10 +198,13 @@ export default function CreateMenuItem() {
             setDescriptionMm(item.descriptionMm || "");
             setDescriptionTh(item.descriptionTh || "");
             setDescriptionEn(item.descriptionEn || "");
-            // Format price with commas safely
-            const listPrice = item.originalPrice ?? item.price ?? 0;
-            setOriginalPrice(
-                listPrice != null ? Number(listPrice).toLocaleString() : "",
+            const original = Number(item.originalPrice) || 0;
+            const amountOff = item.discountAmount;
+            setOriginalPrice(original > 0 ? original.toLocaleString() : "");
+            setDiscountAmount(
+                amountOff != null && amountOff > 0
+                    ? Number(amountOff).toLocaleString()
+                    : "",
             );
             setCurrency(item.currency || "฿");
             if (item.shopId) {
@@ -283,6 +285,7 @@ export default function CreateMenuItem() {
             setDescriptionTh("");
             setDescriptionEn("");
             setOriginalPrice("");
+            setDiscountAmount("");
             setCurrency("฿");
             setCategoryId("");
             setShopId("");
@@ -393,6 +396,7 @@ export default function CreateMenuItem() {
                 descriptionMm,
                 descriptionTh,
                 originalPriceInput: originalPrice,
+                discountAmountInput: discountAmount,
                 currency,
                 categoryId,
                 shopId,
@@ -547,17 +551,26 @@ export default function CreateMenuItem() {
 
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Pricing & Details</h3>
-                                <div className="space-y-2 max-w-xs">
-                                    <Label>Price</Label>
-                                    <PriceInput
-                                        value={originalPrice}
-                                        onValueChange={setOriginalPrice}
-                                        required
-                                        placeholder="0"
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Original price</Label>
+                                        <PriceInput
+                                            value={originalPrice}
+                                            onValueChange={setOriginalPrice}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Discount amount</Label>
+                                        <PriceInput
+                                            value={discountAmount}
+                                            onValueChange={setDiscountAmount}
+                                            placeholder="0"
+                                        />
+                                    </div>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    Stored as the menu item list price. Optional discounts use discount amount or percentage fields when configured.
+                                    Discount amount is subtracted from original price for the customer price. Leave empty for no discount.
                                 </p>
 
                                 <h3 className="text-lg font-medium mt-6">Flags & Status</h3>

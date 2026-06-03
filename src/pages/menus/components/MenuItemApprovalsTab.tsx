@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { getMenuItemPriceDisplay } from "@/lib/menu-item-price-display";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
 import { SortableTableHead } from "@/components/SortableTableHead";
@@ -220,9 +221,12 @@ export function MenuItemApprovalsTab() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(
-                                                    approval.originalPrice ?? approval.price ?? 0,
-                                                )}
+                                                {(() => {
+                                                    const { amount } = getMenuItemPriceDisplay(approval);
+                                                    return new Intl.NumberFormat('en-MM', { style: 'currency', currency: 'MMK' }).format(
+                                                        amount ?? 0,
+                                                    );
+                                                })()}
                                             </TableCell>
                                             <TableCell>
                                                 {approval.requestType ? (
