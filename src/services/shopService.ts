@@ -638,7 +638,7 @@ export const ShopService = {
 
   /**
    * SuperAdmin: paginated shop profiles from Prisma (admin shop-profile API).
-   * Page is 1-based (matches backend). Relations are opt-in via POST body flags.
+   * Page is 1-based (matches backend). Relations are opt-in via query flags.
    */
   getAdminShopProfiles: async (
     page: number = 1,
@@ -649,16 +649,22 @@ export const ShopService = {
     isVerified?: boolean,
     includes: AdminShopProfileListIncludes = {},
   ): Promise<AdminShopProfileListResponse> => {
-    const { data: raw } = await api.post<unknown>(
-      config.endpoints.admin.shopProfile.list,
+    const { data: raw } = await api.get<unknown>(
+      config.endpoints.admin.shopProfile.create,
       {
-        page,
-        size,
-        ...(search?.trim() ? { search: search.trim() } : {}),
-        ...(categoryId !== undefined ? { categoryId } : {}),
-        ...(isActive !== undefined ? { isActive } : {}),
-        ...(isVerified !== undefined ? { isVerified } : {}),
-        ...includes,
+        params: {
+          page,
+          size,
+          ...(search?.trim() ? { search: search.trim() } : {}),
+          ...(categoryId !== undefined ? { categoryId } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+          ...(isVerified !== undefined ? { isVerified } : {}),
+          ...(includes.withOperationHours ? { withOperationHours: true } : {}),
+          ...(includes.withCity ? { withCity: true } : {}),
+          ...(includes.withDistrict ? { withDistrict: true } : {}),
+          ...(includes.withGalleries ? { withGalleries: true } : {}),
+          ...(includes.withShopCategory ? { withShopCategory: true } : {}),
+        },
       },
     );
 
