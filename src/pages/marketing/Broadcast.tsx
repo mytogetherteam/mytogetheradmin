@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { userService } from "@/services/userService";
 import {
   useBroadcastHistory,
@@ -39,6 +39,8 @@ import {
   Store,
   User as UserIcon,
   UserCog,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -82,6 +84,9 @@ export default function Broadcast() {
     label: string;
     value: string;
   } | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isPending: loading } = useBroadcastHistory(page, pageSize);
   const { mutateAsync: sendBroadcast, isPending: sending } =
@@ -108,6 +113,29 @@ export default function Broadcast() {
 
   const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be 5MB or smaller");
+      return;
+    }
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
@@ -127,11 +155,13 @@ export default function Broadcast() {
         audience === "SINGLE_USER"
           ? Number(selectedUserData!.value)
           : undefined,
+      image: imageFile,
     });
 
     setTitle("");
     setMessage("");
     setSelectedUserData(null);
+    clearImage();
     setPage(0);
   };
 
@@ -223,6 +253,49 @@ export default function Broadcast() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Image{" "}
+                  <span className="normal-case text-[10px] text-muted-foreground/70">
+                    (optional)
+                  </span>
+                </label>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+                {imagePreview ? (
+                  <div className="relative w-full overflow-hidden rounded-md border">
+                    <img
+                      src={imagePreview}
+                      alt="Announcement preview"
+                      className="max-h-48 w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed py-6 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                    <span>Click to upload an image</span>
+                    <span className="text-[10px]">PNG, JPG, WEBP up to 5MB</span>
+                  </button>
+                )}
+              </div>
+
               <Button type="submit" className="w-full" disabled={sending}>
                 {sending ? "Sending..." : "Send Now"}
               </Button>
@@ -247,6 +320,9 @@ export default function Broadcast() {
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
+                  <TableCell className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Image
+                  </TableCell>
                   <SortableTableHead
                     label="Title"
                     sortKey="title"
@@ -275,6 +351,9 @@ export default function Broadcast() {
                         <Skeleton className="h-4 w-20" />
                       </TableCell>
                       <TableCell>
+                        <Skeleton className="h-10 w-10 rounded" />
+                      </TableCell>
+                      <TableCell>
                         <Skeleton className="h-4 w-32" />
                       </TableCell>
                       <TableCell>
@@ -288,7 +367,7 @@ export default function Broadcast() {
                 ) : sortedHistory.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="text-center py-12 text-muted-foreground italic"
                     >
                       No broadcast history found.
@@ -307,6 +386,17 @@ export default function Broadcast() {
                             ? ` #${h.targetUserId}`
                             : ""}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {h.imageUrl ? (
+                          <img
+                            src={h.imageUrl}
+                            alt={h.title}
+                            className="h-10 w-10 rounded object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-medium text-sm">
                         {h.title}

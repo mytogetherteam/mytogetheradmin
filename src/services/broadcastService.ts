@@ -15,6 +15,8 @@ export interface BroadcastHistoryItem {
   targetUserId: number | null;
   title: string;
   message: string;
+  /** Optional image shown with the announcement. */
+  imageUrl?: string | null;
   data?: Record<string, unknown> | null;
   createdByAdminId: number;
   createdAt: string;
@@ -27,6 +29,8 @@ export interface SendBroadcastPayload {
   message: string;
   /** Required only when audience is SINGLE_USER. */
   targetUserId?: number;
+  /** Optional image file to attach to the announcement. */
+  image?: File | null;
   /** Optional structured payload (deep-link, image url, etc.). */
   data?: Record<string, unknown>;
 }
@@ -52,8 +56,20 @@ interface BroadcastListResponse {
 export const BroadcastService = {
   /** Queue a broadcast for delivery. Returns immediately. */
   send: async (payload: SendBroadcastPayload): Promise<SendBroadcastResult> => {
+    const { image, targetUserId, data, ...rest } = payload;
+
+    // Sent as multipart/form-data so an optional image can be attached; the
+    // axios interceptor strips the JSON Content-Type when it sees a FormData body.
+    const form = new FormData();
+    form.append("audience", rest.audience);
+    form.append("title", rest.title);
+    form.append("message", rest.message);
+    if (targetUserId != null) form.append("targetUserId", String(targetUserId));
+    if (data != null) form.append("data", JSON.stringify(data));
+    if (image) form.append("image", image);
+
     return handleApiCall(() =>
-      api.post(config.endpoints.admin.broadcasts.base, payload),
+      api.post(config.endpoints.admin.broadcasts.base, form),
     );
   },
 

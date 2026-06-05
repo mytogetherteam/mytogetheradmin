@@ -179,7 +179,7 @@ export const config = {
         history: '/api/admin/announcements/broadcast/history',
       },
       broadcasts: {
-        base: '/api/admin/broadcasts',
+        base: '/api/admin/announcements',
       },
       marketing: {
         promotions: {
