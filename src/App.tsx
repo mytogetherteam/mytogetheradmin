@@ -52,6 +52,8 @@ const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"
 const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
 const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
 const CreateMasterMenuCategory = lazy(() => import("@/pages/master-menu-categories/CreateMasterMenuCategory"));
+const ManageCollections = lazy(() => import("@/pages/collections/ManageCollections"));
+const CreateCollection = lazy(() => import("@/pages/collections/CreateCollection"));
 
 // Orders
 const OrderBoard = lazy(() => import("@/pages/orders/OrderBoard"));
@@ -227,6 +229,8 @@ function App() {
                 <Route path="/shop-payment-types/manage" element={<ManageShopPaymentTypes />} />
                 <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
+                <Route path="/collections/manage" element={<ManageCollections />} />
+                <Route path="/collections/create" element={<CreateCollection />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />

@@ -27,6 +27,7 @@ import {
     Flag,
     TicketPercent,
     MessageSquare,
+    Layers,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -98,6 +99,21 @@ export const navigationConfig: NavGroup[] = [
         roles: AdminRole.ADMIN_OPS,
         items: [
             { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Admin Approvals" }
+        ]
+    },
+    {
+        title: "Collections",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Collections",
+                icon: Layers,
+                tooltip: "Collections",
+                items: [
+                    { title: "Create Collection", url: "/collections/create", icon: Plus },
+                    { title: "Manage Collections", url: "/collections/manage", icon: Settings2 }
+                ]
+            }
         ]
     },
     {

@@ -120,8 +120,16 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activate = useCallback(() => {
+    // Disabled: this connection uses SockJS (`/ws/info`), but the current
+    // backend is a raw-WebSocket STOMP server with no SockJS endpoint, so it
+    // 404s and reconnects every 5s forever. Realtime now runs through the
+    // dedicated raw-WS hook (useSuperAdminNotificationSocket). Flip to `true`
+    // to re-enable if pointing at a SockJS-capable backend.
+    const LEGACY_ADMIN_WS_ENABLED = false;
+    if (!LEGACY_ADMIN_WS_ENABLED) return;
+
     if (clientRef.current?.active) return;
-    
+
     const token = localStorage.getItem(config.storage.tokenKey);
     if (!token) return;
 

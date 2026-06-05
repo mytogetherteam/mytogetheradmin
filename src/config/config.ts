@@ -25,6 +25,14 @@ export const config = {
       },
       shopCategories: '/api/admin/shop-categories',
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
+      collections: {
+        base: '/api/admin/collections',
+        detail: (id: number) => `/api/admin/collections/${id}`,
+        items: (id: number) => `/api/admin/collections/${id}/items`,
+        reorderItems: (id: number) => `/api/admin/collections/${id}/items/reorder`,
+        item: (id: number, menuItemId: number) =>
+          `/api/admin/collections/${id}/items/${menuItemId}`,
+      },
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
       cuisines: {
@@ -170,6 +178,9 @@ export const config = {
         notifyShop: (id: string | number) => `/api/admin/announcements/notify/shop/${id}`,
         history: '/api/admin/announcements/broadcast/history',
       },
+      broadcasts: {
+        base: '/api/admin/broadcasts',
+      },
       marketing: {
         promotions: {
           base: '/api/admin/promotions',
@@ -276,6 +287,13 @@ export const config = {
     user: {
       profile: '/api/admin/profile',
     },
+    superAdminNotifications: {
+      list: '/api/super-admin/notifications',
+      unreadCount: '/api/super-admin/notifications/unread-count',
+      readAll: '/api/super-admin/notifications/read-all',
+      read: (id: number) => `/api/super-admin/notifications/${id}/read`,
+      remove: (id: number) => `/api/super-admin/notifications/${id}`,
+    },
   },
   websocket: {
     endpoint: '/ws',
@@ -285,6 +303,9 @@ export const config = {
       shopRequests: '/topic/admin/shop-requests',
       newOrders: '/topic/admin/new-orders',
       orderUpdates: '/topic/admin/order-updates',
+      // Escalations: orders a shop didn't respond to within the SLA window.
+      // Backend broadcasts here (myshop_demo_api ShopEventsGateway).
+      superAdminNotifications: '/topic/superadmin/escalations',
     },
   },
   storage: {

@@ -10,11 +10,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User, Settings, LogOut, Bell } from "lucide-react"
+import { User, Settings, LogOut } from "lucide-react"
 import { authService } from "@/services/authService"
+import { NotificationBell } from "@/components/notificationBell"
 import { AdminGlobalSearch } from "@/components/admin-global-search"
 import { BreadcrumbNav } from "@/components/breadcrumb-nav"
-import { Button } from "@/components/ui/button"
 import { AdminLiveAlertToasts } from "@/components/admin-live-alert-toasts"
 import { AdminWebSocketProvider } from "@/hooks/useAdminWebSocket"
 import { useInactivityMiddleware } from "@/middleware/inactivityMiddleware"
@@ -49,10 +49,7 @@ export default function AppLayout() {
                         <div className="flex items-center gap-3 md:gap-4">
                             <AdminGlobalSearch />
 
-                            <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
-                                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-                                <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-600 border border-background"></span>
-                            </Button>
+                            <NotificationBell />
 
                             {/* User Profile Dropdown */}
                             <DropdownMenu>
