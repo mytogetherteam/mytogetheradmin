@@ -187,8 +187,47 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Create Item Tag", url: "/item-tags/create", icon: Plus },
                     { title: "Manage Item Tags", url: "/item-tags/manage", icon: List }
                 ]
-            }
+            },
         ]
+    },
+    {
+        title: "Visa",
+        roles: AdminRole.ADMIN_SETUP,
+        items: [
+            {
+                title: "Visa Category",
+                icon: FileText,
+                tooltip: "Visa category groups (Short-Term, Long-Term, etc.)",
+                items: [
+                    { title: "Create Category", url: "/visa/categories/create", icon: Plus },
+                    { title: "Manage Categories", url: "/visa/categories/manage", icon: List },
+                ],
+            },
+            {
+                title: "Visa",
+                icon: FileText,
+                tooltip: "Thailand visa types & immigration services",
+                items: [
+                    { title: "Create Visa", url: "/visa/create", icon: Plus },
+                    { title: "Manage Visas", url: "/visa/manage", icon: List },
+                ],
+            },
+        ]
+    },
+    {
+        title: "Places",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Places",
+                icon: MapPin,
+                tooltip: "Points of interest for the mobile app",
+                items: [
+                    { title: "Create Place", url: "/places/create", icon: Plus },
+                    { title: "Manage Places", url: "/places/manage", icon: List },
+                ],
+            },
+        ],
     },
     {
         title: "Review & Moderation",

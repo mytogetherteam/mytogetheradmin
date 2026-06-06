@@ -80,6 +80,20 @@ export const config = {
         list: '/api/admin/regions',
         detail: (id: number) => `/api/admin/regions/${id}`,
       },
+      visas: {
+        base: '/api/admin/visa',
+        detail: (id: number) => `/api/admin/visa/${id}`,
+        reorder: '/api/admin/visa/reorder',
+      },
+      visaCategories: {
+        base: '/api/admin/visa/category',
+        detail: (id: number) => `/api/admin/visa/category/${id}`,
+      },
+      places: {
+        base: '/api/admin/places',
+        detail: (id: number) => `/api/admin/places/${id}`,
+        reorder: '/api/admin/places/reorder',
+      },
       masterMenuSubCategories: {
         list: '/api/admin/master-menu-sub-categories',
         detail: (id: number) => `/api/admin/master-menu-sub-categories/${id}`,
