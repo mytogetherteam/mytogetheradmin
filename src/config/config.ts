@@ -25,6 +25,10 @@ export const config = {
       },
       shopCategories: '/api/admin/shop-categories',
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,
+      news: {
+        base: '/api/admin/news',
+        detail: (id: number) => `/api/admin/news/${id}`,
+      },
       collections: {
         base: '/api/admin/collections',
         detail: (id: number) => `/api/admin/collections/${id}`,

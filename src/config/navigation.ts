@@ -28,6 +28,7 @@ import {
     TicketPercent,
     MessageSquare,
     Layers,
+    Newspaper,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -154,6 +155,14 @@ export const navigationConfig: NavGroup[] = [
         items: [
             { title: "Create Payment Type", url: "/shop-payment-types/create", icon: Plus, tooltip: "Create Shop Payment Type" },
             { title: "Manage PaymentTypes", url: "/shop-payment-types/manage", icon: Settings2, tooltip: "Manage Shop Payment Types" }
+        ]
+    },
+    {
+        title: "News",
+        roles: AdminRole.ADMIN,
+        items: [
+            { title: "Create News", url: "/news/create", icon: Plus, tooltip: "Create News" },
+            { title: "Manage News", url: "/news/manage", icon: Newspaper, tooltip: "Manage News" }
         ]
     },
     {

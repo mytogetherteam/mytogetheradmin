@@ -36,6 +36,8 @@ const CreateCategory = lazy(() => import("@/pages/categories/CreateCategory"));
 const ManageCategories = lazy(() => import("@/pages/categories/ManageCategories"));
 const ManageShopCategories = lazy(() => import("@/pages/shop-categories/ManageShopCategories"));
 const CreateShopCategory = lazy(() => import("@/pages/shop-categories/CreateShopCategory"));
+const ManageNews = lazy(() => import("@/pages/news/ManageNews"));
+const CreateNews = lazy(() => import("@/pages/news/CreateNews"));
 const ManageShopSubCategories = lazy(() => import("@/pages/shop-sub-categories/ManageShopSubCategories"));
 const CreateShopSubCategory = lazy(() => import("@/pages/shop-sub-categories/CreateShopSubCategory"));
 
@@ -245,6 +247,8 @@ function App() {
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
                 <Route path="/places/manage" element={<ManagePlaces />} />
                 <Route path="/places/create" element={<CreatePlace />} />
+                <Route path="/news/manage" element={<ManageNews />} />
+                <Route path="/news/create" element={<CreateNews />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
