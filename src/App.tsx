@@ -48,6 +48,12 @@ const PaymentApprovalDetail = lazy(() => import("@/pages/menus/PaymentApprovalDe
 const CategoryApprovalDetail = lazy(() => import("@/pages/menus/CategoryApprovalDetail"));
 const ManageItemTags = lazy(() => import("@/pages/item-tags/ManageItemTags"));
 const CreateItemTag = lazy(() => import("@/pages/item-tags/CreateItemTag"));
+const ManageVisas = lazy(() => import("@/pages/visa/ManageVisas"));
+const CreateVisa = lazy(() => import("@/pages/visa/CreateVisa"));
+const ManageVisaCategories = lazy(() => import("@/pages/visa/ManageVisaCategories"));
+const CreateVisaCategory = lazy(() => import("@/pages/visa/CreateVisaCategory"));
+const ManagePlaces = lazy(() => import("@/pages/places/ManagePlaces"));
+const CreatePlace = lazy(() => import("@/pages/places/CreatePlace"));
 const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
 const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
 const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
@@ -182,6 +188,10 @@ function App() {
                 <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
                 <Route path="/item-tags/manage" element={<ManageItemTags />} />
                 <Route path="/item-tags/create" element={<CreateItemTag />} />
+                <Route path="/visa/manage" element={<ManageVisas />} />
+                <Route path="/visa/create" element={<CreateVisa />} />
+                <Route path="/visa/categories/manage" element={<ManageVisaCategories />} />
+                <Route path="/visa/categories/create" element={<CreateVisaCategory />} />
                 <Route path="/promotions/manage" element={<ManagePromotions />} />
                 <Route path="/promotions/create" element={<CreatePromotion />} />
                 <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
@@ -229,6 +239,8 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
+                <Route path="/places/manage" element={<ManagePlaces />} />
+                <Route path="/places/create" element={<CreatePlace />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
@@ -282,6 +294,10 @@ function App() {
                 <Route path="/shop-sub-categories/create" element={<CreateShopSubCategory />} />
                 <Route path="/item-tags/manage" element={<ManageItemTags />} />
                 <Route path="/item-tags/create" element={<CreateItemTag />} />
+                <Route path="/visa/manage" element={<ManageVisas />} />
+                <Route path="/visa/create" element={<CreateVisa />} />
+                <Route path="/visa/categories/manage" element={<ManageVisaCategories />} />
+                <Route path="/visa/categories/create" element={<CreateVisaCategory />} />
                 <Route path="/promotions/manage" element={<ManagePromotions />} />
                 <Route path="/promotions/create" element={<CreatePromotion />} />
                 <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
@@ -329,6 +345,8 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
+                <Route path="/places/manage" element={<ManagePlaces />} />
+                <Route path="/places/create" element={<CreatePlace />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
