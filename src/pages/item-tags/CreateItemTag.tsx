@@ -40,6 +40,7 @@ export default function CreateItemTag() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
+    const [imageRemoved, setImageRemoved] = useState(false);
 
     const loadTag = async (tagId: number) => {
         setLoading(true);
@@ -53,7 +54,10 @@ export default function CreateItemTag() {
             setIsActive(tag.isActive !== false);
             if (tag.iconUrl) {
                 setExistingImage(tag.iconUrl);
+            } else {
+                setExistingImage(null);
             }
+            setImageRemoved(false);
         } catch (error) {
             handleApiError(error, "Failed to load item tag");
         } finally {
@@ -74,6 +78,7 @@ export default function CreateItemTag() {
             setExistingImage(null);
             setImageFile(null);
             setImagePreview(null);
+            setImageRemoved(false);
         }
     }, [id, isEditMode]);
 
@@ -81,6 +86,7 @@ export default function CreateItemTag() {
         const file = e.target.files?.[0];
         if (file) {
             setImageFile(file);
+            setImageRemoved(false);
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
             reader.readAsDataURL(file);
@@ -88,6 +94,9 @@ export default function CreateItemTag() {
     };
 
     const removeImage = () => {
+        if (imagePreview || existingImage) {
+            setImageRemoved(true);
+        }
         setImageFile(null);
         setImagePreview(null);
         setExistingImage(null);
@@ -98,7 +107,7 @@ export default function CreateItemTag() {
 
         setSubmitting(true);
         try {
-            const dtoData = {
+            const dtoData: Record<string, unknown> = {
                 nameMm: nameMm || "",
                 nameTh: nameTh || "",
                 nameEn: nameEn.trim(),
@@ -106,6 +115,11 @@ export default function CreateItemTag() {
                 colorCode: colorCode || "",
                 isActive: isActive,
             };
+
+            if (imageRemoved && !imageFile) {
+                dtoData.iconUrl = null;
+                dtoData.removeImage = true;
+            }
 
             const formData = new FormData();
             // Plain string so Multer + FileInterceptor('image') treat `data` as a text field, not a second upload
