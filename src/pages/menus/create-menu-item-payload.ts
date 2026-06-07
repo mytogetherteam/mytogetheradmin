@@ -1,13 +1,12 @@
 import type { ComboComponent, Variant } from "@/services/menuService";
 import type { AddonRow } from "./create-menu-item.types";
+import {
+  parsePriceInput,
+  resolveMenuItemDiscountPayload,
+} from "@/lib/menu-item-discount-form.util";
 
 function numericFromPriceInput(value: string): number {
-  const n = Number(value.replace(/,/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function isBlankPriceInput(value: string): boolean {
-  return value.replace(/,/g, "").trim() === "";
+  return parsePriceInput(value);
 }
 
 function buildAddonGroupsPayload(addons: AddonRow[], preserveOptionIds: boolean) {
@@ -60,7 +59,9 @@ export interface MenuItemSubmitFormSnapshot {
   descriptionTh: string;
   /** List/base price → `menu_item.originalPrice` */
   originalPriceInput: string;
-  discountAmountInput: string;
+  /** Customer selling price (after discount), not amount off */
+  discountPriceInput: string;
+  discountPercentageInput: string;
   currency: string;
   categoryId: string;
   shopId: string;
@@ -81,14 +82,11 @@ export interface MenuItemSubmitFormSnapshot {
 /** JSON body for multipart field `data` on POST/PUT /api/admin/items */
 export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot): Record<string, unknown> {
   const originalNum = numericFromPriceInput(snapshot.originalPriceInput);
-  const discountBlank = isBlankPriceInput(snapshot.discountAmountInput);
-  const discountAmountNum = discountBlank
-    ? 0
-    : numericFromPriceInput(snapshot.discountAmountInput);
-  let discountAmount: number | null = null;
-  if (!discountBlank && discountAmountNum > 0) {
-    discountAmount = discountAmountNum;
-  }
+  const { discountAmount, discountPercentage } = resolveMenuItemDiscountPayload(
+    originalNum,
+    snapshot.discountPriceInput,
+    snapshot.discountPercentageInput,
+  );
 
   const addonGroupsPayload = buildAddonGroupsPayload(
     snapshot.addons,
@@ -116,8 +114,8 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
     original_price: originalNum,
     discountAmount,
     discount_amount: discountAmount,
-    discountPercentage: null,
-    discount_percentage: null,
+    discountPercentage,
+    discount_percentage: discountPercentage,
     currency: snapshot.currency || "฿",
     menuCategoryId: Number(snapshot.categoryId),
     menu_category_id: Number(snapshot.categoryId),

@@ -26,6 +26,16 @@ import {
 } from "@/pages/menus/create-menu-item-mappers";
 import { buildAdminMenuItemDataJson } from "@/pages/menus/create-menu-item-payload";
 import {
+    formatPercentageForInput,
+    formatPriceForInput,
+    isBlankPriceInput,
+    parsePriceInput,
+    percentageFromSellingPrice,
+    sellingPriceFromOriginalAndAmount,
+    sellingPriceFromOriginalAndPercentage,
+} from "@/lib/menu-item-discount-form.util";
+import { resolveSellingPrice } from "@/lib/menu-item-price-display";
+import {
     DndContext,
     closestCenter,
     KeyboardSensor,
@@ -60,7 +70,8 @@ export default function CreateMenuItem() {
     const [descriptionTh, setDescriptionTh] = useState("");
     const [descriptionEn, setDescriptionEn] = useState("");
     const [originalPrice, setOriginalPrice] = useState("");
-    const [discountAmount, setDiscountAmount] = useState("");
+    const [discountPrice, setDiscountPrice] = useState("");
+    const [discountPercentage, setDiscountPercentage] = useState("");
     /** Not shown in UI; kept from loaded item or schema default for API. */
     const [currency, setCurrency] = useState("฿");
     const [categoryId, setCategoryId] = useState("");
@@ -100,11 +111,67 @@ export default function CreateMenuItem() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
+    const [imageRemoved, setImageRemoved] = useState(false);
 
     // Gallery Photos removed
 
     // Refs for file inputs
     const mainImageRef = useRef<HTMLInputElement>(null);
+
+    const syncDiscountFromPrice = useCallback((original: number, priceInput: string) => {
+        if (isBlankPriceInput(priceInput) || original <= 0) {
+            if (isBlankPriceInput(priceInput)) {
+                setDiscountPercentage("");
+            }
+            return;
+        }
+        const selling = parsePriceInput(priceInput);
+        setDiscountPercentage(
+            formatPercentageForInput(percentageFromSellingPrice(original, selling)),
+        );
+    }, []);
+
+    const syncDiscountFromPercentage = useCallback((original: number, percentageInput: string) => {
+        if (isBlankPriceInput(percentageInput) || original <= 0) {
+            if (isBlankPriceInput(percentageInput)) {
+                setDiscountPrice("");
+            }
+            return;
+        }
+        const pct = parsePriceInput(percentageInput);
+        setDiscountPrice(
+            formatPriceForInput(sellingPriceFromOriginalAndPercentage(original, pct)),
+        );
+    }, []);
+
+    const handleOriginalPriceChange = useCallback((value: string) => {
+        setOriginalPrice(value);
+        const original = parsePriceInput(value);
+        if (original <= 0) return;
+
+        if (!isBlankPriceInput(discountPercentage)) {
+            syncDiscountFromPercentage(original, discountPercentage);
+        } else if (!isBlankPriceInput(discountPrice)) {
+            syncDiscountFromPrice(original, discountPrice);
+        }
+    }, [discountPrice, discountPercentage, syncDiscountFromPrice, syncDiscountFromPercentage]);
+
+    const handleDiscountPriceChange = useCallback((value: string) => {
+        setDiscountPrice(value);
+        syncDiscountFromPrice(parsePriceInput(originalPrice), value);
+    }, [originalPrice, syncDiscountFromPrice]);
+
+    const handleDiscountPercentageChange = useCallback((value: string) => {
+        if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
+            return;
+        }
+        const pct = parsePriceInput(value);
+        if (pct > 100) {
+            return;
+        }
+        setDiscountPercentage(value);
+        syncDiscountFromPercentage(parsePriceInput(originalPrice), value);
+    }, [originalPrice, syncDiscountFromPercentage]);
 
     // DnD Sensors
     const sensors = useSensors(
@@ -200,12 +267,29 @@ export default function CreateMenuItem() {
             setDescriptionEn(item.descriptionEn || "");
             const original = Number(item.originalPrice) || 0;
             const amountOff = item.discountAmount;
+            const pctOff = item.discountPercentage;
             setOriginalPrice(original > 0 ? original.toLocaleString() : "");
-            setDiscountAmount(
-                amountOff != null && amountOff > 0
-                    ? Number(amountOff).toLocaleString()
-                    : "",
-            );
+
+            let selling = original > 0 ? resolveSellingPrice(item) : 0;
+            if (selling <= 0 || selling >= original) {
+                if (amountOff != null && amountOff > 0 && original > 0) {
+                    selling = sellingPriceFromOriginalAndAmount(original, Number(amountOff));
+                } else if (pctOff != null && pctOff > 0 && original > 0) {
+                    selling = sellingPriceFromOriginalAndPercentage(original, Number(pctOff));
+                } else {
+                    selling = 0;
+                }
+            }
+
+            if (selling > 0 && selling < original) {
+                setDiscountPrice(selling.toLocaleString());
+                setDiscountPercentage(
+                    formatPercentageForInput(percentageFromSellingPrice(original, selling)),
+                );
+            } else {
+                setDiscountPrice("");
+                setDiscountPercentage("");
+            }
             setCurrency(item.currency || "฿");
             if (item.shopId) {
                 setShopId(item.shopId.toString());
@@ -265,7 +349,10 @@ export default function CreateMenuItem() {
             const resolvedImageUrl = resolveMenuItemImageUrl(item);
             if (resolvedImageUrl) {
                 setExistingImage(resolvedImageUrl);
+            } else {
+                setExistingImage(null);
             }
+            setImageRemoved(false);
         } catch (error) {
             handleApiError(error, "Failed to load item");
         } finally {
@@ -285,7 +372,8 @@ export default function CreateMenuItem() {
             setDescriptionTh("");
             setDescriptionEn("");
             setOriginalPrice("");
-            setDiscountAmount("");
+            setDiscountPrice("");
+            setDiscountPercentage("");
             setCurrency("฿");
             setCategoryId("");
             setShopId("");
@@ -305,6 +393,7 @@ export default function CreateMenuItem() {
             setImageFile(null);
             setImagePreview(null);
             setExistingImage(null);
+            setImageRemoved(false);
             setAddons([]);
             setVariants([]);
         }
@@ -316,6 +405,7 @@ export default function CreateMenuItem() {
         if (originalFile) {
             const file = await compressImage(originalFile);
             setImageFile(file);
+            setImageRemoved(false);
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
             reader.readAsDataURL(file);
@@ -323,6 +413,9 @@ export default function CreateMenuItem() {
     };
 
     const removeImage = () => {
+        if (imagePreview || existingImage) {
+            setImageRemoved(true);
+        }
         setImageFile(null);
         setImagePreview(null);
         setExistingImage(null);
@@ -396,7 +489,8 @@ export default function CreateMenuItem() {
                 descriptionMm,
                 descriptionTh,
                 originalPriceInput: originalPrice,
-                discountAmountInput: discountAmount,
+                discountPriceInput: discountPrice,
+                discountPercentageInput: discountPercentage,
                 currency,
                 categoryId,
                 shopId,
@@ -413,6 +507,11 @@ export default function CreateMenuItem() {
                 variants,
                 editingExistingItem: isEditMode && !!id,
             });
+
+            if (imageRemoved && !imageFile) {
+                (dtoData as Record<string, unknown>).imageUrl = null;
+                (dtoData as Record<string, unknown>).removeImage = true;
+            }
 
             const formData = new FormData();
             formData.append("data", JSON.stringify(dtoData));
@@ -551,20 +650,37 @@ export default function CreateMenuItem() {
 
                             <div className="space-y-4">
                                 <h3 className="text-lg font-medium">Pricing & Details</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Original price</Label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="min-h-10 flex items-end leading-tight">
+                                            Original price
+                                        </Label>
                                         <PriceInput
+                                            className="h-10"
                                             value={originalPrice}
-                                            onValueChange={setOriginalPrice}
+                                            onValueChange={handleOriginalPriceChange}
                                             placeholder="0"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Discount amount</Label>
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="min-h-10 flex items-end leading-tight">
+                                            Discount price
+                                        </Label>
                                         <PriceInput
-                                            value={discountAmount}
-                                            onValueChange={setDiscountAmount}
+                                            className="h-10"
+                                            value={discountPrice}
+                                            onValueChange={handleDiscountPriceChange}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="min-h-10 flex items-end leading-tight">
+                                            Discount %
+                                        </Label>
+                                        <PriceInput
+                                            className="h-10"
+                                            value={discountPercentage}
+                                            onValueChange={handleDiscountPercentageChange}
                                             placeholder="0"
                                         />
                                     </div>

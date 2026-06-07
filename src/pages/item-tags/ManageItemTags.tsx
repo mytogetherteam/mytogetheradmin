@@ -190,9 +190,6 @@ export default function ManageItemTags() {
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="flex-1 min-w-0">
                             <CardTitle className="leading-tight">Manage Item Discovery Tags</CardTitle>
-                            <CardDescription className="line-clamp-2 md:line-clamp-none">
-                                Global discovery tags for items. Drag rows by the handle to set display order.
-                            </CardDescription>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -320,8 +317,8 @@ export default function ManageItemTags() {
                                                                     >
                                                                         <span
                                                                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tag.isActive !== false
-                                                                                    ? "bg-green-100 text-green-800"
-                                                                                    : "bg-red-100 text-red-800"
+                                                                                ? "bg-green-100 text-green-800"
+                                                                                : "bg-red-100 text-red-800"
                                                                                 }`}
                                                                         >
                                                                             {tag.isActive !== false ? "Active" : "Inactive"}

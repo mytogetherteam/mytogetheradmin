@@ -42,6 +42,7 @@ export default function CreateMasterMenuCategory() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
+    const [imageRemoved, setImageRemoved] = useState(false);
 
     const loadData = async () => {
         setLoading(true);
@@ -61,7 +62,10 @@ export default function CreateMasterMenuCategory() {
                 }
                 if (cat.imageUrl) {
                     setExistingImage(cat.imageUrl);
+                } else {
+                    setExistingImage(null);
                 }
+                setImageRemoved(false);
             }
         } catch (error) {
             handleApiError(error, "Failed to load category details");
@@ -81,6 +85,7 @@ export default function CreateMasterMenuCategory() {
             setExistingImage(null);
             setImageFile(null);
             setImagePreview(null);
+            setImageRemoved(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, isEditMode]);
@@ -89,6 +94,7 @@ export default function CreateMasterMenuCategory() {
         const file = e.target.files?.[0];
         if (file) {
             setImageFile(file);
+            setImageRemoved(false);
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
             reader.readAsDataURL(file);
@@ -96,6 +102,9 @@ export default function CreateMasterMenuCategory() {
     };
 
     const removeImage = () => {
+        if (imagePreview || existingImage) {
+            setImageRemoved(true);
+        }
         setImageFile(null);
         setImagePreview(null);
         setExistingImage(null);
@@ -115,6 +124,11 @@ export default function CreateMasterMenuCategory() {
             const cid = typeof cuisineTypeId === "number" && cuisineTypeId > 0 ? cuisineTypeId : undefined;
             if (cid !== undefined) {
                 dtoData.cuisineTypeId = cid;
+            }
+
+            if (imageRemoved && !imageFile) {
+                dtoData.imageUrl = null;
+                dtoData.removeImage = true;
             }
 
             const formData = new FormData();

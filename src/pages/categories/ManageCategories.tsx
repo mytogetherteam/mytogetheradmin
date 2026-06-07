@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { DataTablePagination } from "@/components/DataTablePagination";
 import {
   Loader2,
   Plus,
@@ -79,6 +80,10 @@ export default function ManageCategories() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [shopId, setShopId] = useState<string>("");
   const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -100,9 +105,13 @@ export default function ManageCategories() {
   const loadCategories = useCallback(async () => {
     setLoading(true);
     try {
+      // When a shop is selected, load all its categories so drag-reorder stays accurate.
+      const apiPage = shopId ? 0 : currentPage - 1;
+      const apiSize = shopId ? 500 : pageSize;
+
       const res = await ShopService.getAdminCategories(
-        0,
-        500,
+        apiPage,
+        apiSize,
         searchTerm,
         shopId ? parseInt(shopId, 10) : undefined,
       );
@@ -111,12 +120,18 @@ export default function ManageCategories() {
       setCategories(
         [...arr].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)),
       );
+      setTotalItems(res.totalElements ?? arr.length);
+      setTotalPages(
+        shopId
+          ? 1
+          : Math.max(1, res.totalPages ?? Math.ceil((res.totalElements ?? arr.length) / pageSize)),
+      );
     } catch (e) {
       handleApiError(e, "Failed to load menu categories");
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, shopId]);
+  }, [searchTerm, shopId, currentPage, pageSize]);
 
   const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
     const res = await ShopService.getAllShops(page, size, search);
@@ -131,7 +146,7 @@ export default function ManageCategories() {
       loadCategories();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm, shopId, loadCategories]);
+  }, [searchTerm, shopId, currentPage, pageSize, loadCategories]);
 
   const exportToExcel = () => {
     const data = categories.map((c) => ({
@@ -202,9 +217,6 @@ export default function ManageCategories() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex-1 min-w-0">
               <CardTitle className="leading-tight">Manage Menu Categories</CardTitle>
-              <CardDescription className="line-clamp-2 md:line-clamp-none">
-                Manage menu categories for shops. Filter by shop, then drag rows by the handle to reorder display order for that shop.
-              </CardDescription>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -216,6 +228,7 @@ export default function ManageCategories() {
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
+                    setCurrentPage(1);
                   }}
                 />
               </div>
@@ -229,6 +242,7 @@ export default function ManageCategories() {
                   onChange={(data) => {
                     setShopId(data?.value || "");
                     setSelectedShopData(data);
+                    setCurrentPage(1);
                   }}
                 />
               </div>
@@ -242,11 +256,6 @@ export default function ManageCategories() {
               </Button>
             </div>
           </div>
-          {!canReorder && (
-            <p className="text-sm text-muted-foreground pt-2">
-              Select a shop above to enable drag-and-drop reordering.
-            </p>
-          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -348,8 +357,8 @@ export default function ManageCategories() {
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                       <span
                                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false
-                                            ? "bg-green-100 text-green-800"
-                                            : "bg-red-100 text-red-800"
+                                          ? "bg-green-100 text-green-800"
+                                          : "bg-red-100 text-red-800"
                                           }`}
                                       >
                                         {cat.isActive !== false ? "Active" : "Inactive"}
@@ -437,8 +446,8 @@ export default function ManageCategories() {
                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                   <span
                                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cat.isActive !== false
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-red-100 text-red-800"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-red-100 text-red-800"
                                       }`}
                                   >
                                     {cat.isActive !== false ? "Active" : "Inactive"}
@@ -488,6 +497,19 @@ export default function ManageCategories() {
               </div>
               {reordering && (
                 <p className="text-xs text-muted-foreground mt-2">Saving order…</p>
+              )}
+              {!shopId && totalItems > 0 && (
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={totalItems}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                  }}
+                />
               )}
             </>
           )}

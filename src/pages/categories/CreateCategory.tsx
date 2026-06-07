@@ -43,6 +43,7 @@ export default function CreateCategory() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImage, setExistingImage] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
 
   // Gallery state removed
 
@@ -61,6 +62,7 @@ export default function CreateCategory() {
       setExistingImage(null);
       setImageFile(null);
       setImagePreview(null);
+      setImageRemoved(false);
     }
   }, [id, isEditMode]);
 
@@ -94,7 +96,10 @@ export default function CreateCategory() {
       }
       if (cat.imageUrl || cat.image || cat.icon) {
         setExistingImage(cat.imageUrl || cat.image || cat.icon || null);
+      } else {
+        setExistingImage(null);
       }
+      setImageRemoved(false);
     } catch (error) {
       handleApiError(error, "Failed to load category");
     } finally {
@@ -109,6 +114,7 @@ export default function CreateCategory() {
         const { compressImage } = await import("@/utils/imageCompression");
         const compressed = await compressImage(file);
         setImageFile(compressed);
+        setImageRemoved(false);
         const reader = new FileReader();
         reader.onloadend = () => setImagePreview(reader.result as string);
         reader.readAsDataURL(compressed);
@@ -116,6 +122,7 @@ export default function CreateCategory() {
         console.error("Image compression failed:", error);
         // Fallback to original file if compression fails
         setImageFile(file);
+        setImageRemoved(false);
         const reader = new FileReader();
         reader.onloadend = () => setImagePreview(reader.result as string);
         reader.readAsDataURL(file);
@@ -124,6 +131,9 @@ export default function CreateCategory() {
   };
 
   const removeImage = () => {
+    if (imagePreview || existingImage) {
+      setImageRemoved(true);
+    }
     setImageFile(null);
     setImagePreview(null);
     setExistingImage(null);
@@ -143,6 +153,11 @@ export default function CreateCategory() {
         shopId: shopId ? parseInt(shopId) : undefined
       };
 
+
+      if (imageRemoved && !imageFile) {
+        dtoData.imageUrl = null;
+        dtoData.removeImage = true;
+      }
 
       const formData = new FormData();
       formData.append("data", JSON.stringify(dtoData));
