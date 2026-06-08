@@ -48,7 +48,15 @@ function formatNestImportError(status: number, data: unknown): string {
   else if (typeof m === "string") head = m;
   else head = `Validation failed (${status})`;
 
-  const errors = Array.isArray(o.errors) ? o.errors : [];
+  const nestedMsg =
+    m && typeof m === "object" && !Array.isArray(m)
+      ? (m as Record<string, unknown>)
+      : null;
+  const errors = Array.isArray(o.errors)
+    ? o.errors
+    : nestedMsg && Array.isArray(nestedMsg.errors)
+      ? nestedMsg.errors
+      : [];
   const errLines = errors
     .map((e: unknown) => {
       if (e && typeof e === "object" && "detail" in e && "code" in e)

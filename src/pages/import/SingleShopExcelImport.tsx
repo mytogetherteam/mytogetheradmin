@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import {
+  formatExcelImportLikeMessage,
+  getHumanMessageFromNestHttpBody,
+} from "@/lib/nestHttpBody";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -336,14 +340,35 @@ function formatWarningCount(payload: unknown): string {
   return `API returned ${n} warning${n === 1 ? "" : "s"} (expand response below).`;
 }
 
-function onboardingWarnings(payload: unknown): Array<{ code?: string; detail?: string }> {
+function nestImportPayloadRoots(payload: unknown): Record<string, unknown>[] {
   if (!payload || typeof payload !== "object") return [];
-  const w = (payload as { warnings?: unknown }).warnings;
-  if (!Array.isArray(w)) return [];
-  return w.filter(
-    (x): x is { code?: string; detail?: string } =>
-      !!x && typeof x === "object",
-  );
+  const root = payload as Record<string, unknown>;
+  const roots: Record<string, unknown>[] = [root];
+
+  const msg = root.message;
+  if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+    roots.push(msg as Record<string, unknown>);
+  }
+
+  const data = root.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    roots.push(data as Record<string, unknown>);
+  }
+
+  return roots;
+}
+
+function onboardingWarnings(payload: unknown): Array<{ code?: string; detail?: string }> {
+  for (const src of nestImportPayloadRoots(payload)) {
+    const w = src.warnings;
+    if (!Array.isArray(w)) continue;
+    const parsed = w.filter(
+      (x): x is { code?: string; detail?: string } =>
+        !!x && typeof x === "object",
+    );
+    if (parsed.length > 0) return parsed;
+  }
+  return [];
 }
 
 type ImportCounts = {
@@ -390,10 +415,19 @@ type ImportMessage = {
 };
 
 function onboardingImportErrors(payload: unknown): ImportMessage[] {
-  if (!payload || typeof payload !== "object") return [];
-  const e = (payload as { errors?: unknown }).errors;
-  if (!Array.isArray(e)) return [];
-  return e.filter((x): x is ImportMessage => !!x && typeof x === "object");
+  for (const src of nestImportPayloadRoots(payload)) {
+    const e = src.errors;
+    if (!Array.isArray(e)) continue;
+    const parsed = e.filter((x): x is ImportMessage => !!x && typeof x === "object");
+    if (parsed.length > 0) return parsed;
+  }
+  return [];
+}
+
+function formatImportErrorLines(errors: ImportMessage[]): string {
+  return errors
+    .map((err, i) => `${i + 1}. ${formatExcelImportLikeMessage(err)}`)
+    .join("\n");
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -575,6 +609,12 @@ export default function SingleShopExcelImport() {
     if (nestPayload == null) return [];
     return onboardingImportErrors(nestPayload);
   }, [nestPayload]);
+
+  const warnCountOnFailure = useMemo(() => {
+    if (backendResult?.success !== false) return 0;
+    if (nestPayload == null) return 0;
+    return onboardingWarnings(nestPayload).length;
+  }, [backendResult?.success, nestPayload]);
 
   const reportCounts = useMemo(() => extractCounts(nestPayload), [nestPayload]);
   const reportResolved = useMemo(() => extractResolvedSummary(nestPayload), [nestPayload]);
@@ -763,25 +803,18 @@ export default function SingleShopExcelImport() {
     } catch (e: unknown) {
       const api = e instanceof ApiError ? e : null;
       const data = api?.data;
+      const errs =
+        data && typeof data === "object" ? onboardingImportErrors(data) : [];
 
-      let message =
-        api?.message ??
-        (e &&
-          typeof e === "object" &&
-          "message" in e &&
-          typeof (e as { message?: unknown }).message === "string"
-          ? String((e as { message: string }).message)
-          : "Import failed.");
+      const humanFromBody =
+        data != null ? getHumanMessageFromNestHttpBody(data).trim() : "";
 
-      if (data && typeof data === "object") {
-        const w = onboardingWarnings(data);
-        if (w.length > 0) {
-          message += `\n\nWarnings (${w.length}):\n`;
-          message += w
-            .map((x) => `• ${String(x.code ?? "?")} — ${String(x.detail ?? "")}`)
-            .join("\n");
-        }
-      }
+      const message =
+        errs.length > 0
+          ? formatImportErrorLines(errs)
+          : humanFromBody ||
+          (typeof api?.message === "string" ? api.message : "") ||
+          "Import failed.";
 
       setBackendResult({
         success: false,
@@ -790,7 +823,16 @@ export default function SingleShopExcelImport() {
       });
       if (data !== undefined && data !== null) setNestPayload(data);
 
-      handleApiError(e, "Import rejected");
+      const toastDescription =
+        errs.length > 0 ? formatImportErrorLines(errs) : message;
+
+      toast.error(
+        errs.length > 0 ? `Validation failed (${errs.length})` : "Validation failed",
+        {
+          description: toastDescription,
+          duration: 12_000,
+        },
+      );
     } finally {
       setUploading(false);
     }
@@ -1290,23 +1332,76 @@ export default function SingleShopExcelImport() {
               </Card>
             ) : null}
 
-            {backendResult ? (
+            {backendResult?.success ? (
               <div
                 className={cn(
                   "rounded-lg border px-4 py-3 text-sm",
-                  backendResult.success ?
-                    "border-green-200 bg-green-50/80 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100"
-                    : "border-destructive/40 bg-destructive/10 text-destructive",
+                  "border-green-200 bg-green-50/80 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100",
                 )}
               >
                 <div className="flex items-start gap-2">
-                  {backendResult.success ? (
-                    <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                  )}
+                  <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
                   <div className="min-w-0">
-                    <div className="font-semibold">{backendResult.success ? "OK" : "Request failed"}</div>
+                    <div className="font-semibold">OK</div>
+                    <div className="mt-1 whitespace-pre-wrap break-words font-normal opacity-95">
+                      {backendResult.message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {backendResult?.success === false && reportErrors.length > 0 ? (
+              <Card className="border-destructive/50 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base text-destructive">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    Validation failed
+                    <Badge variant="destructive" className="font-normal">
+                      {reportErrors.length} blocking error{reportErrors.length === 1 ? "" : "s"}
+                    </Badge>
+                  </CardTitle>
+                  {warnCountOnFailure > 0 ? (
+                    <CardDescription>
+                      {warnCountOnFailure} non-blocking warning{warnCountOnFailure === 1 ? "" : "s"} listed below.
+                    </CardDescription>
+                  ) : null}
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {reportErrors.map((err, i) => (
+                      <li
+                        key={i}
+                        className="rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                          <span className="text-muted-foreground">#{i + 1}</span>
+                          {err.code ? <Badge variant="outline">{err.code}</Badge> : null}
+                          {err.sheet ? (
+                            <Badge variant="secondary" className="font-normal">
+                              sheet: {err.sheet}
+                            </Badge>
+                          ) : null}
+                          {err.row != null ? (
+                            <Badge variant="secondary" className="font-normal">
+                              row: {String(err.row)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="mt-1.5 whitespace-pre-wrap break-words text-foreground">
+                          {err.detail ?? formatExcelImportLikeMessage(err) ?? JSON.stringify(err)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ) : backendResult?.success === false ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-semibold">Request failed</div>
                     <div className="mt-1 whitespace-pre-wrap break-words font-normal opacity-95">
                       {backendResult.message}
                     </div>
@@ -1387,76 +1482,36 @@ export default function SingleShopExcelImport() {
               </Card>
             ) : null}
 
-            {(reportErrors.length > 0 || onboardingSuccessWarnings.length > 0) ? (
+            {onboardingSuccessWarnings.length > 0 ? (
               <Accordion
-                type="multiple"
-                defaultValue={[
-                  ...(reportErrors.length > 0 ? (["errors"] as const) : []),
-                  ...(onboardingSuccessWarnings.length > 0 ? (["warnings"] as const) : []),
-                ]}
+                type="single"
+                collapsible
+                defaultValue="warnings"
                 className="rounded-lg border"
               >
-                {reportErrors.length > 0 ?
-                  <AccordionItem value="errors" className="border-b-0 px-4">
-                    <AccordionTrigger className="hover:no-underline">
-                      <span className="flex items-center gap-2">
-                        Blocking errors
-                        <Badge variant="destructive">{reportErrors.length}</Badge>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="space-y-3 pb-2">
-                        {reportErrors.map((err, i) => (
-                          <li
-                            key={i}
-                            className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm"
-                          >
-                            <div className="flex flex-wrap gap-2 font-mono text-xs">
-                              {err.code ? <Badge variant="outline">{err.code}</Badge> : null}
-                              {err.sheet ? (
-                                <Badge variant="secondary" className="font-normal">
-                                  sheet: {err.sheet}
-                                </Badge>
-                              ) : null}
-                              {err.row != null ? (
-                                <Badge variant="secondary" className="font-normal">
-                                  row: {String(err.row)}
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <p className="mt-1 whitespace-pre-wrap break-words">{err.detail ?? JSON.stringify(err)}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                  : null}
-
-                {onboardingSuccessWarnings.length > 0 ?
-                  <AccordionItem value="warnings" className="border-t px-4">
-                    <AccordionTrigger className="hover:no-underline">
-                      <span className="flex items-center gap-2">
-                        Warnings
-                        <Badge variant="secondary">{onboardingSuccessWarnings.length}</Badge>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="space-y-2 pb-2">
-                        {onboardingSuccessWarnings.map((w, i) => (
-                          <li
-                            key={i}
-                            className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/30"
-                          >
-                            <span className="font-mono text-xs text-amber-900 dark:text-amber-100">
-                              {String(w.code ?? "?")}
-                            </span>
-                            <span className="text-amber-900 dark:text-amber-100"> — {String(w.detail ?? "")}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                  : null}
+                <AccordionItem value="warnings" className="border-b-0 px-4">
+                  <AccordionTrigger className="hover:no-underline">
+                    <span className="flex items-center gap-2">
+                      Warnings
+                      <Badge variant="secondary">{onboardingSuccessWarnings.length}</Badge>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-2 pb-2">
+                      {onboardingSuccessWarnings.map((w, i) => (
+                        <li
+                          key={i}
+                          className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/30"
+                        >
+                          <span className="font-mono text-xs text-amber-900 dark:text-amber-100">
+                            {String(w.code ?? "?")}
+                          </span>
+                          <span className="text-amber-900 dark:text-amber-100"> — {String(w.detail ?? "")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
             ) : null}
 
