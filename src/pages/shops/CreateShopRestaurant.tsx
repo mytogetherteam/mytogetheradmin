@@ -45,6 +45,7 @@ import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOp
 import { ShopPaymentQrPreview } from "@/components/shop/ShopPaymentQrPreview"
 import { Loader } from "@/components/ui/loader"
 import ConfirmDialog from "@/components/common/ConfirmDialog"
+import { normalizePricePreference } from "@/lib/price-preference"
 
 export default function CreateShopRestaurant() {
     const [showPassword, setShowPassword] = useState(false)
@@ -1203,7 +1204,10 @@ export default function CreateShopRestaurant() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Price Preference</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <Select
+                                                        onValueChange={field.onChange}
+                                                        value={normalizePricePreference(field.value)}
+                                                    >
                                                         <FormControl>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select price level" />

@@ -11,7 +11,8 @@ import {
 } from '@/services/shopService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { buildShopsManagePathFromEdit } from '@/hooks/shops/shared/shopsManageNavigation';
 import {
   adminShopProfilesQueryRoot,
   shopRestaurantEditQueryKey,
@@ -19,6 +20,7 @@ import {
 import { ShopCategoryService, type ShopSubCategoryDTO as AdminShopSubCategoryDTO } from '@/services/shopCategoryService';
 import { adminSelectLabel, type PlatformAdminDTO } from '@/services/adminsService';
 import { defaultOperatingWeek } from './useShopRestaurantForm';
+import { normalizePricePreference } from '@/lib/price-preference';
 
 function mapNestedCuisineToDto(
   c: NonNullable<ShopCuisineAssignment['cuisineType']>,
@@ -250,7 +252,7 @@ export async function fetchShopRestaurantEditBundle(
     isActive: shop.isActive ?? true,
     isHalal: shop.isHalal ?? false,
     isVegetarian: shop.isVegetarian ?? false,
-    pricePreference: shop.pricePreference || 'MEDIUM',
+    pricePreference: normalizePricePreference(shop.pricePreference),
     enableStockCheck: shop.enableStockCheck ?? false,
     cuisineTypeIds:
       cuisineIdsRaw.length > 0
@@ -287,6 +289,7 @@ export function useShopRestaurantEditQuery(numericEditId: number | null) {
 
 export function useCreateShopMutation() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: [...createShopMutationKey],
@@ -294,7 +297,7 @@ export function useCreateShopMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [...adminShopProfilesQueryRoot] });
       toast.success('Shop created successfully!');
-      navigate('/shops/manage');
+      navigate(buildShopsManagePathFromEdit(searchParams));
     },
     onError: (error) => {
       handleApiError(error, 'Failed to create shop');
@@ -305,6 +308,7 @@ export function useCreateShopMutation() {
 
 export function useUpdateShopMutation() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: [...updateShopMutationKey],
@@ -312,7 +316,7 @@ export function useUpdateShopMutation() {
       ShopService.updateShop(id, formData),
     onSuccess: (_data, variables) => {
       toast.success('Shop updated successfully!');
-      navigate('/shops/manage');
+      navigate(buildShopsManagePathFromEdit(searchParams));
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: [...adminShopProfilesQueryRoot] }),
         queryClient.invalidateQueries({ queryKey: [...shopRestaurantEditQueryKey(variables.id)] }),

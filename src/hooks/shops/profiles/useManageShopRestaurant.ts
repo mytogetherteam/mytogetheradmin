@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
-import { createSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  applyShopsManagePaginationToParams,
+  buildShopEditSearchParams,
+  parseShopsManagePagination,
+} from '@/hooks/shops/shared/shopsManageNavigation';
 import { mapAdminShopProfileRowToShop, type Shop } from '@/services/shopService';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { SortConfig } from '@/lib/sort-utils';
@@ -28,10 +33,10 @@ function shopDisplayName(shop: Shop): string {
 
 export function useManageShopRestaurant() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { page: currentPage, pageSize } = parseShopsManagePagination(searchParams);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ShopActionDialogState>(closedDialog);
@@ -69,15 +74,30 @@ export function useManageShopRestaurant() {
   const totalElements = shopListData?.totalElements ?? 0;
   const totalPages = Math.max(1, shopListData?.totalPages ?? 1);
 
+  const updatePaginationInUrl = useCallback(
+    (next: { page?: number; pageSize?: number }) => {
+      setSearchParams(
+        (prev) => applyShopsManagePaginationToParams(prev, next),
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1);
-  }, []);
+    updatePaginationInUrl({ page: 1 });
+  }, [updatePaginationInUrl]);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageChange = useCallback(
+    (page: number) => updatePaginationInUrl({ page }),
+    [updatePaginationInUrl],
+  );
+
+  const handlePageSizeChange = useCallback(
+    (size: number) => updatePaginationInUrl({ page: 1, pageSize: size }),
+    [updatePaginationInUrl],
+  );
 
   const handleToggleStatus = useCallback(
     (shop: Shop, nextActive: boolean) => {
@@ -147,10 +167,10 @@ export function useManageShopRestaurant() {
       setSelectedShopId(shop.id);
       navigate({
         pathname: '/shops/create',
-        search: createSearchParams({ id: String(shop.id) }).toString(),
+        search: buildShopEditSearchParams(shop.id, { page: currentPage, pageSize }).toString(),
       });
     },
-    [navigate],
+    [navigate, currentPage, pageSize],
   );
 
   const handleCreateShop = useCallback(() => {
@@ -174,7 +194,7 @@ export function useManageShopRestaurant() {
       pageSize,
       totalElements,
       totalPages,
-      onPageChange: setCurrentPage,
+      onPageChange: handlePageChange,
       onPageSizeChange: handlePageSizeChange,
     },
     search: {
@@ -197,9 +217,18 @@ export function useManageShopRestaurant() {
       selectedCategory,
       activeFilter,
       verifiedFilter,
-      setSelectedCategory: (val?: number) => { setSelectedCategory(val); setCurrentPage(1); },
-      setActiveFilter: (val?: boolean) => { setActiveFilter(val); setCurrentPage(1); },
-      setVerifiedFilter: (val?: boolean) => { setVerifiedFilter(val); setCurrentPage(1); },
+      setSelectedCategory: (val?: number) => {
+        setSelectedCategory(val);
+        updatePaginationInUrl({ page: 1 });
+      },
+      setActiveFilter: (val?: boolean) => {
+        setActiveFilter(val);
+        updatePaginationInUrl({ page: 1 });
+      },
+      setVerifiedFilter: (val?: boolean) => {
+        setVerifiedFilter(val);
+        updatePaginationInUrl({ page: 1 });
+      },
     },
     actions: {
       onToggleStatus: handleToggleStatus,
