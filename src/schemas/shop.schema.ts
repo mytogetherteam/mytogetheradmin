@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { normalizePricePreference } from "@/lib/price-preference";
 
 export interface OperatingHour {
     dayOfWeek: number;
@@ -42,7 +43,10 @@ export const shopFormSchema = z.object({
     isActive: z.boolean().default(true),
     isHalal: z.boolean().default(false),
     isVegetarian: z.boolean().default(false),
-    pricePreference: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
+    pricePreference: z.preprocess(
+        (val) => normalizePricePreference(typeof val === 'string' ? val : undefined),
+        z.enum(["LOW", "MEDIUM", "HIGH"]),
+    ).default("MEDIUM"),
     enableStockCheck: z.boolean().default(false),
     cuisineTypeIds: z.array(z.number()).default([]),
     paymentMethodIds: z.array(z.number()).default([]),

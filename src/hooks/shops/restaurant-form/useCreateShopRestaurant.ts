@@ -19,6 +19,8 @@ import {
 import { usePaymentMethods } from "@/hooks/payment-methods/usePaymentMethod"
 import { buildShopRestaurantSubmitFormData } from "./buildShopFormData"
 import { createModeShopFormValues, useShopRestaurantForm } from "./useShopRestaurantForm"
+import { normalizePricePreference } from "@/lib/price-preference"
+import { buildShopsManagePathFromEdit } from "@/hooks/shops/shared/shopsManageNavigation"
 import { useShopRestaurantEditLabels } from "./useShopRestaurantEditLabels"
 import { useShopRestaurantLocationPickers } from "./useShopRestaurantLocationPickers"
 import { useShopRestaurantMedia } from "./useShopRestaurantMedia"
@@ -75,6 +77,7 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
     const navigate = useNavigate()
     const shopId = searchParams.get("id")
     const isEditMode = !!shopId
+    const shopsManagePath = buildShopsManagePathFromEdit(searchParams)
 
     const { mutateAsync: createShop, isPending: isCreatingShop } = useCreateShopMutation()
     const { mutateAsync: updateShop, isPending: isUpdatingShop } = useUpdateShopMutation()
@@ -104,8 +107,8 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
         if (!isEditMode || !shopId) return
         if (numericEditId !== null) return
         toast.error("Invalid shop ID")
-        navigate("/shops/manage")
-    }, [isEditMode, shopId, numericEditId, navigate])
+        navigate(shopsManagePath)
+    }, [isEditMode, shopId, numericEditId, navigate, shopsManagePath])
 
     const shopEditQuery = useShopRestaurantEditQuery(numericEditId)
 
@@ -113,7 +116,10 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
         if (!shopEditQuery.data || numericEditId === null) return
         const { shop, formValues, forMedia, initialAssignedAdminLabel } = shopEditQuery.data
 
-        form.reset(formValues)
+        form.reset({
+            ...formValues,
+            pricePreference: normalizePricePreference(shop.pricePreference),
+        })
         editLabels.hydrateEditLabelsFromShop(shop, {
             assignedAdminLabel: initialAssignedAdminLabel,
         })
@@ -133,8 +139,8 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
     useEffect(() => {
         if (!shopEditQuery.isError || numericEditId === null) return
         handleApiError(shopEditQuery.error, "Failed to load shop data")
-        navigate("/shops/manage")
-    }, [shopEditQuery.isError, shopEditQuery.error, numericEditId, navigate])
+        navigate(shopsManagePath)
+    }, [shopEditQuery.isError, shopEditQuery.error, numericEditId, navigate, shopsManagePath])
 
     useEffect(() => {
         if (numericEditId !== null) return
@@ -162,7 +168,7 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
             if (isEditMode && shopId) {
                 const numericId = parseInt(shopId, 10)
                 await updateShop({ id: numericId, formData })
-                navigate("/shops/manage", { replace: true })
+                navigate(shopsManagePath, { replace: true })
                 return
             }
 
@@ -178,12 +184,13 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
             updateShop,
             createShop,
             navigate,
+            shopsManagePath,
         ],
     )
 
     const handleCancel = useCallback(() => {
-        navigate("/shops/manage")
-    }, [navigate])
+        navigate(shopsManagePath)
+    }, [navigate, shopsManagePath])
 
     const handleDelete = useCallback(async () => {
         if (!shopId) return
@@ -193,14 +200,14 @@ export function useCreateShopRestaurant(): UseCreateShopRestaurantResult {
             const numericId = parseInt(shopId, 10)
             await ShopService.deleteShop(numericId)
             toast.success("Shop deleted successfully!")
-            navigate("/shops/manage")
+            navigate(shopsManagePath)
         } catch (error) {
             handleApiError(error, "Failed to delete shop")
         } finally {
             setDeleting(false)
             setDeleteDialogOpen(false)
         }
-    }, [shopId, navigate])
+    }, [shopId, navigate, shopsManagePath])
 
     const ui: CreateShopRestaurantUiState = {
         isEditMode,
