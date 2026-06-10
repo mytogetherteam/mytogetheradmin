@@ -829,6 +829,22 @@ export const ShopService = {
     );
   },
 
+  updateShopAdmin: async (
+    shopId: number,
+    adminId: number,
+    body: {
+      email?: string;
+      username?: string;
+      password?: string;
+      name?: string;
+    },
+  ): Promise<any> => {
+    return apiClient.patch(
+      config.endpoints.admin.shopProfile.updateAdmin(shopId, adminId),
+      body,
+    );
+  },
+
   unassignAdminFromShop: async (shopId: number, adminId: number): Promise<any> => {
     return apiClient.delete(
       `/api/admin/shop-profile/${shopId}/assign-admin/${adminId}`

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AsyncSelectField } from "@/components/common/AsyncSelectField";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Save } from "lucide-react";
 import {
   useManageUser,
   useManageUserRoles,
@@ -51,6 +51,8 @@ export default function EditUser() {
   const currentAdmin = authService.getUserData();
   const isCurrentAdmin =
     accountType === "admin" && userId === currentAdmin?.id;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const initialRole = useMemo(() => {
     if (!user) return undefined;
@@ -104,6 +106,10 @@ export default function EditUser() {
       roleId: null,
       roleName: null,
       isActive: true,
+      password: "",
+      confirmPassword: "",
+      pin: "",
+      confirmPin: "",
     },
   });
 
@@ -118,11 +124,15 @@ export default function EditUser() {
     reset({
       name: user.name || "",
       username: user.username || "",
-      email: user.email,
+      email: user.email || "",
       phone: user.phone || "",
       roleId: matchedRole?.id ?? user.roleId ?? null,
       roleName: matchedRole?.name ?? user.role ?? null,
       isActive: user.isActive,
+      password: "",
+      confirmPassword: "",
+      pin: "",
+      confirmPin: "",
     });
   }, [accountType, reset, roles, user]);
 
@@ -164,7 +174,7 @@ export default function EditUser() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit User</h1>
           <p className="text-muted-foreground mt-1">
-            Update {accountType === "admin" ? "admin" : "customer"} account
+            Update {accountType === "admin" ? "admin" : "user"} account
             information.
           </p>
         </div>
@@ -210,7 +220,7 @@ export default function EditUser() {
                 )}
               </div>
 
-              {accountType === "customer" && (
+              {accountType === "user" && (
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
                   <Input id="phone" {...register("phone")} />
@@ -261,6 +271,149 @@ export default function EditUser() {
                 </div>
               )}
             </div>
+
+            {accountType === "admin" && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <div>
+                  <Label className="text-base">Change Password</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Leave blank to keep the current password.
+                  </p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        className="pr-10"
+                        {...register("password")}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-xs text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        className="pr-10"
+                        {...register("confirmPassword")}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        aria-label={
+                          showConfirmPassword
+                            ? "Hide password"
+                            : "Show password"
+                        }
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="text-xs text-red-500">
+                        {errors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {accountType === "user" && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <div>
+                  <Label className="text-base">Change PIN</Label>
+                  <p className="text-sm text-muted-foreground">
+                    6-digit numeric PIN used to sign in. Leave blank to keep the
+                    current PIN.
+                  </p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="pin">New PIN</Label>
+                    <Controller
+                      name="pin"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          id="pin"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="••••••"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value.replace(/\D/g, "").slice(0, 6),
+                            )
+                          }
+                        />
+                      )}
+                    />
+                    {errors.pin && (
+                      <p className="text-xs text-red-500">
+                        {errors.pin.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPin">Confirm PIN</Label>
+                    <Controller
+                      name="confirmPin"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          id="confirmPin"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="••••••"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value.replace(/\D/g, "").slice(0, 6),
+                            )
+                          }
+                        />
+                      )}
+                    />
+                    {errors.confirmPin && (
+                      <p className="text-xs text-red-500">
+                        {errors.confirmPin.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {isCurrentAdmin ? (
               <div className="rounded-lg border p-4">

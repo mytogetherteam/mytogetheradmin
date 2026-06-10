@@ -19,11 +19,12 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import type { ShopActionDialogState } from '@/hooks/shops/profiles/manageShopRestaurantTypes';
-import { Eye, EyeOff, Trash2, Shield, User, Loader2, Users } from 'lucide-react';
+import { Eye, EyeOff, Trash2, Pencil, Shield, User, Loader2, Users } from 'lucide-react';
 import { assignAdminSchema, type AssignAdminFormValues, AdminRoleName } from '@/schemas/assignadmin.schema';
 import { useQuery } from '@tanstack/react-query';
 import { ShopService } from '@/services/shopService';
 import { useUnassignAdminMutation } from '@/hooks/shops/profiles/useUnassignAdminMutation';
+import { EditShopAdminDialog, type EditableShopAdmin } from '@/components/shop/manage/EditShopAdminDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -64,6 +65,7 @@ export function AssignAdminDialog({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [adminToUnassign, setAdminToUnassign] = useState<{ id: number; name: string } | null>(null);
+  const [adminToEdit, setAdminToEdit] = useState<EditableShopAdmin | null>(null);
 
   const {
     register,
@@ -353,25 +355,44 @@ export function AssignAdminDialog({
                         </div>
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl h-9 w-9 transition-colors"
-                        disabled={isUnassigning}
-                        onClick={() =>
-                          setAdminToUnassign({
-                            id: admin.id,
-                            name: admin.name || admin.username || admin.email,
-                          })
-                        }
-                      >
-                        {isUnassigning ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl h-9 w-9 transition-colors"
+                          disabled={isUnassigning}
+                          onClick={() =>
+                            setAdminToEdit({
+                              id: admin.id,
+                              name: admin.name,
+                              username: admin.username,
+                              email: admin.email,
+                            })
+                          }
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl h-9 w-9 transition-colors"
+                          disabled={isUnassigning}
+                          onClick={() =>
+                            setAdminToUnassign({
+                              id: admin.id,
+                              name: admin.name || admin.username || admin.email,
+                            })
+                          }
+                        >
+                          {isUnassigning ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -418,6 +439,13 @@ export function AssignAdminDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditShopAdminDialog
+        shopId={state.id}
+        admin={adminToEdit}
+        open={adminToEdit !== null}
+        onOpenChange={(open) => !open && setAdminToEdit(null)}
+      />
     </Dialog>
   );
 }
