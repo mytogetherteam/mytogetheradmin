@@ -62,12 +62,20 @@ export const manageUsersService = {
     data: EditManageUserFormValues,
   ): Promise<ManageUser> => {
     const payload = {
-      ...data,
-      username: data.username?.trim() || null,
       name: data.name?.trim() || null,
-      phone: data.phone?.trim() || null,
-      roleId: accountType === 'admin' ? data.roleId : undefined,
-      roleName: accountType === 'admin' ? data.roleName : undefined,
+      username: data.username?.trim() || null,
+      email: data.email?.trim() || undefined,
+      isActive: data.isActive,
+      ...(accountType === 'admin'
+        ? {
+            roleId: data.roleId ?? undefined,
+            roleName: data.roleName ?? undefined,
+            password: data.password?.trim() ? data.password : undefined,
+          }
+        : {
+            phone: data.phone?.trim() || null,
+            pin: data.pin?.trim() ? data.pin : undefined,
+          }),
     };
     const response = await apiClient.put<ManageUser>(
       config.endpoints.admin.manageUsers.detail(accountType, id),

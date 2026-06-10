@@ -66,4 +66,5 @@ export { useManageShopRestaurant } from './profiles/useManageShopRestaurant';
 export type { ShopActionDialogState } from './profiles/manageShopRestaurantTypes';
 export { useDeleteShopMutation, deleteShopMutationKey, type DeleteShopVariables } from './profiles/useDeleteShopMutation';
 export { useAssignAdminMutation, assignAdminMutationKey, type AssignAdminVariables } from './profiles/useAssignAdminMutation';
+export { useUpdateShopAdminMutation, updateShopAdminMutationKey, type UpdateShopAdminVariables } from './profiles/useUpdateShopAdminMutation';
 export { exportAdminShopProfilesToExcel } from './profiles/exportAdminShopProfiles';
