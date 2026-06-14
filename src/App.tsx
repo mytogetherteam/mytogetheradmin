@@ -88,6 +88,8 @@ const ManageShopFeedback = lazy(
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
 const Broadcast = lazy(() => import("@/pages/marketing/Broadcast"));
+const ManageBackgroundThemes = lazy(() => import("@/pages/background-themes/ManageBackgroundThemes"));
+const CreateBackgroundTheme = lazy(() => import("@/pages/background-themes/CreateBackgroundTheme"));
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
@@ -244,6 +246,8 @@ function App() {
                 <Route path="/collections/manage" element={<ManageCollections />} />
                 <Route path="/collections/create" element={<CreateCollection />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
+                <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
+                <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
                 <Route path="/places/manage" element={<ManagePlaces />} />
                 <Route path="/places/create" element={<CreatePlace />} />
@@ -352,6 +356,8 @@ function App() {
                 <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
+                <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
+                <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
                 <Route path="/places/manage" element={<ManagePlaces />} />
                 <Route path="/places/create" element={<CreatePlace />} />

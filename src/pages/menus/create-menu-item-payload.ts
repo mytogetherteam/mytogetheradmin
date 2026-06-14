@@ -5,6 +5,9 @@ import {
   resolveMenuItemDiscountPayload,
 } from "@/lib/menu-item-discount-form.util";
 
+export const MEAL_TYPE_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Other"] as const;
+export type MealTypeOption = (typeof MEAL_TYPE_OPTIONS)[number];
+
 function numericFromPriceInput(value: string): number {
   return parsePriceInput(value);
 }
@@ -71,6 +74,7 @@ export interface MenuItemSubmitFormSnapshot {
   isCombo: boolean;
   isRecommended: boolean;
   publishPublished: boolean;
+  mealTypes: string[];
   tagIds: number[];
   masterCategoryId: string;
   comboComponents: ComboComponent[];
@@ -141,8 +145,8 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
     is_recommended: snapshot.isRecommended,
     publishStatus: publish,
     publish_status: publish,
-    mealTypes: [] as string[],
-    meal_types: [] as string[],
+    mealTypes: snapshot.mealTypes,
+    meal_types: snapshot.mealTypes,
     tagIds: snapshot.tagIds,
     tag_ids: snapshot.tagIds,
     masterCategoryId: snapshot.masterCategoryId ? Number(snapshot.masterCategoryId) : undefined,
