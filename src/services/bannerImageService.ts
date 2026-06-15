@@ -24,6 +24,12 @@ function buildBannerFormData(
   if (values.nameMm !== undefined) formData.append("nameMm", values.nameMm);
   if (values.nameTh !== undefined && values.nameTh !== "")
     formData.append("nameTh", values.nameTh);
+  if (values.descriptionEn !== undefined)
+    formData.append("descriptionEn", values.descriptionEn);
+  if (values.descriptionMm !== undefined)
+    formData.append("descriptionMm", values.descriptionMm);
+  if (values.descriptionTh !== undefined)
+    formData.append("descriptionTh", values.descriptionTh);
   if (values.linkUrl !== undefined) formData.append("link", values.linkUrl);
   if (values.position !== undefined) formData.append("position", values.position);
   if (values.isActive !== undefined) {

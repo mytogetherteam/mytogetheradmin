@@ -210,6 +210,11 @@ export const config = {
           base: '/api/admin/banners',
           detail: (id: string | number) => `/api/admin/banners/${id}`,
         },
+        backgroundThemes: {
+          base: '/api/admin/background-themes',
+          detail: (id: string | number) => `/api/admin/background-themes/${id}`,
+          reorder: '/api/admin/background-themes/reorder',
+        },
         featuredShops: '/api/admin/marketing/featured-shops',
         shopActions: {
           boost: (shopId: string) => `/api/admin/marketing/shops/${shopId}/boost`,

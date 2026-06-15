@@ -32,6 +32,7 @@ const routeLabels: Record<string, string> = {
     "lostfound": "Lost & Found",
     "marketing": "Marketing",
     "banners": "Banners",
+    "background-themes": "Background Themes",
     "broadcast": "Broadcast",
     "system": "System",
     "audit-logs": "Audit Logs",

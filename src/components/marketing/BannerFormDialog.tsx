@@ -5,6 +5,7 @@ import { Modal } from "@/components/common/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -25,6 +26,9 @@ const defaultValues: BannerFormValues = {
   nameEn: "",
   nameMm: "",
   nameTh: "",
+  descriptionEn: "",
+  descriptionMm: "",
+  descriptionTh: "",
   linkUrl: "",
   position: "Promotions",
   isActive: true,
@@ -68,6 +72,9 @@ export function BannerFormDialog({
         nameEn: banner.nameEn,
         nameMm: banner.nameMm,
         nameTh: banner.nameTh ?? "",
+        descriptionEn: banner.descriptionEn ?? "",
+        descriptionMm: banner.descriptionMm ?? "",
+        descriptionTh: banner.descriptionTh ?? "",
         linkUrl: banner.linkUrl ?? "",
         position: banner.position,
         isActive: banner.isActive,
@@ -114,7 +121,7 @@ export function BannerFormDialog({
       submitText={banner ? "Update Banner" : "Create Banner"}
       width="sm:max-w-lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="nameEn">Title (English)</Label>
@@ -135,6 +142,46 @@ export function BannerFormDialog({
         <div className="space-y-2">
           <Label htmlFor="nameTh">Title (Thai)</Label>
           <Input id="nameTh" {...register("nameTh")} />
+        </div>
+
+        <div className="space-y-3 rounded-lg border p-3">
+          <p className="text-sm font-medium">Description (optional)</p>
+          <div className="space-y-2">
+            <Label htmlFor="descriptionEn">English</Label>
+            <Textarea
+              id="descriptionEn"
+              rows={2}
+              {...register("descriptionEn")}
+              placeholder="Short banner description in English"
+            />
+            {errors.descriptionEn && (
+              <p className="text-xs text-red-500">{errors.descriptionEn.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="descriptionMm">Myanmar</Label>
+            <Textarea
+              id="descriptionMm"
+              rows={2}
+              {...register("descriptionMm")}
+              placeholder="Short banner description in Myanmar"
+            />
+            {errors.descriptionMm && (
+              <p className="text-xs text-red-500">{errors.descriptionMm.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="descriptionTh">Thai</Label>
+            <Textarea
+              id="descriptionTh"
+              rows={2}
+              {...register("descriptionTh")}
+              placeholder="Short banner description in Thai"
+            />
+            {errors.descriptionTh && (
+              <p className="text-xs text-red-500">{errors.descriptionTh.message}</p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">

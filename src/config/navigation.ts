@@ -272,6 +272,7 @@ export const navigationConfig: NavGroup[] = [
         roles: [AdminRole.ADMIN, AdminRole.ADMIN_SETUP],
         items: [
             { title: "Banners & Featured", url: "/marketing/banners", icon: ImageIcon, tooltip: "Banners", roles: AdminRole.ADMIN },
+            { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon, tooltip: "Background Themes", roles: AdminRole.ADMIN },
             { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
             { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Broadcast", roles: AdminRole.ADMIN_SETUP }
         ]

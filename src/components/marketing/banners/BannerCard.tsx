@@ -37,6 +37,11 @@ export function BannerCard({ banner, onToggle, onEdit, onDelete }: BannerCardPro
           {banner.position} · {new Date(banner.startDate).toLocaleDateString()} –{" "}
           {new Date(banner.endDate).toLocaleDateString()}
         </p>
+        {(banner.descriptionEn || banner.descriptionMm || banner.descriptionTh) && (
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {banner.descriptionEn || banner.descriptionMm || banner.descriptionTh}
+          </p>
+        )}
         <div className="flex justify-between items-center w-full gap-2">
           <Button
             size="sm"

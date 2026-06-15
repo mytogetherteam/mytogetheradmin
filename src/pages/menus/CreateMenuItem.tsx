@@ -24,7 +24,7 @@ import {
     resolveMenuItemImageUrl,
     variantsFromApiResponse,
 } from "@/pages/menus/create-menu-item-mappers";
-import { buildAdminMenuItemDataJson } from "@/pages/menus/create-menu-item-payload";
+import { buildAdminMenuItemDataJson, MEAL_TYPE_OPTIONS } from "@/pages/menus/create-menu-item-payload";
 import {
     formatPercentageForInput,
     formatPriceForInput,
@@ -85,7 +85,7 @@ export default function CreateMenuItem() {
     const [isRecommended, setIsRecommended] = useState(false);
     const [publishPublished, setPublishPublished] = useState(false);
 
-    // Meal Types — hidden from form; API receives []
+    const [mealTypes, setMealTypes] = useState<string[]>([]);
 
     // Tags
     const [availableTags, setAvailableTags] = useState<ItemTag[]>([]);
@@ -238,6 +238,12 @@ export default function CreateMenuItem() {
         );
     };
 
+    const toggleMealType = (mealType: string) => {
+        setMealTypes(prev =>
+            prev.includes(mealType) ? prev.filter(t => t !== mealType) : [...prev, mealType]
+        );
+    };
+
     const addComboComponent = () => {
         setComboComponents(prev => [...prev, { includedItemId: 0, quantity: 1, displayOrder: prev.length + 1 }]);
     };
@@ -328,6 +334,7 @@ export default function CreateMenuItem() {
             setIsRecommended(item.isRecommended || false);
             const pub = (item as { publishStatus?: string }).publishStatus;
             setPublishPublished(pub === "PUBLISHED");
+            setMealTypes(item.mealTypes ?? []);
             setTagIds(item.tagIds?.map(Number) || (item.tags ? item.tags.map((t: TagResponse) => Number(t.id)) : []));
             if (item.masterCategoryId) {
                 setMasterCategoryId(String(item.masterCategoryId));
@@ -386,6 +393,7 @@ export default function CreateMenuItem() {
             setIsCombo(false);
             setIsRecommended(false);
             setPublishPublished(false);
+            setMealTypes([]);
             setTagIds([]);
             setMasterCategoryId("");
             setSelectedMasterCategoryData(null);
@@ -500,6 +508,7 @@ export default function CreateMenuItem() {
                 isCombo,
                 isRecommended,
                 publishPublished,
+                mealTypes,
                 tagIds,
                 masterCategoryId,
                 comboComponents,
@@ -721,6 +730,29 @@ export default function CreateMenuItem() {
                         </div>
 
                         <div className="space-y-6 pt-6 border-t font-sans">
+                            {/* Meal Types Section */}
+                            <div className="space-y-3">
+                                <h3 className="text-xl font-bold">Meal Types</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Select when this item is typically served. Used for search and trending filters.
+                                </p>
+                                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/10">
+                                    {MEAL_TYPE_OPTIONS.map((mealType) => {
+                                        const selected = mealTypes.includes(mealType);
+                                        return (
+                                            <Badge
+                                                key={mealType}
+                                                variant={selected ? "default" : "outline"}
+                                                className="cursor-pointer select-none transition-all"
+                                                onClick={() => toggleMealType(mealType)}
+                                            >
+                                                {mealType}
+                                            </Badge>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                             {/* Tags Section */}
                             <div className="space-y-3">
                                 <h3 className="text-xl font-bold">Item Tags</h3>
