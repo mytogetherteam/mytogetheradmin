@@ -90,6 +90,8 @@ const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement")
 const Broadcast = lazy(() => import("@/pages/marketing/Broadcast"));
 const ManageBackgroundThemes = lazy(() => import("@/pages/background-themes/ManageBackgroundThemes"));
 const CreateBackgroundTheme = lazy(() => import("@/pages/background-themes/CreateBackgroundTheme"));
+const ManageHomeDiscountSections = lazy(() => import("@/pages/home-discount-sections/ManageHomeDiscountSections"));
+const CreateHomeDiscountSection = lazy(() => import("@/pages/home-discount-sections/CreateHomeDiscountSection"));
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
@@ -200,6 +202,8 @@ function App() {
                 <Route path="/visa/categories/create" element={<CreateVisaCategory />} />
                 <Route path="/promotions/manage" element={<ManagePromotions />} />
                 <Route path="/promotions/create" element={<CreatePromotion />} />
+                <Route path="/home-discount-sections/manage" element={<ManageHomeDiscountSections />} />
+                <Route path="/home-discount-sections/create" element={<CreateHomeDiscountSection />} />
                 <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
                 <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                 <Route path="/community/posts" element={<CommunityMgt />} />
@@ -312,6 +316,8 @@ function App() {
                 <Route path="/visa/categories/create" element={<CreateVisaCategory />} />
                 <Route path="/promotions/manage" element={<ManagePromotions />} />
                 <Route path="/promotions/create" element={<CreatePromotion />} />
+                <Route path="/home-discount-sections/manage" element={<ManageHomeDiscountSections />} />
+                <Route path="/home-discount-sections/create" element={<CreateHomeDiscountSection />} />
                 <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
                 <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                 <Route path="/community/posts" element={<CommunityMgt />} />

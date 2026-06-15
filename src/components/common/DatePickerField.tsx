@@ -95,7 +95,7 @@ export function DatePickerField({
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
+        <PopoverContent className="p-0 w-auto min-w-[20rem]" align="start">
           <Calendar
             mode="single"
             selected={validDate ?? undefined}

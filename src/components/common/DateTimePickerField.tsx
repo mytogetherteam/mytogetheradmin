@@ -99,7 +99,7 @@ export function DateTimePickerField({ value, onChange, label = "Select Date & Ti
           </div>
         </PopoverTrigger>
 
-        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
+        <PopoverContent className="p-0 w-auto min-w-[20rem]" align="start">
           <Tabs
             value={tab}
             onValueChange={(v) => {
@@ -120,20 +120,22 @@ export function DateTimePickerField({ value, onChange, label = "Select Date & Ti
             </TabsList>
 
             {/* DATE TAB */}
-            <TabsContent value="date" className="p-3 space-y-3">
-              <Calendar
-                mode="single"
-                selected={value ?? undefined}
-                onSelect={(d) => {
-                  if (!d) return;
-                  const nd = new Date(value ?? new Date());
-                  nd.setFullYear(d.getFullYear(), d.getMonth(), d.getDate());
-                  onChange(nd);
-                  setTimeEnabled(true);
-                  setTab("time");
-                }}
-                required={false}
-              />
+            <TabsContent value="date" className="p-3 space-y-3 mt-0">
+              <div className="flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={value ?? undefined}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    const nd = new Date(value ?? new Date());
+                    nd.setFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+                    onChange(nd);
+                    setTimeEnabled(true);
+                    setTab("time");
+                  }}
+                  required={false}
+                />
+              </div>
 
               {/* ✅ Use Now Button */}
               <Button

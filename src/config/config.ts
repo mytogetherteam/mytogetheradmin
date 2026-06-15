@@ -215,6 +215,10 @@ export const config = {
           detail: (id: string | number) => `/api/admin/background-themes/${id}`,
           reorder: '/api/admin/background-themes/reorder',
         },
+        homeDiscountSections: {
+          base: '/api/admin/home-discount-sections',
+          detail: (id: string | number) => `/api/admin/home-discount-sections/${id}`,
+        },
         featuredShops: '/api/admin/marketing/featured-shops',
         shopActions: {
           boost: (shopId: string) => `/api/admin/marketing/shops/${shopId}/boost`,

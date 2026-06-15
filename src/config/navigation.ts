@@ -274,6 +274,7 @@ export const navigationConfig: NavGroup[] = [
             { title: "Banners & Featured", url: "/marketing/banners", icon: ImageIcon, tooltip: "Banners", roles: AdminRole.ADMIN },
             { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon, tooltip: "Background Themes", roles: AdminRole.ADMIN },
             { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
+            { title: "Home Discount Sections", url: "/home-discount-sections/manage", icon: TicketPercent, tooltip: "Home discount carousel config", roles: AdminRole.ADMIN_SETUP },
             { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Broadcast", roles: AdminRole.ADMIN_SETUP }
         ]
     },
