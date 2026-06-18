@@ -65,8 +65,6 @@ export default function ManageCollections() {
   const totalItems = data?.totalElements ?? 0;
   const totalPages = Math.max(1, data?.totalPages ?? 1);
 
-  // Adjust during render (not in an effect) when the current page falls out of
-  // range — e.g. after deleting the last row on the last page.
   if (!loading && currentPage > totalPages) {
     setCurrentPage(totalPages);
   }
@@ -156,11 +154,10 @@ export default function ManageCollections() {
                           </TableCell>
                           <TableCell>
                             <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                collection.status === "ACTIVE"
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${collection.status === "ACTIVE"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
-                              }`}
+                                }`}
                             >
                               {collection.status === "ACTIVE"
                                 ? "Active"

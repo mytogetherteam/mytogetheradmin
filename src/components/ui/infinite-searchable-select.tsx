@@ -18,12 +18,12 @@ import {
 } from "@/components/ui/popover"
 
 export interface PageableResponse<T> {
-  content: T[];
-  last: boolean;
-  totalElements?: number;
-  totalPages?: number;
-  size?: number;
-  number?: number;
+    content: T[];
+    last: boolean;
+    totalElements?: number;
+    totalPages?: number;
+    size?: number;
+    number?: number;
 }
 
 export interface InfiniteSearchableSelectProps<T> {
@@ -36,6 +36,8 @@ export interface InfiniteSearchableSelectProps<T> {
     placeholder?: string
     disabled?: boolean
     className?: string
+    /** First page number the API expects. 0 for zero-based endpoints (default), 1 for one-based (e.g. menu items). */
+    startPage?: number
 }
 
 export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
@@ -48,27 +50,27 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
     placeholder = "Select an item...",
     disabled = false,
     className,
+    startPage = 0,
 }: InfiniteSearchableSelectProps<T>) {
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [data, setData] = React.useState<T[]>([])
     const [loading, setLoading] = React.useState(false)
     const [hasMore, setHasMore] = React.useState(true)
-    const [page, setPage] = React.useState(0)
-    
+
     const displayKey = labelKey || valueKey
     const loadingRef = React.useRef(false)
+    const pageRef = React.useRef(startPage)
 
     const fetchDataInternal = React.useCallback(async (pageNum: number, search: string, isNewSearch: boolean) => {
-        if (loadingRef.current && !isNewSearch) return
+        if (loadingRef.current) return
         loadingRef.current = true
-        if (isNewSearch) {
-            setLoading(true)
-        }
+        setLoading(true)
         try {
-            const response = await fetchData(pageNum, 20, search)
+            const PAGE_SIZE = 20
+            const response = await fetchData(pageNum, PAGE_SIZE, search)
             const newContent = response.content || []
-            
+
             setData(prev => {
                 if (isNewSearch) return newContent
                 // Deduplicate items just in case
@@ -76,7 +78,11 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
                 const uniqueNewContent = newContent.filter(item => !existingIds.has(String(item[valueKey])))
                 return [...prev, ...uniqueNewContent]
             })
-            setHasMore(!response.last && newContent.length > 0)
+            pageRef.current = pageNum
+            // Reached the end when the API says so (`last`) OR it returned a partial page.
+            // Robust even when the endpoint doesn't send a `last` flag.
+            const reachedEnd = response.last === true || newContent.length < PAGE_SIZE
+            setHasMore(!reachedEnd)
         } catch (error) {
             console.error("Failed to fetch data:", error)
         } finally {
@@ -85,35 +91,29 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
         }
     }, [fetchData, valueKey])
 
-    // Reset and Initial Load / Search
+    // Reset and Initial Load / Search (page 1 = first 20 items)
     React.useEffect(() => {
         if (!open) return
 
         const handler = setTimeout(() => {
-            setPage(0)
-            fetchDataInternal(0, searchQuery, true)
+            pageRef.current = startPage
+            fetchDataInternal(startPage, searchQuery, true)
         }, 300)
         return () => clearTimeout(handler)
-    }, [searchQuery, fetchDataInternal, open])
+    }, [searchQuery, fetchDataInternal, open, startPage])
 
-    // Load more when page changes
-    React.useEffect(() => {
-        if (page > 0) {
-            fetchDataInternal(page, searchQuery, false)
+    // Load the next page (called when the user scrolls near the bottom)
+    const loadMore = React.useCallback(() => {
+        if (loadingRef.current || !hasMore) return
+        fetchDataInternal(pageRef.current + 1, searchQuery, false)
+    }, [hasMore, searchQuery, fetchDataInternal])
+
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+            loadMore()
         }
-    }, [page, searchQuery, fetchDataInternal])
-
-    const observer = React.useRef<IntersectionObserver | null>(null)
-    const lastElementRef = React.useCallback((node: HTMLDivElement | null) => {
-        if (loading) return
-        if (observer.current) observer.current.disconnect()
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                setPage(prev => prev + 1)
-            }
-        })
-        if (node) observer.current.observe(node)
-    }, [loading, hasMore])
+    }, [loadMore])
 
     const handleSelect = (item: T) => {
         onChange(item)
@@ -143,7 +143,7 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
                     <span className="truncate text-left flex-1">{displayValue}</span>
                     <div className="flex items-center shrink-0">
                         {selectedValue && (
-                            <div 
+                            <div
                                 onClick={handleClear}
                                 className="p-0.5 hover:bg-muted rounded-md transition-colors mr-1"
                                 role="button"
@@ -167,7 +167,7 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+                    <CommandList onScroll={handleScroll} className="max-h-[300px] overflow-y-auto overflow-x-hidden">
                         {loading && data.length === 0 ? (
                             <div className="flex items-center justify-center p-4">
                                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -200,8 +200,8 @@ export function InfiniteSearchableSelect<T extends { [key: string]: unknown }>({
                                         )
                                     })}
                                 </CommandGroup>
-                                {hasMore && (
-                                    <div ref={lastElementRef} className="flex justify-center p-2">
+                                {hasMore && data.length > 0 && (
+                                    <div className="flex justify-center p-2">
                                         <Loader2 className="h-4 w-4 animate-spin opacity-50" />
                                     </div>
                                 )}

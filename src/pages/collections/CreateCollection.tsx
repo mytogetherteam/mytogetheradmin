@@ -134,7 +134,15 @@ export default function CreateCollection() {
       size: number,
       search: string,
     ): Promise<PageableResponse<MenuItemOption>> => {
-      const res = await menuService.getAllMenuItems(page, size, search);
+      const res = await menuService.getAllMenuItems(
+        page,
+        size,
+        search,
+        undefined,
+        undefined,
+        undefined,
+        { isAvailable: true, pendingStatus: "APPROVED", publishStatus: "PUBLISHED" },
+      );
       return {
         content: res.content.map((item) => ({
           label: item.nameEn || item.name || `Item #${item.id}`,
@@ -293,6 +301,7 @@ export default function CreateCollection() {
               selectedValue={null}
               onChange={handleSelectItem}
               placeholder="Search menu items to add..."
+              startPage={1}
             />
 
             {selectedItems.length === 0 ? (

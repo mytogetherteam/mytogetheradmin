@@ -846,6 +846,7 @@ export default function CreateMenuItem() {
                                                                 selectedValue={comp.includedItemId ? { label: comp.includedItemNameEn || comp.itemName || `Item #${comp.includedItemId}`, value: String(comp.includedItemId) } : null}
                                                                 onChange={(item) => updateComboComponent(cIdx, { includedItemId: item ? Number(item.value) : 0, itemName: item?.label })}
                                                                 placeholder="Search included item..."
+                                                                startPage={1}
                                                             />
                                                         </div>
                                                         <div className="flex items-center gap-1 w-20">

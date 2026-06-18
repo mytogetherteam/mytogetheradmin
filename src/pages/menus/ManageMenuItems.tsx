@@ -107,7 +107,7 @@ export default function ManageMenuItems() {
         setLoading(true);
         try {
             const response = await menuService.getAllMenuItems(
-                currentPage - 1,
+                currentPage,
                 pageSize,
                 searchTerm,
                 shopId ? parseInt(shopId) : undefined,
