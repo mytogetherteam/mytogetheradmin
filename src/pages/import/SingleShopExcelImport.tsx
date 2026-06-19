@@ -1482,6 +1482,7 @@ export default function SingleShopExcelImport() {
               </Card>
             ) : null}
 
+
             {onboardingSuccessWarnings.length > 0 ? (
               <Accordion
                 type="single"
