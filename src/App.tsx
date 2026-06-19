@@ -20,6 +20,7 @@ const AdminProfile = lazy(() => import("@/pages/AdminProfile"));
 const ManageUsers = lazy(() => import("@/pages/manage-users/ManageUsers"));
 const EditUser = lazy(() => import("@/pages/manage-users/EditUser"));
 const UserDetail = lazy(() => import("@/pages/users/UserDetail"));
+const AdminSessions = lazy(() => import("@/pages/admin-sessions/AdminSessions"));
 
 // Shops
 const ManageShopRestaurant = lazy(() => import("@/pages/shops/ManageShopRestaurant"));
@@ -259,6 +260,7 @@ function App() {
                 <Route path="/news/create" element={<CreateNews />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
+                <Route path="/system/sessions" element={<AdminSessions />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
@@ -369,6 +371,7 @@ function App() {
                 <Route path="/places/create" element={<CreatePlace />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
+                <Route path="/system/sessions" element={<AdminSessions />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />

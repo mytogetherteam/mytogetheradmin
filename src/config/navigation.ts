@@ -29,6 +29,7 @@ import {
     MessageSquare,
     Layers,
     Newspaper,
+    MonitorSmartphone,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -337,6 +338,7 @@ export const navigationConfig: NavGroup[] = [
         title: "Administration",
         items: [
             { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList, tooltip: "Audit Logs", roles: AdminRole.ADMIN },
+            { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone, tooltip: "Active admin sessions & force logout", roles: AdminRole.ADMIN },
             { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, tooltip: "Order Timeouts", roles: AdminRole.ADMIN_FINANCE },
             { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, tooltip: "Onboarding", roles: AdminRole.ADMIN_SETUP },
             { title: "Configurations", url: "/system/configs", icon: Settings2, tooltip: "Configurations", roles: AdminRole.ADMIN_SETUP },
