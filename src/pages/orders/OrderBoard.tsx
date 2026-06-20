@@ -11,7 +11,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, ClipboardList, Wifi, WifiOff, Eye, X } from "lucide-react";
+import { RefreshCw, ClipboardList, Wifi, WifiOff, Eye, X, CheckCircle2, XCircle } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { ShopSelect } from "@/components/ShopSelect";
 import { authService } from "@/services/authService";
@@ -71,6 +71,12 @@ export default function OrderBoard() {
         setStatusFilter(ALL);
         setCurrentPage(1);
         setShopSelectKey((k) => k + 1);
+    };
+
+    // Quick-filter buttons toggle a terminal status on/off (off → back to active).
+    const toggleStatus = (s: string) => {
+        setStatusFilter((cur) => (cur === s ? ALL : s));
+        setCurrentPage(1);
     };
 
     const filtersActive = shopId !== null || statusFilter !== ALL;
@@ -134,6 +140,29 @@ export default function OrderBoard() {
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* Quick terminal-status filters */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Quick filter</label>
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant={statusFilter === "DELIVERED" ? "default" : "outline"}
+                                className="h-9"
+                                onClick={() => toggleStatus("DELIVERED")}
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-1" /> Delivered
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={statusFilter === "CANCELED" ? "default" : "outline"}
+                                className="h-9"
+                                onClick={() => toggleStatus("CANCELED")}
+                            >
+                                <XCircle className="h-4 w-4 mr-1" /> Cancelled
+                            </Button>
+                        </div>
                     </div>
 
                     {filtersActive && (
