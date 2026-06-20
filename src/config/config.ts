@@ -151,6 +151,10 @@ export const config = {
         history: (id: string) => `/api/admin/orders/${id}/history`,
         status: (id: string) => `/api/admin/orders/${id}/status`,
       },
+      deliveryDrivers: {
+        base: '/api/admin/delivery-drivers',
+        detail: (id: number) => `/api/admin/delivery-drivers/${id}`,
+      },
       menu: {
         categories: '/api/admin/menu-categories',
         categoryDetail: (id: number) => `/api/admin/menu-categories/${id}`,
@@ -337,6 +341,9 @@ export const config = {
       // Escalations: orders a shop didn't respond to within the SLA window.
       // Backend broadcasts here (myshop_demo_api ShopEventsGateway).
       superAdminNotifications: '/topic/superadmin/escalations',
+      // Live order board: every new order / status change across all shops is
+      // mirrored here for SuperAdmins (myshop_demo_api OrderEventsPublisher).
+      superAdminOrders: '/topic/superadmin/orders',
     },
   },
   storage: {

@@ -66,9 +66,9 @@ export const navigationConfig: NavGroup[] = [
     },
     {
         title: "Orders",
-        roles: [AdminRole.ADMIN_OPS, AdminRole.ADMIN_FINANCE],
+        roles: [AdminRole.ADMIN, AdminRole.ADMIN_FINANCE],
         items: [
-            { title: "Live Order Board", url: "/orders/board", icon: ClipboardList, tooltip: "Order Board", roles: AdminRole.ADMIN_OPS },
+            { title: "Live Order Board", url: "/orders/board", icon: ClipboardList, tooltip: "Order Board (SuperAdmin)", roles: AdminRole.ADMIN },
             { title: "Order History", url: "/orders/history", icon: History, tooltip: "Order History", roles: AdminRole.ADMIN_FINANCE }
         ]
     },

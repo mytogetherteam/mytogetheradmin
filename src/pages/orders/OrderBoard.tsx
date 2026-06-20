@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { orderService, Order, OrderStatus } from "@/services/orderService";
+import { useQueryClient } from "@tanstack/react-query";
+import { Order, OrderStatus, ORDER_STATUSES } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -10,258 +10,182 @@ import {
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-    Skeleton
-} from "@/components/ui/skeleton";
-import { RefreshCw, ClipboardList, Wifi, WifiOff } from "lucide-react";
-import { toast } from "sonner";
-import { handleApiError } from "@/lib/error-utils";
-import { SortableTableHead } from "@/components/SortableTableHead";
-import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RefreshCw, ClipboardList, Wifi, WifiOff, Eye, X } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { useAdminWebSocket } from "@/hooks/useAdminWebSocket";
+import { ShopSelect } from "@/components/ShopSelect";
+import { authService } from "@/services/authService";
+import { AdminRole, hasAccess } from "@/utils/rbac";
+import { useSuperAdminOrderSocket } from "@/hooks/notifications/useSuperAdminOrderSocket";
+import { useActiveOrders, orderKeys } from "@/hooks/orders/useOrders";
+import { STATUS_COLORS } from "@/components/orders/order-format";
+import { formatRelativeTime, formatAmount } from "@/lib/helpers";
 
-const STATUS_COLORS: Record<OrderStatus, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    CONFIRMED: "bg-blue-100 text-blue-800 border-blue-200",
-    ACCEPTED: "bg-cyan-100 text-cyan-800 border-cyan-200",
-    AWAITING_APPROVAL: "bg-amber-100 text-amber-800 border-amber-200",
-    PAYMENT_SLIP_REQUESTED: "bg-pink-100 text-pink-800 border-pink-200",
-    PAYMENT_UPLOADED: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
-    PAYMENT_VERIFIED: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    PREPARING: "bg-orange-100 text-orange-800 border-orange-200",
-    READY: "bg-purple-100 text-purple-800 border-purple-200",
-    ON_THE_WAY: "bg-indigo-100 text-indigo-800 border-indigo-200",
-    DELIVERING: "bg-indigo-100 text-indigo-800 border-indigo-200",
-    DELIVERED: "bg-green-100 text-green-800 border-green-200",
-    CANCELLED: "bg-red-100 text-red-800 border-red-200",
-    INTERNAL_TRACKING: "bg-gray-100 text-gray-800 border-gray-200",
-};
+const ALL = "ALL";
 
-const ACTIVE_STATUSES: OrderStatus[] = ['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY'];
-
-/** Statuses that should be removed from the active board once reached */
-const TERMINAL_STATUSES: OrderStatus[] = ['DELIVERED', 'CANCELLED'];
-
-const POLL_INTERVAL_MS = 30_000;
-
-function getElapsedTime(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-}
-
+/** Pending orders older than 15 min get a visual SLA warning. */
 function isPendingSLA(order: Order): boolean {
-    if (order.status !== 'PENDING' || !order.createdAt) return false;
+    if (order.status !== "PENDING" || !order.createdAt) return false;
     const elapsed = Date.now() - new Date(order.createdAt).getTime();
-    return !isNaN(elapsed) && elapsed > 15 * 60 * 1000; // 15 minutes
+    return !isNaN(elapsed) && elapsed > 15 * 60 * 1000;
 }
 
 export default function OrderBoard() {
     const navigate = useNavigate();
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+    const queryClient = useQueryClient();
+    const isSuperAdmin = hasAccess(authService.getUserData()?.role, AdminRole.ADMIN);
+
+    // ── Filters + server-side pagination ──────────────────────────────────────
+    const [shopId, setShopId] = useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = useState<string>(ALL);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(20);
+    // Bumping this remounts <ShopSelect>, resetting its internal selection on "Clear".
+    const [shopSelectKey, setShopSelectKey] = useState(0);
 
-    // ── Ref to track known IDs for O(1) duplicate-guard during WS inserts ──
-    const knownIdsRef = useRef<Set<string | number>>(new Set());
+    const { data, isFetching, refetch } = useActiveOrders({
+        shopId: shopId ?? undefined,
+        status: statusFilter === ALL ? undefined : (statusFilter as OrderStatus),
+        page: currentPage,
+        size: pageSize,
+    });
 
-    // ── Initial REST fetch (also used as manual refresh / fallback) ──────────
-    const fetchOrders = useCallback(async () => {
-        try {
-            const data = await orderService.getActiveOrders();
-            setOrders(data);
-            setLastRefresh(new Date());
-            // Rebuild the known-IDs set from the fresh snapshot
-            knownIdsRef.current = new Set(data.map((o) => o.id));
-        } catch (error) {
-            handleApiError(error, "Failed to fetch active orders");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const orders = data?.content ?? [];
+    const totalItems = data?.totalElements ?? 0;
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
+    const showSkeleton = isFetching && orders.length === 0;
 
-    // ── WebSocket callbacks (stable → refs prevent hook re-activation) ───────
-    const handleNewOrder = useCallback((payload: Partial<Order> & { id: string | number; status: OrderStatus }) => {
-        if (knownIdsRef.current.has(payload.id)) return; // duplicate guard
-        knownIdsRef.current.add(payload.id);
+    // ── Live WebSocket: any order event → invalidate the board (debounced) ────
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleWsEvent = useCallback(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            void queryClient.invalidateQueries({ queryKey: orderKeys.active() });
+        }, 400);
+    }, [queryClient]);
 
-        setOrders((prev) => {
-            // Only add if the status is still active (defensive)
-            if (TERMINAL_STATUSES.includes(payload.status)) return prev;
-            return [payload as Order, ...prev];
-        });
+    const { connected: wsConnected } = useSuperAdminOrderSocket(handleWsEvent, isSuperAdmin);
 
-        toast.info(`New order #${String(payload.id).slice(-8).toUpperCase()} received!`, {
-            description: payload.shopName ?? undefined,
-        });
-    }, []);
-
-    const handleOrderUpdate = useCallback((payload: { id: string | number; status: OrderStatus; updatedAt?: string; [key: string]: unknown }) => {
-        setOrders((prev) => {
-            const idx = prev.findIndex((o) => String(o.id) === String(payload.id));
-            if (idx === -1) {
-                // Unknown order — trigger a full refresh to pick it up
-                fetchOrders();
-                return prev;
-            }
-
-            // Terminal status: remove from active board
-            if (TERMINAL_STATUSES.includes(payload.status)) {
-                knownIdsRef.current.delete(payload.id);
-                return prev.filter((_, i) => i !== idx);
-            }
-
-            // In-place status patch — only re-create the changed element
-            const updated = { ...prev[idx], status: payload.status };
-            if (payload.updatedAt) updated.updatedAt = payload.updatedAt;
-            const next = [...prev];
-            next[idx] = updated;
-            return next;
-        });
-    }, [fetchOrders]);
-
-    // ── Page-scoped WebSocket (Using global connection with demand) ────
-    const { connected: wsConnected, latestOrder, latestOrderUpdate } = useAdminWebSocket({ enabled: true });
-
-    useEffect(() => {
-        if (latestOrder) {
-            handleNewOrder(latestOrder as Parameters<typeof handleNewOrder>[0]);
-        }
-    }, [latestOrder, handleNewOrder]);
-
-    useEffect(() => {
-        if (latestOrderUpdate) {
-            handleOrderUpdate(latestOrderUpdate as Parameters<typeof handleOrderUpdate>[0]);
-        }
-    }, [latestOrderUpdate, handleOrderUpdate]);
-
-    // ── Polling fallback: only active when WS is not connected ───────────────
-    // Track wsConnected in a ref so the interval closure always reads the
-    // latest value without needing to be torn down and re-created.
-    const wsConnectedRef = useRef(wsConnected);
-    useEffect(() => { wsConnectedRef.current = wsConnected; }, [wsConnected]);
-
-    useEffect(() => {
-        // Initial REST fetch regardless of WS state
-        fetchOrders();
-
-        const interval = setInterval(() => {
-            // Skip polling if WebSocket is healthy
-            if (wsConnectedRef.current) return;
-            fetchOrders();
-        }, POLL_INTERVAL_MS);
-
-        return () => clearInterval(interval);
-    }, [fetchOrders]);
-
-    const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-        try {
-            await orderService.updateOrderStatus(orderId, newStatus);
-            // Optimistic update — WS echo will confirm; terminal statuses drop row
-            setOrders((prev) => {
-                if (TERMINAL_STATUSES.includes(newStatus)) {
-                    knownIdsRef.current.delete(orderId);
-                    return prev.filter((o) => String(o.id) !== orderId);
-                }
-                return prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o);
-            });
-            toast.success(`Order status updated to ${newStatus}`);
-        } catch (error) {
-            handleApiError(error, "Failed to update order status");
-        }
+    const resetFilters = () => {
+        setShopId(null);
+        setStatusFilter(ALL);
+        setCurrentPage(1);
+        setShopSelectKey((k) => k + 1);
     };
 
-    const byStatus = (status: OrderStatus) => orders.filter((o) => o.status === status);
-    const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
-    const sortedOrders = sortData(orders, sortConfig);
-
-    // Pagination
-    const totalItems = sortedOrders.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    const paginatedOrders = sortedOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const filtersActive = shopId !== null || statusFilter !== ALL;
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                     <ClipboardList className="h-6 w-6 text-primary" />
                     <div>
-                        <h1 className="text-lg font-semibold md:text-2xl">Order Board — Live Monitor</h1>
+                        <h1 className="text-lg font-semibold md:text-2xl">Live Order Board</h1>
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
                             {wsConnected ? (
                                 <>
                                     <Wifi className="h-3 w-3 text-green-500" />
                                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-green-600 font-medium">Live · WebSocket connected</span>
+                                    <span className="text-green-600 font-medium">Live · connected</span>
                                 </>
                             ) : (
                                 <>
                                     <WifiOff className="h-3 w-3 text-amber-500" />
-                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                    Auto-refresh every 30s · Last: {lastRefresh.toLocaleTimeString()}
+                                    Reconnecting… use Refresh to update
                                 </>
                             )}
                         </p>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
                     Refresh
                 </Button>
             </div>
 
-            {/* Summary badges */}
-            <div className="flex flex-wrap gap-2">
-                {ACTIVE_STATUSES.map((s) => (
-                    <Badge key={s} variant="secondary" className="gap-1">
-                        {s}: {loading ? '…' : byStatus(s).length}
-                    </Badge>
-                ))}
-            </div>
+            {/* Filters */}
+            <Card>
+                <CardContent className="flex flex-wrap items-end gap-4 py-4">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Shop</label>
+                        <ShopSelect
+                            key={shopSelectKey}
+                            className="w-[240px]"
+                            placeholder="All shops"
+                            onSelect={(id) => { setShopId(id); setCurrentPage(1); }}
+                        />
+                    </div>
 
-            {/* Active Orders Table */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Status</label>
+                        <Select
+                            value={statusFilter}
+                            onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+                        >
+                            <SelectTrigger className="w-[220px] h-9 text-sm">
+                                <SelectValue placeholder="Active (all in-flight)" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[320px]">
+                                <SelectItem value={ALL}>Active (all in-flight)</SelectItem>
+                                {ORDER_STATUSES.map((s) => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {filtersActive && (
+                        <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
+                            <X className="h-4 w-4 mr-1" /> Clear
+                        </Button>
+                    )}
+
+                    <div className="ml-auto text-xs text-muted-foreground self-center">
+                        {showSkeleton ? "Loading…" : `${totalItems} order${totalItems === 1 ? "" : "s"}`}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Orders table */}
             <Card>
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Active Orders</CardTitle>
+                    <CardTitle className="text-base">
+                        {statusFilter === ALL ? "Active Orders" : `Orders · ${statusFilter}`}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <SortableTableHead label="Order ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableTableHead label="Customer" sortKey="customerName" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableTableHead label="Shop" sortKey="shopName" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableTableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableTableHead label="Time" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableTableHead label="Total" sortKey="totalAmount" sortConfig={sortConfig} onSort={handleSort} />
-                                <TableHead>Actions</TableHead>
+                                <TableHead>Order</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Shop</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Items</TableHead>
+                                <TableHead>Placed</TableHead>
+                                <TableHead>Total</TableHead>
+                                <TableHead className="text-right">View</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {loading ? (
-                                [...Array(5)].map((_, i) => (
+                            {showSkeleton ? (
+                                [...Array(6)].map((_, i) => (
                                     <TableRow key={i}>
-                                        {[...Array(7)].map((__, j) => (
+                                        {[...Array(8)].map((__, j) => (
                                             <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                         ))}
                                     </TableRow>
                                 ))
-                            ) : paginatedOrders.length === 0 ? (
+                            ) : orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                                         <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                                        No active orders
+                                        No orders match the current filters
                                     </TableCell>
                                 </TableRow>
-                            ) : paginatedOrders.map((order) => (
+                            ) : orders.map((order) => (
                                 <TableRow
                                     key={order.id}
                                     className={isPendingSLA(order) ? "border-l-4 border-l-red-500 bg-red-500/5" : ""}
@@ -271,12 +195,14 @@ export default function OrderBoard() {
                                             className="text-primary underline-offset-4 hover:underline font-mono text-xs"
                                             onClick={() => navigate(`/orders/${order.id}`)}
                                         >
-                                            #{String(order.id).slice(-8).toUpperCase()}
+                                            {order.lastOrderNo || `#${order.id}`}
                                         </button>
                                     </TableCell>
                                     <TableCell className="text-sm">
-                                        <div className="font-medium text-sm">{order.userFullName || "Guest"}</div>
-                                        {order.userPhone && <div className="text-[10px] text-muted-foreground">{order.userPhone}</div>}
+                                        <div className="font-medium">{order.userFullName || "Guest"}</div>
+                                        {order.userPhone && (
+                                            <div className="text-[10px] text-muted-foreground">{order.userPhone}</div>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -287,39 +213,35 @@ export default function OrderBoard() {
                                                     <div className="h-full w-full flex items-center justify-center bg-muted text-[8px]">?</div>
                                                 )}
                                             </div>
-                                            <span className="text-xs font-medium truncate max-w-[120px]">{order.shopName}</span>
+                                            <span className="text-xs font-medium truncate max-w-[140px]">
+                                                {order.shopName || `Shop #${order.shopId}`}
+                                            </span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || "bg-gray-100"}`}>
+                                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-800 border-gray-200"}`}>
                                             {order.status}
                                         </span>
                                     </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                        {order.itemCount ?? "—"}
+                                    </TableCell>
                                     <TableCell className={`text-xs ${isPendingSLA(order) ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>
-                                        {order.createdAt ? getElapsedTime(order.createdAt) : "—"}
+                                        {formatRelativeTime(order.createdAt)}
                                     </TableCell>
                                     <TableCell className="font-medium text-sm">
-                                        {order.displayTotalAmount || (typeof order.totalAmount === 'number' ? `$${order.totalAmount.toFixed(2)}` : order.totalAmount || "—")}
+                                        {formatAmount(order.totalAmount, order.displayTotalAmount)}
                                     </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Select
-                                                value={order.status}
-                                                onValueChange={(val) => handleStatusChange(String(order.id), val as OrderStatus)}
-                                            >
-                                                <SelectTrigger className="w-full h-8 text-xs font-bold">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'].map((s) => (
-                                                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate(`/orders/${order.id}`)}>
-                                                <RefreshCw className="h-3 w-3" />
-                                            </Button>
-                                        </div>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => navigate(`/orders/${order.id}`)}
+                                            title="View order"
+                                        >
+                                            <Eye className="h-3.5 w-3.5" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -336,7 +258,6 @@ export default function OrderBoard() {
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
             />
-
         </div>
     );
 }

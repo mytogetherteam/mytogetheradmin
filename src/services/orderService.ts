@@ -1,7 +1,41 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'ACCEPTED' | 'AWAITING_APPROVAL' | 'PAYMENT_SLIP_REQUESTED' | 'PAYMENT_UPLOADED' | 'PAYMENT_VERIFIED' | 'PREPARING' | 'READY' | 'ON_THE_WAY' | 'DELIVERING' | 'DELIVERED' | 'CANCELLED' | 'INTERNAL_TRACKING';
+// Canonical statuses as emitted by the backend Prisma `OrderStatus` enum.
+export const ORDER_STATUSES = [
+  'PENDING',
+  'PAYMENT_SLIP_REQUESTED',
+  'AWAITING_APPROVAL',
+  'PAYMENT_VERIFIED',
+  'COOKING',
+  'READY_FOR_PICKUP',
+  'ON_THE_WAY',
+  'DELIVERED',
+  'PICKED_UP',
+  'REVISED',
+  'CANCELED',
+] as const;
+
+/** In-flight statuses shown on the live board by default (terminal ones drop). */
+export const ACTIVE_ORDER_STATUSES = [
+  'PENDING',
+  'PAYMENT_SLIP_REQUESTED',
+  'AWAITING_APPROVAL',
+  'PAYMENT_VERIFIED',
+  'COOKING',
+  'READY_FOR_PICKUP',
+  'ON_THE_WAY',
+  'REVISED',
+] as const;
+
+export const TERMINAL_ORDER_STATUSES = ['DELIVERED', 'PICKED_UP', 'CANCELED'] as const;
+
+// Union kept as a superset of the canonical backend statuses plus legacy values
+// still referenced by older pages, so the whole app keeps type-checking.
+export type OrderStatus =
+  | (typeof ORDER_STATUSES)[number]
+  | 'CONFIRMED' | 'ACCEPTED' | 'PAYMENT_UPLOADED' | 'PREPARING' | 'READY'
+  | 'DELIVERING' | 'CANCELLED' | 'INTERNAL_TRACKING';
 
 export interface OrderItem {
   id: string | number;
@@ -43,12 +77,22 @@ export interface Order {
   displayDeliveryFee?: string | null;
   totalAmount: number;
   displayTotalAmount?: string | null;
+  displayItemPrice?: string | null;
+  displayTaxAmount?: string | null;
   itemCount?: number | null;
   items: OrderItem[] | null;
   paymentSlipUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   queueNo?: number;
+  lastOrderNo?: string | null;
+  orderType?: string | null;
+  orderDeliveryType?: string | null;
+  waitingTimeMinutes?: number | null;
+  taxAmount?: number | null;
+  itemPrice?: number | null;
+  address?: string | null;
+  note?: string | null;
   
   // Backward compatibility fields if any
   customerName?: string;
@@ -78,6 +122,21 @@ export interface OrderHealthData {
   [status: string]: number;
 }
 
+/** Body for the SuperAdmin status-override endpoint (subset of the backend DTO). */
+export interface UpdateOrderStatusPayload {
+  status: OrderStatus;
+  cancelReason?: string;
+  trackingUrl?: string;
+  driverId?: number;
+  // Required by the backend when status = PAYMENT_SLIP_REQUESTED
+  orderDeliveryType?: 'FAST' | 'FLEXIBLE';
+  deliveryFee?: number;
+  waitingTimeMinutes?: number;
+  // Required by the backend when status = REVISED
+  reviseReason?: string;
+  unavailableItems?: number[];
+}
+
 export interface OrderHistoryEntry {
   id: number;
   fromStatus: OrderStatus;
@@ -89,9 +148,32 @@ export interface OrderHistoryEntry {
   changedAt: string;
 }
 
+export interface ActiveOrderFilters {
+  shopId?: string | number;
+  status?: OrderStatus | OrderStatus[];
+  page?: number;
+  size?: number;
+}
+
 class OrderService {
-  async getActiveOrders(): Promise<Order[]> {
-    return apiClient.get<Order[]>(config.endpoints.admin.orders.active);
+  /**
+   * Live order board feed (SuperAdmin only) — in-flight orders across every
+   * shop. Optionally narrow by shop and/or status. Returns a paginated page.
+   */
+  async getActiveOrders(filters: ActiveOrderFilters = {}): Promise<OrdersPage> {
+    const params = new URLSearchParams();
+    if (filters.shopId !== undefined && filters.shopId !== '' && filters.shopId !== 'ALL') {
+      params.append('shopId', String(filters.shopId));
+    }
+    if (filters.status) {
+      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      const cleaned = statuses.filter((s) => s && s !== ('ALL' as OrderStatus));
+      if (cleaned.length > 0) params.append('status', cleaned.join(','));
+    }
+    params.append('page', String(filters.page ?? 1));
+    params.append('size', String(filters.size ?? 50));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<OrdersPage>(`${config.endpoints.admin.orders.active}${query}`);
   }
 
   async getOrdersHealth(): Promise<OrderHealthData> {
@@ -120,10 +202,14 @@ class OrderService {
     return apiClient.get<OrderHistoryEntry[]>(config.endpoints.admin.orders.history(orderId));
   }
 
-  async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
-    const params = new URLSearchParams({ status });
-    if (reason) params.append('reason', reason);
-    return apiClient.put<Order>(`${config.endpoints.admin.orders.status(id)}?${params.toString()}`, {});
+  /**
+   * SuperAdmin override of an order status (PATCH /api/admin/orders/:id/status).
+   * Body mirrors the backend UpdateShopOrderStatusDto — the backend runs the
+   * exact same rules as the shop-admin action, so statuses that need extra
+   * fields (REVISED, PAYMENT_SLIP_REQUESTED, ON_THE_WAY) are validated there.
+   */
+  async updateOrderStatus(id: string, payload: UpdateOrderStatusPayload): Promise<Order> {
+    return apiClient.patch<Order>(config.endpoints.admin.orders.status(id), payload);
   }
 }
 

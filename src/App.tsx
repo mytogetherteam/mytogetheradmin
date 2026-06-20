@@ -179,7 +179,7 @@ function App() {
                 <Route path="/menus/approvals/categories/:id" element={<CategoryApprovalDetail />} />
                 <Route path="/menus/items/manage" element={<ManageMenuItems />} />
                 <Route path="/menus/items/create" element={<CreateMenuItem />} />
-                <Route path="/orders/board" element={<OrderBoard />} />
+                <Route path="/orders/board" element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><OrderBoard /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
                 <Route path="/moderation/content" element={<ContentReports />} />
                 <Route path="/moderation/user-shop" element={<UserShopReports />} />
@@ -294,7 +294,7 @@ function App() {
                 <Route path="/menus/approvals/categories/:id" element={<CategoryApprovalDetail />} />
                 <Route path="/menus/items/manage" element={<ManageMenuItems />} />
                 <Route path="/menus/items/create" element={<CreateMenuItem />} />
-                <Route path="/orders/board" element={<OrderBoard />} />
+                <Route path="/orders/board" element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><OrderBoard /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
                 <Route path="/moderation/content" element={<ContentReports />} />
                 <Route path="/moderation/user-shop" element={<UserShopReports />} />
