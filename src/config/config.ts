@@ -131,6 +131,11 @@ export const config = {
         detail: (id: number) => `/api/admin/shop-feedback/${id}`,
         read: (id: number) => `/api/admin/shop-feedback/${id}/read`,
       },
+      deliveryDrivers: {
+        list: '/api/admin/delivery-drivers',
+        base: '/api/admin/delivery-drivers',
+        detail: (id: number) => `/api/admin/delivery-drivers/${id}`,
+      },
       reviews: {
         shops: '/api/admin/reviews/shops',
         shopVisibility: (id: string) => `/api/admin/reviews/shops/${id}/visibility`,
@@ -150,10 +155,6 @@ export const config = {
         health: '/api/admin/orders/health',
         history: (id: string) => `/api/admin/orders/${id}/history`,
         status: (id: string) => `/api/admin/orders/${id}/status`,
-      },
-      deliveryDrivers: {
-        base: '/api/admin/delivery-drivers',
-        detail: (id: number) => `/api/admin/delivery-drivers/${id}`,
       },
       menu: {
         categories: '/api/admin/menu-categories',
