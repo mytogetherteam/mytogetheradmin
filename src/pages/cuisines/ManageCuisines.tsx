@@ -20,18 +20,9 @@ import {
     Search,
     Edit,
     Trash2,
-    MoreHorizontal,
     UtensilsCrossed,
     ArrowUpDown
 } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { toast } from "sonner";
@@ -42,7 +33,11 @@ export default function ManageCuisines() {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
-    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean;
+        id: number;
+        name: string;
+    }>({ open: false, id: 0, name: "" });
 
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
     const isFirstSearchDebounce = useRef(true);
@@ -71,15 +66,15 @@ export default function ManageCuisines() {
     }, [loading, currentPage, totalPages]);
 
     const handleDelete = async () => {
-        if (!deleteId) return;
+        if (!deleteDialog.id) return;
         try {
-            await cuisineService.deleteCuisine(deleteId);
+            await cuisineService.deleteCuisine(deleteDialog.id);
             toast.success("Cuisine deleted successfully");
             void refetch();
         } catch (error) {
             handleApiError(error, "Failed to delete cuisine");
         } finally {
-            setDeleteId(null);
+            setDeleteDialog({ open: false, id: 0, name: "" });
         }
     };
 
@@ -168,29 +163,35 @@ export default function ManageCuisines() {
                                             </TableCell>
                                             <TableCell>{cuisine.displayOrder}</TableCell>
                                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/cuisines/edit/${cuisine.id}`); }}>
-                                                            <Edit className="mr-2 h-4 w-4" />
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive focus:text-destructive"
-                                                            onClick={(e) => { e.stopPropagation(); setDeleteId(cuisine.id); }}
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/cuisines/edit/${cuisine.id}`);
+                                                        }}
+                                                        aria-label={`Edit ${cuisine.nameEn}`}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeleteDialog({
+                                                                open: true,
+                                                                id: cuisine.id,
+                                                                name: cuisine.nameEn,
+                                                            });
+                                                        }}
+                                                        aria-label={`Delete ${cuisine.nameEn}`}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -220,14 +221,16 @@ export default function ManageCuisines() {
             </Card>
 
             <ConfirmDialog
-                open={!!deleteId}
-                onOpenChange={(open) => !open && setDeleteId(null)}
+                open={deleteDialog.open}
+                onOpenChange={(open) =>
+                    !open && setDeleteDialog({ open: false, id: 0, name: "" })
+                }
                 title="Delete Cuisine?"
-                description="This action cannot be undone. This will permanently delete the cuisine type from our servers."
+                description={`This will permanently delete ${deleteDialog.name || "this cuisine"}. This action cannot be undone.`}
                 confirmText="Delete"
                 cancelText="Cancel"
                 variant="destructive"
-                onCancel={() => setDeleteId(null)}
+                onCancel={() => setDeleteDialog({ open: false, id: 0, name: "" })}
                 onConfirm={handleDelete}
             />
         </div>

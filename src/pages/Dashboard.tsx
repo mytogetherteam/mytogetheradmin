@@ -16,12 +16,11 @@ import {
     YAxis,
 } from "recharts";
 import { Input } from "@/components/ui/input";
-import { analyticsService, DashboardStats, RevenueData, PopularShop } from "@/services/analyticsService";
+import { analyticsService, RevenueData, PopularShop } from "@/services/analyticsService";
+import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
 import { orderService, OrderHealthData } from "@/services/orderService";
-import { ShopService, PageableResponse, Shop } from "@/services/shopService";
 import { authService } from "@/services/authService";
-import { moderationService } from "@/services/moderationService";
-import { DollarSign, Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star } from "lucide-react";
+import { Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
@@ -213,12 +212,10 @@ export default function Dashboard() {
     const [endDate, setEndDate] = useState(defaults.end);
 
     // REST baseline data
-    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [cardCounts, setCardCounts] = useState<Partial<DashboardCardCounts>>({});
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
     const [orderHealth, setOrderHealth] = useState<OrderHealthData>({});
-    const [pendingShopsCount, setPendingShopsCount] = useState(0);
-    const [openReportsCount, setOpenReportsCount] = useState(0);
     const [systemHealth, setSystemHealth] = useState<{ dbLatency: number; status: string; performance?: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -234,21 +231,17 @@ export default function Dashboard() {
         async function load() {
             try {
                 setLoading(true);
-                const [statsData, revenueData, shopsData, healthData, pendingData, reportsData, sysHealth] = await Promise.all([
-                    analyticsService.getDashboardStats().catch(() => null),
+                const [cardsData, revenueData, shopsData, healthData, sysHealth] = await Promise.all([
+                    dashboardService.getCardCounts().catch(() => ({})),
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
-                    ShopService.getPendingVettingShops(0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<Shop>)),
-                    moderationService.getUserShopReports('PENDING', 0, 1).catch(() => ({ content: [], totalElements: 0 } as unknown as PageableResponse<unknown>)),
                     isMasterAdmin ? analyticsService.getSystemHealth().catch(() => null) : Promise.resolve(null),
                 ]);
-                setStats(statsData);
+                setCardCounts(cardsData);
                 setRevenue(revenueData);
                 setPopularShops(shopsData);
                 setOrderHealth(healthData);
-                setPendingShopsCount(pendingData?.totalElements ?? 0);
-                setOpenReportsCount(reportsData?.totalElements ?? 0);
                 setSystemHealth(sysHealth);
             } catch {
                 setError("Failed to load dashboard data.");
@@ -261,23 +254,13 @@ export default function Dashboard() {
 
     // Derived: prefer live WS stats where available, fall back to REST baseline
     const liveStats: Partial<SystemStatsDTO> = useMemo(() => systemStats ?? {}, [systemStats]);
-    const totalUsers = liveStats.totalUsers ?? stats?.totalUsers ?? 0;
+    const totalUsers = liveStats.totalUsers ?? cardCounts.totalUsers ?? 0;
     const isLive = !!systemStats;
-
-    // Backend currently sends totalShops; activeShops is spec-planned but not yet broadcast
-    const activeShops = liveStats.activeShops ?? liveStats.totalShops ?? stats?.totalShops ?? 0;
-
-    // Backend currently sends totalRevenueToday; revenueToday is spec-planned
-    const revenueToday = liveStats.revenueToday ?? liveStats.totalRevenueToday ?? stats?.totalRevenueToday ?? 0;
-
-    const totalReviews = liveStats.totalReviews ?? stats?.totalReviews ?? 0;
-
-    // totalOrdersToday is what the server sends right now
-    const ordersValue = liveStats.totalOrdersToday ?? liveStats.pendingOrders ?? 0;
-    const ordersLabel = (liveStats.totalOrdersToday !== undefined && isLive) ? "Orders Today" : "Pending Orders";
-
-
-
+    const totalShops = liveStats.activeShops ?? liveStats.totalShops ?? cardCounts.totalShops ?? 0;
+    const totalReviews = liveStats.totalReviews ?? cardCounts.totalReviews ?? 0;
+    const pendingOrders = liveStats.pendingOrders ?? cardCounts.pendingOrders ?? 0;
+    const shopPendingCount = cardCounts.shopPendingCount ?? 0;
+    const shopFeedbackCount = cardCounts.shopFeedbackCount ?? 0;
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;
     const latestShopKey = latestShopRequest?.timestamp ?? null;
@@ -336,15 +319,14 @@ export default function Dashboard() {
             )}
 
             {/* Row 1: KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
                 <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
-                <StatCard title="Total Shops" value={activeShops} icon={Store} loading={loading} live={isLive} />
+                <StatCard title="Total Shops" value={totalShops} icon={Store} loading={loading} live={isLive} />
                 <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} />
-                <StatCard title={ordersLabel} value={ordersValue} icon={ShoppingCart} loading={loading} live={isLive} />
-                <StatCard title="Revenue Today" value={revenueToday} prefix="$" icon={DollarSign} loading={loading} live={isLive} />
+                <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} />
             </div>
 
-            {/* Row 2: Moderation Alert Cards */}
+            {/* Row 2: Action Cards */}
             <div className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 delay-150 duration-700 fill-mode-both">
                 <Card
                     className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
@@ -361,29 +343,27 @@ export default function Dashboard() {
                         {loading ? (
                             <Skeleton className="h-8 w-12" />
                         ) : (
-                            <span className="text-2xl font-bold text-yellow-500">{pendingShopsCount}</span>
+                            <span className="text-2xl font-bold text-yellow-500">{shopPendingCount}</span>
                         )}
                     </CardContent>
                 </Card>
 
                 <Card
                     className="cursor-pointer border-red-500/30 hover:border-red-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
-                    onClick={() => navigate("/moderation/user-shop")}
+                    onClick={() => navigate("/shop-feedback/manage")}
                 >
                     <CardContent className="flex items-center gap-4 p-4">
                         <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-500/10">
-                            <Flag className="h-5 w-5 text-red-500" />
+                            <MessageSquare className="h-5 w-5 text-red-500" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-sm font-medium">Open Reports</p>
+                            <p className="text-sm font-medium">Shop Feedback</p>
                             <p className="text-xs text-muted-foreground">Needs attention</p>
                         </div>
                         {loading ? (
                             <Skeleton className="h-8 w-12" />
                         ) : (
-                            <span className="text-2xl font-bold text-red-500">
-                                {isLive ? (liveStats.pendingReports ?? openReportsCount) : openReportsCount}
-                            </span>
+                            <span className="text-2xl font-bold text-red-500">{shopFeedbackCount}</span>
                         )}
                     </CardContent>
                 </Card>
