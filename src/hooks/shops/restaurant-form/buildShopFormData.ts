@@ -23,6 +23,7 @@ export type AdminShopProfileFormFields = {
   hasWifi: boolean;
   isVerified: boolean;
   isActive: boolean;
+  taxEnable: boolean;
   cityId: number | null;
   isHalal: boolean;
   isVegetarian: boolean;
@@ -79,6 +80,7 @@ export function appendCreateAdminShopProfileFields(
   fd.append('hasWifi', String(p.hasWifi));
   fd.append('isVerified', String(p.isVerified));
   fd.append('isActive', String(p.isActive));
+  fd.append('taxEnable', String(p.taxEnable));
   if (p.cityId != null && p.cityId > 0) {
     fd.append('cityId', String(p.cityId));
   }
@@ -145,6 +147,7 @@ export function shopFormValuesToAdminProfileFields(
     hasWifi: data.hasWifi ?? false,
     isVerified: data.isVerified ?? false,
     isActive: data.isActive ?? true,
+    taxEnable: data.taxEnable ?? true,
     cityId,
     isHalal: data.isHalal ?? false,
     isVegetarian: data.isVegetarian ?? false,

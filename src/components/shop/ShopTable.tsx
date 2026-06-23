@@ -42,6 +42,7 @@ export type ShopTableProps = {
     toggleBusyShopId: number | null
     onToggleStatus: (shop: Shop, nextActive: boolean) => void
     onToggleVerified?: (shop: Shop, nextVerified: boolean) => void
+    onToggleTaxEnable?: (shop: Shop, nextTaxEnable: boolean) => void
     onEditShop: (shop: Shop) => void
     onVerify?: (e: MouseEvent, shop: Shop) => void
     onOpenReject: (e: MouseEvent, shop: Shop) => void
@@ -56,6 +57,7 @@ export function ShopTable({
     toggleBusyShopId,
     onToggleStatus,
     onToggleVerified,
+    onToggleTaxEnable,
     onEditShop,
     onOpenDelete,
     onAssignAdmin,
@@ -80,6 +82,7 @@ export function ShopTable({
                             <TableHead>Address</TableHead>
                             <TableHead className="w-[100px]">Active</TableHead>
                             <TableHead className="w-[100px]">Verified</TableHead>
+                            <TableHead className="w-[100px]">Tax Enable</TableHead>
                             <TableHead className="text-right min-w-[188px] w-[188px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -160,6 +163,30 @@ export function ShopTable({
                                                 </span>
                                             </div>
                                         </TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex flex-col gap-1 items-start">
+                                                <Switch
+                                                    checked={shop.taxEnable !== false}
+                                                    disabled={
+                                                        toggleBusyShopId === shop.id ||
+                                                        !onToggleTaxEnable
+                                                    }
+                                                    onCheckedChange={(checked) =>
+                                                        onToggleTaxEnable?.(shop, checked)
+                                                    }
+                                                />
+                                                <span
+                                                    className={cn(
+                                                        "text-xs font-medium",
+                                                        shop.taxEnable !== false
+                                                            ? "text-emerald-600"
+                                                            : "text-muted-foreground",
+                                                    )}
+                                                >
+                                                    {shop.taxEnable !== false ? "Enabled" : "Disabled"}
+                                                </span>
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-right align-middle p-2">
                                             <div
                                                 className="inline-flex flex-nowrap items-center justify-end gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5"
@@ -213,7 +240,7 @@ export function ShopTable({
                             })
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                     No results.
                                 </TableCell>
                             </TableRow>

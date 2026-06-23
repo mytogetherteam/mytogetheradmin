@@ -250,6 +250,7 @@ export async function fetchShopRestaurantEditBundle(
     hasWifi: shop.hasWifi ?? false,
     isVerified: shop.isVerified ?? false,
     isActive: shop.isActive ?? true,
+    taxEnable: shop.taxEnable ?? true,
     isHalal: shop.isHalal ?? false,
     isVegetarian: shop.isVegetarian ?? false,
     pricePreference: normalizePricePreference(shop.pricePreference),

@@ -75,6 +75,7 @@ export interface Shop {
   hasWifi?: boolean;
   isVerified?: boolean;
   isActive?: boolean;
+  taxEnable?: boolean;
   isHalal?: boolean;
   isVegetarian?: boolean;
   enableStockCheck?: boolean;
@@ -261,6 +262,7 @@ export interface AdminShopProfileListItem {
   addressTh?: string | null;
   isActive: boolean;
   isVerified: boolean;
+  taxEnable: boolean;
   categoryId?: number | null;
   districtEn?: string | null;
   districtMm?: string | null;
@@ -303,6 +305,7 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     cityId: row.cityId ?? undefined,
     isActive: row.isActive,
     isVerified: row.isVerified,
+    taxEnable: row.taxEnable,
   };
 }
 export interface ShopFormDataDTO {
@@ -792,13 +795,20 @@ export const ShopService = {
    */
   toggleShopStatus: async (
     id: number,
-    body: { isActive: boolean; isVerified?: boolean },
+    body: { isActive: boolean; isVerified?: boolean; taxEnable?: boolean },
   ): Promise<void> => {
-    const payload: { isActive: boolean; isVerified?: boolean } = {
+    const payload: {
+      isActive: boolean;
+      isVerified?: boolean;
+      taxEnable?: boolean;
+    } = {
       isActive: body.isActive,
     };
     if (body.isVerified !== undefined) {
       payload.isVerified = body.isVerified;
+    }
+    if (body.taxEnable !== undefined) {
+      payload.taxEnable = body.taxEnable;
     }
     await apiClient.patch(
       config.endpoints.admin.shopProfile.changeStatus(id),
