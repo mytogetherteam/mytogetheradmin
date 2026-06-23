@@ -8,7 +8,11 @@ export const newsKeys = {
   all: ["news"] as const,
 };
 
-export function useNewsList(params?: { page?: number; size?: number }) {
+export function useNewsList(params?: {
+  page?: number;
+  size?: number;
+  search?: string;
+}) {
   return useQuery({
     queryKey: [...newsKeys.all, params],
     queryFn: () => NewsService.getNews(params),

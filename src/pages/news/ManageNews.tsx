@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNewsList } from "@/hooks/news/useNews";
 import {
   Table,
@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Loader2,
   Plus,
@@ -29,6 +30,7 @@ import {
   Pencil,
   Heart,
   MessageSquare,
+  Search,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { TableImage } from "@/components/TableImage";
@@ -42,6 +44,16 @@ export default function ManageNews() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const isFirstSearchDebounce = useRef(true);
+
+  useEffect(() => {
+    const delayMs = isFirstSearchDebounce.current ? 0 : 400;
+    isFirstSearchDebounce.current = false;
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), delayMs);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -54,7 +66,11 @@ export default function ManageNews() {
     data,
     isPending: loading,
     refetch,
-  } = useNewsList({ page: currentPage, size: pageSize });
+  } = useNewsList({
+    page: currentPage,
+    size: pageSize,
+    search: debouncedSearch.trim() || undefined,
+  });
 
   const news = data?.content || [];
   const totalItems = data?.totalElements ?? 0;
@@ -97,6 +113,18 @@ export default function ManageNews() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search news..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
               <Button onClick={() => navigate("/news/create")}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create New

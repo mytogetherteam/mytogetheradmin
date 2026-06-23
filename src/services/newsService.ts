@@ -39,6 +39,7 @@ export const NewsService = {
   getNews: async (params?: {
     page?: number;
     size?: number;
+    search?: string;
   }): Promise<PaginatedNews> => {
     let url = config.endpoints.admin.news.base;
     const queryParams = new URLSearchParams();
@@ -46,6 +47,8 @@ export const NewsService = {
       queryParams.append("page", params.page.toString());
     if (params?.size !== undefined)
       queryParams.append("size", params.size.toString());
+    if (params?.search?.trim())
+      queryParams.append("search", params.search.trim());
     const queryString = queryParams.toString();
     if (queryString) url += `?${queryString}`;
 
