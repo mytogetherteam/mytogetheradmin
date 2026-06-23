@@ -29,6 +29,7 @@ import {
     MessageSquare,
     Layers,
     Newspaper,
+    Bike,
     MonitorSmartphone,
 } from "lucide-react"
 
@@ -257,7 +258,19 @@ export const navigationConfig: NavGroup[] = [
                 url: "/shop-feedback/manage",
                 icon: MessageSquare,
                 tooltip: "Shop Feedback from shop admins",
-            },
+            }
+        ],
+    },
+    {
+        title: "Delivery Drivers",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Delivery Drivers",
+                url: "/delivery-drivers/manage",
+                icon: Bike,
+                tooltip: "Shop delivery drivers (view and hard delete)",
+            }
         ],
     },
     {

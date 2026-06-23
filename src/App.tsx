@@ -85,6 +85,9 @@ const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 const ManageShopFeedback = lazy(
   () => import("@/pages/shop-feedback/ManageShopFeedback"),
 );
+const ManageDeliveryDrivers = lazy(
+  () => import("@/pages/delivery-drivers/ManageDeliveryDrivers"),
+);
 
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
@@ -259,6 +262,7 @@ function App() {
                 <Route path="/news/manage" element={<ManageNews />} />
                 <Route path="/news/create" element={<CreateNews />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
+                <Route path="/delivery-drivers/manage" element={<ManageDeliveryDrivers />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/sessions" element={<AdminSessions />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
@@ -370,6 +374,7 @@ function App() {
                 <Route path="/places/manage" element={<ManagePlaces />} />
                 <Route path="/places/create" element={<CreatePlace />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
+                <Route path="/delivery-drivers/manage" element={<ManageDeliveryDrivers />} />
                 <Route path="/system/feature-flags" element={<FeatureFlags />} />
                 <Route path="/system/sessions" element={<AdminSessions />} />
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
