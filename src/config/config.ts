@@ -207,6 +207,7 @@ export const config = {
       },
       broadcasts: {
         base: '/api/admin/announcements',
+        detail: (id: string | number) => `/api/admin/announcements/${id}`,
       },
       marketing: {
         promotions: {

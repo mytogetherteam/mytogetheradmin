@@ -33,3 +33,17 @@ export function useSendBroadcastMutation() {
     },
   });
 }
+
+export function useDeleteBroadcastMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => BroadcastService.remove(id),
+    onSuccess: () => {
+      toast.success("Broadcast deleted");
+      void queryClient.invalidateQueries({ queryKey: broadcastKeys.all });
+    },
+    onError: (error) => {
+      handleApiError(error, "Failed to delete broadcast");
+    },
+  });
+}

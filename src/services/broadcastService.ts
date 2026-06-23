@@ -7,12 +7,14 @@ export type BroadcastAudience =
   | "USERS"
   | "SHOP_ADMINS"
   | "OPERATION_ADMINS"
-  | "SINGLE_USER";
+  | "SINGLE_USER"
+  | "SINGLE_SHOP";
 
 export interface BroadcastHistoryItem {
   id: number;
   audience: BroadcastAudience;
   targetUserId: number | null;
+  targetShopId: number | null;
   title: string;
   message: string;
   /** Optional image shown with the announcement. */
@@ -29,6 +31,8 @@ export interface SendBroadcastPayload {
   message: string;
   /** Required only when audience is SINGLE_USER. */
   targetUserId?: number;
+  /** Required only when audience is SINGLE_SHOP. */
+  targetShopId?: number;
   /** Optional image file to attach to the announcement. */
   image?: File | null;
   /** Optional structured payload (deep-link, image url, etc.). */
@@ -56,7 +60,7 @@ interface BroadcastListResponse {
 export const BroadcastService = {
   /** Queue a broadcast for delivery. Returns immediately. */
   send: async (payload: SendBroadcastPayload): Promise<SendBroadcastResult> => {
-    const { image, targetUserId, data, ...rest } = payload;
+    const { image, targetUserId, targetShopId, data, ...rest } = payload;
 
     // Sent as multipart/form-data so an optional image can be attached; the
     // axios interceptor strips the JSON Content-Type when it sees a FormData body.
@@ -65,6 +69,7 @@ export const BroadcastService = {
     form.append("title", rest.title);
     form.append("message", rest.message);
     if (targetUserId != null) form.append("targetUserId", String(targetUserId));
+    if (targetShopId != null) form.append("targetShopId", String(targetShopId));
     if (data != null) form.append("data", JSON.stringify(data));
     if (image) form.append("image", image);
 
@@ -86,5 +91,12 @@ export const BroadcastService = {
       totalElements: res?.totalCount ?? 0,
       totalPages: res?.totalPages ?? 1,
     };
+  },
+
+  /** Delete a sent broadcast from the history. */
+  remove: async (id: number): Promise<void> => {
+    await handleApiCall(() =>
+      api.delete(config.endpoints.admin.broadcasts.detail(id)),
+    );
   },
 };

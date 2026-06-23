@@ -1,10 +1,19 @@
 import { useState, useCallback, useRef } from "react";
-import { userService } from "@/services/userService";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { manageUsersService } from "@/services/manageUsersService";
+import { ShopService } from "@/services/shopService";
 import {
   useBroadcastHistory,
   useSendBroadcastMutation,
+  useDeleteBroadcastMutation,
 } from "@/hooks/broadcast/useBroadcast";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import type { BroadcastAudience } from "@/services/broadcastService";
+import {
+  broadcastFormSchema,
+  type BroadcastFormValues,
+} from "@/schemas/broadcast.schema";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
 import {
   Table,
@@ -37,10 +46,12 @@ import {
   History,
   Users,
   Store,
+  Building2,
   User as UserIcon,
   UserCog,
   ImagePlus,
   X,
+  Trash2,
 } from "lucide-react";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -53,12 +64,13 @@ const AUDIENCE_OPTIONS: {
   label: string;
   icon: typeof Users;
 }[] = [
-  { value: "ALL", label: "Everyone", icon: Megaphone },
-  { value: "USERS", label: "All Users", icon: Users },
-  { value: "SHOP_ADMINS", label: "Shop Admins", icon: Store },
-  { value: "OPERATION_ADMINS", label: "Operation Admins", icon: UserCog },
-  { value: "SINGLE_USER", label: "Single User", icon: UserIcon },
-];
+    { value: "ALL", label: "Everyone", icon: Megaphone },
+    { value: "USERS", label: "All Users", icon: Users },
+    { value: "SHOP_ADMINS", label: "Shop Admins", icon: Store },
+    { value: "OPERATION_ADMINS", label: "Operation Admins", icon: UserCog },
+    { value: "SINGLE_USER", label: "Single User", icon: UserIcon },
+    { value: "SINGLE_SHOP", label: "Single Shop", icon: Building2 },
+  ];
 
 const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
   ALL: "text-amber-600 bg-amber-50 border-amber-100",
@@ -66,6 +78,7 @@ const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
   SHOP_ADMINS: "text-purple-600 bg-purple-50 border-purple-100",
   OPERATION_ADMINS: "text-emerald-600 bg-emerald-50 border-emerald-100",
   SINGLE_USER: "text-slate-600 bg-slate-50 border-slate-100",
+  SINGLE_SHOP: "text-rose-600 bg-rose-50 border-rose-100",
 };
 
 const audienceLabel = (audience: BroadcastAudience) =>
@@ -76,11 +89,32 @@ export default function Broadcast() {
   const [pageSize, setPageSize] = useState(10);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
-  const [audience, setAudience] = useState<BroadcastAudience>("ALL");
+  const form = useForm<BroadcastFormValues>({
+    resolver: zodResolver(broadcastFormSchema),
+    defaultValues: {
+      audience: "ALL",
+      title: "",
+      message: "",
+      targetUserId: undefined,
+      targetShopId: undefined,
+    },
+  });
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    reset,
+    watch,
+    formState: { errors },
+  } = form;
+  const audience = watch("audience");
+
   const [selectedUserData, setSelectedUserData] = useState<{
+    label: string;
+    value: string;
+  } | null>(null);
+  const [selectedShopData, setSelectedShopData] = useState<{
     label: string;
     value: string;
   } | null>(null);
@@ -91,6 +125,20 @@ export default function Broadcast() {
   const { data, isPending: loading } = useBroadcastHistory(page, pageSize);
   const { mutateAsync: sendBroadcast, isPending: sending } =
     useSendBroadcastMutation();
+  const { mutate: deleteBroadcast, isPending: deleting } =
+    useDeleteBroadcastMutation();
+
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    id: number;
+    title: string;
+  }>({ open: false, id: 0, title: "" });
+
+  const handleDeleteConfirm = () => {
+    deleteBroadcast(deleteDialog.id, {
+      onSuccess: () => setDeleteDialog({ open: false, id: 0, title: "" }),
+    });
+  };
 
   const history = data?.content ?? [];
   const totalElements = data?.totalElements ?? 0;
@@ -99,13 +147,34 @@ export default function Broadcast() {
 
   const fetchUserData = useCallback(
     async (p: number, size: number, search: string) => {
-      const res = await userService.getAllUsers(p, size, search);
+      const res = await manageUsersService.getManageUsers({
+        page: p,
+        size,
+        search,
+        accountType: "user",
+      });
       return {
         content: (res?.content || []).map((u) => ({
-          label: u.fullName || u.email || u.username || `User #${u.id}`,
+          label: u.name || u.email || u.username || `User #${u.id}`,
           value: String(u.id),
         })),
-        last: res ? p + 1 >= (res.totalPages ?? 1) : true,
+        last: res ? p >= (res.totalPages ?? 1) : true,
+      };
+    },
+    [],
+  );
+
+  // Shops are loaded from the admin shop-profile endpoint (1-based, hence
+  // startPage={1} on the select below).
+  const fetchShopData = useCallback(
+    async (p: number, size: number, search: string) => {
+      const res = await ShopService.getAdminShopProfiles(p, size, search);
+      return {
+        content: (res?.content || []).map((s) => ({
+          label: s.nameEn || s.nameMm || s.nameTh || `Shop #${s.id}`,
+          value: String(s.id),
+        })),
+        last: res ? p >= (res.totalPages ?? 1) : true,
       };
     },
     [],
@@ -136,31 +205,19 @@ export default function Broadcast() {
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !message.trim()) {
-      toast.error("Title and message are required");
-      return;
-    }
-    if (audience === "SINGLE_USER" && !selectedUserData) {
-      toast.error("Please select a user");
-      return;
-    }
-
+  const onSubmit = async (values: BroadcastFormValues) => {
     await sendBroadcast({
-      audience,
-      title: title.trim(),
-      message: message.trim(),
-      targetUserId:
-        audience === "SINGLE_USER"
-          ? Number(selectedUserData!.value)
-          : undefined,
+      audience: values.audience,
+      title: values.title,
+      message: values.message,
+      targetUserId: values.targetUserId,
+      targetShopId: values.targetShopId,
       image: imageFile,
     });
 
-    setTitle("");
-    setMessage("");
+    reset();
     setSelectedUserData(null);
+    setSelectedShopData(null);
     clearImage();
     setPage(0);
   };
@@ -184,28 +241,42 @@ export default function Broadcast() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSend} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Target Audience
                 </label>
-                <Select
-                  value={audience}
-                  onValueChange={(v: BroadcastAudience) => setAudience(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AUDIENCE_OPTIONS.map(({ value, label, icon: Icon }) => (
-                      <SelectItem key={value} value={value}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" /> <span>{label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={control}
+                  name="audience"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v: BroadcastAudience) => {
+                        field.onChange(v);
+                        // Reset the target ids + their displayed selection when
+                        // switching audience so a stale id can't be submitted.
+                        setValue("targetUserId", undefined);
+                        setValue("targetShopId", undefined);
+                        setSelectedUserData(null);
+                        setSelectedShopData(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AUDIENCE_OPTIONS.map(({ value, label, icon: Icon }) => (
+                          <SelectItem key={value} value={value}>
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" /> <span>{label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
               {audience === "SINGLE_USER" && (
@@ -215,16 +286,62 @@ export default function Broadcast() {
                   </label>
                   <InfiniteSearchableSelect
                     fetchData={fetchUserData}
+                    startPage={1}
                     valueKey="value"
                     labelKey="label"
                     selectedValue={selectedUserData}
-                    onChange={(item) =>
-                      setSelectedUserData(
-                        item as { label: string; value: string } | null,
-                      )
-                    }
+                    onChange={(item) => {
+                      const picked = item as {
+                        label: string;
+                        value: string;
+                      } | null;
+                      setSelectedUserData(picked);
+                      setValue(
+                        "targetUserId",
+                        picked ? Number(picked.value) : undefined,
+                        { shouldValidate: true },
+                      );
+                    }}
                     placeholder="Search user..."
                   />
+                  {errors.targetUserId ? (
+                    <p className="text-sm text-destructive">
+                      {errors.targetUserId.message}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {audience === "SINGLE_SHOP" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Select Shop
+                  </label>
+                  <InfiniteSearchableSelect
+                    fetchData={fetchShopData}
+                    startPage={1}
+                    valueKey="value"
+                    labelKey="label"
+                    selectedValue={selectedShopData}
+                    onChange={(item) => {
+                      const picked = item as {
+                        label: string;
+                        value: string;
+                      } | null;
+                      setSelectedShopData(picked);
+                      setValue(
+                        "targetShopId",
+                        picked ? Number(picked.value) : undefined,
+                        { shouldValidate: true },
+                      );
+                    }}
+                    placeholder="Search shop..."
+                  />
+                  {errors.targetShopId ? (
+                    <p className="text-sm text-destructive">
+                      {errors.targetShopId.message}
+                    </p>
+                  ) : null}
                 </div>
               )}
 
@@ -235,9 +352,14 @@ export default function Broadcast() {
                 <Input
                   placeholder="Enter title..."
                   maxLength={200}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  aria-invalid={Boolean(errors.title)}
+                  {...register("title")}
                 />
+                {errors.title ? (
+                  <p className="text-sm text-destructive">
+                    {errors.title.message}
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -248,9 +370,14 @@ export default function Broadcast() {
                   placeholder="Enter message content..."
                   className="min-h-[120px]"
                   maxLength={2000}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  aria-invalid={Boolean(errors.message)}
+                  {...register("message")}
                 />
+                {errors.message ? (
+                  <p className="text-sm text-destructive">
+                    {errors.message.message}
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -341,6 +468,9 @@ export default function Broadcast() {
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
+                  <TableCell className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -362,12 +492,15 @@ export default function Broadcast() {
                       <TableCell>
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
+                      <TableCell>
+                        <Skeleton className="ml-auto h-8 w-8 rounded" />
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : sortedHistory.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="text-center py-12 text-muted-foreground italic"
                     >
                       No broadcast history found.
@@ -384,6 +517,9 @@ export default function Broadcast() {
                           {audienceLabel(h.audience)}
                           {h.audience === "SINGLE_USER" && h.targetUserId
                             ? ` #${h.targetUserId}`
+                            : ""}
+                          {h.audience === "SINGLE_SHOP" && h.targetShopId
+                            ? ` #${h.targetShopId}`
                             : ""}
                         </Badge>
                       </TableCell>
@@ -411,6 +547,23 @@ export default function Broadcast() {
                           ? new Date(h.createdAt).toLocaleString()
                           : "—"}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive"
+                          aria-label="Delete broadcast"
+                          onClick={() =>
+                            setDeleteDialog({
+                              open: true,
+                              id: h.id,
+                              title: h.title,
+                            })
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -430,6 +583,17 @@ export default function Broadcast() {
           />
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        title="Delete Broadcast"
+        description={`Are you sure you want to delete "${deleteDialog.title}"? This removes it from the history and cannot be undone.`}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
+        loading={deleting}
+      />
     </div>
   );
 }
