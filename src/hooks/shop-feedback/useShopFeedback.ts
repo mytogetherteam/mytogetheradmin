@@ -61,3 +61,22 @@ export function useUpdateShopFeedbackReadMutation() {
     },
   });
 }
+
+export function useBulkMarkShopFeedbackReadMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) => shopFeedbackService.markManyAsRead(ids),
+    onSuccess: (_data, ids) => {
+      toast.success(
+        ids.length === 1
+          ? "Marked 1 message as read"
+          : `Marked ${ids.length} messages as read`,
+      );
+      void queryClient.invalidateQueries({ queryKey: shopFeedbackKeys.all });
+    },
+    onError: (error) => {
+      handleApiError(error, "Failed to mark messages as read");
+    },
+  });
+}

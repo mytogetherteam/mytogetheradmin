@@ -59,6 +59,18 @@ export const shopFeedbackService = {
     return shopFeedbackSchema.parse(response);
   },
 
+  markManyAsRead: async (ids: number[]): Promise<void> => {
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) return;
+    await Promise.all(
+      uniqueIds.map((id) =>
+        apiClient.patch(config.endpoints.admin.shopFeedback.read(id), {
+          isRead: true,
+        }),
+      ),
+    );
+  },
+
   getById: async (id: number): Promise<ShopFeedback> => {
     const response = await apiClient.get<unknown>(
       config.endpoints.admin.shopFeedback.detail(id),

@@ -34,6 +34,7 @@ export default function CuisineForm() {
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
 
   const { data: cuisineData, isPending: fetchingCuisine } = useCuisine(
     isEditMode ? Number(id) : 0
@@ -71,6 +72,7 @@ export default function CuisineForm() {
         displayOrder: cuisineData.displayOrder || 1,
       });
       if (cuisineData.imageUrl) setImagePreview(cuisineData.imageUrl);
+      setImageRemoved(false);
     }
   }, [isEditMode, cuisineData, reset]);
 
@@ -78,6 +80,7 @@ export default function CuisineForm() {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
+      setImageRemoved(false);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -87,6 +90,9 @@ export default function CuisineForm() {
   };
 
   const handleRemoveImage = () => {
+    if (imagePreview || cuisineData?.imageUrl) {
+      setImageRemoved(true);
+    }
     setImageFile(null);
     setImagePreview(null);
   };
@@ -103,6 +109,10 @@ export default function CuisineForm() {
 
       if (imageFile) {
         payload.append("image", imageFile);
+      }
+
+      if (isEditMode && imageRemoved && !imageFile) {
+        payload.append("removeImage", "true");
       }
 
       if (isEditMode) {

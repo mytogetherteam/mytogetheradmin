@@ -1,4 +1,5 @@
-import { MessageSquare, Search } from "lucide-react";
+import { CheckCheck, MessageSquare, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,16 +16,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Accordion } from "@/components/ui/accordion";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
-import ListStateView from "@/components/common/ListStateView";
 import { DataTablePagination } from "@/components/DataTablePagination";
-import { ShopFeedbackShopGroup } from "@/components/shop-feedback/ShopFeedbackShopGroup";
+import { ShopFeedbackTable } from "@/components/shop-feedback/ShopFeedbackTable";
 import { useShopFeedbackManagement } from "@/hooks/shop-feedback/useShopFeedbackManagement";
 import { getShopDisplayName } from "@/schemas/shop-feedback.schema";
 
 export default function ManageShopFeedback() {
-  const { search, pagination, list, deleteDialog, readFilter, read } =
+  const { search, pagination, list, deleteDialog, readFilter, read, selection } =
     useShopFeedbackManagement();
 
   const deleteShopName = deleteDialog.target
@@ -32,97 +31,101 @@ export default function ManageShopFeedback() {
     : "";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <MessageSquare className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-lg font-semibold md:text-2xl">Shop Feedback</h1>
-          <p className="text-sm text-muted-foreground">
-            Messages from shop admins, grouped by shop
-          </p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filters</CardTitle>
-          <CardDescription>
-            Search message text. Results on this page are grouped by shop name.
-          </CardDescription>
+    <div className="container mx-auto py-10 max-w-7xl">
+      <Card className="flex flex-col h-full">
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <MessageSquare className="h-6 w-6 shrink-0 text-primary" />
+              <div>
+                <CardTitle className="leading-tight">Shop Feedback</CardTitle>
+                <CardDescription>
+                  Messages from shop admins. Unread rows are highlighted.
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full md:w-auto">
+              <div className="relative flex-1 sm:w-72">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search feedback messages..."
+                  className="pl-9"
+                  value={search.term}
+                  onChange={(e) => search.setTerm(e.target.value)}
+                />
+              </div>
+              <Select
+                value={readFilter.value}
+                onValueChange={(v) =>
+                  readFilter.setValue(v as "all" | "unread" | "read")
+                }
+              >
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Read status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All messages</SelectItem>
+                  <SelectItem value="unread">Unread only</SelectItem>
+                  <SelectItem value="read">Read only</SelectItem>
+                </SelectContent>
+              </Select>
+              {readFilter.unreadOnPage > 0 ? (
+                <Badge variant="default" className="shrink-0">
+                  {readFilter.unreadOnPage} unread on this page
+                </Badge>
+              ) : null}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search feedback messages..."
-              className="pl-9"
-              value={search.term}
-              onChange={(e) => search.setTerm(e.target.value)}
-            />
-          </div>
-          <div className="w-full sm:w-48">
-            <Select
-              value={readFilter.value}
-              onValueChange={(v) =>
-                readFilter.setValue(v as "all" | "unread" | "read")
-              }
+
+        <CardContent>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!read.canMarkSelected || read.updating}
+              onClick={() => void read.markSelectedAsRead()}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Read status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All messages</SelectItem>
-                <SelectItem value="unread">Unread only</SelectItem>
-                <SelectItem value="read">Read only</SelectItem>
-              </SelectContent>
-            </Select>
+              <CheckCheck className="mr-2 h-4 w-4" />
+              Mark selected as read
+              {selection.selectedCount > 0
+                ? ` (${read.selectedUnreadCount} unread)`
+                : ""}
+            </Button>
+            {selection.selectedCount > 0 ? (
+              <span className="text-sm text-muted-foreground">
+                {selection.selectedCount} selected
+              </span>
+            ) : null}
           </div>
-          {readFilter.unreadOnPage > 0 ? (
-            <Badge variant="default">
-              {readFilter.unreadOnPage} unread on this page
-            </Badge>
-          ) : null}
+
+          <ShopFeedbackTable
+            items={list.raw}
+            loading={list.loading}
+            selectedIds={selection.selectedIds}
+            allSelected={selection.allSelected}
+            someSelected={selection.someSelected}
+            onToggleSelect={selection.toggleSelect}
+            onToggleSelectAll={selection.toggleSelectAll}
+            onDelete={deleteDialog.openDelete}
+            onToggleRead={read.markRead}
+            deleting={deleteDialog.loading}
+            updatingRead={read.updating}
+          />
+
+          {!list.loading && (
+            <DataTablePagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              pageSize={pagination.pageSize}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          )}
         </CardContent>
       </Card>
-
-      <ListStateView
-        isLoading={list.loading}
-        isError={list.isError}
-        isEmpty={!list.loading && list.groups.length === 0}
-        loadingMessage="Loading shop feedback…"
-        errorMessage={
-          list.error instanceof Error
-            ? list.error.message
-            : "Failed to load shop feedback. Ensure the API is running and migrations are applied."
-        }
-        emptyMessage="No shop feedback found."
-      >
-        <Accordion
-          type="multiple"
-          defaultValue={list.groups.map((g) => `shop-${g.shopId}`)}
-          className="w-full"
-        >
-          {list.groups.map((group) => (
-            <ShopFeedbackShopGroup
-              key={group.shopId}
-              group={group}
-              onDelete={deleteDialog.openDelete}
-              onToggleRead={read.markRead}
-              deleting={deleteDialog.loading}
-              updatingRead={read.updating}
-            />
-          ))}
-        </Accordion>
-
-        <DataTablePagination
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.totalItems}
-          pageSize={pagination.pageSize}
-          onPageChange={pagination.setPage}
-          onPageSizeChange={pagination.setPageSize}
-        />
-      </ListStateView>
 
       <ConfirmDialog
         open={deleteDialog.open}

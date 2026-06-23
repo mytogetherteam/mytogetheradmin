@@ -232,6 +232,9 @@ export const config = {
           featured: (shopId: string) => `/api/admin/marketing/shops/${shopId}/featured`,
         }
       },
+      dashboard: {
+        cards: '/api/admin/dashboard/cards',
+      },
       analytics: {
         dashboard: '/api/admin/dashboard/stats',
         revenue: '/api/admin/analytics/revenue',
