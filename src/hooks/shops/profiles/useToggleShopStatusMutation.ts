@@ -5,7 +5,11 @@ import {
 } from '@/services/shopService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
-import { adminShopProfilesQueryRoot } from '@/hooks/shops/shared/adminShopProfilesQueryKeys';
+import {
+  adminShopProfilesQueryRoot,
+  shopRestaurantEditQueryKey,
+} from '@/hooks/shops/shared/adminShopProfilesQueryKeys';
+import type { ShopRestaurantEditBundle } from '@/hooks/shops/restaurant-form/mutations';
 
 export const toggleShopStatusMutationKey = ['shops', 'toggle-status'] as const;
 
@@ -54,6 +58,40 @@ export function useToggleShopStatusMutation() {
           return { ...old, content: nextContent };
         },
       );
+
+      // Keep edit form cache in sync (list toggles use a 5m staleTime query elsewhere).
+      queryClient.setQueryData<ShopRestaurantEditBundle | undefined>(
+        shopRestaurantEditQueryKey(variables.id),
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            shop: {
+              ...old.shop,
+              isActive: variables.isActive,
+              ...(variables.isVerified !== undefined
+                ? { isVerified: variables.isVerified }
+                : {}),
+              ...(variables.taxEnable !== undefined
+                ? { taxEnable: variables.taxEnable }
+                : {}),
+            },
+            formValues: {
+              ...old.formValues,
+              isActive: variables.isActive,
+              ...(variables.isVerified !== undefined
+                ? { isVerified: variables.isVerified }
+                : {}),
+              ...(variables.taxEnable !== undefined
+                ? { taxEnable: variables.taxEnable }
+                : {}),
+            },
+          };
+        },
+      );
+      void queryClient.invalidateQueries({
+        queryKey: shopRestaurantEditQueryKey(variables.id),
+      });
     },
     onError: (error) => {
       handleApiError(error, 'Failed to toggle shop status');
