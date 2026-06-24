@@ -13,6 +13,7 @@ export type ToggleShopStatusVariables = {
   id: number;
   isActive: boolean;
   isVerified?: boolean;
+  taxEnable?: boolean;
   successToast?: string;
 };
 
@@ -22,8 +23,8 @@ export function useToggleShopStatusMutation() {
   return useMutation({
     mutationKey: [...toggleShopStatusMutationKey],
     mutationFn: (vars: ToggleShopStatusVariables) => {
-      const { id, isActive, isVerified } = vars;
-      return ShopService.toggleShopStatus(id, { isActive, isVerified });
+      const { id, isActive, isVerified, taxEnable } = vars;
+      return ShopService.toggleShopStatus(id, { isActive, isVerified, taxEnable });
     },
     onSuccess: (_data, variables) => {
       if (variables.successToast) {
@@ -44,6 +45,9 @@ export function useToggleShopStatusMutation() {
             const next = { ...row, isActive: variables.isActive };
             if (variables.isVerified !== undefined) {
               next.isVerified = variables.isVerified;
+            }
+            if (variables.taxEnable !== undefined) {
+              next.taxEnable = variables.taxEnable;
             }
             return next;
           });

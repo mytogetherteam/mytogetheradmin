@@ -41,6 +41,7 @@ export const shopFormSchema = z.object({
     hasWifi: z.boolean().default(false),
     isVerified: z.boolean().default(false),
     isActive: z.boolean().default(true),
+    taxEnable: z.boolean().default(true),
     isHalal: z.boolean().default(false),
     isVegetarian: z.boolean().default(false),
     pricePreference: z.preprocess(

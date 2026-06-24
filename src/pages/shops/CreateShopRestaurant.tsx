@@ -1217,6 +1217,24 @@ export default function CreateShopRestaurant() {
                                             )}
                                         />
 
+                                        <FormField
+                                            control={form.control}
+                                            name="taxEnable"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Tax Enable</FormLabel>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Apply tax to orders from this shop
+                                                        </p>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
                                         <Separator />
 
                                         <FormField

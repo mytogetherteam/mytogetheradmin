@@ -36,6 +36,7 @@ export const defaultShopFormValues: ShopFormValues = {
   hasWifi: false,
   isVerified: false,
   isActive: true,
+  taxEnable: true,
   isHalal: false,
   isVegetarian: false,
   pricePreference: 'MEDIUM',

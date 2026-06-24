@@ -30,6 +30,7 @@ export default function ManageShopRestaurant() {
             toggleBusyShopId={table.toggleBusyShopId}
             onToggleStatus={actions.onToggleStatus}
             onToggleVerified={actions.onToggleVerified}
+            onToggleTaxEnable={actions.onToggleTaxEnable}
             onEditShop={actions.onEditShop}
             onOpenReject={() => console.log('open reject')}
             onOpenDelete={actions.onOpenDelete}

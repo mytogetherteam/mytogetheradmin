@@ -107,6 +107,7 @@ export function useManageShopRestaurant() {
         id: shop.id,
         isActive: nextActive,
         isVerified: shop.isVerified === true,
+        taxEnable: shop.taxEnable !== false,
       });
     },
     [toggleShopStatusMutation],
@@ -121,9 +122,28 @@ export function useManageShopRestaurant() {
         id: shop.id,
         isActive: shop.isActive !== false,
         isVerified: nextVerified,
+        taxEnable: shop.taxEnable !== false,
         successToast: nextVerified
           ? `${label} marked verified`
           : `${label} marked unverified`,
+      });
+    },
+    [toggleShopStatusMutation],
+  );
+
+  const handleToggleTaxEnable = useCallback(
+    (shop: Shop, nextTaxEnable: boolean) => {
+      const currentlyEnabled = shop.taxEnable !== false;
+      if (currentlyEnabled === nextTaxEnable) return;
+      const label = shopDisplayName(shop);
+      toggleShopStatusMutation.mutate({
+        id: shop.id,
+        isActive: shop.isActive !== false,
+        isVerified: shop.isVerified === true,
+        taxEnable: nextTaxEnable,
+        successToast: nextTaxEnable
+          ? `${label} tax enabled`
+          : `${label} tax disabled`,
       });
     },
     [toggleShopStatusMutation],
@@ -233,6 +253,7 @@ export function useManageShopRestaurant() {
     actions: {
       onToggleStatus: handleToggleStatus,
       onToggleVerified: handleToggleVerified,
+      onToggleTaxEnable: handleToggleTaxEnable,
       onEditShop: handleEditShop,
       onOpenDelete: openDeleteDialog,
       onOpenAssign: openAssignDialog,
