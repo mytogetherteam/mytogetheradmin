@@ -96,6 +96,8 @@ const ManageBackgroundThemes = lazy(() => import("@/pages/background-themes/Mana
 const CreateBackgroundTheme = lazy(() => import("@/pages/background-themes/CreateBackgroundTheme"));
 const ManageHomeDiscountSections = lazy(() => import("@/pages/home-discount-sections/ManageHomeDiscountSections"));
 const CreateHomeDiscountSection = lazy(() => import("@/pages/home-discount-sections/CreateHomeDiscountSection"));
+const ManageShopCoupons = lazy(() => import("@/pages/shop-coupons/ManageShopCoupons"));
+const CreateShopCoupon = lazy(() => import("@/pages/shop-coupons/CreateShopCoupon"));
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
@@ -253,6 +255,8 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/collections/manage" element={<ManageCollections />} />
                 <Route path="/collections/create" element={<CreateCollection />} />
+                <Route path="/shop-coupons/manage" element={<ManageShopCoupons />} />
+                <Route path="/shop-coupons/create" element={<CreateShopCoupon />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />

@@ -39,6 +39,10 @@ export const config = {
         item: (id: number, menuItemId: number) =>
           `/api/admin/collections/${id}/items/${menuItemId}`,
       },
+      shopCoupons: {
+        base: '/api/admin/shop-coupons',
+        detail: (id: number) => `/api/admin/shop-coupons/${id}`,
+      },
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
       cuisines: {
