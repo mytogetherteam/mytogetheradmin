@@ -3,7 +3,6 @@ import {
   Controller,
   type FieldErrors,
   type Resolver,
-  type UseFormSetError,
   useForm,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +35,6 @@ import {
 } from "@/components/ui/infinite-searchable-select";
 import { AsyncSelectField } from "@/components/common/AsyncSelectField";
 import { DateTimePickerField } from "@/components/common/DateTimePickerField";
-import { Badge } from "@/components/ui/badge";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -49,7 +47,6 @@ import {
 import { useAdminShopProfilesBareInfiniteFetcher } from "@/hooks/shops";
 import { menuService } from "@/services/menuService";
 import {
-  COUPON_ITEM_TYPES,
   COUPON_LIMIT_TYPES,
   COUPON_TARGETS,
   DISCOUNT_TYPES,
@@ -61,8 +58,16 @@ import {
   normalizePromotionType,
   type ShopCouponFormValues,
 } from "@/schemas/shop-coupon.schema";
-import type { z } from "zod";
-import type { CouponItemType, ShopCouponListItem } from "@/services/shopCouponService";
+import type { CouponItemType } from "@/services/shopCouponService";
+import {
+  applyZodIssuesToForm,
+  collectErrorMessages,
+  discountTypeLabels,
+  limitTypeLabels,
+  mapCouponToFormValues,
+  promotionTypeLabels,
+  targetLabels,
+} from "./create-shop-coupon.helpers";
 
 type MenuItemOption = {
   label: string;
@@ -76,76 +81,6 @@ type CouponLineItem = MenuItemOption & {
   type: CouponItemType;
 };
 
-const promotionTypeLabels: Record<(typeof PROMOTION_TYPES)[number], string> = {
-  BUY_X_GET_DISCOUNT: "Buy X — get discount",
-  BUY_X_GET_FREE: "Buy X — get free item",
-};
-
-const discountTypeLabels: Record<(typeof DISCOUNT_TYPES)[number], string> = {
-  PERCENTAGE: "Percentage",
-  FIXED_AMOUNT: "Fixed amount",
-};
-
-const targetLabels: Record<(typeof COUPON_TARGETS)[number], string> = {
-  ALL: "All users",
-  EARLY_BIRD: "Early bird (new users)",
-};
-
-const limitTypeLabels: Record<(typeof COUPON_LIMIT_TYPES)[number], string> = {
-  ONE_TIME: "One-time per user",
-  PERMANENT: "Reusable",
-};
-
-function collectErrorMessages(
-  fieldErrors: FieldErrors<ShopCouponFormValues>,
-): string[] {
-  const messages: string[] = [];
-  for (const value of Object.values(fieldErrors)) {
-    if (!value) continue;
-    if ("message" in value && typeof value.message === "string") {
-      messages.push(value.message);
-      continue;
-    }
-    if (typeof value === "object") {
-      messages.push(
-        ...collectErrorMessages(value as FieldErrors<ShopCouponFormValues>),
-      );
-    }
-  }
-  return messages;
-}
-
-function mapCouponToFormValues(coupon: ShopCouponListItem): ShopCouponFormValues {
-  return {
-    shopId: coupon.shopId,
-    name: coupon.name,
-    description: coupon.description ?? "",
-    promotionType: normalizePromotionType(coupon.promotionType),
-    discountType: normalizeDiscountType(coupon.discountType),
-    discountValue: coupon.discountValue,
-    target: normalizeCouponTarget(coupon.target),
-    validFrom: new Date(coupon.validFrom),
-    validUntil: new Date(coupon.validUntil),
-    limitType: normalizeCouponLimitType(coupon.limitType),
-    isActive: coupon.isActive,
-    items: [],
-  };
-}
-
-function applyZodIssuesToForm(
-  issues: z.ZodIssue[],
-  setError: UseFormSetError<ShopCouponFormValues>,
-) {
-  for (const issue of issues) {
-    const field = issue.path[0];
-    if (typeof field === "string") {
-      setError(field as keyof ShopCouponFormValues, {
-        message: issue.message,
-      });
-    }
-  }
-}
-
 export default function CreateShopCoupon() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -154,7 +89,6 @@ export default function CreateShopCoupon() {
   const isEditMode = !!id;
 
   const [couponItems, setCouponItems] = useState<CouponLineItem[]>([]);
-  const [pendingItemType, setPendingItemType] = useState<CouponItemType>("BUY");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showValidationAlert, setShowValidationAlert] = useState(false);
   const [initialShopOption, setInitialShopOption] = useState<{
@@ -175,6 +109,11 @@ export default function CreateShopCoupon() {
   const submitting = isCreating || isUpdating;
   const loading = isEditMode && loadingCoupon;
 
+  const promotionTypeLocked =
+    isEditMode &&
+    !!coupon &&
+    ((coupon.redeemedCount ?? 0) > 0 || (coupon.redemptionCount ?? 0) > 0);
+
   const {
     register,
     handleSubmit,
@@ -182,6 +121,7 @@ export default function CreateShopCoupon() {
     watch,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<ShopCouponFormValues>({
     resolver: zodResolver(shopCouponSchema) as Resolver<ShopCouponFormValues>,
@@ -278,16 +218,94 @@ export default function CreateShopCoupon() {
     [numericShopId],
   );
 
-  const handleAddMenuItem = (item: MenuItemOption | null) => {
-    if (!item) return;
-    setCouponItems((prev) => [
-      ...prev,
-      { ...item, type: pendingItemType },
-    ]);
+  // Keep the react-hook-form `items` field in sync with the visible
+  // couponItems state so Zod validation sees the BUY/GET items the user added.
+  useEffect(() => {
+    setValue(
+      "items",
+      couponItems.map((item) => ({
+        menuItemId: Number(item.value),
+        type: item.type,
+      })),
+      { shouldValidate: showValidationAlert },
+    );
+  }, [couponItems, setValue, showValidationAlert]);
+
+  const handleAddMenuItem =
+    (type: CouponItemType) => (item: MenuItemOption | null) => {
+      if (!item) return;
+      setCouponItems((prev) => {
+        // Don't add the same menu item twice under the same role.
+        if (prev.some((p) => p.value === item.value && p.type === type)) {
+          return prev;
+        }
+        return [...prev, { ...item, type }];
+      });
+    };
+
+  const handleRemoveItem = (value: string, type: CouponItemType) => {
+    setCouponItems((prev) =>
+      prev.filter((item) => !(item.value === value && item.type === type)),
+    );
   };
 
-  const handleRemoveItem = (index: number) => {
-    setCouponItems((prev) => prev.filter((_, i) => i !== index));
+  const renderRoleColumn = (
+    type: CouponItemType,
+    title: string,
+    placeholder: string,
+    emptyHint: string,
+  ) => {
+    const items = couponItems.filter((item) => item.type === type);
+    return (
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <Label>{title}</Label>
+          <InfiniteSearchableSelect<MenuItemOption>
+            key={`menu-search-${type}`}
+            fetchData={fetchMenuItems}
+            valueKey="value"
+            labelKey="label"
+            selectedValue={null}
+            onChange={handleAddMenuItem(type)}
+            placeholder={placeholder}
+            startPage={0}
+          />
+        </div>
+        {items.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-6 text-center text-xs text-muted-foreground">
+            {emptyHint}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {items.map((item) => (
+              <div
+                key={`${item.value}-${item.type}`}
+                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <span className="block truncate font-medium">
+                    {item.label}
+                  </span>
+                  {item.price != null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ฿{item.price}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveItem(item.value, item.type)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const onInvalid = (fieldErrors: FieldErrors<ShopCouponFormValues>) => {
@@ -308,9 +326,9 @@ export default function CreateShopCoupon() {
       items:
         values.promotionType === "BUY_X_GET_FREE"
           ? couponItems.map((item) => ({
-              menuItemId: Number(item.value),
-              type: item.type,
-            }))
+            menuItemId: Number(item.value),
+            type: item.type,
+          }))
           : values.items,
     };
 
@@ -341,12 +359,12 @@ export default function CreateShopCoupon() {
       isActive: data.isActive,
       ...(data.promotionType === "BUY_X_GET_DISCOUNT"
         ? {
-            discountType: data.discountType,
-            discountValue: data.discountValue,
-          }
+          discountType: data.discountType,
+          discountValue: data.discountValue,
+        }
         : {
-            items: data.items,
-          }),
+          items: data.items,
+        }),
     };
 
     if (isEditMode) {
@@ -432,9 +450,9 @@ export default function CreateShopCoupon() {
                   initialValue={
                     initialShopOption
                       ? {
-                          value: initialShopOption.value,
-                          label: initialShopOption.label,
-                        }
+                        value: initialShopOption.value,
+                        label: initialShopOption.label,
+                      }
                       : undefined
                   }
                   onValueChange={(value) => {
@@ -510,7 +528,12 @@ export default function CreateShopCoupon() {
                   name="promotionType"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      key={`promotion-type-${id}-${field.value ?? "BUY_X_GET_DISCOUNT"}`}
+                      value={normalizePromotionType(field.value)}
+                      onValueChange={field.onChange}
+                      disabled={promotionTypeLocked}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -524,6 +547,12 @@ export default function CreateShopCoupon() {
                     </Select>
                   )}
                 />
+                {promotionTypeLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Promotion type is locked because this coupon has already been
+                    redeemed.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -628,79 +657,20 @@ export default function CreateShopCoupon() {
                     Select a shop first to add menu items.
                   </p>
                 ) : (
-                  <>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="space-y-2 sm:w-40">
-                        <Label>Item role</Label>
-                        <Select
-                          value={pendingItemType}
-                          onValueChange={(value) =>
-                            setPendingItemType(value as CouponItemType)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUPON_ITEM_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex-1">
-                        <Label className="mb-2 block">Menu item</Label>
-                        <InfiniteSearchableSelect<MenuItemOption>
-                          fetchData={fetchMenuItems}
-                          valueKey="value"
-                          labelKey="label"
-                          selectedValue={null}
-                          onChange={handleAddMenuItem}
-                          placeholder="Search menu items to add..."
-                          startPage={0}
-                        />
-                      </div>
-                    </div>
-
-                    {couponItems.length === 0 ? (
-                      <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                        Add at least one BUY item and one GET item.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {couponItems.map((item, index) => (
-                          <div
-                            key={`${item.value}-${item.type}-${index}`}
-                            className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">{item.type}</Badge>
-                                <span className="font-medium truncate">
-                                  {item.label}
-                                </span>
-                              </div>
-                              {item.price != null && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  ฿{item.price}
-                                </p>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveItem(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {renderRoleColumn(
+                      "BUY",
+                      "Customer buys",
+                      "Search items to buy...",
+                      "Add at least one item the customer must buy.",
                     )}
-                  </>
+                    {renderRoleColumn(
+                      "GET",
+                      "Customer gets free",
+                      "Search free items...",
+                      "Add at least one free item the customer receives.",
+                    )}
+                  </div>
                 )}
                 {errors.items && (
                   <p className="text-xs text-destructive">{errors.items.message}</p>
