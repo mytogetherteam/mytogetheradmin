@@ -120,6 +120,21 @@ export const navigationConfig: NavGroup[] = [
         ]
     },
     {
+        title: "Shop Coupons",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Shop Coupons",
+                icon: TicketPercent,
+                tooltip: "Per-shop QR scan promotions",
+                items: [
+                    { title: "Create Coupon", url: "/shop-coupons/create", icon: Plus },
+                    { title: "Manage Coupons", url: "/shop-coupons/manage", icon: Settings2 }
+                ]
+            }
+        ]
+    },
+    {
         title: "Shop Tags",
         roles: AdminRole.ADMIN_SETUP,
         items: [
