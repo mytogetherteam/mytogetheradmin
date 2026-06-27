@@ -7,7 +7,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -242,6 +242,12 @@ export default function CreateShopCoupon() {
         return [...prev, { ...item, type }];
       });
     };
+
+  const handleCopyCode = () => {
+    if (!coupon?.code) return;
+    navigator.clipboard?.writeText(coupon.code);
+    toast.success("Coupon code copied");
+  };
 
   const handleRemoveItem = (value: string, type: CouponItemType) => {
     setCouponItems((prev) =>
@@ -510,6 +516,32 @@ export default function CreateShopCoupon() {
                 </p>
               )}
             </div>
+
+            {isEditMode && coupon?.code && (
+              <div className="space-y-2">
+                <Label>Coupon code</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={coupon.code}
+                    readOnly
+                    className="font-mono tracking-wider"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyCode}
+                    aria-label="Copy coupon code"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Auto-generated public reference. Used by the app and QR redeem
+                  flow — not editable.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

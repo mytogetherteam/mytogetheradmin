@@ -35,6 +35,7 @@ export interface ShopCouponItemRow {
 export interface ShopCouponListItem {
   id: number;
   shopId: number;
+  code: string;
   name: string;
   description: string | null;
   promotionType: PromotionType;
