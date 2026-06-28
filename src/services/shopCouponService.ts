@@ -47,6 +47,8 @@ export interface ShopCouponListItem {
   limitType: CouponLimitType;
   redeemedCount: number;
   isActive: boolean;
+  /** True when active flag is on and the coupon is within its valid window. */
+  isCurrentlyValid?: boolean;
   createdAt: string;
   updatedAt: string;
   shop: ShopCouponShopSummary;

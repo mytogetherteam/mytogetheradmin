@@ -72,6 +72,23 @@ function limitLabel(limitType: ShopCouponListItem["limitType"]) {
   return limitType === "PERMANENT" ? "Reusable" : "One-time";
 }
 
+function couponStatusBadge(coupon: ShopCouponListItem): {
+  label: "Active" | "Inactive";
+  variant: "default" | "secondary";
+} {
+  const now = Date.now();
+  const from = new Date(coupon.validFrom).getTime();
+  const until = new Date(coupon.validUntil).getTime();
+
+  const isActive =
+    coupon.isCurrentlyValid ??
+    (coupon.isActive && now >= from && now <= until);
+
+  return isActive
+    ? { label: "Active", variant: "default" }
+    : { label: "Inactive", variant: "secondary" };
+}
+
 export default function ManageShopCoupons() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,6 +106,12 @@ export default function ManageShopCoupons() {
 
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const isFirstSearchDebounce = useRef(true);
+  const [, setStatusTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setStatusTick((t) => t + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const delayMs = isFirstSearchDebounce.current ? 0 : 500;
@@ -274,9 +297,14 @@ export default function ManageShopCoupons() {
                           <TableCell>{limitLabel(coupon.limitType)}</TableCell>
                           <TableCell>{coupon.redeemedCount}</TableCell>
                           <TableCell>
-                            <Badge variant={coupon.isActive ? "default" : "secondary"}>
-                              {coupon.isActive ? "Active" : "Inactive"}
-                            </Badge>
+                            {(() => {
+                              const status = couponStatusBadge(coupon);
+                              return (
+                                <Badge variant={status.variant}>
+                                  {status.label}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-right">
                             <TooltipProvider>
