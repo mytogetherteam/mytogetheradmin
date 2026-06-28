@@ -9,6 +9,7 @@ export const COUPON_ITEM_TYPES = ["BUY", "GET"] as const;
 const couponItemSchema = z.object({
   menuItemId: z.coerce.number().int().min(1, "Menu item is required"),
   type: z.enum(COUPON_ITEM_TYPES),
+  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1").default(1),
 });
 
 export const shopCouponSchema = z
@@ -76,20 +77,13 @@ export const shopCouponSchema = z
 
     if (data.promotionType === "BUY_X_GET_FREE") {
       const items = data.items ?? [];
-      if (items.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Add at least one BUY and one GET menu item",
-          path: ["items"],
-        });
-        return;
-      }
-      const hasBuy = items.some((item) => item.type === "BUY");
+      // A GET (free) item is always required. BUY items are optional — a coupon
+      // may grant a free item with no purchase requirement.
       const hasGet = items.some((item) => item.type === "GET");
-      if (!hasBuy || !hasGet) {
+      if (!hasGet) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Include at least one BUY and one GET item",
+          message: "Add at least one free (GET) menu item",
           path: ["items"],
         });
       }

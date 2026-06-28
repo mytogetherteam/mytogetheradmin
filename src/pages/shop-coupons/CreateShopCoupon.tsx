@@ -79,6 +79,7 @@ type MenuItemOption = {
 
 type CouponLineItem = MenuItemOption & {
   type: CouponItemType;
+  quantity: number;
 };
 
 export default function CreateShopCoupon() {
@@ -175,6 +176,7 @@ export default function CreateShopCoupon() {
         imageUrl: item.menuItem.imageUrl ?? undefined,
         price: item.menuItem.originalPrice ?? undefined,
         type: item.type,
+        quantity: item.quantity ?? 1,
       })),
     );
     setShowValidationAlert(false);
@@ -226,6 +228,7 @@ export default function CreateShopCoupon() {
       couponItems.map((item) => ({
         menuItemId: Number(item.value),
         type: item.type,
+        quantity: item.quantity,
       })),
       { shouldValidate: showValidationAlert },
     );
@@ -239,9 +242,23 @@ export default function CreateShopCoupon() {
         if (prev.some((p) => p.value === item.value && p.type === type)) {
           return prev;
         }
-        return [...prev, { ...item, type }];
+        return [...prev, { ...item, type, quantity: 1 }];
       });
     };
+
+  const handleQuantityChange = (
+    value: string,
+    type: CouponItemType,
+    quantity: number,
+  ) => {
+    setCouponItems((prev) =>
+      prev.map((item) =>
+        item.value === value && item.type === type
+          ? { ...item, quantity }
+          : item,
+      ),
+    );
+  };
 
   const handleCopyCode = () => {
     if (!coupon?.code) return;
@@ -298,14 +315,36 @@ export default function CreateShopCoupon() {
                     </p>
                   )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveItem(item.value, item.type)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      {type === "BUY" ? "Buy qty" : "Free qty"}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const next = parseInt(e.target.value, 10);
+                        handleQuantityChange(
+                          item.value,
+                          item.type,
+                          Number.isNaN(next) || next < 1 ? 1 : next,
+                        );
+                      }}
+                      className="h-8 w-16"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveItem(item.value, item.type)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -334,6 +373,7 @@ export default function CreateShopCoupon() {
           ? couponItems.map((item) => ({
             menuItemId: Number(item.value),
             type: item.type,
+            quantity: item.quantity,
           }))
           : values.items,
     };
@@ -692,9 +732,9 @@ export default function CreateShopCoupon() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     {renderRoleColumn(
                       "BUY",
-                      "Customer buys",
+                      "Customer buys (optional)",
                       "Search items to buy...",
-                      "Add at least one item the customer must buy.",
+                      "Optional — leave empty for a free item with no purchase required.",
                     )}
                     {renderRoleColumn(
                       "GET",

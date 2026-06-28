@@ -29,6 +29,7 @@ export interface ShopCouponItemRow {
   id: number;
   menuItemId: number;
   type: CouponItemType;
+  quantity: number;
   menuItem: ShopCouponMenuItemSummary;
 }
 
@@ -60,6 +61,7 @@ export interface ShopCouponListItem {
 export interface ShopCouponItemPayload {
   menuItemId: number;
   type: CouponItemType;
+  quantity: number;
 }
 
 export interface ShopCouponPayload {
