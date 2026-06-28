@@ -34,7 +34,7 @@ import {
   type PageableResponse,
 } from "@/components/ui/infinite-searchable-select";
 import { AsyncSelectField } from "@/components/common/AsyncSelectField";
-import { DateTimePickerField } from "@/components/common/DateTimePickerField";
+import { CouponValidityDateTimeField } from "./CouponValidityDateTimeField";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -715,7 +715,7 @@ export default function CreateShopCoupon() {
                 name="validFrom"
                 control={control}
                 render={({ field }) => (
-                  <DateTimePickerField
+                  <CouponValidityDateTimeField
                     label="Valid from"
                     value={field.value ?? null}
                     onChange={field.onChange}
@@ -727,7 +727,7 @@ export default function CreateShopCoupon() {
                 name="validUntil"
                 control={control}
                 render={({ field }) => (
-                  <DateTimePickerField
+                  <CouponValidityDateTimeField
                     label="Valid until"
                     value={field.value ?? null}
                     onChange={field.onChange}
@@ -736,6 +736,9 @@ export default function CreateShopCoupon() {
                 )}
               />
             </div>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Pick a date only (defaults to 12:00 AM) or tap &quot;Set custom time&quot; when needed.
+            </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
