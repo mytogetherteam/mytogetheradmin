@@ -19,6 +19,7 @@ export const manageUserSchema = z.object({
   roleId: z.number().nullable().optional(),
   status: z.enum(["Active", "Inactive"]),
   isActive: z.boolean(),
+  isEarlyBird: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

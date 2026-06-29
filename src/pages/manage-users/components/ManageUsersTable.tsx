@@ -18,9 +18,9 @@ import { SortableTableHead } from "@/components/SortableTableHead";
 import type { SortConfig } from "@/lib/sort-utils";
 import type { ManageUser } from "@/schemas/manage-user.schema";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
-import { getUserDisplayName } from "../manageUsersHelpers";
+import { getUserDisplayName, getEarlyBirdStatusLabel } from "../manageUsersHelpers";
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
 interface ManageUsersTableProps {
   users: ManageUser[];
@@ -77,6 +77,7 @@ export function ManageUsersTable({
               onSort={onSort}
             />
             <TableHead>Role</TableHead>
+            <TableHead>Early Bird</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -146,6 +147,15 @@ function ManageUserRow({
         <Badge variant="outline" className="font-normal">
           {user.role}
         </Badge>
+      </TableCell>
+      <TableCell>
+        {user.accountType === "user" ? (
+          <Badge variant={user.isEarlyBird ? "default" : "secondary"}>
+            {getEarlyBirdStatusLabel(user.isEarlyBird)}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </TableCell>
       <TableCell>
         <Badge variant={user.status === "Active" ? "default" : "secondary"}>
