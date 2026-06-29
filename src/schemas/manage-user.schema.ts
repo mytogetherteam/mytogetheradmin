@@ -54,6 +54,8 @@ export const editManageUserSchema = z
     roleId: z.number().int().min(1).nullable(),
     roleName: z.string().trim().min(1).nullable(),
     isActive: z.boolean(),
+    // User only — grants access to Early Bird shop coupons.
+    isEarlyBird: z.boolean().optional(),
     // Admin only — leave blank to keep the current password.
     password: z.string().optional(),
     confirmPassword: z.string().optional(),
