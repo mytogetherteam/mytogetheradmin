@@ -63,8 +63,10 @@ import {
   applyZodIssuesToForm,
   collectErrorMessages,
   discountTypeLabels,
+  formatWholeDiscountValue,
   limitTypeLabels,
   mapCouponToFormValues,
+  parseWholeDiscountValue,
   promotionTypeLabels,
   targetLabels,
 } from "./create-shop-coupon.helpers";
@@ -147,6 +149,7 @@ export default function CreateShopCoupon() {
 
   const shopId = watch("shopId");
   const promotionType = watch("promotionType");
+  const discountType = watch("discountType");
   const targetValue = watch("target");
   const limitTypeValue = watch("limitType");
   const numericShopId = shopId > 0 ? shopId : undefined;
@@ -700,15 +703,32 @@ export default function CreateShopCoupon() {
                     render={({ field }) => (
                       <Input
                         id="discountValue"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={field.value ?? ""}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder={
+                          discountType === "PERCENTAGE" ? "e.g. 15" : "e.g. 100"
+                        }
+                        value={formatWholeDiscountValue(field.value)}
                         onChange={(e) => {
-                          const next = e.target.value;
                           field.onChange(
-                            next === "" ? undefined : Number(next),
+                            parseWholeDiscountValue(
+                              e.target.value,
+                              discountType,
+                            ),
                           );
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "." ||
+                            e.key === "," ||
+                            e.key === "e" ||
+                            e.key === "E" ||
+                            e.key === "-" ||
+                            e.key === "+"
+                          ) {
+                            e.preventDefault();
+                          }
                         }}
                       />
                     )}
