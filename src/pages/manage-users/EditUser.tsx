@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +28,7 @@ import {
 } from "@/schemas/manage-user.schema";
 import { authService } from "@/services/authService";
 import { manageUsersService } from "@/services/manageUsersService";
+import { getEarlyBirdStatusLabel } from "./manageUsersHelpers";
 
 export default function EditUser() {
   const navigate = useNavigate();
@@ -412,6 +414,20 @@ export default function EditUser() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {accountType === "user" && (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label>Early Bird</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Whether this user can use Early Bird shop coupons.
+                  </p>
+                </div>
+                <Badge variant={user?.isEarlyBird ? "default" : "secondary"}>
+                  {getEarlyBirdStatusLabel(user?.isEarlyBird)}
+                </Badge>
               </div>
             )}
 

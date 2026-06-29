@@ -18,6 +18,11 @@ export function getUserDisplayName(user: ManageUser): string {
   return user.name || user.username || `User ${user.id}`;
 }
 
+/** Compact Early Bird label for tables and badges. */
+export function getEarlyBirdStatusLabel(isEarlyBird?: boolean): string {
+  return isEarlyBird ? "Yes" : "No";
+}
+
 /** Export the given (already sorted) rows to an `.xlsx` file. */
 export function exportManageUsersToExcel(
   users: ManageUser[],
@@ -32,6 +37,7 @@ export function exportManageUsersToExcel(
     Username: user.username || "",
     Role: user.role,
     Status: user.status,
+    "Early Bird": user.accountType === "user" ? getEarlyBirdStatusLabel(user.isEarlyBird) : "",
     "Created At": user.createdAt,
   }));
 
