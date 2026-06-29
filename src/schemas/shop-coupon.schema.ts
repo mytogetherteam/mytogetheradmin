@@ -23,7 +23,10 @@ export const shopCouponSchema = z
       .or(z.literal("")),
     promotionType: z.enum(PROMOTION_TYPES),
     discountType: z.enum(DISCOUNT_TYPES).optional(),
-    discountValue: z.coerce.number().optional(),
+    discountValue: z.coerce
+      .number()
+      .int("Discount value must be a whole number")
+      .optional(),
     target: z.enum(COUPON_TARGETS, { message: "Target audience is required" }),
     validFrom: z.date({ message: "Start date is required" }),
     validUntil: z.date({ message: "End date is required" }),
