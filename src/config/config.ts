@@ -52,6 +52,16 @@ export const config = {
         base: '/api/admin/shop-coupons',
         detail: (id: number) => `/api/admin/shop-coupons/${id}`,
       },
+      plans: {
+        base: '/api/admin/plans',
+        detail: (id: number) => `/api/admin/plans/${id}`,
+        reorder: '/api/admin/plans/reorder',
+      },
+      planFeatures: {
+        base: '/api/admin/plan-features',
+        detail: (id: number) => `/api/admin/plan-features/${id}`,
+        reorder: '/api/admin/plan-features/reorder',
+      },
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
       cuisines: {
