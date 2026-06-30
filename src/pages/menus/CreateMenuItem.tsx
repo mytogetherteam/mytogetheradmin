@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { menuService, Variant, ItemTag, ComboComponent } from "@/services/menuService";
+import { menuService, Variant, ItemTag, ComboComponent, MenuItem } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ import {
     sellingPriceFromOriginalAndPercentage,
 } from "@/lib/menu-item-discount-form.util";
 import { resolveSellingPrice } from "@/lib/menu-item-price-display";
+import { AuditUserMeta } from "@/components/common/AuditUserMeta";
 import {
     DndContext,
     closestCenter,
@@ -58,6 +59,7 @@ export default function CreateMenuItem() {
     const isEditMode = !!id;
 
     const [loading, setLoading] = useState(false);
+    const [loadedItem, setLoadedItem] = useState<MenuItem | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -265,6 +267,7 @@ export default function CreateMenuItem() {
         setLoading(true);
         try {
             const item = await menuService.getMenuItem(itemId);
+            setLoadedItem(item);
             setNameMm(item.nameMm || "");
             setNameTh(item.nameTh || "");
             setNameEn(item.nameEn || "");
@@ -593,6 +596,15 @@ export default function CreateMenuItem() {
                 <p className="text-muted-foreground line-clamp-2 sm:line-clamp-none">
                     {isEditMode ? "Update item details and availability." : "Add a new menu item to a shop's menu."}
                 </p>
+                {isEditMode && loadedItem && (
+                    <AuditUserMeta
+                        className="mt-4"
+                        createdAt={loadedItem.createdAt}
+                        updatedAt={loadedItem.updatedAt}
+                        createdBy={loadedItem.createdBy}
+                        updatedBy={loadedItem.updatedBy}
+                    />
+                )}
             </div>
 
             <Card className="border-solid">

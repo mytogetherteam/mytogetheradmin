@@ -6,6 +6,7 @@ import {
     Settings,
     User,
     Users,
+    Shield,
     ShieldAlert,
     List,
     Plus,
@@ -381,6 +382,16 @@ export const navigationConfig: NavGroup[] = [
     {
         title: "Administration",
         items: [
+            {
+                title: "Admin Management",
+                icon: Shield,
+                tooltip: "Super Admin & Operation Admin accounts",
+                roles: AdminRole.ADMIN,
+                items: [
+                    { title: "Create Admin", url: "/admins/create", icon: Plus },
+                    { title: "Manage Admins", url: "/admins/manage", icon: List },
+                ],
+            },
             { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList, tooltip: "Audit Logs", roles: AdminRole.ADMIN },
             { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone, tooltip: "Active admin sessions & force logout", roles: AdminRole.ADMIN },
             { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, tooltip: "Order Timeouts", roles: AdminRole.ADMIN_FINANCE },

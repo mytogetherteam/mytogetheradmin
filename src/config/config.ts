@@ -24,6 +24,7 @@ export const config = {
         detail: (id: number) => `/api/admin/admins/${id}`,
         sessions: '/api/admin/admins/sessions',
         forceLogout: (id: number) => `/api/admin/admins/${id}/force-logout`,
+        changeStatus: (id: number) => `/api/admin/admins/${id}/change-status`,
       },
       shopCategories: '/api/admin/shop-categories',
       shopCategory: (id: number) => `/api/admin/shop-categories/${id}`,

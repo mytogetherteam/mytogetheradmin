@@ -2,6 +2,7 @@ import { apiClient, ApiResponseData } from './apiClient';
 import { config } from '@/config/config';
 import { api } from '@/utils/axios';
 import { AdminRoleName } from '@/schemas/assignadmin.schema';
+import type { AdminAuditUser } from '@/lib/audit-user';
 
 // API Response Interfaces
 export type ApiResponse<T> = ApiResponseData<T>;
@@ -522,6 +523,10 @@ export interface ShopDetail extends Shop {
   shopPaymentMethods?: ShopPaymentMethodAssignment[];
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: AdminAuditUser | null;
+  updatedBy?: AdminAuditUser | null;
+  createdById?: number | null;
+  updatedById?: number | null;
   paymentQrUrl?: string | null;
   cuisineTypes?: CuisineTypeDTO[];
   cuisineTypeIds?: number[];

@@ -1,6 +1,7 @@
 import { apiClient } from "./apiClient";
 import { config } from "@/config/config";
 import { PageableResponse } from "./shopService";
+import type { AdminAuditUser } from "@/lib/audit-user";
 
 export interface MenuCategory {
     id?: number;
@@ -82,6 +83,12 @@ export interface MenuItem {
     masterCategoryId?: number;
     masterCategoryName?: string;
     components?: ComboComponent[];
+    createdAt?: string;
+    updatedAt?: string;
+    createdBy?: AdminAuditUser | null;
+    updatedBy?: AdminAuditUser | null;
+    createdById?: number | null;
+    updatedById?: number | null;
 }
 
 export interface Option {

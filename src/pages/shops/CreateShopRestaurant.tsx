@@ -25,6 +25,7 @@ import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Pencil, Eye, EyeOff, Shie
 import type { PaymentMethodDTO } from "@/services/shopService"
 import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
 import { EditShopAdminDialog, type EditableShopAdmin } from "@/components/shop/manage/EditShopAdminDialog"
+import { AuditUserMeta } from "@/components/common/AuditUserMeta"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -113,6 +114,15 @@ export default function CreateShopRestaurant() {
                 <p className="text-muted-foreground line-clamp-2 sm:line-clamp-none">
                     {isEditMode ? "Update establishment details." : "Add a new establishment to the platform."}
                 </p>
+                {isEditMode && ui.shop && (
+                    <AuditUserMeta
+                        className="mt-4"
+                        createdAt={ui.shop.createdAt}
+                        updatedAt={ui.shop.updatedAt}
+                        createdBy={ui.shop.createdBy}
+                        updatedBy={ui.shop.updatedBy}
+                    />
+                )}
             </div>
 
             {isLoadingShopEdit ? (

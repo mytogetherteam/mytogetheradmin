@@ -18,7 +18,7 @@ import {
   shopRestaurantEditQueryKey,
 } from '@/hooks/shops/shared/adminShopProfilesQueryKeys';
 import { ShopCategoryService, type ShopSubCategoryDTO as AdminShopSubCategoryDTO } from '@/services/shopCategoryService';
-import { adminSelectLabel, type PlatformAdminDTO } from '@/services/adminsService';
+import { adminSelectLabel } from '@/services/adminsService';
 import { defaultOperatingWeek } from './useShopRestaurantForm';
 import { normalizePricePreference } from '@/lib/price-preference';
 
@@ -201,23 +201,16 @@ export async function fetchShopRestaurantEditBundle(
   const paymentMethodIds = paymentMethodIdsFromAdminShopProfile(shop);
   const shopPaymentMethods = shopPaymentMethodsFromAdminShopProfile(shop);
 
-  const assignedAdminId = shop.adminShops?.[0]?.adminId ?? undefined;
+  const embeddedAdmin = shop.adminShops?.[0]?.admin;
 
   const shopForLabels = await enrichShopForEditLabels(shop, shopSubCategoryId);
-  const embeddedAdmin = shop.adminShops?.[0]?.admin;
 
   const initialAssignedAdminLabel: string | null = embeddedAdmin
     ? adminSelectLabel({
-      id: embeddedAdmin.id ?? assignedAdminId ?? 0,
       email: embeddedAdmin.email ?? '',
       name: embeddedAdmin.name,
       username: embeddedAdmin.username,
-      isActive: true,
-      roleId: 0,
-      createdAt: '',
-      updatedAt: '',
-      role: { id: 0, name: '' },
-    } as PlatformAdminDTO)
+    })
     : null;
 
   const enrichedShop: ShopDetail = {

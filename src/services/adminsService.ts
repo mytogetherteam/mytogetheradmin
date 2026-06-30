@@ -2,6 +2,8 @@ import { config } from '@/config/config';
 import { handleApiCall } from '@/lib/handleApiCall';
 import { api } from '@/utils/axios';
 
+export type PlatformAdminRole = 'SuperAdmin' | 'OperationAdmin';
+
 export interface PlatformAdminDTO {
   id: number;
   email: string;
@@ -11,7 +13,7 @@ export interface PlatformAdminDTO {
   roleId: number;
   createdAt: string;
   updatedAt: string;
-  role: { id: number; name: string };
+  role: { id: number; name: PlatformAdminRole };
 }
 
 export interface AdminsListPageDTO {
@@ -45,10 +47,27 @@ export interface AdminSessionsPageDTO {
   page: number;
   size: number;
 }
+export type CreatePlatformAdminPayload = {
+  email: string;
+  username?: string;
+  password: string;
+  name?: string;
+  roleName: PlatformAdminRole;
+};
+
+export type UpdatePlatformAdminPayload = {
+  email?: string;
+  username?: string | null;
+  name?: string | null;
+  password?: string;
+};
 
 /** Primary line for the trigger and list (name-focused). Always a non-empty string. */
-export function adminSelectLabel(a: PlatformAdminDTO): string {
-  return `${a.name} (${a.username})`;
+export function adminSelectLabel(
+  a: Pick<PlatformAdminDTO, 'name' | 'username' | 'email'>,
+): string {
+  const label = a.name?.trim() || a.username?.trim() || a.email;
+  return a.username ? `${label} (${a.username})` : label;
 }
 
 export const AdminsService = {
@@ -56,6 +75,7 @@ export const AdminsService = {
     page?: number;
     size?: number;
     search?: string;
+    role?: PlatformAdminRole;
   }): Promise<AdminsListPageDTO> => {
     const url = config.endpoints.admin.admins.list;
     const queryParams = new URLSearchParams();
@@ -65,6 +85,9 @@ export const AdminsService = {
     queryParams.set('size', String(size));
     if (params.search?.trim()) {
       queryParams.set('search', params.search.trim());
+    }
+    if (params.role) {
+      queryParams.set('role', params.role);
     }
     const qs = queryParams.toString();
     return handleApiCall(() => api.get(`${url}?${qs}`));
@@ -104,6 +127,26 @@ export const AdminsService = {
       return null;
     }
   },
+
+  createAdmin: (payload: CreatePlatformAdminPayload) =>
+    handleApiCall<PlatformAdminDTO>(() =>
+      api.post(config.endpoints.admin.admins.list, payload),
+    ),
+
+  updateAdmin: (id: number, payload: UpdatePlatformAdminPayload) =>
+    handleApiCall<PlatformAdminDTO>(() =>
+      api.put(config.endpoints.admin.admins.detail(id), payload),
+    ),
+
+  changeStatus: (id: number, isActive: boolean) =>
+    handleApiCall<PlatformAdminDTO>(() =>
+      api.patch(config.endpoints.admin.admins.changeStatus(id), { isActive }),
+    ),
+
+  deleteAdmin: (id: number) =>
+    handleApiCall<{ message: string }>(() =>
+      api.delete(config.endpoints.admin.admins.detail(id)),
+    ),
 
   adminSelectLabel,
 };

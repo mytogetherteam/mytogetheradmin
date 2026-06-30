@@ -134,6 +134,10 @@ const CuisineForm = lazy(() => import("@/pages/cuisines/CuisineForm"));
 const ManageRegions = lazy(() => import("@/pages/regions/ManageRegions"));
 const RegionForm = lazy(() => import("@/pages/regions/RegionForm"));
 
+// Platform admins
+const ManageAdmins = lazy(() => import("@/pages/admins/ManageAdmins"));
+const PlatformAdminForm = lazy(() => import("@/pages/admins/PlatformAdminForm"));
+
 // ─── Route guards ────────────────────────────────────────────────────────────
 
 function PublicOnlyRoute() {
@@ -276,6 +280,9 @@ function App() {
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
+                <Route path="/admins/manage" element={<ManageAdmins />} />
+                <Route path="/admins/create" element={<PlatformAdminForm />} />
+                <Route path="/admins/edit/:id" element={<PlatformAdminForm />} />
               </Route>
 
               {/* Shared/Uncategorized */}
@@ -388,6 +395,9 @@ function App() {
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
+                <Route path="/admins/manage" element={<ManageAdmins />} />
+                <Route path="/admins/create" element={<PlatformAdminForm />} />
+                <Route path="/admins/edit/:id" element={<PlatformAdminForm />} />
               </Route>
 
               {/* Shared/Uncategorized */}
