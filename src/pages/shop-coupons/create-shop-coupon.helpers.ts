@@ -43,6 +43,26 @@ export const limitTypeLabels: Record<
   PERMANENT: "Reusable",
 };
 
+/** Whole-number discount input (no decimals); caps percentage at 100. */
+export function parseWholeDiscountValue(
+  raw: string,
+  discountType?: (typeof DISCOUNT_TYPES)[number],
+): number | undefined {
+  const digits = raw.replace(/\D/g, "");
+  if (digits === "") return undefined;
+
+  let value = parseInt(digits, 10);
+  if (discountType === "PERCENTAGE" && value > 100) {
+    value = 100;
+  }
+  return value;
+}
+
+export function formatWholeDiscountValue(value: number | undefined): string {
+  if (value === undefined || Number.isNaN(value)) return "";
+  return String(Math.trunc(value));
+}
+
 export function collectErrorMessages(
   fieldErrors: FieldErrors<ShopCouponFormValues>,
 ): string[] {
@@ -71,7 +91,7 @@ export function mapCouponToFormValues(
     description: coupon.description ?? "",
     promotionType: normalizePromotionType(coupon.promotionType),
     discountType: normalizeDiscountType(coupon.discountType),
-    discountValue: coupon.discountValue,
+    discountValue: Math.trunc(coupon.discountValue),
     target: normalizeCouponTarget(coupon.target),
     validFrom: new Date(coupon.validFrom),
     validUntil: new Date(coupon.validUntil),

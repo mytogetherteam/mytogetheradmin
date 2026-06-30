@@ -75,6 +75,7 @@ export const manageUsersService = {
         : {
             phone: data.phone?.trim() || null,
             pin: data.pin?.trim() ? data.pin : undefined,
+            isEarlyBird: data.isEarlyBird,
           }),
     };
     const response = await apiClient.put<ManageUser>(
