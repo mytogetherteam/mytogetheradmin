@@ -39,6 +39,14 @@ export const config = {
         item: (id: number, menuItemId: number) =>
           `/api/admin/collections/${id}/items/${menuItemId}`,
       },
+      flashEvents: {
+        base: '/api/admin/flash-events',
+        detail: (id: number) => `/api/admin/flash-events/${id}`,
+        items: (id: number) => `/api/admin/flash-events/${id}/items`,
+        reorderItems: (id: number) => `/api/admin/flash-events/${id}/items/reorder`,
+        item: (id: number, menuItemId: number) =>
+          `/api/admin/flash-events/${id}/items/${menuItemId}`,
+      },
       shopCoupons: {
         base: '/api/admin/shop-coupons',
         detail: (id: number) => `/api/admin/shop-coupons/${id}`,

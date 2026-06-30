@@ -28,6 +28,7 @@ import {
     TicketPercent,
     MessageSquare,
     Layers,
+    Zap,
     Newspaper,
     Bike,
     MonitorSmartphone,
@@ -115,6 +116,21 @@ export const navigationConfig: NavGroup[] = [
                 items: [
                     { title: "Create Collection", url: "/collections/create", icon: Plus },
                     { title: "Manage Collections", url: "/collections/manage", icon: Settings2 }
+                ]
+            }
+        ]
+    },
+    {
+        title: "Flash Events",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Flash Events",
+                icon: Zap,
+                tooltip: "Flash Events",
+                items: [
+                    { title: "Create Flash Event", url: "/flash-events/create", icon: Plus },
+                    { title: "Manage Flash Events", url: "/flash-events/manage", icon: Settings2 }
                 ]
             }
         ]
