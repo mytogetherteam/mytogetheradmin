@@ -63,6 +63,7 @@ export default function CreatePlan() {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<PlanFormValues>({
     resolver: zodResolver(planSchema) as Resolver<PlanFormValues>,
@@ -228,6 +229,7 @@ export default function CreatePlan() {
 
         <PlanFeatureValuesCard
           control={control}
+          setValue={setValue}
           catalogueFeatures={features}
           featureValueFields={featureValueFields}
           featureValues={featureValues}

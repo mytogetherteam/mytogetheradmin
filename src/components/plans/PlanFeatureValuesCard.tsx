@@ -1,4 +1,9 @@
-import { Controller, type Control, type FieldArrayWithId } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type FieldArrayWithId,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -38,6 +43,7 @@ import {
 
 interface PlanFeatureValuesCardProps {
   control: Control<PlanFormValues>;
+  setValue: UseFormSetValue<PlanFormValues>;
   catalogueFeatures: PlanFeatureListItem[];
   featureValueFields: FieldArrayWithId<PlanFormValues, "featureValues", "id">[];
   featureValues: PlanFeatureValueFormValues[];
@@ -49,6 +55,7 @@ interface PlanFeatureValuesCardProps {
 
 export function PlanFeatureValuesCard({
   control,
+  setValue,
   catalogueFeatures,
   featureValueFields,
   featureValues,
@@ -180,19 +187,25 @@ export function PlanFeatureValuesCard({
                         <Controller
                           name={`featureValues.${index}.quantity`}
                           control={control}
-                          render={({ field: qtyField }) => (
-                            <Input
-                              type="number"
-                              min={0}
-                              value={qtyField.value ?? ""}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                qtyField.onChange(
-                                  next === "" ? undefined : Number(next),
-                                );
-                              }}
-                            />
-                          )}
+                          render={({ field: qtyField }) => {
+                            const isUnlimited =
+                              !!featureValues[index]?.isUnlimited;
+                            return (
+                              <Input
+                                type="number"
+                                min={0}
+                                disabled={isUnlimited}
+                                value={isUnlimited ? "" : (qtyField.value ?? "")}
+                                placeholder={isUnlimited ? "Unlimited" : undefined}
+                                onChange={(e) => {
+                                  const next = e.target.value;
+                                  qtyField.onChange(
+                                    next === "" ? undefined : Number(next),
+                                  );
+                                }}
+                              />
+                            );
+                          }}
                         />
                       </div>
                       <div className="space-y-2">
@@ -225,7 +238,7 @@ export function PlanFeatureValuesCard({
                           control={control}
                           render={({ field: noteField }) => (
                             <Input
-                              placeholder="Choose 3 districts"
+                              placeholder="Note...."
                               {...noteField}
                             />
                           )}
@@ -239,7 +252,15 @@ export function PlanFeatureValuesCard({
                             <div className="flex items-center gap-2">
                               <Switch
                                 checked={!!unlimitedField.value}
-                                onCheckedChange={unlimitedField.onChange}
+                                onCheckedChange={(checked) => {
+                                  unlimitedField.onChange(checked);
+                                  if (checked) {
+                                    setValue(
+                                      `featureValues.${index}.quantity`,
+                                      undefined,
+                                    );
+                                  }
+                                }}
                               />
                               <Label>Unlimited</Label>
                             </div>
