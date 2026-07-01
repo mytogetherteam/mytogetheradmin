@@ -100,6 +100,10 @@ const ManageHomeDiscountSections = lazy(() => import("@/pages/home-discount-sect
 const CreateHomeDiscountSection = lazy(() => import("@/pages/home-discount-sections/CreateHomeDiscountSection"));
 const ManageShopCoupons = lazy(() => import("@/pages/shop-coupons/ManageShopCoupons"));
 const CreateShopCoupon = lazy(() => import("@/pages/shop-coupons/CreateShopCoupon"));
+const ManagePlans = lazy(() => import("@/pages/plans/ManagePlans"));
+const CreatePlan = lazy(() => import("@/pages/plans/CreatePlan"));
+const ManagePlanFeatures = lazy(() => import("@/pages/plan-features/ManagePlanFeatures"));
+const CreatePlanFeature = lazy(() => import("@/pages/plan-features/CreatePlanFeature"));
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
@@ -265,6 +269,10 @@ function App() {
                 <Route path="/flash-events/create" element={<CreateFlashEvent />} />
                 <Route path="/shop-coupons/manage" element={<ManageShopCoupons />} />
                 <Route path="/shop-coupons/create" element={<CreateShopCoupon />} />
+                <Route path="/plans/manage" element={<ManagePlans />} />
+                <Route path="/plans/create" element={<CreatePlan />} />
+                <Route path="/plan-features/manage" element={<ManagePlanFeatures />} />
+                <Route path="/plan-features/create" element={<CreatePlanFeature />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />

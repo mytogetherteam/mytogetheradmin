@@ -152,6 +152,23 @@ export const navigationConfig: NavGroup[] = [
         ]
     },
     {
+        title: "Subscription Plans",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Plans",
+                icon: Package,
+                tooltip: "Pricing page subscription tiers",
+                items: [
+                    { title: "Create Plan", url: "/plans/create", icon: Plus },
+                    { title: "Manage Plans", url: "/plans/manage", icon: Settings2 },
+                    { title: "Create Feature", url: "/plan-features/create", icon: Plus },
+                    { title: "Manage Features", url: "/plan-features/manage", icon: List },
+                ]
+            }
+        ]
+    },
+    {
         title: "Shop Tags",
         roles: AdminRole.ADMIN_SETUP,
         items: [
