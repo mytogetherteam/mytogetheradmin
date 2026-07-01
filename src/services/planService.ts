@@ -144,10 +144,16 @@ function isPaginatedEnvelope<T>(
   );
 }
 
+interface PaginatedContent<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+}
+
 function normalizePaginated<T>(
-  response: T[] | PaginatedPlans | NestPaginatedEnvelope<T>,
+  response: T[] | PaginatedContent<T> | NestPaginatedEnvelope<T>,
   mapper: (item: T) => T,
-): { content: T[]; totalElements: number; totalPages: number } {
+): PaginatedContent<T> {
   if (isPaginatedEnvelope<T>(response)) {
     return {
       content: response.data.map(mapper),
@@ -162,7 +168,7 @@ function normalizePaginated<T>(
       totalPages: 1,
     };
   }
-  const paginated = response as PaginatedPlans;
+  const paginated = response;
   return {
     content: paginated.content?.map(mapper) ?? [],
     totalElements: paginated.totalElements ?? 0,
