@@ -96,6 +96,8 @@ export function mapCouponToFormValues(
     validFrom: new Date(coupon.validFrom),
     validUntil: new Date(coupon.validUntil),
     limitType: normalizeCouponLimitType(coupon.limitType),
+    maxRedemptions: coupon.maxRedemptions ?? null,
+    bogoAllItems: coupon.bogoAllItems ?? false,
     isActive: coupon.isActive,
     items: [],
   };

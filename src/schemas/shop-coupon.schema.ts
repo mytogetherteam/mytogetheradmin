@@ -31,6 +31,18 @@ export const shopCouponSchema = z
     validFrom: z.date({ message: "Start date is required" }),
     validUntil: z.date({ message: "End date is required" }),
     limitType: z.enum(COUPON_LIMIT_TYPES, { message: "Usage limit is required" }),
+    // Total redemptions allowed across all users; null = unlimited.
+    maxRedemptions: z
+      .union([
+        z.null(),
+        z.coerce
+          .number()
+          .int("Usage limit must be a whole number")
+          .min(1, "Usage limit must be at least 1"),
+      ])
+      .default(null),
+    // BUY_X_GET_FREE only: shop-wide buy-one-get-one on every item bought.
+    bogoAllItems: z.boolean().default(false),
     isActive: z.boolean().default(true),
     items: z.array(couponItemSchema).optional(),
   })
@@ -78,7 +90,7 @@ export const shopCouponSchema = z
       }
     }
 
-    if (data.promotionType === "BUY_X_GET_FREE") {
+    if (data.promotionType === "BUY_X_GET_FREE" && !data.bogoAllItems) {
       const items = data.items ?? [];
       // A GET (free) item is always required. BUY items are optional — a coupon
       // may grant a free item with no purchase requirement.

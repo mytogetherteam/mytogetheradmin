@@ -7,7 +7,15 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Copy, Loader2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  AlertCircle,
+  Check,
+  Copy,
+  Gift,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -84,6 +92,62 @@ type CouponLineItem = MenuItemOption & {
   quantity: number;
 };
 
+/**
+ * Number field that accepts free keyboard typing but digits only. Keeps a local
+ * draft so the box can be cleared and retyped (no snap-back to 1 mid-edit), then
+ * clamps to `min` on blur unless `allowEmpty` is set.
+ */
+function IntegerInput({
+  value,
+  onChange,
+  min = 1,
+  allowEmpty = false,
+  className,
+  id,
+  placeholder,
+  disabled,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+  min?: number;
+  allowEmpty?: boolean;
+  className?: string;
+  id?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const display = draft ?? (value == null ? "" : String(value));
+
+  return (
+    <Input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+      value={display}
+      onChange={(e) => {
+        const digits = e.target.value.replace(/\D/g, "");
+        setDraft(digits);
+        if (digits === "") {
+          if (allowEmpty) onChange(null);
+        } else {
+          onChange(parseInt(digits, 10));
+        }
+      }}
+      onBlur={() => {
+        if (draft === "" && !allowEmpty) {
+          onChange(min);
+        }
+        setDraft(null);
+      }}
+    />
+  );
+}
+
 export default function CreateShopCoupon() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -142,6 +206,8 @@ export default function CreateShopCoupon() {
       validFrom: undefined,
       validUntil: undefined,
       limitType: "ONE_TIME",
+      maxRedemptions: null,
+      bogoAllItems: false,
       isActive: true,
       items: [],
     },
@@ -152,6 +218,8 @@ export default function CreateShopCoupon() {
   const discountType = watch("discountType");
   const targetValue = watch("target");
   const limitTypeValue = watch("limitType");
+  const maxRedemptionsValue = watch("maxRedemptions");
+  const bogoAllItems = watch("bogoAllItems");
   const numericShopId = shopId > 0 ? shopId : undefined;
 
   useEffect(() => {
@@ -275,6 +343,17 @@ export default function CreateShopCoupon() {
     );
   };
 
+  // Same-item BOGO shortcut: mirror a BUY item into the GET (free) column
+  // without making the admin search for the same product again.
+  const handleGiveFree = (item: CouponLineItem) => {
+    setCouponItems((prev) => {
+      if (prev.some((p) => p.value === item.value && p.type === "GET")) {
+        return prev;
+      }
+      return [...prev, { ...item, type: "GET", quantity: item.quantity }];
+    });
+  };
+
   const renderRoleColumn = (
     type: CouponItemType,
     title: string,
@@ -303,53 +382,81 @@ export default function CreateShopCoupon() {
           </div>
         ) : (
           <div className="space-y-2">
-            {items.map((item) => (
-              <div
-                key={`${item.value}-${item.type}`}
-                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <span className="block truncate font-medium">
-                    {item.label}
-                  </span>
-                  {item.price != null && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      ฿{item.price}
-                    </p>
+            {items.map((item) => {
+              const alreadyFree =
+                type === "BUY" &&
+                couponItems.some(
+                  (p) => p.value === item.value && p.type === "GET",
+                );
+              return (
+                <div
+                  key={`${item.value}-${item.type}`}
+                  className="rounded-lg border px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {item.label}
+                      </span>
+                      {item.price != null && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          ฿{item.price}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          {type === "BUY" ? "Buy qty" : "Free qty"}
+                        </Label>
+                        <IntegerInput
+                          value={item.quantity}
+                          min={1}
+                          onChange={(next) =>
+                            handleQuantityChange(
+                              item.value,
+                              item.type,
+                              next ?? 1,
+                            )
+                          }
+                          className="h-8 w-16"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(item.value, item.type)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  {type === "BUY" && (
+                    <Button
+                      type="button"
+                      variant={alreadyFree ? "ghost" : "outline"}
+                      size="sm"
+                      onClick={() => handleGiveFree(item)}
+                      disabled={alreadyFree}
+                      className="mt-2 h-8 w-full justify-center gap-1.5 text-xs disabled:opacity-100"
+                    >
+                      {alreadyFree ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                          Added as a free item
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="h-3.5 w-3.5" />
+                          Also give this item free
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      {type === "BUY" ? "Buy qty" : "Free qty"}
-                    </Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={item.quantity}
-                      onChange={(e) => {
-                        const next = parseInt(e.target.value, 10);
-                        handleQuantityChange(
-                          item.value,
-                          item.type,
-                          Number.isNaN(next) || next < 1 ? 1 : next,
-                        );
-                      }}
-                      className="h-8 w-16"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveItem(item.value, item.type)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -373,11 +480,13 @@ export default function CreateShopCoupon() {
       discountType: normalizeDiscountType(values.discountType),
       items:
         values.promotionType === "BUY_X_GET_FREE"
-          ? couponItems.map((item) => ({
-            menuItemId: Number(item.value),
-            type: item.type,
-            quantity: item.quantity,
-          }))
+          ? values.bogoAllItems
+            ? []
+            : couponItems.map((item) => ({
+              menuItemId: Number(item.value),
+              type: item.type,
+              quantity: item.quantity,
+            }))
           : values.items,
     };
 
@@ -405,6 +514,7 @@ export default function CreateShopCoupon() {
       validFrom: data.validFrom.toISOString(),
       validUntil: data.validUntil.toISOString(),
       limitType: data.limitType,
+      maxRedemptions: data.maxRedemptions ?? null,
       isActive: data.isActive,
       ...(data.promotionType === "BUY_X_GET_DISCOUNT"
         ? {
@@ -412,7 +522,8 @@ export default function CreateShopCoupon() {
           discountValue: data.discountValue,
         }
         : {
-          items: data.items,
+          bogoAllItems: data.bogoAllItems,
+          items: data.bogoAllItems ? [] : data.items,
         }),
     };
 
@@ -744,7 +855,38 @@ export default function CreateShopCoupon() {
 
             {promotionType === "BUY_X_GET_FREE" && (
               <div className="space-y-4">
-                {!numericShopId ? (
+                <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                  <div>
+                    <Label htmlFor="bogoAllItems">Apply to all menu items</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Buy-one-get-one across the whole menu — the customer gets
+                      the same item free in the same quantity they buy (buy 2
+                      juices → 2 juices free). No need to pick specific items.
+                    </p>
+                  </div>
+                  <Controller
+                    name="bogoAllItems"
+                    control={control}
+                    render={({ field }) => (
+                      <Switch
+                        id="bogoAllItems"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+
+                {bogoAllItems ? (
+                  <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+                    This coupon gives an equal free quantity of{" "}
+                    <span className="font-medium text-foreground">
+                      every item
+                    </span>{" "}
+                    the customer buys, across your whole menu. You don&apos;t
+                    choose specific items.
+                  </div>
+                ) : !numericShopId ? (
                   <p className="text-sm text-muted-foreground">
                     Select a shop first to add menu items.
                   </p>
@@ -764,7 +906,7 @@ export default function CreateShopCoupon() {
                     )}
                   </div>
                 )}
-                {errors.items && (
+                {!bogoAllItems && errors.items && (
                   <p className="text-xs text-destructive">{errors.items.message}</p>
                 )}
               </div>
@@ -802,7 +944,7 @@ export default function CreateShopCoupon() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Usage limit</Label>
+                <Label>Per-user limit</Label>
                 <Controller
                   name="limitType"
                   control={control}
@@ -825,6 +967,9 @@ export default function CreateShopCoupon() {
                     </Select>
                   )}
                 />
+                <p className="text-xs text-muted-foreground">
+                  How many times a single user may use this coupon.
+                </p>
                 {errors.limitType && (
                   <p className="text-xs text-destructive">
                     {errors.limitType.message}
@@ -832,7 +977,56 @@ export default function CreateShopCoupon() {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 pt-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="maxRedemptions">Total usage limit</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="unlimited-redemptions"
+                      checked={maxRedemptionsValue == null}
+                      onCheckedChange={(checked) =>
+                        setValue("maxRedemptions", checked ? null : 1, {
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                    <Label
+                      htmlFor="unlimited-redemptions"
+                      className="text-xs font-normal text-muted-foreground"
+                    >
+                      Unlimited
+                    </Label>
+                  </div>
+                </div>
+                <Controller
+                  name="maxRedemptions"
+                  control={control}
+                  render={({ field }) => (
+                    <IntegerInput
+                      id="maxRedemptions"
+                      min={1}
+                      placeholder="e.g. 100"
+                      disabled={maxRedemptionsValue == null}
+                      value={field.value ?? null}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {maxRedemptionsValue == null
+                    ? "Any number of users can redeem it until it expires."
+                    : "Coupon stops working once this many total redemptions are reached."}
+                </p>
+                {errors.maxRedemptions && (
+                  <p className="text-xs text-destructive">
+                    {errors.maxRedemptions.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-center gap-3">
                 <Controller
                   name="isActive"
                   control={control}

@@ -53,6 +53,9 @@ function shopLabel(coupon: ShopCouponListItem) {
 
 function promotionSummary(coupon: ShopCouponListItem) {
   if (coupon.promotionType === "BUY_X_GET_FREE") {
+    if (coupon.bogoAllItems) {
+      return "Buy 1 Get 1 Free — any item";
+    }
     return `Buy X Get Free (${coupon.itemCount} items)`;
   }
   if (coupon.discountType === "PERCENTAGE") {

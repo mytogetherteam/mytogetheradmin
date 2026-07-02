@@ -46,6 +46,10 @@ export interface ShopCouponListItem {
   validFrom: string;
   validUntil: string;
   limitType: CouponLimitType;
+  /** Total redemptions allowed across all users; null = unlimited. */
+  maxRedemptions: number | null;
+  /** BUY_X_GET_FREE only: shop-wide buy-one-get-one on every item bought. */
+  bogoAllItems: boolean;
   redeemedCount: number;
   isActive: boolean;
   /** True when active flag is on and the coupon is within its valid window. */
@@ -75,6 +79,10 @@ export interface ShopCouponPayload {
   validFrom: string;
   validUntil: string;
   limitType?: CouponLimitType;
+  /** Total redemptions allowed across all users; null = unlimited. */
+  maxRedemptions?: number | null;
+  /** BUY_X_GET_FREE only: shop-wide buy-one-get-one on every item bought. */
+  bogoAllItems?: boolean;
   isActive?: boolean;
   items?: ShopCouponItemPayload[];
 }
