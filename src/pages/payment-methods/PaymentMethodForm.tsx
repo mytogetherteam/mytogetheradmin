@@ -48,6 +48,7 @@ export default function PaymentMethodForm() {
 
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconRemoved, setIconRemoved] = useState(false);
 
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(
@@ -65,10 +66,11 @@ export default function PaymentMethodForm() {
         name: paymentData.name || "",
         isActive: paymentData.isActive ?? true,
       });
-      if (paymentData.iconUrl) {
-        // Wrap in timeout to avoid cascading render warning in some lint configurations
-        setTimeout(() => setIconPreview(paymentData.iconUrl!), 0);
-      }
+      setTimeout(() => {
+        setIconPreview(paymentData.iconUrl ?? null);
+        setIconFile(null);
+        setIconRemoved(false);
+      }, 0);
     }
   }, [isEditMode, paymentData, form]);
 
@@ -79,6 +81,7 @@ export default function PaymentMethodForm() {
       if (!iconPreview?.startsWith("http")) setIconPreview(null);
       return;
     }
+    setIconRemoved(false);
     const reader = new FileReader();
     reader.onloadend = () => setIconPreview(reader.result as string);
     reader.readAsDataURL(file);
@@ -87,6 +90,7 @@ export default function PaymentMethodForm() {
   const clearIcon = () => {
     setIconPreview(null);
     setIconFile(null);
+    setIconRemoved(true);
   };
 
   const onSubmit = async (data: PaymentMethodFormValues) => {
@@ -96,6 +100,8 @@ export default function PaymentMethodForm() {
 
     if (iconFile) {
       formData.append("icon", iconFile);
+    } else if (isEditMode && iconRemoved) {
+      formData.append("removeIcon", "true");
     }
 
     if (isEditMode && id) {
