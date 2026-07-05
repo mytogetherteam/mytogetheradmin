@@ -93,6 +93,7 @@ export interface Order {
   itemPrice?: number | null;
   address?: string | null;
   note?: string | null;
+  cancelReason?: string | null;
   
   // Backward compatibility fields if any
   customerName?: string;
