@@ -109,7 +109,7 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                             <div className="flex aspect-square size-10 items-center justify-center rounded-lg">
-                                <img src="/src/assets/logo-Mytogether.jpg" alt="Admin Panel" className="size-full object-contain" />
+                                <img src="/logo-mytogether.jpg" alt="myTogether" className="size-full object-contain rounded-lg" />
                             </div>
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-semibold">Admin Panel</span>
