@@ -1,5 +1,5 @@
-import type { ComboComponent, Variant } from "@/services/menuService";
-import type { AddonRow } from "./create-menu-item.types";
+import type { ComboComponent } from "@/services/menuService";
+import type { OptionGroupRow, VariantGroupRow } from "./create-menu-item.types";
 import {
   parsePriceInput,
   resolveMenuItemDiscountPayload,
@@ -12,45 +12,80 @@ function numericFromPriceInput(value: string): number {
   return parsePriceInput(value);
 }
 
-function buildAddonGroupsPayload(addons: AddonRow[], preserveOptionIds: boolean) {
-  if (addons.length === 0) return [];
+function buildOptionRowPayload(
+  snapshot: MenuItemSubmitFormSnapshot,
+  option: OptionGroupRow["options"][number],
+  optionIndex: number,
+) {
+  return {
+    id: snapshot.editingExistingItem ? option.id : undefined,
+    name: option.nameEn || "",
+    nameEn: option.nameEn || "",
+    nameMm: option.nameMm || "",
+    nameTh: option.nameTh || "",
+    price: option.price || 0,
+    displayOrder: option.displayOrder ?? optionIndex + 1,
+    isAvailable: option.isAvailable !== false,
+    name_en: option.nameEn || "",
+    name_mm: option.nameMm || "",
+    name_th: option.nameTh || "",
+    display_order: option.displayOrder ?? optionIndex + 1,
+    is_available: option.isAvailable !== false,
+  };
+}
 
-  return [
-    {
-      nameEn: "",
-      nameMm: "",
-      nameTh: "",
-      displayOrder: 1,
-      maxSelection: 99,
-      minSelection: 0,
-      isRequired: false,
-      groupType: "MULTI_SELECT",
-      name: "",
-      name_en: "",
-      name_mm: "",
-      name_th: "",
-      display_order: 1,
-      max_selection: 99,
-      min_selection: 0,
-      is_required: false,
-      group_type: "MULTI_SELECT",
-      options: addons.map((opt, i) => ({
-        id: preserveOptionIds ? opt.id : undefined,
-        name: opt.nameEn,
-        nameEn: opt.nameEn,
-        nameMm: opt.nameMm,
-        nameTh: opt.nameTh,
-        price: opt.price || 0,
-        displayOrder: i + 1,
-        isAvailable: opt.isAvailable,
-        name_en: opt.nameEn,
-        name_mm: opt.nameMm,
-        name_th: opt.nameTh,
-        display_order: i + 1,
-        is_available: opt.isAvailable,
-      })),
-    },
-  ];
+function buildOptionGroupRowPayload(
+  snapshot: MenuItemSubmitFormSnapshot,
+  group: OptionGroupRow,
+  groupIndex: number,
+) {
+  const activeOptions = group.options
+    .filter((option) => !option.isDeleted)
+    .map((option, optionIndex) => buildOptionRowPayload(snapshot, option, optionIndex));
+
+  const deletedOptions = snapshot.editingExistingItem
+    ? group.options
+      .filter((option) => option.isDeleted && option.id)
+      .map((option) => ({
+        id: option.id,
+        deleted: true,
+        is_deleted: true,
+      }))
+    : [];
+
+  return {
+    id: snapshot.editingExistingItem ? group.id : undefined,
+    nameEn: group.nameEn || "",
+    nameMm: group.nameMm || "",
+    nameTh: group.nameTh || "",
+    name_en: group.nameEn || "",
+    name_mm: group.nameMm || "",
+    name_th: group.nameTh || "",
+    displayOrder: group.displayOrder ?? groupIndex + 1,
+    display_order: group.displayOrder ?? groupIndex + 1,
+    minSelection: 0,
+    min_selection: 0,
+    maxSelection: 99,
+    max_selection: 99,
+    isAvailable: group.isAvailable !== false,
+    is_available: group.isAvailable !== false,
+    options: [...activeOptions, ...deletedOptions],
+  };
+}
+
+function buildOptionGroupsPayload(snapshot: MenuItemSubmitFormSnapshot) {
+  const activeGroups = snapshot.optionGroups.filter((group) => !group.isDeleted);
+
+  return {
+    optionGroups: activeGroups.map((group, groupIndex) =>
+      buildOptionGroupRowPayload(snapshot, group, groupIndex),
+    ),
+    deletedOptionGroupIds: snapshot.editingExistingItem
+      ? snapshot.optionGroups
+        .filter((group) => group.isDeleted && group.id)
+        .map((group) => group.id!)
+      : [],
+  };
 }
 
 export interface MenuItemSubmitFormSnapshot {
@@ -78,8 +113,8 @@ export interface MenuItemSubmitFormSnapshot {
   tagIds: number[];
   masterCategoryId: string;
   comboComponents: ComboComponent[];
-  addons: AddonRow[];
-  variants: Variant[];
+  optionGroups: OptionGroupRow[];
+  variantGroups: VariantGroupRow[];
   editingExistingItem: boolean;
 }
 
@@ -92,11 +127,8 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
     snapshot.discountPercentageInput,
   );
 
-  const addonGroupsPayload = buildAddonGroupsPayload(
-    snapshot.addons,
-    snapshot.editingExistingItem,
-  );
-
+  const optionPayload = buildOptionGroupsPayload(snapshot);
+  const variantPayload = buildVariantsPayload(snapshot);
   const publish = snapshot.publishPublished ? "PUBLISHED" : "UNPUBLISHED";
 
   return {
@@ -160,40 +192,108 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
         return row;
       })
       : [],
-    optionGroups: addonGroupsPayload,
-    option_groups: addonGroupsPayload.map((g) => ({
-      name_en: g.name_en,
-      name_mm: g.name_mm,
-      name_th: g.name_th,
-      display_order: g.display_order,
-      max_selection: g.max_selection,
-      min_selection: g.min_selection,
-      is_required: g.is_required,
-      group_type: g.group_type,
-      options: g.options.map((opt) => ({
-        id: opt.id,
-        name_en: opt.name_en,
-        name_mm: opt.name_mm,
-        name_th: opt.name_th,
-        price: opt.price,
-        display_order: opt.display_order,
-        is_available: opt.is_available,
-      })),
-    })),
-    variants: snapshot.variants.map((v) => ({
-      id: snapshot.editingExistingItem ? v.id : undefined,
-      name: v.nameEn || v.name || "",
-      nameEn: v.nameEn || v.name || "",
-      nameMm: v.nameMm || "",
-      nameTh: v.nameTh || "",
-      price: v.price || 0,
-      isAvailable: v.isAvailable !== false,
-      displayOrder: v.displayOrder || 0,
-      name_en: v.nameEn || v.name || "",
-      name_mm: v.nameMm || "",
-      name_th: v.nameTh || "",
-      is_available: v.isAvailable !== false,
-      display_order: v.displayOrder || 0,
-    })),
+    optionGroups: optionPayload.optionGroups,
+    option_groups: optionPayload.optionGroups,
+    variants: variantPayload.variants,
+    ...(variantPayload.deletedVariantGroupIds.length
+      ? {
+        deletedVariantGroupIds: variantPayload.deletedVariantGroupIds,
+        deleted_variant_group_ids: variantPayload.deletedVariantGroupIds,
+      }
+      : {}),
+    ...(optionPayload.deletedOptionGroupIds.length
+      ? {
+        deletedOptionGroupIds: optionPayload.deletedOptionGroupIds,
+        deleted_option_group_ids: optionPayload.deletedOptionGroupIds,
+      }
+      : {}),
+  };
+}
+
+function buildVariantRowPayload(
+  snapshot: MenuItemSubmitFormSnapshot,
+  group: VariantGroupRow,
+  variant: VariantGroupRow["variants"][number],
+  variantIndex: number,
+) {
+  return {
+    id: snapshot.editingExistingItem ? variant.id : undefined,
+    name: variant.nameEn || "",
+    nameEn: variant.nameEn || "",
+    nameMm: variant.nameMm || "",
+    nameTh: variant.nameTh || "",
+    price: variant.price || 0,
+    isAvailable: variant.isAvailable !== false,
+    displayOrder: variant.displayOrder ?? variantIndex,
+    name_en: variant.nameEn || "",
+    name_mm: variant.nameMm || "",
+    name_th: variant.nameTh || "",
+    is_available: variant.isAvailable !== false,
+    display_order: variant.displayOrder ?? variantIndex,
+    ...(snapshot.editingExistingItem && group.id
+      ? { variantGroupId: group.id }
+      : {}),
+    ...(group.nameEn
+      ? {
+        variantGroupName: group.nameEn,
+        variantGroupNameEn: group.nameEn,
+      }
+      : {}),
+    ...(group.nameMm ? { variantGroupNameMm: group.nameMm } : {}),
+    ...(group.nameTh ? { variantGroupNameTh: group.nameTh } : {}),
+    variant_group_name: group.nameEn || undefined,
+    variant_group_name_en: group.nameEn || undefined,
+    variant_group_name_mm: group.nameMm || undefined,
+    variant_group_name_th: group.nameTh || undefined,
+    variant_group_id:
+      snapshot.editingExistingItem && group.id ? group.id : undefined,
+  };
+}
+
+function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
+  const activeGroups = snapshot.variantGroups.filter((group) => !group.isDeleted);
+
+  if (!snapshot.editingExistingItem) {
+    return {
+      variants: activeGroups.flatMap((group) =>
+        group.variants
+          .filter((variant) => !variant.isDeleted)
+          .map((variant, variantIndex) =>
+            buildVariantRowPayload(snapshot, group, variant, variantIndex),
+          ),
+      ),
+      deletedVariantGroupIds: [] as number[],
+    };
+  }
+
+  const deletedVariantGroupIds = snapshot.variantGroups
+    .filter((group) => group.isDeleted && group.id)
+    .map((group) => group.id!);
+
+  const activeVariants = activeGroups.flatMap((group) =>
+    group.variants
+      .filter((variant) => !variant.isDeleted)
+      .map((variant, variantIndex) =>
+        buildVariantRowPayload(snapshot, group, variant, variantIndex),
+      ),
+  );
+
+  const deletedVariants = snapshot.variantGroups.flatMap((group) => {
+    if (group.isDeleted && group.id) {
+      return [];
+    }
+
+    return group.variants
+      .filter((variant) => variant.isDeleted && variant.id)
+      .map((variant) => ({
+        id: variant.id,
+        deleted: true,
+        is_deleted: true,
+      }));
+  });
+
+  return {
+    variants: [...activeVariants, ...deletedVariants],
+    deletedVariantGroupIds,
   };
 }

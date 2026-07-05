@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Upload, X, Loader2, Trash2, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { menuService, Variant, ItemTag, ComboComponent, MenuItem } from "@/services/menuService";
+import { menuService, ItemTag, ComboComponent, MenuItem } from "@/services/menuService";
 import { ShopService } from "@/services/shopService";
 import { MasterMenuCategoryService } from "@/services/masterMenuCategoryService";
 import { toast } from "sonner";
@@ -17,13 +17,14 @@ import { handleApiError } from "@/lib/error-utils";
 import { compressImage } from "@/utils/imageCompression";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
-import { CreateMenuItemSortableRow } from "@/pages/menus/components/CreateMenuItemSortableRow";
-import type { AddonRow, CategoryResponse, TagResponse } from "@/pages/menus/create-menu-item.types";
+import type { CategoryResponse, TagResponse, OptionGroupRow, VariantGroupRow } from "@/pages/menus/create-menu-item.types";
 import {
-    optionGroupsToAddonRows,
+    optionGroupsFromMenuItem,
     resolveMenuItemImageUrl,
-    variantsFromApiResponse,
+    variantGroupsFromMenuItem,
 } from "@/pages/menus/create-menu-item-mappers";
+import { AddonGroupsCard } from "@/pages/menus/components/AddonGroupsCard";
+import { VariantGroupsCard } from "@/pages/menus/components/VariantGroupsCard";
 import { buildAdminMenuItemDataJson, MEAL_TYPE_OPTIONS } from "@/pages/menus/create-menu-item-payload";
 import {
     formatPercentageForInput,
@@ -36,21 +37,6 @@ import {
 } from "@/lib/menu-item-discount-form.util";
 import { resolveSellingPrice } from "@/lib/menu-item-price-display";
 import { AuditUserMeta } from "@/components/common/AuditUserMeta";
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragEndEvent,
-} from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 
 export default function CreateMenuItem() {
     const navigate = useNavigate();
@@ -102,8 +88,8 @@ export default function CreateMenuItem() {
 
     // Data for dropdowns
     // Add-ons (sent as one option group of extras)
-    const [addons, setAddons] = useState<AddonRow[]>([]);
-    const [variants, setVariants] = useState<Variant[]>([]);
+    const [optionGroups, setOptionGroups] = useState<OptionGroupRow[]>([]);
+    const [variantGroups, setVariantGroups] = useState<VariantGroupRow[]>([]);
 
     // Selected items full data for InfiniteSearchableSelect display
     const [selectedCategoryData, setSelectedCategoryData] = useState<{ label: string, value: string } | null>(null);
@@ -174,14 +160,6 @@ export default function CreateMenuItem() {
         setDiscountPercentage(value);
         syncDiscountFromPercentage(parsePriceInput(originalPrice), value);
     }, [originalPrice, syncDiscountFromPercentage]);
-
-    // DnD Sensors
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -353,8 +331,8 @@ export default function CreateMenuItem() {
                 }
             }
             setComboComponents(item.components || []);
-            setAddons(optionGroupsToAddonRows(item.optionGroups || []));
-            setVariants(variantsFromApiResponse(item.variants || []));
+            setOptionGroups(optionGroupsFromMenuItem(item));
+            setVariantGroups(variantGroupsFromMenuItem(item));
 
             const resolvedImageUrl = resolveMenuItemImageUrl(item);
             if (resolvedImageUrl) {
@@ -405,8 +383,8 @@ export default function CreateMenuItem() {
             setImagePreview(null);
             setExistingImage(null);
             setImageRemoved(false);
-            setAddons([]);
-            setVariants([]);
+            setOptionGroups([]);
+            setVariantGroups([]);
         }
     }, [id, isEditMode, loadItem]);
 
@@ -434,58 +412,6 @@ export default function CreateMenuItem() {
 
 
     // handlePriceChange removed in favor of PriceInput
-
-    const addAddon = () => {
-        setAddons((prev) => [...prev, { nameEn: "", nameMm: "", nameTh: "", price: 0, isAvailable: true }]);
-    };
-
-    const removeAddon = (index: number) => {
-        setAddons((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const updateAddon = (index: number, updates: Partial<AddonRow>) => {
-        setAddons((prev) => {
-            const next = [...prev];
-            next[index] = { ...next[index], ...updates };
-            return next;
-        });
-    };
-
-    const handleAddonDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const oldIndex = addons.findIndex((_, i) => `addon-${i}` === active.id);
-            const newIndex = addons.findIndex((_, i) => `addon-${i}` === over.id);
-            setAddons(arrayMove(addons, oldIndex, newIndex));
-        }
-    };
-
-    const addVariant = () => {
-        setVariants([...variants, { nameEn: "", price: 0, isAvailable: true, displayOrder: variants.length + 1 }]);
-    };
-
-    const removeVariant = (index: number) => {
-        const updated = variants.filter((_, i) => i !== index);
-        // Re-calculate orders
-        const reordered = updated.map((v, i) => ({ ...v, displayOrder: i + 1 }));
-        setVariants(reordered);
-    };
-
-    const updateVariant = (index: number, updates: Partial<Variant>) => {
-        const newVariants = [...variants];
-        newVariants[index] = { ...newVariants[index], ...updates };
-        setVariants(newVariants);
-    };
-
-    const handleVariantDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const oldIndex = variants.findIndex((_, i) => `var-${i}` === active.id);
-            const newIndex = variants.findIndex((_, i) => `var-${i}` === over.id);
-            const newArray = arrayMove(variants, oldIndex, newIndex);
-            setVariants(newArray.map((v, i) => ({ ...v, displayOrder: i + 1 })));
-        }
-    };
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -515,8 +441,8 @@ export default function CreateMenuItem() {
                 tagIds,
                 masterCategoryId,
                 comboComponents,
-                addons,
-                variants,
+                optionGroups,
+                variantGroups,
                 editingExistingItem: isEditMode && !!id,
             });
 
@@ -919,180 +845,17 @@ export default function CreateMenuItem() {
                                 <h3 className="text-xl font-bold">Advanced Customization</h3>
                             </div>
 
-                            <Card className="border-dashed bg-muted/5">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div>
-                                        <CardTitle className="text-base">Add on</CardTitle>
-                                        <CardDescription>Name (English, Myanmar, Thai), price, and availability.</CardDescription>
-                                    </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={addAddon} className="gap-2">
-                                        <Plus className="h-4 w-4" /> Add add-on
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={handleAddonDragEnd}
-                                    >
-                                        <SortableContext
-                                            items={addons.map((_, i) => `addon-${i}`)}
-                                            strategy={verticalListSortingStrategy}
-                                        >
-                                            {addons.length === 0 ? (
-                                                <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
-                                                    No add-ons added.
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {addons.map((addon, idx) => (
-                                                        <CreateMenuItemSortableRow key={`addon-${idx}`} id={`addon-${idx}`}>
-                                                            <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4 shadow-sm">
-                                                                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
-                                                                    <div className="space-y-1">
-                                                                        <Label className="text-xs text-muted-foreground">Name (English)</Label>
-                                                                        <Input value={addon.nameEn} onChange={e => updateAddon(idx, { nameEn: e.target.value })} placeholder="English" />
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <Label className="text-xs text-muted-foreground">Name (Myanmar)</Label>
-                                                                        <Input value={addon.nameMm} onChange={e => updateAddon(idx, { nameMm: e.target.value })} placeholder="Myanmar" />
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <Label className="text-xs text-muted-foreground">Name (Thai)</Label>
-                                                                        <Input value={addon.nameTh} onChange={e => updateAddon(idx, { nameTh: e.target.value })} placeholder="Thai" />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex flex-wrap items-center gap-3">
-                                                                    <div className="space-y-1 w-32">
-                                                                        <Label className="text-xs text-muted-foreground">Price</Label>
-                                                                        <Input
-                                                                            type="text"
-                                                                            inputMode="decimal"
-                                                                            value={addon.price === 0 ? "" : addon.price}
-                                                                            onChange={e => {
-                                                                                const val = e.target.value;
-                                                                                if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                                                                                    updateAddon(idx, { price: parseFloat(val) || 0 });
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2 pb-1">
-                                                                        <Switch checked={addon.isAvailable} onCheckedChange={v => updateAddon(idx, { isAvailable: v })} id={`addon-avail-${idx}`} />
-                                                                        <Label htmlFor={`addon-avail-${idx}`} className="text-sm cursor-pointer whitespace-nowrap">Available</Label>
-                                                                    </div>
-                                                                    <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeAddon(idx)}>
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </CreateMenuItemSortableRow>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </SortableContext>
-                                    </DndContext>
-                                </CardContent>
-                            </Card>
+                            <AddonGroupsCard
+                                optionGroups={optionGroups}
+                                onChange={setOptionGroups}
+                                isEditMode={isEditMode}
+                            />
 
-                            <Card className="border-dashed bg-muted/5">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div>
-                                        <CardTitle className="text-base">Variants</CardTitle>
-                                        <CardDescription>Different versions of the product (e.g. Red, Blue).</CardDescription>
-                                    </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={addVariant} className="gap-2">
-                                        <Plus className="h-4 w-4" /> Add Variant
-                                    </Button>
-                                </CardHeader>
-                                <CardContent>
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={handleVariantDragEnd}
-                                    >
-                                        <SortableContext
-                                            items={variants.map((_, i) => `var-${i}`)}
-                                            strategy={verticalListSortingStrategy}
-                                        >
-                                            {variants.length === 0 ? (
-                                                <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground text-sm">
-                                                    No variants added.
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {variants.map((variant, vIdx) => (
-                                                        <CreateMenuItemSortableRow key={`var-${vIdx}`} id={`var-${vIdx}`}>
-                                                            <div className="flex flex-wrap items-center gap-2 bg-card border p-3 rounded-xl shadow-sm relative group/var">
-                                                                <Input
-                                                                    className="flex-1 min-w-[140px]"
-                                                                    placeholder="Variant Name (EN)"
-                                                                    value={variant.nameEn}
-                                                                    onChange={e => updateVariant(vIdx, { nameEn: e.target.value })}
-                                                                />
-                                                                <Input
-                                                                    className="flex-1 min-w-[140px]"
-                                                                    placeholder="Variant Name (MM)"
-                                                                    value={variant.nameMm}
-                                                                    onChange={e => updateVariant(vIdx, { nameMm: e.target.value })}
-                                                                />
-                                                                <Input
-                                                                    className="flex-1 min-w-[140px]"
-                                                                    placeholder="Variant Name (TH)"
-                                                                    value={variant.nameTh}
-                                                                    onChange={e => updateVariant(vIdx, { nameTh: e.target.value })}
-                                                                />
-                                                                <div className="flex items-center gap-1 w-20">
-                                                                    <span className="text-sm font-medium">Order:</span>
-                                                                    <Input
-                                                                        type="text"
-                                                                        inputMode="numeric"
-                                                                        pattern="[0-9]*"
-                                                                        className="h-9 text-sm px-1 text-center"
-                                                                        value={variant.displayOrder}
-                                                                        onFocus={e => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                                                        onChange={e => {
-                                                                            const val = e.target.value.replace(/^0+(?!$)/, "");
-                                                                            if (val === "" || /^\d+$/.test(val)) {
-                                                                                updateVariant(vIdx, { displayOrder: parseInt(val) || 1 });
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-1 w-32">
-                                                                    <span className="text-sm font-medium">Price:</span>
-                                                                    <PriceInput
-                                                                        placeholder="0"
-                                                                        value={variant.price}
-                                                                        onValueChange={val => updateVariant(vIdx, { price: parseFloat(val) || 0 })}
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mx-2">
-                                                                    <Switch
-                                                                        checked={variant.isAvailable}
-                                                                        onCheckedChange={val => updateVariant(vIdx, { isAvailable: val })}
-                                                                        id={`var-avail-${vIdx}`}
-                                                                    />
-                                                                    <Label htmlFor={`var-avail-${vIdx}`} className="text-xs cursor-pointer">Available</Label>
-                                                                </div>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="text-muted-foreground hover:text-destructive"
-                                                                    onClick={() => removeVariant(vIdx)}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </CreateMenuItemSortableRow>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </SortableContext>
-                                    </DndContext>
-                                </CardContent>
-                            </Card>
+                            <VariantGroupsCard
+                                variantGroups={variantGroups}
+                                onChange={setVariantGroups}
+                                isEditMode={isEditMode}
+                            />
                         </div>
 
 

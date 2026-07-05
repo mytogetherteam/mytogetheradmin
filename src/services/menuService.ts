@@ -74,6 +74,7 @@ export interface MenuItem {
     publishStatus?: string;
     optionGroups?: OptionGroup[];
     variants?: Variant[];
+    variantGroups?: VariantGroup[];
     shopName?: string;
     categoryName?: string;
     menuCategoryName?: string;
@@ -118,6 +119,14 @@ export interface OptionGroup {
     options: Option[];
 }
 
+export interface VariantGroup {
+    id?: number;
+    nameEn?: string;
+    nameMm?: string;
+    nameTh?: string;
+    displayOrder?: number;
+}
+
 export interface Variant {
     id?: number;
     name?: string;
@@ -127,6 +136,8 @@ export interface Variant {
     price: number;
     isAvailable: boolean;
     displayOrder?: number;
+    variantGroupId?: number;
+    variantGroup?: VariantGroup;
 }
 
 
