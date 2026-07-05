@@ -37,6 +37,9 @@ export type OrderStatus =
   | 'CONFIRMED' | 'ACCEPTED' | 'PAYMENT_UPLOADED' | 'PREPARING' | 'READY'
   | 'DELIVERING' | 'CANCELLED' | 'INTERNAL_TRACKING';
 
+/** Who cancelled an order — mirrors the backend OrderCanceledBy enum. */
+export type OrderCanceledBy = 'USER' | 'SHOP' | 'ADMIN' | 'SYSTEM';
+
 export interface OrderItem {
   id: string | number;
   menuItemId?: number;
@@ -94,6 +97,7 @@ export interface Order {
   address?: string | null;
   note?: string | null;
   cancelReason?: string | null;
+  canceledBy?: OrderCanceledBy | null;
   
   // Backward compatibility fields if any
   customerName?: string;

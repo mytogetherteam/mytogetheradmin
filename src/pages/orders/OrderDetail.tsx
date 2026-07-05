@@ -15,6 +15,15 @@ import { CustomerCard } from "@/components/orders/CustomerCard";
 import { DeliveryInfoCard } from "@/components/orders/DeliveryInfoCard";
 import { OrderTimelineCard } from "@/components/orders/OrderTimelineCard";
 import { OrderStatusActionCard } from "@/components/orders/OrderStatusActionCard";
+import type { OrderCanceledBy } from "@/services/orderService";
+
+/** Fallback text shown when a cancelled order has no free-text reason. */
+const CANCELED_BY_LABELS: Record<OrderCanceledBy, string> = {
+    USER: "Cancelled by the customer.",
+    SHOP: "Cancelled by the shop.",
+    ADMIN: "Cancelled by an administrator.",
+    SYSTEM: "Automatically cancelled by the system.",
+};
 
 export default function OrderDetail() {
     const { id } = useParams<{ id: string }>();
@@ -78,7 +87,9 @@ export default function OrderDetail() {
                             <p className="mt-1 text-sm text-muted-foreground">
                                 {order.cancelReason?.trim()
                                     ? order.cancelReason
-                                    : "No reason was provided for this cancellation."}
+                                    : order.canceledBy
+                                        ? CANCELED_BY_LABELS[order.canceledBy]
+                                        : "No reason was provided for this cancellation."}
                             </p>
                         </div>
                     </div>
