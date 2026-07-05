@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -51,17 +52,41 @@ function createEmptyGroup(displayOrder: number): OptionGroupRow {
   };
 }
 
+// Stable unique key generator
+let _ouid = 0;
+function nextOuid() { return ++_ouid; }
+
 export function AddonGroupsCard({
   optionGroups,
   onChange,
   isEditMode = false,
 }: AddonGroupsCardProps) {
+  // activationConstraint: require 8px movement before drag, so inputs are not disrupted
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  // Stable IDs via WeakMap so soft-deleted items don't cause index mismatch
+  const groupKeyMap = useRef<WeakMap<OptionGroupRow, string>>(new WeakMap());
+  function getGroupId(group: OptionGroupRow): string {
+    if (!groupKeyMap.current.has(group)) {
+      groupKeyMap.current.set(group, `ogroup-uid-${nextOuid()}`);
+    }
+    return groupKeyMap.current.get(group)!;
+  }
+
+  const optionKeyMap = useRef<WeakMap<OptionRow, string>>(new WeakMap());
+  function getOptionId(option: OptionRow): string {
+    if (!optionKeyMap.current.has(option)) {
+      optionKeyMap.current.set(option, `option-uid-${nextOuid()}`);
+    }
+    return optionKeyMap.current.get(option)!;
+  }
 
   const addGroup = () => {
     onChange([...optionGroups, createEmptyGroup(optionGroups.length + 1)]);
@@ -144,17 +169,18 @@ export function AddonGroupsCard({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = optionGroups.findIndex((_, i) => `ogroup-${i}` === active.id);
-    const newIndex = optionGroups.findIndex((_, i) => `ogroup-${i}` === over.id);
+    const oldIndex = optionGroups.findIndex((g) => getGroupId(g) === active.id);
+    const newIndex = optionGroups.findIndex((g) => getGroupId(g) === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
     if (optionGroups[oldIndex]?.isDeleted || optionGroups[newIndex]?.isDeleted) return;
 
-    onChange(
-      arrayMove(optionGroups, oldIndex, newIndex).map((group, i) => ({
-        ...group,
-        displayOrder: group.isDeleted ? group.displayOrder : i + 1,
-      })),
-    );
+    const moved = arrayMove(optionGroups, oldIndex, newIndex);
+    let visibleOrder = 1;
+    const result = moved.map((group) => ({
+      ...group,
+      displayOrder: group.isDeleted ? group.displayOrder : visibleOrder++,
+    }));
+    onChange(result);
   };
 
   const handleOptionDragEnd = (groupIndex: number, event: DragEndEvent) => {
@@ -167,21 +193,20 @@ export function AddonGroupsCard({
       .filter(({ option }) => !option.isDeleted);
 
     const oldVisibleIndex = visible.findIndex(
-      ({ index }) => `ogroup-${groupIndex}-opt-${index}` === active.id,
+      ({ option }) => getOptionId(option) === active.id,
     );
     const newVisibleIndex = visible.findIndex(
-      ({ index }) => `ogroup-${groupIndex}-opt-${index}` === over.id,
+      ({ option }) => getOptionId(option) === over.id,
     );
     if (oldVisibleIndex < 0 || newVisibleIndex < 0) return;
 
     const reordered = arrayMove(visible, oldVisibleIndex, newVisibleIndex);
-    const nextOptions = [...group.options];
-    reordered.forEach(({ index }, order) => {
-      nextOptions[index] = {
-        ...nextOptions[index],
-        displayOrder: order + 1,
-      };
-    });
+    const deletedItems = group.options.filter((o) => o.isDeleted);
+    const reorderedOptions = reordered.map(({ option }, order) => ({
+      ...option,
+      displayOrder: order + 1,
+    }));
+    const nextOptions = [...reorderedOptions, ...deletedItems];
 
     const next = [...optionGroups];
     next[groupIndex] = { ...group, options: nextOptions };
@@ -216,8 +241,8 @@ export function AddonGroupsCard({
           >
             <SortableContext
               items={optionGroups
-                .map((_, index) => `ogroup-${index}`)
-                .filter((_, index) => !optionGroups[index]?.isDeleted)}
+                .filter((group) => !group.isDeleted)
+                .map((group) => getGroupId(group))}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-4">
@@ -227,8 +252,8 @@ export function AddonGroupsCard({
 
                   return (
                     <CreateMenuItemSortableRow
-                      key={`ogroup-${groupIndex}`}
-                      id={`ogroup-${groupIndex}`}
+                      key={getGroupId(group)}
+                      id={getGroupId(group)}
                       className="rounded-xl border bg-card p-4 shadow-sm"
                     >
                       <div className="space-y-4">
@@ -291,8 +316,8 @@ export function AddonGroupsCard({
                           >
                             <SortableContext
                               items={group.options
-                                .map((_, index) => `ogroup-${groupIndex}-opt-${index}`)
-                                .filter((_, index) => !group.options[index]?.isDeleted)}
+                                .filter((option) => !option.isDeleted)
+                                .map((option) => getOptionId(option))}
                               strategy={verticalListSortingStrategy}
                             >
                               {options.length === 0 ? (
@@ -306,8 +331,8 @@ export function AddonGroupsCard({
 
                                     return (
                                       <CreateMenuItemSortableRow
-                                        key={`ogroup-${groupIndex}-opt-${optionIndex}`}
-                                        id={`ogroup-${groupIndex}-opt-${optionIndex}`}
+                                        key={getOptionId(option)}
+                                        id={getOptionId(option)}
                                       >
                                         <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/20 p-4">
                                           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
