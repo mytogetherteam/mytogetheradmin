@@ -20,6 +20,10 @@ function genKey(prefix: string, id?: number): string {
   return `${prefix}-new-${++_keyCounter}`;
 }
 
+// ---------------------------------------------------------------------------
+// Option / OptionGroup mappers
+// ---------------------------------------------------------------------------
+
 function mapOptionRow(option: OptionResponse): OptionRow {
   return {
     clientKey: createClientKey("o"),
@@ -63,6 +67,10 @@ export function optionGroupsToAddonRows(
   return optionGroupsFromMenuItem({ optionGroups: ogList as OptionGroupResponse[] } as MenuItem);
 }
 
+// ---------------------------------------------------------------------------
+// Variant / VariantGroup mappers
+// ---------------------------------------------------------------------------
+
 function mapVariantRow(v: VariantResponse): VariantRow {
   return {
     clientKey: createClientKey("v"),
@@ -88,6 +96,7 @@ function mapVariantGroupMeta(
   };
 }
 
+/** Groups API variants by variantGroupId for the admin form. */
 export function variantGroupsFromApiResponse(
   rows: VariantResponse[],
   apiGroups: VariantGroupResponse[] = [],
@@ -137,7 +146,6 @@ export function variantGroupsFromApiResponse(
   if (ungrouped.length > 0) {
     grouped.push({
       clientKey: createClientKey("vg"),
-      _key: genKey("vgroup"),
       nameEn: "",
       nameMm: "",
       nameTh: "",
@@ -153,6 +161,10 @@ export function variantGroupsFromMenuItem(item: MenuItem): VariantGroupRow[] {
   const apiGroups = (item.variantGroups ?? []) as VariantGroupResponse[];
   return variantGroupsFromApiResponse(item.variants ?? [], apiGroups);
 }
+
+// ---------------------------------------------------------------------------
+// Image helper
+// ---------------------------------------------------------------------------
 
 export function resolveMenuItemImageUrl(item: MenuItem): string | null {
   const extended = item as MenuItem & ItemMediaResponse;
