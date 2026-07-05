@@ -58,11 +58,16 @@ function promotionSummary(coupon: ShopCouponListItem) {
     }
     return `Buy X Get Free (${coupon.itemCount} items)`;
   }
+  // Item-scoped discounts note how many items they apply to; whole-order ones don't.
+  const scope =
+    coupon.itemCount > 0
+      ? ` on ${coupon.itemCount} item${coupon.itemCount > 1 ? "s" : ""}`
+      : "";
   if (coupon.discountType === "PERCENTAGE") {
-    return `${coupon.discountValue}% off`;
+    return `${coupon.discountValue}% off${scope}`;
   }
   if (coupon.discountType === "FIXED_AMOUNT") {
-    return `฿${coupon.discountValue} off`;
+    return `฿${coupon.discountValue} off${scope}`;
   }
   return "Discount";
 }

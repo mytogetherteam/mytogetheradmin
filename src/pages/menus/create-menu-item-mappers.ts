@@ -23,17 +23,25 @@ function mapOptionRow(option: OptionResponse): OptionRow {
   };
 }
 
+const byDisplayOrder = <T extends { displayOrder?: number | null }>(
+  a: T,
+  b: T,
+) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+
 export function optionGroupsFromMenuItem(item: MenuItem): OptionGroupRow[] {
   const groups = (item.optionGroups ?? []) as OptionGroupResponse[];
-  return groups.map((group, index) => ({
-    id: group.id,
-    nameEn: group.nameEn || group.name_en || "",
-    nameMm: group.nameMm || group.name_mm || "",
-    nameTh: group.nameTh || group.name_th || "",
-    displayOrder: group.displayOrder ?? group.display_order ?? index + 1,
-    isAvailable: group.isAvailable ?? group.is_available ?? true,
-    options: (group.options ?? []).map(mapOptionRow),
-  }));
+  return groups
+    .map((group, index) => ({
+      id: group.id,
+      nameEn: group.nameEn || group.name_en || "",
+      nameMm: group.nameMm || group.name_mm || "",
+      nameTh: group.nameTh || group.name_th || "",
+      displayOrder: group.displayOrder ?? group.display_order ?? index + 1,
+      isAvailable: group.isAvailable ?? group.is_available ?? true,
+      // Sort options by their display order, not the order the API returned.
+      options: (group.options ?? []).map(mapOptionRow).sort(byDisplayOrder),
+    }))
+    .sort(byDisplayOrder);
 }
 
 /** @deprecated Use optionGroupsFromMenuItem */
@@ -106,7 +114,8 @@ export function variantGroupsFromApiResponse(
 
   const grouped = Array.from(groupsById.values())
     .filter((g) => g.variants.length > 0 || g.nameEn || g.nameMm || g.nameTh)
-    .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    .map((g) => ({ ...g, variants: [...g.variants].sort(byDisplayOrder) }))
+    .sort(byDisplayOrder);
 
   if (ungrouped.length > 0) {
     grouped.push({

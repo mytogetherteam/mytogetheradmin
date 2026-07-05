@@ -359,6 +359,9 @@ export default function CreateShopCoupon() {
     title: string,
     placeholder: string,
     emptyHint: string,
+    // The "also give this item free" shortcut only makes sense for the
+    // BUY_X_GET_FREE flow; item-scoped discounts never grant free items.
+    showGiveFree = true,
   ) => {
     const items = couponItems.filter((item) => item.type === type);
     return (
@@ -432,7 +435,7 @@ export default function CreateShopCoupon() {
                       </Button>
                     </div>
                   </div>
-                  {type === "BUY" && (
+                  {showGiveFree && type === "BUY" && (
                     <Button
                       type="button"
                       variant={alreadyFree ? "ghost" : "outline"}
@@ -487,7 +490,15 @@ export default function CreateShopCoupon() {
               type: item.type,
               quantity: item.quantity,
             }))
-          : values.items,
+          : // BUY_X_GET_DISCOUNT: only BUY items scope the discount (ignore any
+          // stray GET items left over from switching promotion types).
+          couponItems
+            .filter((item) => item.type === "BUY")
+            .map((item) => ({
+              menuItemId: Number(item.value),
+              type: item.type,
+              quantity: item.quantity,
+            })),
     };
 
     const parsed = shopCouponSchema.safeParse(merged);
@@ -520,6 +531,9 @@ export default function CreateShopCoupon() {
         ? {
           discountType: data.discountType,
           discountValue: data.discountValue,
+          // Optional item scoping — empty array = whole-order discount (and, on
+          // edit, clears any previously configured items).
+          items: data.items ?? [],
         }
         : {
           bogoAllItems: data.bogoAllItems,
@@ -850,6 +864,33 @@ export default function CreateShopCoupon() {
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+
+            {promotionType === "BUY_X_GET_DISCOUNT" && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Limit discount to specific items (optional)</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Leave empty to discount the whole order. Add items to apply
+                    the discount only when the customer buys them — and only to
+                    those items' price.
+                  </p>
+                </div>
+
+                {!numericShopId ? (
+                  <p className="text-sm text-muted-foreground">
+                    Select a shop first to add menu items.
+                  </p>
+                ) : (
+                  renderRoleColumn(
+                    "BUY",
+                    "Discounted items",
+                    "Search items to discount...",
+                    "Optional — leave empty to discount the whole order.",
+                    false,
+                  )
+                )}
               </div>
             )}
 

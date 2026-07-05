@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, XCircle } from "lucide-react";
 import { authService } from "@/services/authService";
 import { AdminRole, hasAccess } from "@/utils/rbac";
 import { useOrderDetail, useOrderHistory } from "@/hooks/orders/useOrders";
@@ -66,6 +66,24 @@ export default function OrderDetail() {
                     </Badge>
                 </div>
             </div>
+
+            {order.status === "CANCELED" && (
+                <Card className="border-destructive/40 bg-destructive/5 p-4">
+                    <div className="flex items-start gap-3">
+                        <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                        <div>
+                            <p className="font-medium text-destructive">
+                                Order cancelled
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {order.cancelReason?.trim()
+                                    ? order.cancelReason
+                                    : "No reason was provided for this cancellation."}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Main Content */}
