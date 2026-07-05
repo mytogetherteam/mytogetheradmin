@@ -6,7 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -31,8 +30,13 @@ interface VariantGroupsCardProps {
   isEditMode?: boolean;
 }
 
+// Module-level counter for new items that don't yet have a DB id.
+let _vKeyCounter = 0;
+function newVKey(prefix: string) { return `${prefix}-new-${++_vKeyCounter}`; }
+
 function createEmptyVariant(displayOrder: number): VariantRow {
   return {
+    _key: newVKey("var"),
     nameEn: "",
     nameMm: "",
     nameTh: "",
@@ -44,6 +48,7 @@ function createEmptyVariant(displayOrder: number): VariantRow {
 
 function createEmptyGroup(displayOrder: number): VariantGroupRow {
   return {
+    _key: newVKey("vgroup"),
     nameEn: "",
     nameMm: "",
     nameTh: "",
@@ -60,10 +65,6 @@ function visibleVariants(group: VariantGroupRow) {
   return group.variants.filter((variant) => !variant.isDeleted);
 }
 
-// Generate a stable unique key per group/variant so IDs don't break when items are soft-deleted
-let _uid = 0;
-function nextUid() { return ++_uid; }
-
 export function VariantGroupsCard({
   variantGroups,
   onChange,
@@ -79,23 +80,6 @@ export function VariantGroupsCard({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  // Stable ID refs: map each group/variant to a stable string id that doesn't change on re-index
-  const groupKeyMap = useRef<WeakMap<VariantGroupRow, string>>(new WeakMap());
-  function getGroupId(group: VariantGroupRow): string {
-    if (!groupKeyMap.current.has(group)) {
-      groupKeyMap.current.set(group, `vgroup-uid-${nextUid()}`);
-    }
-    return groupKeyMap.current.get(group)!;
-  }
-
-  const variantKeyMap = useRef<WeakMap<VariantRow, string>>(new WeakMap());
-  function getVariantId(variant: VariantRow): string {
-    if (!variantKeyMap.current.has(variant)) {
-      variantKeyMap.current.set(variant, `variant-uid-${nextUid()}`);
-    }
-    return variantKeyMap.current.get(variant)!;
-  }
 
   const displayedGroups = visibleGroups(variantGroups);
 
@@ -182,15 +166,12 @@ export function VariantGroupsCard({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    // Use stable IDs via getGroupId to find correct groups even after soft-deletes
-    const oldIndex = variantGroups.findIndex((g) => getGroupId(g) === active.id);
-    const newIndex = variantGroups.findIndex((g) => getGroupId(g) === over.id);
+    const oldIndex = variantGroups.findIndex((g) => g._key === active.id);
+    const newIndex = variantGroups.findIndex((g) => g._key === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
     if (variantGroups[oldIndex]?.isDeleted || variantGroups[newIndex]?.isDeleted) return;
 
-    // arrayMove physically reorders the array so visual order matches immediately
     const moved = arrayMove(variantGroups, oldIndex, newIndex);
-    // Re-assign displayOrder based on new visible positions
     let visibleOrder = 1;
     const result = moved.map((group) => ({
       ...group,
@@ -204,29 +185,20 @@ export function VariantGroupsCard({
     if (!over || active.id === over.id) return;
 
     const group = variantGroups[groupIndex];
-    // Build visible list with original indices
     const visible = group.variants
       .map((variant, index) => ({ variant, index }))
       .filter(({ variant }) => !variant.isDeleted);
 
-    const oldVisibleIndex = visible.findIndex(
-      ({ variant }) => getVariantId(variant) === active.id,
-    );
-    const newVisibleIndex = visible.findIndex(
-      ({ variant }) => getVariantId(variant) === over.id,
-    );
+    const oldVisibleIndex = visible.findIndex(({ variant }) => variant._key === active.id);
+    const newVisibleIndex = visible.findIndex(({ variant }) => variant._key === over.id);
     if (oldVisibleIndex < 0 || newVisibleIndex < 0) return;
 
-    // Reorder the visible subset
     const reordered = arrayMove(visible, oldVisibleIndex, newVisibleIndex);
-
-    // Rebuild the full variants array: deleted items stay in place, visible ones follow new order
     const deletedItems = group.variants.filter((v) => v.isDeleted);
     const reorderedVariants = reordered.map(({ variant }, order) => ({
       ...variant,
       displayOrder: order + 1,
     }));
-    // Merge: non-deleted in new order, then deleted items appended at the end
     const nextVariants = [...reorderedVariants, ...deletedItems];
 
     const next = [...variantGroups];
@@ -261,7 +233,7 @@ export function VariantGroupsCard({
             <SortableContext
               items={variantGroups
                 .filter((group) => !group.isDeleted)
-                .map((group) => getGroupId(group))}
+                .map((group) => group._key)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-4">
@@ -271,8 +243,8 @@ export function VariantGroupsCard({
 
                   return (
                     <CreateMenuItemSortableRow
-                      key={getGroupId(group)}
-                      id={getGroupId(group)}
+                      key={group._key}
+                      id={group._key}
                       className="rounded-xl border bg-card p-4 shadow-sm"
                     >
                       <div className="space-y-4">
@@ -336,7 +308,7 @@ export function VariantGroupsCard({
                             <SortableContext
                               items={group.variants
                                 .filter((variant) => !variant.isDeleted)
-                                .map((variant) => getVariantId(variant))}
+                                .map((variant) => variant._key)}
                               strategy={verticalListSortingStrategy}
                             >
                               {variants.length === 0 ? (
@@ -350,8 +322,8 @@ export function VariantGroupsCard({
 
                                     return (
                                       <CreateMenuItemSortableRow
-                                        key={getVariantId(variant)}
-                                        id={getVariantId(variant)}
+                                        key={variant._key}
+                                        id={variant._key}
                                       >
                                         <div className="flex flex-wrap items-center gap-2 bg-muted/20 border p-3 rounded-xl">
                                           <Input

@@ -5,7 +5,6 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -30,8 +29,13 @@ interface AddonGroupsCardProps {
   isEditMode?: boolean;
 }
 
+// Module-level counter for new items that don't yet have a DB id.
+let _oKeyCounter = 0;
+function newOKey(prefix: string) { return `${prefix}-new-${++_oKeyCounter}`; }
+
 function createEmptyOption(displayOrder: number): OptionRow {
   return {
+    _key: newOKey("opt"),
     nameEn: "",
     nameMm: "",
     nameTh: "",
@@ -43,6 +47,7 @@ function createEmptyOption(displayOrder: number): OptionRow {
 
 function createEmptyGroup(displayOrder: number): OptionGroupRow {
   return {
+    _key: newOKey("ogroup"),
     nameEn: "",
     nameMm: "",
     nameTh: "",
@@ -51,10 +56,6 @@ function createEmptyGroup(displayOrder: number): OptionGroupRow {
     options: [createEmptyOption(1)],
   };
 }
-
-// Stable unique key generator
-let _ouid = 0;
-function nextOuid() { return ++_ouid; }
 
 export function AddonGroupsCard({
   optionGroups,
@@ -70,23 +71,6 @@ export function AddonGroupsCard({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  // Stable IDs via WeakMap so soft-deleted items don't cause index mismatch
-  const groupKeyMap = useRef<WeakMap<OptionGroupRow, string>>(new WeakMap());
-  function getGroupId(group: OptionGroupRow): string {
-    if (!groupKeyMap.current.has(group)) {
-      groupKeyMap.current.set(group, `ogroup-uid-${nextOuid()}`);
-    }
-    return groupKeyMap.current.get(group)!;
-  }
-
-  const optionKeyMap = useRef<WeakMap<OptionRow, string>>(new WeakMap());
-  function getOptionId(option: OptionRow): string {
-    if (!optionKeyMap.current.has(option)) {
-      optionKeyMap.current.set(option, `option-uid-${nextOuid()}`);
-    }
-    return optionKeyMap.current.get(option)!;
-  }
 
   const addGroup = () => {
     onChange([...optionGroups, createEmptyGroup(optionGroups.length + 1)]);
@@ -169,8 +153,8 @@ export function AddonGroupsCard({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = optionGroups.findIndex((g) => getGroupId(g) === active.id);
-    const newIndex = optionGroups.findIndex((g) => getGroupId(g) === over.id);
+    const oldIndex = optionGroups.findIndex((g) => g._key === active.id);
+    const newIndex = optionGroups.findIndex((g) => g._key === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
     if (optionGroups[oldIndex]?.isDeleted || optionGroups[newIndex]?.isDeleted) return;
 
@@ -192,12 +176,8 @@ export function AddonGroupsCard({
       .map((option, index) => ({ option, index }))
       .filter(({ option }) => !option.isDeleted);
 
-    const oldVisibleIndex = visible.findIndex(
-      ({ option }) => getOptionId(option) === active.id,
-    );
-    const newVisibleIndex = visible.findIndex(
-      ({ option }) => getOptionId(option) === over.id,
-    );
+    const oldVisibleIndex = visible.findIndex(({ option }) => option._key === active.id);
+    const newVisibleIndex = visible.findIndex(({ option }) => option._key === over.id);
     if (oldVisibleIndex < 0 || newVisibleIndex < 0) return;
 
     const reordered = arrayMove(visible, oldVisibleIndex, newVisibleIndex);
@@ -242,7 +222,7 @@ export function AddonGroupsCard({
             <SortableContext
               items={optionGroups
                 .filter((group) => !group.isDeleted)
-                .map((group) => getGroupId(group))}
+                .map((group) => group._key)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-4">
@@ -252,8 +232,8 @@ export function AddonGroupsCard({
 
                   return (
                     <CreateMenuItemSortableRow
-                      key={getGroupId(group)}
-                      id={getGroupId(group)}
+                      key={group._key}
+                      id={group._key}
                       className="rounded-xl border bg-card p-4 shadow-sm"
                     >
                       <div className="space-y-4">
@@ -317,7 +297,7 @@ export function AddonGroupsCard({
                             <SortableContext
                               items={group.options
                                 .filter((option) => !option.isDeleted)
-                                .map((option) => getOptionId(option))}
+                                .map((option) => option._key)}
                               strategy={verticalListSortingStrategy}
                             >
                               {options.length === 0 ? (
@@ -331,8 +311,8 @@ export function AddonGroupsCard({
 
                                     return (
                                       <CreateMenuItemSortableRow
-                                        key={getOptionId(option)}
-                                        id={getOptionId(option)}
+                                        key={option._key}
+                                        id={option._key}
                                       >
                                         <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/20 p-4">
                                           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
