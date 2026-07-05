@@ -19,6 +19,12 @@ export function useActiveOrders(filters: ActiveOrderFilters) {
     // Keep the previous page visible while the next loads — no flicker on
     // page/filter changes.
     placeholderData: keepPreviousData,
+    // 30-second polling as a safety net: if a WebSocket event is missed
+    // (disconnect gap, network blip) the board self-heals within 30 s.
+    refetchInterval: 30_000,
+    // Keep polling even while the tab is not focused so the board is always
+    // up-to-date when the admin switches back to it.
+    refetchIntervalInBackground: true,
   });
 }
 

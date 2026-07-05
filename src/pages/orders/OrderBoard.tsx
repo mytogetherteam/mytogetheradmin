@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Order, OrderStatus, ORDER_STATUSES } from "@/services/orderService";
@@ -34,6 +34,9 @@ export default function OrderBoard() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const isSuperAdmin = hasAccess(authService.getUserData()?.role, AdminRole.ADMIN);
+    // OperationAdmin can also view the board and must receive WS events.
+    const userRole = authService.getUserData()?.role;
+    const wsEnabled = isSuperAdmin || userRole === 'OperationAdmin';
 
     // ── Filters + server-side pagination ──────────────────────────────────────
     const [shopId, setShopId] = useState<number | null>(null);
@@ -42,6 +45,14 @@ export default function OrderBoard() {
     const [pageSize, setPageSize] = useState(20);
     // Bumping this remounts <ShopSelect>, resetting its internal selection on "Clear".
     const [shopSelectKey, setShopSelectKey] = useState(0);
+
+    // Force re-render every 15 seconds to keep "time ago" texts and SLA warnings 
+    // perfectly real-time without relying solely on data refetches.
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick((t) => t + 1), 15000);
+        return () => clearInterval(timer);
+    }, []);
 
     const { data, isFetching, refetch } = useActiveOrders({
         shopId: shopId ?? undefined,
@@ -55,16 +66,31 @@ export default function OrderBoard() {
     const totalPages = Math.max(1, data?.totalPages ?? 1);
     const showSkeleton = isFetching && orders.length === 0;
 
+    // Immediately re-sync after a WebSocket reconnect to recover orders that
+    // arrived during the disconnect window (reconnectDelay is 5 s).
+    const handleWsReconnect = useCallback(() => {
+        void queryClient.invalidateQueries({ queryKey: orderKeys.active() });
+    }, [queryClient]);
+
+    const [lastSynced, setLastSynced] = useState<Date | null>(null);
+
     // ── Live WebSocket: any order event → invalidate the board (debounced) ────
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const handleWsEvent = useCallback(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
+            setLastSynced(new Date());
             void queryClient.invalidateQueries({ queryKey: orderKeys.active() });
         }, 400);
     }, [queryClient]);
 
-    const { connected: wsConnected } = useSuperAdminOrderSocket(handleWsEvent, isSuperAdmin);
+    const { connected: wsConnected } = useSuperAdminOrderSocket(handleWsEvent, wsEnabled, handleWsReconnect);
+
+    // Also set lastSynced when the periodic poll succeeds.
+    useEffect(() => {
+        if (!isFetching) setLastSynced(new Date());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isFetching]);
 
     const resetFilters = () => {
         setShopId(null);
@@ -99,8 +125,13 @@ export default function OrderBoard() {
                             ) : (
                                 <>
                                     <WifiOff className="h-3 w-3 text-amber-500" />
-                                    Reconnecting… use Refresh to update
+                                    <span className="text-amber-600 font-medium">Reconnecting…</span>
                                 </>
+                            )}
+                            {lastSynced && (
+                                <span className="text-muted-foreground/70 ml-1">
+                                    · synced {lastSynced.toLocaleTimeString()}
+                                </span>
                             )}
                         </p>
                     </div>
