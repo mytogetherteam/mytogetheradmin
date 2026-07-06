@@ -18,6 +18,7 @@ export interface OptionGroupResponse {
 }
 
 export interface OptionGroupRow {
+  clientKey: string;
   id?: number;
   /** Stable key used as React key and DnD id – assigned at creation/load time, never changes. */
   _key: string;
@@ -31,6 +32,7 @@ export interface OptionGroupRow {
 }
 
 export interface OptionRow {
+  clientKey: string;
   id?: number;
   /** Stable key used as React key and DnD id – assigned at creation/load time, never changes. */
   _key: string;
@@ -116,6 +118,7 @@ export interface VariantResponse {
 }
 
 export interface VariantGroupRow {
+  clientKey: string;
   id?: number;
   /** Stable key used as React key and DnD id – assigned at creation/load time, never changes. */
   _key: string;
@@ -128,6 +131,7 @@ export interface VariantGroupRow {
 }
 
 export interface VariantRow {
+  clientKey: string;
   id?: number;
   /** Stable key used as React key and DnD id – assigned at creation/load time, never changes. */
   _key: string;
