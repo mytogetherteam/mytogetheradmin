@@ -4,12 +4,21 @@ import { PriceInput } from "@/components/ui/PriceInput";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CreateMenuItemSortableRow } from "@/pages/menus/components/CreateMenuItemSortableRow";
 import { createClientKey, useMenuItemDragSensors } from "@/pages/menus/components/menu-item-dnd.util";
+import { consolidateUngroupedGroups, shouldConfirmGroupDelete } from "@/pages/menus/components/menu-item-group.util";
 import type { VariantGroupRow, VariantRow } from "@/pages/menus/create-menu-item.types";
 
 interface VariantGroupsCardProps {
@@ -36,7 +45,7 @@ function createEmptyVariant(displayOrder: number): VariantRow {
   };
 }
 
-function createEmptyGroup(displayOrder: number): VariantGroupRow {
+function createEmptyNamedGroup(displayOrder: number): VariantGroupRow {
   return {
     clientKey: createClientKey("vg"),
     _key: newVKey("vgroup"),
@@ -44,7 +53,21 @@ function createEmptyGroup(displayOrder: number): VariantGroupRow {
     nameMm: "",
     nameTh: "",
     displayOrder,
+    isUngrouped: false,
     variants: [createEmptyVariant(1)],
+  };
+}
+
+function createEmptyUngroupedGroup(displayOrder: number): VariantGroupRow {
+  return {
+    clientKey: createClientKey("vg"),
+    _key: newVKey("vgroup"),
+    nameEn: "",
+    nameMm: "",
+    nameTh: "",
+    displayOrder,
+    isUngrouped: true,
+    variants: [],
   };
 }
 
@@ -56,45 +79,206 @@ function visibleVariants(group: VariantGroupRow) {
   return group.variants.filter((variant) => !variant.isDeleted);
 }
 
+function isUngroupedGroup(group: VariantGroupRow) {
+  return group.isUngrouped === true;
+}
+
+function consolidateVariantGroups(groups: VariantGroupRow[]): VariantGroupRow[] {
+  return consolidateUngroupedGroups(
+    groups,
+    isUngroupedGroup,
+    (group) => visibleVariants(group).length,
+    (primary, others) => ({
+      ...primary,
+      isUngrouped: true,
+      variants: [
+        ...primary.variants,
+        ...others.flatMap((group) => group.variants),
+      ],
+    }),
+  );
+}
+
+function renderableGroups(groups: VariantGroupRow[]) {
+  return visibleGroups(groups).filter((group) => {
+    if (isUngroupedGroup(group)) {
+      return visibleVariants(group).length > 0;
+    }
+    return true;
+  });
+}
+
+function findOrCreateUngroupedGroup(groups: VariantGroupRow[]): {
+  groups: VariantGroupRow[];
+  ungroupedIndex: number;
+} {
+  const ungroupedIndex = groups.findIndex((group) => !group.isDeleted && isUngroupedGroup(group));
+  if (ungroupedIndex >= 0) {
+    return { groups, ungroupedIndex };
+  }
+
+  const ungrouped = createEmptyUngroupedGroup(groups.length + 1);
+  return { groups: [...groups, ungrouped], ungroupedIndex: groups.length };
+}
+
 export function VariantGroupsCard({
   variantGroups,
   onChange,
   isEditMode = false,
 }: VariantGroupsCardProps) {
   const sensors = useMenuItemDragSensors();
-  const displayedGroups = visibleGroups(variantGroups);
+  const displayedGroups = renderableGroups(variantGroups);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pendingDeleteGroupIndex, setPendingDeleteGroupIndex] = useState<number | null>(null);
 
-  const addGroup = () => {
-    onChange([...variantGroups, createEmptyGroup(variantGroups.length + 1)]);
+  const commitGroups = (groups: VariantGroupRow[]) => {
+    onChange(consolidateVariantGroups(groups));
   };
 
-  const softDeleteGroup = (groupIndex: number) => {
-    const group = variantGroups[groupIndex];
-    if (isEditMode && group.id) {
-      const next = [...variantGroups];
-      next[groupIndex] = {
-        ...group,
-        isDeleted: true,
-        variants: group.variants.map((variant) =>
-          variant.id ? { ...variant, isDeleted: true } : variant,
-        ),
-      };
-      onChange(next);
-      toast.message("Variant group removed. Save the item to apply.");
-      return;
-    }
+  const addGroup = () => {
+    commitGroups([...variantGroups, createEmptyNamedGroup(variantGroups.length + 1)]);
+  };
 
-    onChange(
+  const removeGroupFromState = (groupIndex: number) => {
+    commitGroups(
       variantGroups
         .filter((_, i) => i !== groupIndex)
         .map((item, i) => ({ ...item, displayOrder: i + 1 })),
     );
   };
 
+  const softDeleteEntireGroup = (groupIndex: number) => {
+    const group = variantGroups[groupIndex];
+    if (isEditMode && shouldConfirmGroupDelete(isEditMode, group, group.variants)) {
+      const next = [...variantGroups];
+      next[groupIndex] = {
+        ...group,
+        isDeleted: true,
+        unlinkVariantsOnly: false,
+        variants: group.variants.map((variant) =>
+          variant.id ? { ...variant, isDeleted: true } : variant,
+        ),
+      };
+      commitGroups(next);
+      toast.message("Variant group removed. Save the item to apply.");
+      return;
+    }
+
+    removeGroupFromState(groupIndex);
+  };
+
+  const unlinkGroupNameOnly = (groupIndex: number) => {
+    const group = variantGroups[groupIndex];
+    const variantsToMove = visibleVariants(group);
+
+    if (isEditMode && group.id) {
+      let next = [...variantGroups];
+      const movedKeys = new Set(variantsToMove.map((variant) => variant._key));
+
+      if (variantsToMove.length > 0) {
+        const { groups, ungroupedIndex } = findOrCreateUngroupedGroup(next);
+        next = groups;
+        const ungrouped = next[ungroupedIndex];
+        const baseOrder = visibleVariants(ungrouped).length;
+        const movedVariants = variantsToMove.map((variant, index) => ({
+          ...variant,
+          displayOrder: baseOrder + index + 1,
+        }));
+        next[ungroupedIndex] = {
+          ...ungrouped,
+          variants: [...ungrouped.variants, ...movedVariants],
+        };
+      }
+
+      next[groupIndex] = {
+        ...group,
+        isDeleted: true,
+        unlinkVariantsOnly: true,
+        variants: group.variants.filter((variant) => !movedKeys.has(variant._key)),
+      };
+
+      commitGroups(next);
+      toast.message("Group name removed. Variants kept. Save the item to apply.");
+      return;
+    }
+
+    if (isEditMode && shouldConfirmGroupDelete(isEditMode, group, group.variants)) {
+      let next = variantGroups.filter((_, index) => index !== groupIndex);
+      if (variantsToMove.length > 0) {
+        const { groups, ungroupedIndex } = findOrCreateUngroupedGroup(next);
+        next = groups;
+        const ungrouped = next[ungroupedIndex];
+        const baseOrder = visibleVariants(ungrouped).length;
+        const movedVariants = variantsToMove.map((variant, index) => ({
+          ...variant,
+          displayOrder: baseOrder + index + 1,
+        }));
+        next[ungroupedIndex] = {
+          ...ungrouped,
+          variants: [...ungrouped.variants, ...movedVariants],
+        };
+      }
+      commitGroups(next);
+      toast.message("Group name removed. Variants kept. Save the item to apply.");
+      return;
+    }
+
+    if (variantsToMove.length === 0) {
+      removeGroupFromState(groupIndex);
+      return;
+    }
+
+    const next = [...variantGroups];
+    next[groupIndex] = {
+      ...group,
+      nameEn: "",
+      nameMm: "",
+      nameTh: "",
+    };
+    commitGroups(next);
+  };
+
+  const promoteToNamedGroup = (groupIndex: number) => {
+    const next = [...variantGroups];
+    next[groupIndex] = {
+      ...next[groupIndex],
+      isUngrouped: false,
+    };
+    commitGroups(next);
+  };
+
+  const requestDeleteGroup = (groupIndex: number) => {
+    const group = variantGroups[groupIndex];
+    if (shouldConfirmGroupDelete(isEditMode, group, group.variants)) {
+      setPendingDeleteGroupIndex(groupIndex);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
+    softDeleteEntireGroup(groupIndex);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setPendingDeleteGroupIndex(null);
+  };
+
+  const handleDeleteEntireGroup = () => {
+    if (pendingDeleteGroupIndex == null) return;
+    softDeleteEntireGroup(pendingDeleteGroupIndex);
+    closeDeleteDialog();
+  };
+
+  const handleDeleteGroupNameOnly = () => {
+    if (pendingDeleteGroupIndex == null) return;
+    unlinkGroupNameOnly(pendingDeleteGroupIndex);
+    closeDeleteDialog();
+  };
+
   const updateGroup = (groupIndex: number, updates: Partial<VariantGroupRow>) => {
     const next = [...variantGroups];
     next[groupIndex] = { ...next[groupIndex], ...updates };
-    onChange(next);
+    commitGroups(next);
   };
 
   const addVariant = (groupIndex: number) => {
@@ -104,7 +288,7 @@ export function VariantGroupsCard({
       ...group.variants,
       createEmptyVariant(visibleVariants(group).length + 1),
     ];
-    onChange(next);
+    commitGroups(next);
   };
 
   const softDeleteVariant = (groupIndex: number, variantIndex: number) => {
@@ -116,7 +300,7 @@ export function VariantGroupsCard({
       const variants = [...next[groupIndex].variants];
       variants[variantIndex] = { ...variants[variantIndex], isDeleted: true };
       next[groupIndex] = { ...next[groupIndex], variants };
-      onChange(next);
+      commitGroups(next);
       toast.message("Variant removed. Save the item to apply.");
       return;
     }
@@ -128,7 +312,7 @@ export function VariantGroupsCard({
         .filter((_, i) => i !== variantIndex)
         .map((item, i) => ({ ...item, displayOrder: i + 1 })),
     };
-    onChange(next);
+    commitGroups(next);
   };
 
   const updateVariant = (
@@ -140,7 +324,7 @@ export function VariantGroupsCard({
     const variants = [...next[groupIndex].variants];
     variants[variantIndex] = { ...variants[variantIndex], ...updates };
     next[groupIndex] = { ...next[groupIndex], variants };
-    onChange(next);
+    commitGroups(next);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -156,7 +340,7 @@ export function VariantGroupsCard({
       if (variantGroups[oldGroupIndex]?.isDeleted || variantGroups[newGroupIndex]?.isDeleted) return;
       const moved = arrayMove(variantGroups, oldGroupIndex, newGroupIndex);
       let visibleOrder = 1;
-      onChange(
+      commitGroups(
         moved.map((group) => ({
           ...group,
           displayOrder: group.isDeleted ? group.displayOrder : visibleOrder++,
@@ -184,7 +368,7 @@ export function VariantGroupsCard({
 
       const next = [...variantGroups];
       next[groupIndex] = { ...group, variants: [...reorderedVariants, ...deletedItems] };
-      onChange(next);
+      commitGroups(next);
       return;
     }
   };
@@ -216,6 +400,7 @@ export function VariantGroupsCard({
               <div className="space-y-4">
                 {variantGroups.map((group, groupIndex) => {
                   if (group.isDeleted) return null;
+                  if (isUngroupedGroup(group) && visibleVariants(group).length === 0) return null;
                   const variants = visibleVariants(group);
 
                   return (
@@ -225,40 +410,59 @@ export function VariantGroupsCard({
                       className="rounded-xl border bg-card p-4 shadow-sm"
                     >
                       <div className="space-y-4">
-                        <div className="flex flex-wrap items-start gap-2">
-                          <Input
-                            className="flex-1 min-w-[140px]"
-                            placeholder="Group Name (EN) e.g. Size"
-                            value={group.nameEn}
-                            onChange={(e) => updateGroup(groupIndex, { nameEn: e.target.value })}
-                          />
-                          <Input
-                            className="flex-1 min-w-[140px]"
-                            placeholder="Group Name (MM)"
-                            value={group.nameMm}
-                            onChange={(e) => updateGroup(groupIndex, { nameMm: e.target.value })}
-                          />
-                          <Input
-                            className="flex-1 min-w-[140px]"
-                            placeholder="Group Name (TH)"
-                            value={group.nameTh}
-                            onChange={(e) => updateGroup(groupIndex, { nameTh: e.target.value })}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-destructive shrink-0"
-                            onClick={() => softDeleteGroup(groupIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {!isUngroupedGroup(group) ? (
+                          <div className="flex flex-wrap items-start gap-2">
+                            <Input
+                              className="flex-1 min-w-[140px]"
+                              placeholder="Group Name (EN) e.g. Size"
+                              value={group.nameEn}
+                              onChange={(e) => updateGroup(groupIndex, { nameEn: e.target.value })}
+                            />
+                            <Input
+                              className="flex-1 min-w-[140px]"
+                              placeholder="Group Name (MM)"
+                              value={group.nameMm}
+                              onChange={(e) => updateGroup(groupIndex, { nameMm: e.target.value })}
+                            />
+                            <Input
+                              className="flex-1 min-w-[140px]"
+                              placeholder="Group Name (TH)"
+                              value={group.nameTh}
+                              onChange={(e) => updateGroup(groupIndex, { nameTh: e.target.value })}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-destructive shrink-0"
+                              onClick={() => requestDeleteGroup(groupIndex)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <Label className="text-sm text-muted-foreground">
+                              Variants without a group
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => promoteToNamedGroup(groupIndex)}
+                              className="gap-2 h-8"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Add group name
+                            </Button>
+                          </div>
+                        )}
 
-                        <div className="space-y-3 border-t pt-3">
+                        <div className={`space-y-3 ${isUngroupedGroup(group) ? "" : "border-t pt-3"}`}>
                           <div className="flex items-center justify-between">
                             <Label className="text-sm text-muted-foreground">
-                              Choices in this group
+                              {isUngroupedGroup(group)
+                                ? "Ungrouped variants"
+                                : "Choices in this group"}
                             </Label>
                             <Button
                               type="button"
@@ -275,11 +479,11 @@ export function VariantGroupsCard({
                             items={variants.map((variant) => variant._key)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {variants.length === 0 ? (
+                            {variants.length === 0 && !isUngroupedGroup(group) ? (
                               <div className="text-sm text-muted-foreground italic">
                                 No variants in this group yet.
                               </div>
-                            ) : (
+                            ) : variants.length > 0 ? (
                               <div className="space-y-3">
                                 {group.variants.map((variant, variantIndex) => {
                                   if (variant.isDeleted) return null;
@@ -363,7 +567,7 @@ export function VariantGroupsCard({
                                   );
                                 })}
                               </div>
-                            )}
+                            ) : null}
                           </SortableContext>
                         </div>
                       </div>
@@ -375,6 +579,29 @@ export function VariantGroupsCard({
           </DndContext>
         )}
       </CardContent>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !open && closeDeleteDialog()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete variant group?</DialogTitle>
+            <DialogDescription>
+              Choose whether to remove the entire group with all variants, or only remove the
+              group name and keep the variants.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2 mt-6">
+            <Button type="button" variant="outline" onClick={closeDeleteDialog}>
+              Cancel
+            </Button>
+            <Button type="button" variant="outline" onClick={handleDeleteGroupNameOnly}>
+              Only delete group name
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDeleteEntireGroup}>
+              Entire group
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

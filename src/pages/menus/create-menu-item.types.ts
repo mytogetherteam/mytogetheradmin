@@ -28,6 +28,10 @@ export interface OptionGroupRow {
   displayOrder: number;
   isAvailable: boolean;
   isDeleted?: boolean;
+  /** When true with isDeleted, only the group name is removed; options are kept ungrouped. */
+  unlinkOptionsOnly?: boolean;
+  /** Variants/options kept after removing only the group name. */
+  isUngrouped?: boolean;
   options: OptionRow[];
 }
 
@@ -84,6 +88,10 @@ export interface OptionResponse {
   display_order?: number;
   linkedMenuItemId?: number;
   linked_menu_item_id?: number;
+  optionGroupId?: number | null;
+  option_group_id?: number | null;
+  optionGroup?: OptionGroupResponse;
+  option_group?: OptionGroupResponse;
 }
 
 export interface VariantGroupResponse {
@@ -127,6 +135,10 @@ export interface VariantGroupRow {
   nameTh: string;
   displayOrder: number;
   isDeleted?: boolean;
+  /** When true with isDeleted, only the group name is removed; variants are kept ungrouped. */
+  unlinkVariantsOnly?: boolean;
+  /** Variants kept after removing only the group name. */
+  isUngrouped?: boolean;
   variants: VariantRow[];
 }
 
