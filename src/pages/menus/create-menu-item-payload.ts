@@ -76,15 +76,50 @@ function buildOptionGroupRowPayload(
 function buildOptionGroupsPayload(snapshot: MenuItemSubmitFormSnapshot) {
   const activeGroups = snapshot.optionGroups.filter((group) => !group.isDeleted);
 
+  if (!snapshot.editingExistingItem) {
+    return {
+      optionGroups: activeGroups.map((group, groupIndex) =>
+        buildOptionGroupRowPayload(snapshot, group, groupIndex),
+      ),
+      deletedOptionGroupIds: [] as number[],
+      unlinkOptionGroupIds: [] as number[],
+    };
+  }
+
+  const deletedOptionGroupIds = snapshot.optionGroups
+    .filter((group) => group.isDeleted && group.id && !group.unlinkOptionsOnly)
+    .map((group) => group.id!);
+
+  const unlinkOptionGroupIds = snapshot.optionGroups
+    .filter((group) => group.isDeleted && group.id && group.unlinkOptionsOnly)
+    .map((group) => group.id!);
+
   return {
-    optionGroups: activeGroups.map((group, groupIndex) =>
-      buildOptionGroupRowPayload(snapshot, group, groupIndex),
-    ),
-    deletedOptionGroupIds: snapshot.editingExistingItem
-      ? snapshot.optionGroups
-        .filter((group) => group.isDeleted && group.id)
-        .map((group) => group.id!)
-      : [],
+    optionGroups: [
+      ...activeGroups.map((group, groupIndex) =>
+        buildOptionGroupRowPayload(snapshot, group, groupIndex),
+      ),
+      ...snapshot.optionGroups
+        .filter((group) => group.isDeleted && !group.id)
+        .map((group, groupIndex) => ({
+          nameEn: "",
+          nameMm: "",
+          nameTh: "",
+          displayOrder: activeGroups.length + groupIndex + 1,
+          minSelection: 0,
+          maxSelection: 99,
+          isAvailable: true,
+          options: group.options
+            .filter((option) => option.isDeleted && option.id)
+            .map((option) => ({
+              id: option.id,
+              deleted: true,
+              is_deleted: true,
+            })),
+        })),
+    ],
+    deletedOptionGroupIds,
+    unlinkOptionGroupIds,
   };
 }
 
@@ -201,10 +236,22 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
         deleted_variant_group_ids: variantPayload.deletedVariantGroupIds,
       }
       : {}),
+    ...(variantPayload.unlinkVariantGroupIds.length
+      ? {
+        unlinkVariantGroupIds: variantPayload.unlinkVariantGroupIds,
+        unlink_variant_group_ids: variantPayload.unlinkVariantGroupIds,
+      }
+      : {}),
     ...(optionPayload.deletedOptionGroupIds.length
       ? {
         deletedOptionGroupIds: optionPayload.deletedOptionGroupIds,
         deleted_option_group_ids: optionPayload.deletedOptionGroupIds,
+      }
+      : {}),
+    ...(optionPayload.unlinkOptionGroupIds.length
+      ? {
+        unlinkOptionGroupIds: optionPayload.unlinkOptionGroupIds,
+        unlink_option_group_ids: optionPayload.unlinkOptionGroupIds,
       }
       : {}),
   };
@@ -266,11 +313,16 @@ function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
           ),
       ),
       deletedVariantGroupIds: [] as number[],
+      unlinkVariantGroupIds: [] as number[],
     };
   }
 
   const deletedVariantGroupIds = snapshot.variantGroups
-    .filter((group) => group.isDeleted && group.id)
+    .filter((group) => group.isDeleted && group.id && !group.unlinkVariantsOnly)
+    .map((group) => group.id!);
+
+  const unlinkVariantGroupIds = snapshot.variantGroups
+    .filter((group) => group.isDeleted && group.id && group.unlinkVariantsOnly)
     .map((group) => group.id!);
 
   const activeVariants = activeGroups.flatMap((group, groupIndex) =>
@@ -286,6 +338,16 @@ function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
       return [];
     }
 
+    if (group.isDeleted) {
+      return group.variants
+        .filter((variant) => variant.isDeleted && variant.id)
+        .map((variant) => ({
+          id: variant.id,
+          deleted: true,
+          is_deleted: true,
+        }));
+    }
+
     return group.variants
       .filter((variant) => variant.isDeleted && variant.id)
       .map((variant) => ({
@@ -298,5 +360,6 @@ function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
   return {
     variants: [...activeVariants, ...deletedVariants],
     deletedVariantGroupIds,
+    unlinkVariantGroupIds,
   };
 }

@@ -73,6 +73,7 @@ export interface MenuItem {
     displayOrder?: number;
     publishStatus?: string;
     optionGroups?: OptionGroup[];
+    options?: Option[];
     variants?: Variant[];
     variantGroups?: VariantGroup[];
     shopName?: string;
@@ -103,6 +104,8 @@ export interface Option {
     isAvailable: boolean;
     displayOrder?: number;
     linkedMenuItemId?: number;
+    optionGroupId?: number | null;
+    optionGroup?: OptionGroup | null;
 }
 
 export interface OptionGroup {
