@@ -5,22 +5,10 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  closestCenter,
-  DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CreateMenuItemSortableRow } from "@/pages/menus/components/CreateMenuItemSortableRow";
+import { createClientKey, useMenuItemDragSensors } from "@/pages/menus/components/menu-item-dnd.util";
 import type { OptionGroupRow, OptionRow } from "@/pages/menus/create-menu-item.types";
 
 interface AddonGroupsCardProps {
@@ -29,12 +17,14 @@ interface AddonGroupsCardProps {
   isEditMode?: boolean;
 }
 
-// Module-level counter for new items that don't yet have a DB id.
 let _oKeyCounter = 0;
-function newOKey(prefix: string) { return `${prefix}-new-${++_oKeyCounter}`; }
+function newOKey(prefix: string) {
+  return `${prefix}-new-${++_oKeyCounter}`;
+}
 
 function createEmptyOption(displayOrder: number): OptionRow {
   return {
+    clientKey: createClientKey("o"),
     _key: newOKey("opt"),
     nameEn: "",
     nameMm: "",
@@ -47,6 +37,7 @@ function createEmptyOption(displayOrder: number): OptionRow {
 
 function createEmptyGroup(displayOrder: number): OptionGroupRow {
   return {
+    clientKey: createClientKey("og"),
     _key: newOKey("ogroup"),
     nameEn: "",
     nameMm: "",
@@ -62,15 +53,8 @@ export function AddonGroupsCard({
   onChange,
   isEditMode = false,
 }: AddonGroupsCardProps) {
-  // activationConstraint: require 8px movement before drag, so inputs are not disrupted
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const sensors = useMenuItemDragSensors();
+  const displayedGroups = optionGroups.filter((group) => !group.isDeleted);
 
   const addGroup = () => {
     onChange([...optionGroups, createEmptyGroup(optionGroups.length + 1)]);
@@ -149,51 +133,51 @@ export function AddonGroupsCard({
     onChange(next);
   };
 
-  const handleGroupDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = optionGroups.findIndex((g) => g._key === active.id);
-    const newIndex = optionGroups.findIndex((g) => g._key === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    if (optionGroups[oldIndex]?.isDeleted || optionGroups[newIndex]?.isDeleted) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    const moved = arrayMove(optionGroups, oldIndex, newIndex);
-    let visibleOrder = 1;
-    const result = moved.map((group) => ({
-      ...group,
-      displayOrder: group.isDeleted ? group.displayOrder : visibleOrder++,
-    }));
-    onChange(result);
+    const oldGroupIndex = optionGroups.findIndex((g) => g._key === activeId);
+    const newGroupIndex = optionGroups.findIndex((g) => g._key === overId);
+    if (oldGroupIndex >= 0 && newGroupIndex >= 0) {
+      if (optionGroups[oldGroupIndex]?.isDeleted || optionGroups[newGroupIndex]?.isDeleted) return;
+      const moved = arrayMove(optionGroups, oldGroupIndex, newGroupIndex);
+      let visibleOrder = 1;
+      onChange(
+        moved.map((group) => ({
+          ...group,
+          displayOrder: group.isDeleted ? group.displayOrder : visibleOrder++,
+        })),
+      );
+      return;
+    }
+
+    for (let groupIndex = 0; groupIndex < optionGroups.length; groupIndex++) {
+      const group = optionGroups[groupIndex];
+      const visible = group.options
+        .map((option, index) => ({ option, index }))
+        .filter(({ option }) => !option.isDeleted);
+
+      const oldVisibleIndex = visible.findIndex(({ option }) => option._key === activeId);
+      const newVisibleIndex = visible.findIndex(({ option }) => option._key === overId);
+      if (oldVisibleIndex < 0 || newVisibleIndex < 0) continue;
+
+      const reordered = arrayMove(visible, oldVisibleIndex, newVisibleIndex);
+      const deletedItems = group.options.filter((o) => o.isDeleted);
+      const reorderedOptions = reordered.map(({ option }, order) => ({
+        ...option,
+        displayOrder: order + 1,
+      }));
+
+      const next = [...optionGroups];
+      next[groupIndex] = { ...group, options: [...reorderedOptions, ...deletedItems] };
+      onChange(next);
+      return;
+    }
   };
-
-  const handleOptionDragEnd = (groupIndex: number, event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const group = optionGroups[groupIndex];
-    const visible = group.options
-      .map((option, index) => ({ option, index }))
-      .filter(({ option }) => !option.isDeleted);
-
-    const oldVisibleIndex = visible.findIndex(({ option }) => option._key === active.id);
-    const newVisibleIndex = visible.findIndex(({ option }) => option._key === over.id);
-    if (oldVisibleIndex < 0 || newVisibleIndex < 0) return;
-
-    const reordered = arrayMove(visible, oldVisibleIndex, newVisibleIndex);
-    const deletedItems = group.options.filter((o) => o.isDeleted);
-    const reorderedOptions = reordered.map(({ option }, order) => ({
-      ...option,
-      displayOrder: order + 1,
-    }));
-    const nextOptions = [...reorderedOptions, ...deletedItems];
-
-    const next = [...optionGroups];
-    next[groupIndex] = { ...group, options: nextOptions };
-    onChange(next);
-  };
-
-  const displayedGroups = optionGroups.filter((group) => !group.isDeleted);
 
   return (
     <Card className="border-dashed bg-muted/5">
@@ -214,15 +198,9 @@ export function AddonGroupsCard({
             No add-on groups added.
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleGroupDragEnd}
-          >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext
-              items={optionGroups
-                .filter((group) => !group.isDeleted)
-                .map((group) => group._key)}
+              items={displayedGroups.map((group) => group._key)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-4">
@@ -242,25 +220,19 @@ export function AddonGroupsCard({
                             className="flex-1 min-w-[140px]"
                             placeholder="Group Name (EN) e.g. Toppings"
                             value={group.nameEn}
-                            onChange={(e) =>
-                              updateGroup(groupIndex, { nameEn: e.target.value })
-                            }
+                            onChange={(e) => updateGroup(groupIndex, { nameEn: e.target.value })}
                           />
                           <Input
                             className="flex-1 min-w-[140px]"
                             placeholder="Group Name (MM)"
                             value={group.nameMm}
-                            onChange={(e) =>
-                              updateGroup(groupIndex, { nameMm: e.target.value })
-                            }
+                            onChange={(e) => updateGroup(groupIndex, { nameMm: e.target.value })}
                           />
                           <Input
                             className="flex-1 min-w-[140px]"
                             placeholder="Group Name (TH)"
                             value={group.nameTh}
-                            onChange={(e) =>
-                              updateGroup(groupIndex, { nameTh: e.target.value })
-                            }
+                            onChange={(e) => updateGroup(groupIndex, { nameTh: e.target.value })}
                           />
                           <Button
                             type="button"
@@ -289,132 +261,122 @@ export function AddonGroupsCard({
                             </Button>
                           </div>
 
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={(event) => handleOptionDragEnd(groupIndex, event)}
+                          <SortableContext
+                            items={options.map((option) => option._key)}
+                            strategy={verticalListSortingStrategy}
                           >
-                            <SortableContext
-                              items={group.options
-                                .filter((option) => !option.isDeleted)
-                                .map((option) => option._key)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {options.length === 0 ? (
-                                <div className="text-sm text-muted-foreground italic">
-                                  No add-ons in this group yet.
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  {group.options.map((option, optionIndex) => {
-                                    if (option.isDeleted) return null;
+                            {options.length === 0 ? (
+                              <div className="text-sm text-muted-foreground italic">
+                                No add-ons in this group yet.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {group.options.map((option, optionIndex) => {
+                                  if (option.isDeleted) return null;
 
-                                    return (
-                                      <CreateMenuItemSortableRow
-                                        key={option._key}
-                                        id={option._key}
-                                      >
-                                        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/20 p-4">
-                                          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
-                                            <div className="space-y-1">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Name (English)
-                                              </Label>
-                                              <Input
-                                                value={option.nameEn}
-                                                onChange={(e) =>
-                                                  updateOption(groupIndex, optionIndex, {
-                                                    nameEn: e.target.value,
-                                                  })
-                                                }
-                                                placeholder="English"
-                                              />
-                                            </div>
-                                            <div className="space-y-1">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Name (Myanmar)
-                                              </Label>
-                                              <Input
-                                                value={option.nameMm}
-                                                onChange={(e) =>
-                                                  updateOption(groupIndex, optionIndex, {
-                                                    nameMm: e.target.value,
-                                                  })
-                                                }
-                                                placeholder="Myanmar"
-                                              />
-                                            </div>
-                                            <div className="space-y-1">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Name (Thai)
-                                              </Label>
-                                              <Input
-                                                value={option.nameTh}
-                                                onChange={(e) =>
-                                                  updateOption(groupIndex, optionIndex, {
-                                                    nameTh: e.target.value,
-                                                  })
-                                                }
-                                                placeholder="Thai"
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="flex flex-wrap items-center gap-3">
-                                            <div className="space-y-1 w-32">
-                                              <Label className="text-xs text-muted-foreground">
-                                                Price
-                                              </Label>
-                                              <Input
-                                                type="text"
-                                                inputMode="decimal"
-                                                value={option.price === 0 ? "" : option.price}
-                                                onChange={(e) => {
-                                                  const val = e.target.value;
-                                                  if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                                                    updateOption(groupIndex, optionIndex, {
-                                                      price: parseFloat(val) || 0,
-                                                    });
-                                                  }
-                                                }}
-                                              />
-                                            </div>
-                                            <div className="flex items-center gap-2 pb-1">
-                                              <Switch
-                                                checked={option.isAvailable}
-                                                onCheckedChange={(val) =>
-                                                  updateOption(groupIndex, optionIndex, {
-                                                    isAvailable: val,
-                                                  })
-                                                }
-                                                id={`addon-avail-${groupIndex}-${optionIndex}`}
-                                              />
-                                              <Label
-                                                htmlFor={`addon-avail-${groupIndex}-${optionIndex}`}
-                                                className="text-sm cursor-pointer whitespace-nowrap"
-                                              >
-                                                Available
-                                              </Label>
-                                            </div>
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              className="text-muted-foreground hover:text-destructive shrink-0"
-                                              onClick={() =>
-                                                softDeleteOption(groupIndex, optionIndex)
+                                  return (
+                                    <CreateMenuItemSortableRow
+                                      key={option._key}
+                                      id={option._key}
+                                    >
+                                      <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/20 p-4">
+                                        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 min-w-0">
+                                          <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">
+                                              Name (English)
+                                            </Label>
+                                            <Input
+                                              value={option.nameEn}
+                                              onChange={(e) =>
+                                                updateOption(groupIndex, optionIndex, {
+                                                  nameEn: e.target.value,
+                                                })
                                               }
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                              placeholder="English"
+                                            />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">
+                                              Name (Myanmar)
+                                            </Label>
+                                            <Input
+                                              value={option.nameMm}
+                                              onChange={(e) =>
+                                                updateOption(groupIndex, optionIndex, {
+                                                  nameMm: e.target.value,
+                                                })
+                                              }
+                                              placeholder="Myanmar"
+                                            />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">
+                                              Name (Thai)
+                                            </Label>
+                                            <Input
+                                              value={option.nameTh}
+                                              onChange={(e) =>
+                                                updateOption(groupIndex, optionIndex, {
+                                                  nameTh: e.target.value,
+                                                })
+                                              }
+                                              placeholder="Thai"
+                                            />
                                           </div>
                                         </div>
-                                      </CreateMenuItemSortableRow>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </SortableContext>
-                          </DndContext>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                          <div className="space-y-1 w-32">
+                                            <Label className="text-xs text-muted-foreground">
+                                              Price
+                                            </Label>
+                                            <Input
+                                              type="text"
+                                              inputMode="decimal"
+                                              value={option.price === 0 ? "" : option.price}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                                                  updateOption(groupIndex, optionIndex, {
+                                                    price: parseFloat(val) || 0,
+                                                  });
+                                                }
+                                              }}
+                                            />
+                                          </div>
+                                          <div className="flex items-center gap-2 pb-1">
+                                            <Switch
+                                              checked={option.isAvailable}
+                                              onCheckedChange={(val) =>
+                                                updateOption(groupIndex, optionIndex, {
+                                                  isAvailable: val,
+                                                })
+                                              }
+                                              id={`addon-avail-${group._key}-${option._key}`}
+                                            />
+                                            <Label
+                                              htmlFor={`addon-avail-${group._key}-${option._key}`}
+                                              className="text-sm cursor-pointer whitespace-nowrap"
+                                            >
+                                              Available
+                                            </Label>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-destructive shrink-0"
+                                            onClick={() => softDeleteOption(groupIndex, optionIndex)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </CreateMenuItemSortableRow>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </SortableContext>
                         </div>
                       </div>
                     </CreateMenuItemSortableRow>

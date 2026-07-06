@@ -213,6 +213,7 @@ export function buildAdminMenuItemDataJson(snapshot: MenuItemSubmitFormSnapshot)
 function buildVariantRowPayload(
   snapshot: MenuItemSubmitFormSnapshot,
   group: VariantGroupRow,
+  groupIndex: number,
   variant: VariantGroupRow["variants"][number],
   variantIndex: number,
 ) {
@@ -224,12 +225,14 @@ function buildVariantRowPayload(
     nameTh: variant.nameTh || "",
     price: variant.price || 0,
     isAvailable: variant.isAvailable !== false,
-    displayOrder: variant.displayOrder ?? variantIndex,
+    displayOrder: variant.displayOrder ?? variantIndex + 1,
     name_en: variant.nameEn || "",
     name_mm: variant.nameMm || "",
     name_th: variant.nameTh || "",
     is_available: variant.isAvailable !== false,
-    display_order: variant.displayOrder ?? variantIndex,
+    display_order: variant.displayOrder ?? variantIndex + 1,
+    variantGroupDisplayOrder: group.displayOrder ?? groupIndex + 1,
+    variant_group_display_order: group.displayOrder ?? groupIndex + 1,
     ...(snapshot.editingExistingItem && group.id
       ? { variantGroupId: group.id }
       : {}),
@@ -255,11 +258,11 @@ function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
 
   if (!snapshot.editingExistingItem) {
     return {
-      variants: activeGroups.flatMap((group) =>
+      variants: activeGroups.flatMap((group, groupIndex) =>
         group.variants
           .filter((variant) => !variant.isDeleted)
           .map((variant, variantIndex) =>
-            buildVariantRowPayload(snapshot, group, variant, variantIndex),
+            buildVariantRowPayload(snapshot, group, groupIndex, variant, variantIndex),
           ),
       ),
       deletedVariantGroupIds: [] as number[],
@@ -270,11 +273,11 @@ function buildVariantsPayload(snapshot: MenuItemSubmitFormSnapshot) {
     .filter((group) => group.isDeleted && group.id)
     .map((group) => group.id!);
 
-  const activeVariants = activeGroups.flatMap((group) =>
+  const activeVariants = activeGroups.flatMap((group, groupIndex) =>
     group.variants
       .filter((variant) => !variant.isDeleted)
       .map((variant, variantIndex) =>
-        buildVariantRowPayload(snapshot, group, variant, variantIndex),
+        buildVariantRowPayload(snapshot, group, groupIndex, variant, variantIndex),
       ),
   );
 
