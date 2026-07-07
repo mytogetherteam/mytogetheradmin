@@ -11,7 +11,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, ClipboardList, Wifi, WifiOff, Eye, X, CheckCircle2, XCircle } from "lucide-react";
+import { RefreshCw, ClipboardList, Wifi, WifiOff, Eye, X, CheckCircle2, XCircle, VolumeX } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { ShopSelect } from "@/components/ShopSelect";
 import { authService } from "@/services/authService";
@@ -68,6 +68,8 @@ export default function OrderBoard() {
 
     // ── Audio Alert for Pending Orders ─────────────────────────────────────────
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [silencedOrderId, setSilencedOrderId] = useState<number>(0);
+    const [isRinging, setIsRinging] = useState(false);
     
     useEffect(() => {
         const audio = new Audio('/alertsound.mp3');
@@ -81,15 +83,29 @@ export default function OrderBoard() {
 
     useEffect(() => {
         if (!audioRef.current) return;
-        const hasPending = orders.some((o: Order) => o.status === "PENDING");
         
-        if (hasPending) {
+        const pendingOrders = orders.filter((o: Order) => o.status === "PENDING");
+        const maxPendingId = pendingOrders.length > 0 
+            ? Math.max(...pendingOrders.map(o => o.id)) 
+            : 0;
+        
+        if (maxPendingId > silencedOrderId) {
+            setIsRinging(true);
             audioRef.current.play().catch((e) => console.log("Audio play blocked by browser:", e));
         } else {
+            setIsRinging(false);
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
-    }, [orders]);
+    }, [orders, silencedOrderId]);
+
+    const stopRinging = () => {
+        const pendingOrders = orders.filter((o: Order) => o.status === "PENDING");
+        if (pendingOrders.length > 0) {
+            const maxId = Math.max(...pendingOrders.map(o => o.id));
+            setSilencedOrderId(maxId);
+        }
+    };
 
     // Immediately re-sync after a WebSocket reconnect to recover orders that
     // arrived during the disconnect window (reconnectDelay is 5 s).
@@ -343,6 +359,19 @@ export default function OrderBoard() {
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
             />
+
+            {isRinging && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <Button
+                        size="lg"
+                        className="rounded-full shadow-lg h-14 px-6 bg-red-600 hover:bg-red-700 text-white animate-bounce"
+                        onClick={stopRinging}
+                    >
+                        <VolumeX className="h-5 w-5 mr-2" />
+                        Stop Alert
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
