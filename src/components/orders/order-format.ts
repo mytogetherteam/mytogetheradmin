@@ -36,6 +36,34 @@ export function renderAddress(addr: string | Address | null | undefined): string
     return "Invalid address format";
 }
 
+/**
+ * Compose the customer's delivery address from the flat order fields the admin
+ * API returns (address / buildingName / floor / note). Falls back to a
+ * structured `deliveryAddress` payload if one is ever present. Returns null when
+ * no address details exist (e.g. pick-up orders), so callers can hide the block.
+ */
+export function orderAddressText(order: {
+    address?: string | null;
+    addressMm?: string | null;
+    buildingName?: string | null;
+    floor?: string | null;
+    note?: string | null;
+    deliveryAddress?: string | Address | null;
+}): string | null {
+    if (order.deliveryAddress) {
+        const rendered = renderAddress(order.deliveryAddress);
+        return rendered === "N/A" ? null : rendered;
+    }
+    const addr: Address = {
+        buildingName: order.buildingName ?? undefined,
+        floor: order.floor ?? undefined,
+        address: order.address ?? order.addressMm ?? undefined,
+        note: order.note ?? undefined,
+    };
+    const hasAny = [addr.buildingName, addr.floor, addr.address, addr.note].some(Boolean);
+    return hasAny ? renderAddress(addr) : null;
+}
+
 interface Price {
     displayValue?: string;
     amount?: number;

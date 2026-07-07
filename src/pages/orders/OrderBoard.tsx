@@ -18,7 +18,7 @@ import { authService } from "@/services/authService";
 import { AdminRole, hasAccess } from "@/utils/rbac";
 import { useSuperAdminOrderSocket } from "@/hooks/notifications/useSuperAdminOrderSocket";
 import { useActiveOrders, orderKeys } from "@/hooks/orders/useOrders";
-import { STATUS_COLORS } from "@/components/orders/order-format";
+import { STATUS_COLORS, orderAddressText } from "@/components/orders/order-format";
 import { formatRelativeTime, formatAmount } from "@/lib/helpers";
 
 const ALL = "ALL";
@@ -221,6 +221,7 @@ export default function OrderBoard() {
                             <TableRow>
                                 <TableHead>Order</TableHead>
                                 <TableHead>Customer</TableHead>
+                                <TableHead>Address</TableHead>
                                 <TableHead>Shop</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Items</TableHead>
@@ -233,14 +234,14 @@ export default function OrderBoard() {
                             {showSkeleton ? (
                                 [...Array(6)].map((_, i) => (
                                     <TableRow key={i}>
-                                        {[...Array(8)].map((__, j) => (
+                                        {[...Array(9)].map((__, j) => (
                                             <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                         ))}
                                     </TableRow>
                                 ))
                             ) : orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                                         <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
                                         No orders match the current filters
                                     </TableCell>
@@ -263,6 +264,11 @@ export default function OrderBoard() {
                                         {order.userPhone && (
                                             <div className="text-[10px] text-muted-foreground">{order.userPhone}</div>
                                         )}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                                        <span className="line-clamp-2 break-words" title={orderAddressText(order) ?? undefined}>
+                                            {orderAddressText(order) ?? "—"}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
