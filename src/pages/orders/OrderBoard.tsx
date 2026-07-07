@@ -66,6 +66,31 @@ export default function OrderBoard() {
     const totalPages = Math.max(1, data?.totalPages ?? 1);
     const showSkeleton = isFetching && orders.length === 0;
 
+    // ── Audio Alert for Pending Orders ─────────────────────────────────────────
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    
+    useEffect(() => {
+        const audio = new Audio('/alertsound.mp3');
+        audio.loop = true;
+        audioRef.current = audio;
+        return () => {
+            audio.pause();
+            audio.src = "";
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!audioRef.current) return;
+        const hasPending = orders.some((o: Order) => o.status === "PENDING");
+        
+        if (hasPending) {
+            audioRef.current.play().catch((e) => console.log("Audio play blocked by browser:", e));
+        } else {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    }, [orders]);
+
     // Immediately re-sync after a WebSocket reconnect to recover orders that
     // arrived during the disconnect window (reconnectDelay is 5 s).
     const handleWsReconnect = useCallback(() => {
