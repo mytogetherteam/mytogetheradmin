@@ -86,7 +86,7 @@ export default function OrderBoard() {
         
         const pendingOrders = orders.filter((o: Order) => o.status === "PENDING");
         const maxPendingId = pendingOrders.length > 0 
-            ? Math.max(...pendingOrders.map(o => o.id)) 
+            ? Math.max(...pendingOrders.map(o => Number(o.id))) 
             : 0;
         
         if (maxPendingId > silencedOrderId) {
@@ -102,7 +102,7 @@ export default function OrderBoard() {
     const stopRinging = () => {
         const pendingOrders = orders.filter((o: Order) => o.status === "PENDING");
         if (pendingOrders.length > 0) {
-            const maxId = Math.max(...pendingOrders.map(o => o.id));
+            const maxId = Math.max(...pendingOrders.map(o => Number(o.id)));
             setSilencedOrderId(maxId);
         }
     };
