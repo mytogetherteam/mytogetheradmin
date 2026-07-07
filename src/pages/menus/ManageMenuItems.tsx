@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { getMenuItemPriceDisplay } from "@/lib/menu-item-price-display";
 import { Badge } from "@/components/ui/badge";
+import { ViewCountCell } from "@/components/ViewCountCell";
 
 export default function ManageMenuItems() {
     const navigate = useNavigate();
@@ -351,6 +352,7 @@ export default function ManageMenuItems() {
                                             <TableHead>Shop</TableHead>
                                             <TableHead>Category</TableHead>
                                             <TableHead>M. Category</TableHead>
+                                            <TableHead>Views</TableHead>
                                             <TableHead>Flags</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -419,6 +421,9 @@ export default function ManageMenuItems() {
                                                             <span className="text-muted-foreground text-xs">-</span>
                                                         )}
                                                     </TableCell>
+                                                    <TableCell>
+                                                        <ViewCountCell count={item.viewCount} />
+                                                    </TableCell>
                                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                                         <div className="flex flex-col gap-2">
                                                             <div className="flex items-center justify-between gap-2 max-w-[120px]">
@@ -439,7 +444,7 @@ export default function ManageMenuItems() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                                     No results found.
                                                 </TableCell>
                                             </TableRow>
