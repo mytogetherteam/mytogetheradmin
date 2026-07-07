@@ -105,6 +105,7 @@ export interface Shop {
   menuCategoryCount?: number;
   menuItemCount?: number;
   cuisineId?: number;
+  viewCount?: number;
 }
 
 export interface DistrictDTO {
@@ -272,6 +273,7 @@ export interface AdminShopProfileListItem {
   shopCategory?: ShopCategoryDTO | null;
   city?: CityDTO | null;
   district?: DistrictDTO | null;
+  viewCount?: number;
 }
 
 export interface AdminShopProfileListResponse {
@@ -307,6 +309,7 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     isActive: row.isActive,
     isVerified: row.isVerified,
     taxEnable: row.taxEnable,
+    viewCount: row.viewCount ?? 0,
   };
 }
 export interface ShopFormDataDTO {

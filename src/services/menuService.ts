@@ -91,6 +91,7 @@ export interface MenuItem {
     updatedBy?: AdminAuditUser | null;
     createdById?: number | null;
     updatedById?: number | null;
+    viewCount?: number;
 }
 
 export interface Option {

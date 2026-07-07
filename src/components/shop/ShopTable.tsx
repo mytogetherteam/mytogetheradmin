@@ -21,6 +21,7 @@ import type { SortConfig } from "@/lib/sort-utils"
 import {  Edit, Trash2, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TableImage } from "../TableImage"
+import { ViewCountCell } from "../ViewCountCell"
 
 export type ShopTableVariant = "full" | "adminList"
 
@@ -83,6 +84,7 @@ export function ShopTable({
                             <TableHead className="w-[100px]">Active</TableHead>
                             <TableHead className="w-[100px]">Verified</TableHead>
                             <TableHead className="w-[100px]">Tax Enable</TableHead>
+                            <TableHead className="w-[100px]">Views</TableHead>
                             <TableHead className="text-right min-w-[188px] w-[188px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -187,6 +189,9 @@ export function ShopTable({
                                                 </span>
                                             </div>
                                         </TableCell>
+                                        <TableCell className="align-middle">
+                                            <ViewCountCell count={shop.viewCount} />
+                                        </TableCell>
                                         <TableCell className="text-right align-middle p-2">
                                             <div
                                                 className="inline-flex flex-nowrap items-center justify-end gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5"
@@ -240,7 +245,7 @@ export function ShopTable({
                             })
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                     No results.
                                 </TableCell>
                             </TableRow>
