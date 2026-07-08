@@ -38,7 +38,7 @@ function createEmptyOption(displayOrder: number): OptionRow {
     nameEn: "",
     nameMm: "",
     nameTh: "",
-    price: 0,
+    price: undefined,
     isAvailable: true,
     displayOrder,
   };
@@ -545,12 +545,21 @@ export function AddonGroupsCard({
                                             <Input
                                               type="text"
                                               inputMode="decimal"
-                                              value={option.price === 0 ? "" : option.price}
+                                              value={
+                                                option.price === undefined ||
+                                                option.price === null ||
+                                                Number.isNaN(option.price)
+                                                  ? ""
+                                                  : option.price
+                                              }
                                               onChange={(e) => {
                                                 const val = e.target.value;
                                                 if (val === "" || /^\d*\.?\d*$/.test(val)) {
                                                   updateOption(groupIndex, optionIndex, {
-                                                    price: parseFloat(val) || 0,
+                                                    price:
+                                                      val.trim() === ""
+                                                        ? undefined
+                                                        : parseFloat(val),
                                                   });
                                                 }
                                               }}

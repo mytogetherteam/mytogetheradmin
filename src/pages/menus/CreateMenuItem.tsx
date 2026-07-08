@@ -25,7 +25,7 @@ import {
 } from "@/pages/menus/create-menu-item-mappers";
 import { AddonGroupsCard } from "@/pages/menus/components/AddonGroupsCard";
 import { VariantGroupsCard } from "@/pages/menus/components/VariantGroupsCard";
-import { buildAdminMenuItemDataJson, MEAL_TYPE_OPTIONS } from "@/pages/menus/create-menu-item-payload";
+import { buildAdminMenuItemDataJson, MEAL_TYPE_OPTIONS, validateMenuItemChildPrices, validateMenuItemOriginalPrice } from "@/pages/menus/create-menu-item-payload";
 import {
     formatPercentageForInput,
     formatPriceForInput,
@@ -415,6 +415,18 @@ export default function CreateMenuItem() {
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const originalPriceError = validateMenuItemOriginalPrice(originalPrice);
+        if (originalPriceError) {
+            toast.error(originalPriceError);
+            return;
+        }
+
+        const childPriceError = validateMenuItemChildPrices({ variantGroups, optionGroups });
+        if (childPriceError) {
+            toast.error(childPriceError);
+            return;
+        }
 
         setSubmitting(true);
         try {
