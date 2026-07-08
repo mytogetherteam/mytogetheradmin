@@ -39,7 +39,7 @@ function createEmptyVariant(displayOrder: number): VariantRow {
     nameEn: "",
     nameMm: "",
     nameTh: "",
-    price: 0,
+    price: undefined,
     isAvailable: true,
     displayOrder,
   };
@@ -531,7 +531,10 @@ export function VariantGroupsCard({
                                             value={variant.price}
                                             onValueChange={(val) =>
                                               updateVariant(groupIndex, variantIndex, {
-                                                price: parseFloat(val) || 0,
+                                                price:
+                                                  val.trim() === ""
+                                                    ? undefined
+                                                    : parseFloat(val),
                                               })
                                             }
                                           />
