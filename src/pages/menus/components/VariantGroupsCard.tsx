@@ -528,7 +528,7 @@ export function VariantGroupsCard({
                                           <span className="text-sm font-medium">Price:</span>
                                           <PriceInput
                                             placeholder="0"
-                                            value={variant.price}
+                                            value={variant.price ?? ""}
                                             onValueChange={(val) =>
                                               updateVariant(groupIndex, variantIndex, {
                                                 price:
