@@ -1015,6 +1015,39 @@ export default function CreateShopRestaurant() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField
                                                 control={form.control}
+                                                name="telegramUsername"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Telegram Username</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="shopowner" {...field} />
+                                                        </FormControl>
+                                                        <FormDescription>
+                                                            Shop owner&apos;s Telegram username (without @). They must open the bot and send /start to connect.
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            {isEditMode && ui.shop && (
+                                                <div className="flex items-end pb-2">
+                                                    <div className="rounded-md border px-3 py-2 text-sm w-full">
+                                                        <div className="font-medium mb-1">Telegram Connection</div>
+                                                        {ui.shop.telegramConnected ? (
+                                                            <span className="text-green-600">Connected</span>
+                                                        ) : ui.shop.telegramUsername ? (
+                                                            <span className="text-amber-600">Waiting for /start from @{ui.shop.telegramUsername}</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">Not configured</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
                                                 name="latitude"
                                                 render={({ field }) => (
                                                     <FormItem>

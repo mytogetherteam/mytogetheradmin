@@ -62,6 +62,7 @@ export const shopFormSchema = z.object({
     adminUsername: z.string().optional(),
     adminPassword: z.string().min(6, "Password must be at least 6 characters long").optional().or(z.literal("")),
     adminConfirmPassword: z.string().min(6, "Confirm password must be at least 6 characters long").optional().or(z.literal("")),
+    telegramUsername: z.string().optional().or(z.literal("")),
 }).refine((data) => {
     if (data.adminPassword || data.adminConfirmPassword) {
         return data.adminPassword === data.adminConfirmPassword;

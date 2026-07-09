@@ -41,6 +41,7 @@ export type AdminShopProfileFormFields = {
   adminUsername?: string;
   adminPassword?: string;
   adminConfirmPassword?: string;
+  telegramUsername?: string;
 };
 
 /** Form fields for POST /api/admin/shop-profile — must match CreateAdminShopProfileDto (multipart). */
@@ -118,6 +119,12 @@ export function appendCreateAdminShopProfileFields(
   if (p.adminPassword) {
     fd.append('adminPassword', p.adminPassword);
   }
+  if (p.telegramUsername !== undefined) {
+    fd.append(
+      'telegramUsername',
+      (p.telegramUsername || '').replace(/^@+/, '').trim(),
+    );
+  }
 }
 
 export function shopFormValuesToAdminProfileFields(
@@ -160,6 +167,7 @@ export function shopFormValuesToAdminProfileFields(
     adminUsername: data.adminUsername,
     adminPassword: data.adminPassword,
     adminConfirmPassword: data.adminConfirmPassword,
+    telegramUsername: data.telegramUsername || '',
   };
 }
 
