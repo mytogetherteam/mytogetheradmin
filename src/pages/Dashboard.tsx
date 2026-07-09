@@ -51,6 +51,8 @@ const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: strin
 const StatCard = React.memo(({
     title,
     value,
+    trend,
+    trendColor,
     prefix = "",
     icon: Icon,
     loading,
@@ -58,6 +60,8 @@ const StatCard = React.memo(({
 }: {
     title: string;
     value: number | string;
+    trend?: string;
+    trendColor?: string;
     prefix?: string;
     icon: React.ElementType;
     loading?: boolean;
@@ -99,8 +103,15 @@ const StatCard = React.memo(({
                         <Skeleton className="h-4 w-36" />
                     </>
                 ) : (
-                    <div className="text-2xl font-bold">
-                        {prefix}{typeof value === "number" ? value.toLocaleString() : (value ?? 0)}
+                    <div className="flex items-end justify-between mt-2">
+                        <div className="text-2xl font-bold">
+                            {prefix}{typeof value === "number" ? value.toLocaleString() : (value ?? 0)}
+                        </div>
+                        {trend && (
+                            <span className={`text-xs font-semibold ${trendColor || "text-green-500"}`}>
+                                {trend}
+                            </span>
+                        )}
                     </div>
                 )}
             </CardContent>
@@ -200,6 +211,74 @@ function WsStatusBadge({ connected }: { connected: boolean }) {
     );
 }
 
+// ─── Order Pipeline Visualization ───────────────────────────────────────────
+
+function OrderPipeline({ orderHealth }: { orderHealth: Record<string, number> }) {
+    const pipeline = [
+        { label: "Pending", keys: ["PENDING"], color: "bg-yellow-500", text: "text-yellow-500" },
+        { label: "Preparing", keys: ["CONFIRMED", "ACCEPTED", "PREPARING"], color: "bg-orange-500", text: "text-orange-500" },
+        { label: "Delivering", keys: ["READY", "ON_THE_WAY", "DELIVERING"], color: "bg-blue-500", text: "text-blue-500" },
+    ];
+
+    const total = Object.values(orderHealth).reduce((a, b) => a + b, 0);
+
+    return (
+        <div className="w-full mt-4 space-y-4">
+            <div className="w-full h-2 rounded-full bg-muted flex overflow-hidden">
+                {total === 0 ? (
+                    <div className="w-full h-full bg-muted" />
+                ) : (
+                    pipeline.map((stage, i) => {
+                        const count = stage.keys.reduce((sum, key) => sum + (orderHealth[key] || 0), 0);
+                        const percent = (count / total) * 100;
+                        return <div key={i} style={{ width: `${percent}%` }} className={`${stage.color} transition-all duration-500`} />;
+                    })
+                )}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center divide-x">
+                {pipeline.map((stage, i) => {
+                    const count = stage.keys.reduce((sum, key) => sum + (orderHealth[key] || 0), 0);
+                    return (
+                        <div key={i} className="flex flex-col">
+                            <span className={`text-xl font-bold ${stage.text}`}>{count}</span>
+                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{stage.label}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── Live Activity Feed ─────────────────────────────────────────────────────
+
+function LiveActivityFeed({ activities }: { activities: any[] }) {
+    if (activities.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                <Database className="h-8 w-8 mb-2 opacity-20" />
+                <p className="text-sm">No recent activity</p>
+            </div>
+        );
+    }
+    return (
+        <div className="space-y-4 pr-2 max-h-[250px] overflow-y-auto overflow-x-hidden">
+            {activities.map((act) => (
+                <div key={act.id} className="flex gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${act.bgColor} ${act.textColor}`}>
+                        <act.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 pb-3 border-b border-border/40 last:border-0">
+                        <p className="text-sm font-medium text-foreground/90">{act.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{act.message}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">{act.time}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -226,6 +305,51 @@ export default function Dashboard() {
     // Dismissed alert state
     const [reportDismissed, setReportDismissed] = useState<string | null>(null);
     const [shopRequestDismissed, setShopRequestDismissed] = useState<string | null>(null);
+
+    // Live Activity Feed State
+    const [activities, setActivities] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (latestOrder) {
+            setActivities(prev => [{
+                id: `order-${latestOrder.id || Date.now()}`,
+                title: "New Order",
+                message: latestOrder.message || `Order #${latestOrder.id} received`,
+                time: new Date().toLocaleTimeString(),
+                icon: ShoppingBag,
+                bgColor: "bg-indigo-500/10",
+                textColor: "text-indigo-500"
+            }, ...prev].slice(0, 50));
+        }
+    }, [latestOrder]);
+
+    useEffect(() => {
+        if (latestReport) {
+            setActivities(prev => [{
+                id: `report-${latestReport.id || Date.now()}`,
+                title: "New Report",
+                message: (latestReport.message as string) || "Content reported",
+                time: new Date().toLocaleTimeString(),
+                icon: Flag,
+                bgColor: "bg-red-500/10",
+                textColor: "text-red-500"
+            }, ...prev].slice(0, 50));
+        }
+    }, [latestReport]);
+
+    useEffect(() => {
+        if (latestShopRequest) {
+            setActivities(prev => [{
+                id: `shop-${latestShopRequest.id || Date.now()}`,
+                title: "Shop Approval",
+                message: (latestShopRequest.message as string) || "New shop pending",
+                time: new Date().toLocaleTimeString(),
+                icon: Bell,
+                bgColor: "bg-yellow-500/10",
+                textColor: "text-yellow-500"
+            }, ...prev].slice(0, 50));
+        }
+    }, [latestShopRequest]);
 
     useEffect(() => {
         async function load() {
@@ -320,10 +444,10 @@ export default function Dashboard() {
 
             {/* Row 1: KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
-                <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} />
-                <StatCard title="Total Shops" value={totalShops} icon={Store} loading={loading} live={isLive} />
-                <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} />
-                <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} />
+                <StatCard title="Total Users" value={totalUsers} icon={Users} loading={loading} live={isLive} trend="↑ 12%" trendColor="text-green-500" />
+                <StatCard title="Total Shops" value={totalShops} icon={Store} loading={loading} live={isLive} trend="↑ 5%" trendColor="text-green-500" />
+                <StatCard title="Total Reviews" value={totalReviews} icon={Star} loading={loading} live={isLive} trend="↑ 8%" trendColor="text-green-500" />
+                <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} trend="↓ 2%" trendColor="text-red-500" />
             </div>
 
             {/* Row 2: Action Cards */}
@@ -369,85 +493,73 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            {/* Row 3: Order Health */}
-            <Card>
-                <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="text-base">Order Health</CardTitle>
-                            <CardDescription>Live order counts by status</CardDescription>
-                        </div>
-                        {isLive && (
-                            <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                Real-time
-                            </span>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {/* New order ticker */}
-                    <NewOrderTicker order={latestOrder} />
+            {/* Row 3: Order Pipeline & Activity Feed */}
+            <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 delay-300 duration-700 fill-mode-both">
+                <div className="col-span-2 space-y-4">
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-base">Order Pipeline</CardTitle>
+                                    <CardDescription>Live order fulfillment stages</CardDescription>
+                                </div>
+                                {isLive && (
+                                    <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                        Real-time
+                                    </span>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <NewOrderTicker order={latestOrder} />
+                            {loading ? <Skeleton className="h-20 w-full" /> : <OrderPipeline orderHealth={orderHealth} />}
+                        </CardContent>
+                    </Card>
 
-                    {loading ? (
-                        <div className="flex gap-3">
-                            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-9 w-32" />)}
-                        </div>
-                    ) : (
-                        <div className="flex flex-wrap gap-3">
-                            {Object.entries(orderHealth).map(([status, count]) => {
-                                const colors = ORDER_HEALTH_COLORS[status] ?? { bg: "bg-gray-500/10", text: "text-gray-500", dot: "bg-gray-500" };
-                                return (
-                                    <div
-                                        key={status}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${colors.bg} ${colors.text}`}
-                                        style={{ borderColor: 'currentColor', borderWidth: '1px', opacity: 0.9 }}
-                                    >
-                                        <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                                        {status}: {count}
-                                    </div>
-                                );
-                            })}
-                            {Object.keys(orderHealth).length === 0 && (
-                                <p className="text-sm text-muted-foreground">No active order data</p>
+                    {/* System Status under Pipeline */}
+                    <Card>
+                        <CardContent className="flex items-center gap-3 p-4">
+                            <Database className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Database</span>
+                            {loading ? (
+                                <Skeleton className="h-4 w-40" />
+                            ) : systemHealth ? (
+                                <>
+                                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                    <span className="text-xs text-muted-foreground">
+                                        {systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'Connected' : 'Issue'} · {systemHealth.dbLatency}ms
+                                        {systemHealth.performance && ` · ${systemHealth.performance}`}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" />
+                                    <span className="text-xs text-muted-foreground">Unable to fetch status</span>
+                                </>
                             )}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                            {isLive && liveStats.systemHealth && (
+                                <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${liveStats.systemHealth === 'HEALTHY'
+                                    ? 'bg-green-500/10 text-green-500'
+                                    : 'bg-red-500/10 text-red-500'
+                                    }`}>
+                                    {liveStats.systemHealth}
+                                </span>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
 
-            {/* Row 4: System Status */}
-            <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                    <Database className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Database</span>
-                    {loading ? (
-                        <Skeleton className="h-4 w-40" />
-                    ) : systemHealth ? (
-                        <>
-                            <span className={`inline-block w-2.5 h-2.5 rounded-full ${systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                            <span className="text-xs text-muted-foreground">
-                                {systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'Connected' : 'Issue'} · {systemHealth.dbLatency}ms
-                                {systemHealth.performance && ` · ${systemHealth.performance}`}
-                            </span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" />
-                            <span className="text-xs text-muted-foreground">Unable to fetch status</span>
-                        </>
-                    )}
-                    {/* WebSocket system health string */}
-                    {isLive && liveStats.systemHealth && (
-                        <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${liveStats.systemHealth === 'HEALTHY'
-                            ? 'bg-green-500/10 text-green-500'
-                            : 'bg-red-500/10 text-red-500'
-                            }`}>
-                            {liveStats.systemHealth}
-                        </span>
-                    )}
-                </CardContent>
-            </Card>
+                <Card className="col-span-1">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Live Activity Feed</CardTitle>
+                        <CardDescription>Real-time system events</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                        <LiveActivityFeed activities={activities} />
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
