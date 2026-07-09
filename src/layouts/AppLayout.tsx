@@ -37,7 +37,7 @@ export default function AppLayout() {
         <AdminWebSocketProvider>
             {/* Global Background Image with fade opacity */}
             <div 
-                className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat opacity-15 pointer-events-none"
+                className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat opacity-15 pointer-events-none blur-md"
                 style={{ backgroundImage: 'url(/main-bg.png)' }}
             />
             <SidebarProvider className="h-screen w-full bg-transparent">
