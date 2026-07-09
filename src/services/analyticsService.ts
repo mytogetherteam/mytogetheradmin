@@ -68,6 +68,31 @@ export interface DeviceStats {
   percentage: number;
 }
 
+export interface ExtendedDashboardStats {
+  dau: number;
+  mau: number;
+  couponUsage: {
+    count: number;
+    totalDiscount: number;
+  };
+  peakHours: Array<{ hour: number; count: number }>;
+  geoHotspots: Array<{ district: string; count: number }>;
+  categorySales: Array<{ category: string; count: number; total: number }>;
+  fleetStatus: {
+    active: number;
+    busy: number;
+    total: number;
+  };
+  avgDeliveryTime: number;
+  topSearches: Array<{ term: string; count: number }>;
+}
+
+export interface FeatureUsageData {
+  totalOrders: number;
+  cancelledOrders: number;
+  cancellationRatePercent: number;
+}
+
 export interface CancellationRateData {
   totalOrders: number;
   cancelledOrders: number;
@@ -177,6 +202,16 @@ class AnalyticsService {
 
   async getDeviceDetail(deviceId: string): Promise<Record<string, unknown>> {
     return apiClient.get<Record<string, unknown>>(config.endpoints.admin.analytics.deviceDetail(deviceId));
+  }
+
+  async getExtendedDashboardStats(): Promise<ExtendedDashboardStats | null> {
+    try {
+      const response = await apiClient.get<{ data: ExtendedDashboardStats }>('/admin/analytics/dashboard-extended');
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch extended dashboard stats:', error);
+      return null;
+    }
   }
 }
 

@@ -10,6 +10,13 @@ import {
 import {
     Area,
     AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -20,7 +27,7 @@ import { analyticsService, RevenueData, PopularShop } from "@/services/analytics
 import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { authService } from "@/services/authService";
-import { Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, MessageSquare } from "lucide-react";
+import { Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, MessageSquare, Clock, Ticket, Search, MapPin, Activity, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
@@ -299,6 +306,9 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Extended Stats
+    const [extendedStats, setExtendedStats] = useState<any>(null);
+
     // WebSocket live data - enabled: true ensures connection is active on Dashboard
     const { connected, systemStats, latestReport, latestShopRequest, latestOrder } = useAdminWebSocket({ enabled: true });
 
@@ -355,18 +365,20 @@ export default function Dashboard() {
         async function load() {
             try {
                 setLoading(true);
-                const [cardsData, revenueData, shopsData, healthData, sysHealth] = await Promise.all([
+                const [cardsData, revenueData, shopsData, healthData, sysHealth, extendedData] = await Promise.all([
                     dashboardService.getCardCounts().catch(() => ({})),
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
                     isMasterAdmin ? analyticsService.getSystemHealth().catch(() => null) : Promise.resolve(null),
+                    analyticsService.getExtendedDashboardStats().catch(() => null),
                 ]);
                 setCardCounts(cardsData);
                 setRevenue(revenueData);
                 setPopularShops(shopsData);
                 setOrderHealth(healthData);
                 setSystemHealth(sysHealth);
+                setExtendedStats(extendedData);
             } catch {
                 setError("Failed to load dashboard data.");
             } finally {
@@ -450,48 +462,6 @@ export default function Dashboard() {
                 <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} trend="↓ 2%" trendColor="text-red-500" />
             </div>
 
-            {/* Row 2: Action Cards */}
-            <div className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 delay-150 duration-700 fill-mode-both">
-                <Card
-                    className="cursor-pointer border-yellow-500/30 hover:border-yellow-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
-                    onClick={() => navigate("/shops/manage?tab=pending")}
-                >
-                    <CardContent className="flex items-center gap-4 p-4">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-yellow-500/10">
-                            <Building2 className="h-5 w-5 text-yellow-500" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-medium">Shops Pending Approval</p>
-                            <p className="text-xs text-muted-foreground">Requires your review</p>
-                        </div>
-                        {loading ? (
-                            <Skeleton className="h-8 w-12" />
-                        ) : (
-                            <span className="text-2xl font-bold text-yellow-500">{shopPendingCount}</span>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card
-                    className="cursor-pointer border-red-500/30 hover:border-red-500/60 transition-all hover:shadow-md hover:-translate-y-0.5"
-                    onClick={() => navigate("/shop-feedback/manage")}
-                >
-                    <CardContent className="flex items-center gap-4 p-4">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-500/10">
-                            <MessageSquare className="h-5 w-5 text-red-500" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-medium">Shop Feedback</p>
-                            <p className="text-xs text-muted-foreground">Needs attention</p>
-                        </div>
-                        {loading ? (
-                            <Skeleton className="h-8 w-12" />
-                        ) : (
-                            <span className="text-2xl font-bold text-red-500">{shopFeedbackCount}</span>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
 
             {/* Row 3: Order Pipeline & Activity Feed */}
             <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 delay-300 duration-700 fill-mode-both">
@@ -647,7 +617,7 @@ export default function Dashboard() {
                                             </div>
                                             <div className="shrink-0 text-right">
                                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-primary/5 text-primary border-primary/20">
-                                                    {views.toLocaleString()} views
+                                                    {views.toLocaleString()} delivered
                                                 </Badge>
                                             </div>
                                         </div>
@@ -662,6 +632,109 @@ export default function Dashboard() {
                     </CardContent>
                 </Card>
             </div>
+        </div>
+
+            {/* Extended Analytics Row 1: Operations & Marketing */}
+            {extendedStats && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
+                    <StatCard title="Daily Active Users" value={extendedStats.dau} icon={Activity} trend={`MAU: ${extendedStats.mau}`} trendColor="text-blue-500" />
+                    <StatCard title="Avg. Delivery Time" value={`${extendedStats.avgDeliveryTime}m`} icon={Clock} trend="Ideal: < 30m" trendColor="text-green-500" />
+                    <StatCard title="Active Fleet" value={extendedStats.fleetStatus.active} icon={Bike} trend={`${extendedStats.fleetStatus.busy} Busy`} trendColor="text-orange-500" />
+                    <StatCard title="Coupons Used" value={extendedStats.couponUsage.count} icon={Ticket} trend={`$${extendedStats.couponUsage.totalDiscount} saved`} trendColor="text-purple-500" />
+                </div>
+            )}
+
+            {/* Extended Analytics Row 2: Charts */}
+            {extendedStats && (
+                <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 delay-150 duration-700 fill-mode-both">
+                    <Card className="col-span-1">
+                        <CardHeader>
+                            <CardTitle>Sales by Category</CardTitle>
+                            <CardDescription>Top 5 categories (30 days)</CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={extendedStats.categorySales}
+                                        dataKey="total"
+                                        nameKey="category"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                    >
+                                        {extendedStats.categorySales.map((_: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"][index % 5]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="col-span-2">
+                        <CardHeader>
+                            <CardTitle>Peak Ordering Hours</CardTitle>
+                            <CardDescription>Order volume by hour of day (30 days)</CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={extendedStats.peakHours}>
+                                    <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                                    <Tooltip cursor={{ fill: 'transparent' }} />
+                                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Extended Analytics Row 3: Lists */}
+            {extendedStats && (
+                <div className="grid gap-4 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 delay-300 duration-700 fill-mode-both">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Geographic Hotspots</CardTitle>
+                            <CardDescription>Top districts by order volume</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {extendedStats.geoHotspots.map((geo: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold">{i + 1}</div>
+                                            <span className="text-sm font-medium">{geo.district}</span>
+                                        </div>
+                                        <Badge variant="secondary">{geo.count} orders</Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Search className="h-4 w-4" /> Top Searched Terms</CardTitle>
+                            <CardDescription>What users are looking for</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                                {extendedStats.topSearches.map((search: any, i: number) => (
+                                    <Badge key={i} variant="outline" className="px-3 py-1.5 text-sm">
+                                        {search.term} <span className="ml-2 text-muted-foreground text-xs">{search.count}</span>
+                                    </Badge>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }
