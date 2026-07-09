@@ -141,7 +141,7 @@ class AnalyticsService {
   }
 
   async getSystemHealth(): Promise<{ dbLatency: number; status: string }> {
-    return apiClient.get<{ dbLatency: number; status: string }>('/admin/analytics/system-health');
+    return apiClient.get<{ dbLatency: number; status: string }>('/api/admin/analytics/system-health');
   }
 
   async getFeedPerformance(): Promise<{ overallCtr: number }> {
@@ -206,7 +206,7 @@ class AnalyticsService {
 
   async getExtendedDashboardStats(): Promise<ExtendedDashboardStats | null> {
     try {
-      const response = await apiClient.get<ExtendedDashboardStats>('/admin/analytics/dashboard-extended');
+      const response = await apiClient.get<ExtendedDashboardStats>('/api/admin/analytics/dashboard-extended');
       return response;
     } catch (error) {
       console.error('Failed to fetch extended dashboard stats:', error);
