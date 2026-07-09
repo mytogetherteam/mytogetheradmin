@@ -255,6 +255,7 @@ export async function fetchShopRestaurantEditBundle(
     paymentMethodIds,
     shopPaymentMethods,
     operatingHours: operatingHoursForForm,
+    telegramUsername: shop.telegramUsername || '',
   };
 
   const forMedia = {

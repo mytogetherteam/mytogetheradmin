@@ -106,6 +106,8 @@ export interface Shop {
   menuItemCount?: number;
   cuisineId?: number;
   viewCount?: number;
+  telegramUsername?: string | null;
+  telegramConnected?: boolean;
 }
 
 export interface DistrictDTO {

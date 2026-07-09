@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { orderService, Order, OrderStatus, OrderFilters } from "@/services/orderService";
+import { orderService, Order, OrderStatus, OrderFilters, ORDER_STATUSES } from "@/services/orderService";
 import { ShopService } from "@/services/shopService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -276,7 +276,7 @@ export default function OrderHistory() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ALL">All Statuses</SelectItem>
-                                    {(['PENDING', 'CONFIRMED', 'AWAITING_APPROVAL', 'PAYMENT_SLIP_REQUESTED', 'PAYMENT_UPLOADED', 'PAYMENT_VERIFIED', 'PREPARING', 'ON_THE_WAY', 'DELIVERED', 'CANCELLED', 'INTERNAL_TRACKING'] as OrderStatus[]).map((s) => (
+                                    {ORDER_STATUSES.map((s) => (
                                         <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                                     ))}
                                 </SelectContent>

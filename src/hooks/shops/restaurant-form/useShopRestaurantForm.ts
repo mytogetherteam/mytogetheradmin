@@ -49,6 +49,7 @@ export const defaultShopFormValues: ShopFormValues = {
   adminUsername: '',
   adminPassword: '',
   adminConfirmPassword: '',
+  telegramUsername: '',
 };
 
 /** Values used when resetting the form in create mode (after leaving edit). */

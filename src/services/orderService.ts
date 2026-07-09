@@ -95,6 +95,11 @@ export interface Order {
   taxAmount?: number | null;
   itemPrice?: number | null;
   address?: string | null;
+  addressMm?: string | null;
+  buildingName?: string | null;
+  floor?: string | null;
+  lat?: number | null;
+  lon?: number | null;
   note?: string | null;
   cancelReason?: string | null;
   canceledBy?: OrderCanceledBy | null;

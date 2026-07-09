@@ -38,7 +38,7 @@ const SelectTrigger = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      <span className="flex-1 truncate text-left">{children}</span>
       <div className="flex items-center gap-1 shrink-0">
         {!hideClear && value && (
           <div

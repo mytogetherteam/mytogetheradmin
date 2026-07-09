@@ -43,7 +43,7 @@ export interface OptionRow {
   nameEn: string;
   nameMm: string;
   nameTh: string;
-  price: number;
+  price?: number;
   isAvailable: boolean;
   displayOrder: number;
   isDeleted?: boolean;
@@ -150,7 +150,7 @@ export interface VariantRow {
   nameEn: string;
   nameMm: string;
   nameTh: string;
-  price: number;
+  price?: number;
   isAvailable: boolean;
   displayOrder: number;
   isDeleted?: boolean;

@@ -3,6 +3,7 @@ import type { OptionGroupRow, VariantGroupRow } from "./create-menu-item.types";
 import {
   parsePriceInput,
   resolveMenuItemDiscountPayload,
+  isBlankPriceInput,
 } from "@/lib/menu-item-discount-form.util";
 
 export const MEAL_TYPE_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Other"] as const;
@@ -10,6 +11,54 @@ export type MealTypeOption = (typeof MEAL_TYPE_OPTIONS)[number];
 
 function numericFromPriceInput(value: string): number {
   return parsePriceInput(value);
+}
+
+function hasChildItemPrice(price: number | undefined): boolean {
+  return price !== undefined && price !== null && !Number.isNaN(price);
+}
+
+/** Returns an error message when a variant or add-on row is missing price. */
+export function validateMenuItemChildPrices(snapshot: {
+  variantGroups: VariantGroupRow[];
+  optionGroups: OptionGroupRow[];
+}): string | null {
+  for (const group of snapshot.variantGroups) {
+    if (group.isDeleted) continue;
+    for (const variant of group.variants) {
+      if (variant.isDeleted) continue;
+      if (!hasChildItemPrice(variant.price)) {
+        const label = variant.nameEn.trim() || "variant";
+        return `Price is required for variant "${label}"`;
+      }
+    }
+  }
+
+  for (const group of snapshot.optionGroups) {
+    if (group.isDeleted) continue;
+    for (const option of group.options) {
+      if (option.isDeleted) continue;
+      if (!hasChildItemPrice(option.price)) {
+        const label = option.nameEn.trim() || "add-on";
+        return `Price is required for add-on "${label}"`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Returns an error message when original/base price is missing. */
+export function validateMenuItemOriginalPrice(originalPriceInput: string): string | null {
+  if (isBlankPriceInput(originalPriceInput)) {
+    return "Original price is required";
+  }
+
+  const value = parsePriceInput(originalPriceInput);
+  if (Number.isNaN(value) || value < 0) {
+    return "Original price must be 0 or greater";
+  }
+
+  return null;
 }
 
 function buildOptionRowPayload(
@@ -23,7 +72,7 @@ function buildOptionRowPayload(
     nameEn: option.nameEn || "",
     nameMm: option.nameMm || "",
     nameTh: option.nameTh || "",
-    price: option.price || 0,
+    price: option.price as number,
     displayOrder: option.displayOrder ?? optionIndex + 1,
     isAvailable: option.isAvailable !== false,
     name_en: option.nameEn || "",
@@ -270,7 +319,7 @@ function buildVariantRowPayload(
     nameEn: variant.nameEn || "",
     nameMm: variant.nameMm || "",
     nameTh: variant.nameTh || "",
-    price: variant.price || 0,
+    price: variant.price as number,
     isAvailable: variant.isAvailable !== false,
     displayOrder: variant.displayOrder ?? variantIndex + 1,
     name_en: variant.nameEn || "",

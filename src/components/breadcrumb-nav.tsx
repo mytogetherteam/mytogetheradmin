@@ -43,6 +43,15 @@ const routeLabels: Record<string, string> = {
     "vetting": "Vetting Queue",
 };
 
+// Accumulated paths that are real, navigable routes and therefore safe to link.
+// Group segments like `/orders` or `/menus` are NOT routes — linking them hits
+// the catch-all redirect and sends the user to home, so they render as plain
+// text. Only intermediate paths that actually resolve to a page belong here.
+const navigableIntermediatePaths = new Set<string>([
+    "/menus/approvals",
+    "/community/posts",
+]);
+
 // Tab labels: maps ?tab= values to human-readable names
 const tabLabels: Record<string, string> = {
     "banners": "Banners",
@@ -77,21 +86,27 @@ export function BreadcrumbNav() {
                 const last = index === pathnames.length - 1;
                 const to = `/${pathnames.slice(0, index + 1).join("/")}`;
                 const label = routeLabels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
+                const isCurrent = last && !activeTab;
+                // Link only when the target actually resolves to a page; otherwise
+                // it would fall through to the catch-all and redirect to home.
+                const isNavigable = !isCurrent && navigableIntermediatePaths.has(to);
 
                 return (
                     <div key={to} className="flex items-center">
                         <ChevronRight className="h-4 w-4 mx-1.5 opacity-40 shrink-0" />
-                        {last && !activeTab ? (
+                        {isCurrent ? (
                             <span className="font-semibold text-foreground truncate max-w-[150px]">
                                 {label}
                             </span>
-                        ) : (
+                        ) : isNavigable ? (
                             <Link
                                 to={to}
                                 className="hover:text-foreground transition-colors hover:underline underline-offset-4"
                             >
                                 {label}
                             </Link>
+                        ) : (
+                            <span className="truncate max-w-[150px]">{label}</span>
                         )}
                     </div>
                 );
