@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     Card,
     CardContent,
@@ -12,7 +11,6 @@ import {
     AreaChart,
     Bar,
     BarChart,
-    CartesianGrid,
     Cell,
     Legend,
     Pie,
@@ -27,7 +25,7 @@ import { analyticsService, RevenueData, PopularShop } from "@/services/analytics
 import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
 import { orderService, OrderHealthData } from "@/services/orderService";
 import { authService } from "@/services/authService";
-import { Users, ShoppingCart, Store, AlertTriangle, Building2, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, MessageSquare, Clock, Ticket, Search, MapPin, Activity, Bike } from "lucide-react";
+import { Users, ShoppingCart, Store, AlertTriangle, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, Clock, Ticket, Search, MapPin, Activity, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
@@ -42,16 +40,6 @@ function getDefaultDates() {
         end: end.toISOString().split("T")[0],
     };
 }
-
-const ORDER_HEALTH_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-    PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
-    CONFIRMED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
-    ACCEPTED: { bg: "bg-blue-500/10", text: "text-blue-500", dot: "bg-blue-500" },
-    PREPARING: { bg: "bg-orange-500/10", text: "text-orange-500", dot: "bg-orange-500" },
-    READY: { bg: "bg-purple-500/10", text: "text-purple-500", dot: "bg-purple-500" },
-    ON_THE_WAY: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
-    DELIVERING: { bg: "bg-green-500/10", text: "text-green-500", dot: "bg-green-500" },
-};
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -289,7 +277,6 @@ function LiveActivityFeed({ activities }: { activities: any[] }) {
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-    const navigate = useNavigate();
     const userData = authService.getUserData();
     const isMasterAdmin = userData?.role === "MASTER_ADMIN" || userData?.authorities?.includes("MASTER_ADMIN");
 
@@ -395,8 +382,6 @@ export default function Dashboard() {
     const totalShops = liveStats.activeShops ?? liveStats.totalShops ?? cardCounts.totalShops ?? 0;
     const totalReviews = liveStats.totalReviews ?? cardCounts.totalReviews ?? 0;
     const pendingOrders = liveStats.pendingOrders ?? cardCounts.pendingOrders ?? 0;
-    const shopPendingCount = cardCounts.shopPendingCount ?? 0;
-    const shopFeedbackCount = cardCounts.shopFeedbackCount ?? 0;
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;
     const latestShopKey = latestShopRequest?.timestamp ?? null;
