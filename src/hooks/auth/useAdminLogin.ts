@@ -14,7 +14,7 @@ export function useAdminLoginMutation() {
     mutationFn: (credentials: LoginRequest) => authService.adminLogin(credentials),
     onSuccess: () => {
       toast.success("Login successful!", {
-        description: "Welcome back to myTogether Admin Panel",
+        description: "Welcome back to MyTogether Admin Panel",
       })
       navigate("/")
     },

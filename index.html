@@ -6,10 +6,15 @@
     <link rel="apple-touch-icon" href="/logo-mytogether.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="myTogether Admin Panel" />
-    <title>myTogether Admin</title>
+    <title>MyTogether Admin</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: #0a0a0a;">
+        <img src="/loading.gif" alt="Loading..." style="width: 192px; height: 192px; object-fit: contain;" />
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

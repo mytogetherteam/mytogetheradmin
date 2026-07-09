@@ -163,7 +163,11 @@ function App() {
     <ExcelImportProvider>
       <Toaster />
       <ErrorBoundary>
-        <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>}>
+        <Suspense fallback={
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#262626]">
+            <img src="/loading.gif" alt="Loading..." className="w-48 h-48 object-contain" />
+          </div>
+        }>
           <Routes>
             <Route element={<PublicOnlyRoute />}>
               <Route path="/login" element={<Login />} />
