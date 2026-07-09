@@ -632,7 +632,6 @@ export default function Dashboard() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
 
             {/* Extended Analytics Row 1: Operations & Marketing */}
             {extendedStats && (

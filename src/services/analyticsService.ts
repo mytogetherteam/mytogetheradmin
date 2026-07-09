@@ -206,8 +206,8 @@ class AnalyticsService {
 
   async getExtendedDashboardStats(): Promise<ExtendedDashboardStats | null> {
     try {
-      const response = await apiClient.get<{ data: ExtendedDashboardStats }>('/admin/analytics/dashboard-extended');
-      return response.data.data;
+      const response = await apiClient.get<ExtendedDashboardStats>('/admin/analytics/dashboard-extended');
+      return response;
     } catch (error) {
       console.error('Failed to fetch extended dashboard stats:', error);
       return null;
