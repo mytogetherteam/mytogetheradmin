@@ -1,7 +1,7 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Outlet, useNavigate } from "react-router-dom"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -35,10 +35,15 @@ export default function AppLayout() {
 
     return (
         <AdminWebSocketProvider>
-            <SidebarProvider className="h-screen w-full">
+            {/* Global Background Image with fade opacity */}
+            <div 
+                className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat opacity-15 pointer-events-none"
+                style={{ backgroundImage: 'url(/main-bg.png)' }}
+            />
+            <SidebarProvider className="h-screen w-full bg-transparent">
                 <AdminLiveAlertToasts />
                 <AppSidebar />
-                <SidebarInset className="flex flex-col h-screen overflow-hidden">
+                <SidebarInset className="flex flex-col h-screen overflow-hidden bg-transparent">
                     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background z-20 sticky top-0 border-sidebar-border shadow-sm">
                         <div className="flex flex-1 items-center gap-2">
                             <SidebarTrigger />
@@ -54,7 +59,8 @@ export default function AppLayout() {
                             {/* User Profile Dropdown */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
-                                    <Avatar className="h-8 w-8">
+                                    <Avatar className="h-8 w-8 rounded-full">
+                                        <AvatarImage src="/profile.png" alt="Profile" className="object-cover" />
                                         <AvatarFallback className="bg-primary text-primary-foreground">
                                             {userData?.fullName?.charAt(0) || "A"}
                                         </AvatarFallback>
