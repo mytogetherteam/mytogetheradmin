@@ -141,7 +141,7 @@ class AnalyticsService {
   }
 
   async getSystemHealth(): Promise<{ dbLatency: number; status: string }> {
-    return apiClient.get<{ dbLatency: number; status: string }>(config.endpoints.admin.system.latency);
+    return apiClient.get<{ dbLatency: number; status: string }>('/admin/analytics/system-health');
   }
 
   async getFeedPerformance(): Promise<{ overallCtr: number }> {
