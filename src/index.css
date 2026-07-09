@@ -84,6 +84,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .dark .bg-card,
+  .dark .bg-popover,
+  .dark .bg-sidebar,
+  .dark header.bg-background,
+  .dark div.bg-background {
+    @apply bg-black/40 backdrop-blur-xl border-white/10 !important;
+  }
+
+  .dark body {
+    @apply bg-zinc-950 !important;
+  }
+}
 @layer components {
   /* Premium Sidebar Active State */
   [data-active="true"] {

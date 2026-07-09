@@ -39,6 +39,7 @@ export function useOrderDetail(id?: string) {
     queryKey: orderKeys.detail(id ?? ''),
     queryFn: () => orderService.getOrderDetail(id!),
     enabled: !!id,
+    refetchInterval: 5000, // Real-time polling every 5s
   });
 }
 
@@ -48,6 +49,7 @@ export function useOrderHistory(id?: string) {
     queryKey: orderKeys.history(id ?? ''),
     queryFn: () => orderService.getOrderHistory(id!).catch(() => []),
     enabled: !!id,
+    refetchInterval: 5000, // Real-time polling every 5s
   });
 }
 
