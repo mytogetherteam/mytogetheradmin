@@ -69,6 +69,15 @@ export const authService = {
     apiClient.clearTokenCache();
   },
 
+  /** Update cached user profile without touching auth tokens. */
+  updateUserData: (patch: Partial<UserData>): void => {
+    const current = authService.getUserData();
+    if (!current) return;
+    const next: UserData = { ...current, ...patch };
+    localStorage.setItem(config.storage.userKey, JSON.stringify(next));
+    useAuthStore.getState().setUser(next);
+  },
+
   /**
    * Platform admin login — maps to Nest `POST /api/admin/auth/login` (emailOrUsername + password).
    */

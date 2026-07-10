@@ -322,6 +322,9 @@ export const config = {
           `/api/admin/manage-users/${accountType}/${id}`,
         roles: '/api/admin/manage-users/roles',
       },
+      user: {
+        profile: '/api/admin/profile',
+      },
       search: '/api/admin/search',
     },
     shops: {
