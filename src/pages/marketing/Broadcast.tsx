@@ -3,12 +3,16 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { manageUsersService } from "@/services/manageUsersService";
 import { ShopService } from "@/services/shopService";
+import { useQuery } from "@tanstack/react-query";
 import {
   useBroadcastHistory,
   useSendBroadcastMutation,
   useDeleteBroadcastMutation,
 } from "@/hooks/broadcast/useBroadcast";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { BroadcastGroupsDialog } from "./BroadcastGroupsDialog";
+import { userGroupService } from "@/services/userGroupService";
+import { shopGroupService } from "@/services/shopGroupService";
 import type { BroadcastAudience } from "@/services/broadcastService";
 import {
   broadcastFormSchema,
@@ -70,6 +74,8 @@ const AUDIENCE_OPTIONS: {
     { value: "OPERATION_ADMINS", label: "Operation Admins", icon: UserCog },
     { value: "SINGLE_USER", label: "Single User", icon: UserIcon },
     { value: "SINGLE_SHOP", label: "Single Shop", icon: Building2 },
+    { value: "USER_GROUP", label: "User Group", icon: Users },
+    { value: "SHOP_GROUP", label: "Shop Group", icon: Store },
   ];
 
 const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
@@ -79,6 +85,8 @@ const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
   OPERATION_ADMINS: "text-emerald-600 bg-emerald-50 border-emerald-100",
   SINGLE_USER: "text-slate-600 bg-slate-50 border-slate-100",
   SINGLE_SHOP: "text-rose-600 bg-rose-50 border-rose-100",
+  USER_GROUP: "text-sky-600 bg-sky-50 border-sky-100",
+  SHOP_GROUP: "text-indigo-600 bg-indigo-50 border-indigo-100",
 };
 
 const audienceLabel = (audience: BroadcastAudience) =>
@@ -97,6 +105,8 @@ export default function Broadcast() {
       message: "",
       targetUserId: undefined,
       targetShopId: undefined,
+      targetUserGroupId: undefined,
+      targetShopGroupId: undefined,
     },
   });
   const {
@@ -121,6 +131,16 @@ export default function Broadcast() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: userGroups = [] } = useQuery({
+    queryKey: ["userGroups"],
+    queryFn: userGroupService.getGroups,
+  });
+
+  const { data: shopGroups = [] } = useQuery({
+    queryKey: ["shopGroups"],
+    queryFn: shopGroupService.getGroups,
+  });
 
   const { data, isPending: loading } = useBroadcastHistory(page, pageSize);
   const { mutateAsync: sendBroadcast, isPending: sending } =
@@ -224,10 +244,20 @@ export default function Broadcast() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Megaphone className="h-6 w-6 text-primary" />
-        <h1 className="text-lg font-semibold md:text-2xl">Push Broadcast</h1>
-      </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-12 md:w-12">
+              <Megaphone className="h-5 w-5 md:h-6 md:w-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold md:text-2xl">Push Broadcast</h1>
+              <p className="text-sm text-muted-foreground">
+                Send push notifications across your platform
+              </p>
+            </div>
+          </div>
+          <BroadcastGroupsDialog />
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Compose Section */}
@@ -258,6 +288,8 @@ export default function Broadcast() {
                         // switching audience so a stale id can't be submitted.
                         setValue("targetUserId", undefined);
                         setValue("targetShopId", undefined);
+                        setValue("targetUserGroupId", undefined);
+                        setValue("targetShopGroupId", undefined);
                         setSelectedUserData(null);
                         setSelectedShopData(null);
                       }}
@@ -340,6 +372,74 @@ export default function Broadcast() {
                   {errors.targetShopId ? (
                     <p className="text-sm text-destructive">
                       {errors.targetShopId.message}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {audience === "USER_GROUP" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Select User Group
+                  </label>
+                  <Controller
+                    control={control}
+                    name="targetUserGroupId"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ? String(field.value) : undefined}
+                        onValueChange={(v) => field.onChange(Number(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a user group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userGroups.map((g) => (
+                            <SelectItem key={g.id} value={String(g.id)}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.targetUserGroupId ? (
+                    <p className="text-sm text-destructive">
+                      {errors.targetUserGroupId.message}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {audience === "SHOP_GROUP" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Select Shop Group
+                  </label>
+                  <Controller
+                    control={control}
+                    name="targetShopGroupId"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ? String(field.value) : undefined}
+                        onValueChange={(v) => field.onChange(Number(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a shop group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shopGroups.map((g) => (
+                            <SelectItem key={g.id} value={String(g.id)}>
+                              {g.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.targetShopGroupId ? (
+                    <p className="text-sm text-destructive">
+                      {errors.targetShopGroupId.message}
                     </p>
                   ) : null}
                 </div>

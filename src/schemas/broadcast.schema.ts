@@ -8,6 +8,8 @@ export const broadcastAudienceSchema = z.enum([
   "OPERATION_ADMINS",
   "SINGLE_USER",
   "SINGLE_SHOP",
+  "USER_GROUP",
+  "SHOP_GROUP",
 ]);
 
 const optionalId = z.number().int().positive().optional();
@@ -32,6 +34,8 @@ export const broadcastFormSchema = z
       .max(2000, "Message must be 2000 characters or fewer"),
     targetUserId: optionalId,
     targetShopId: optionalId,
+    targetUserGroupId: optionalId,
+    targetShopGroupId: optionalId,
   })
   .superRefine((values, ctx) => {
     if (values.audience === "SINGLE_USER" && values.targetUserId == null) {
@@ -46,6 +50,20 @@ export const broadcastFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ["targetShopId"],
         message: "Please select a shop",
+      });
+    }
+    if (values.audience === "USER_GROUP" && values.targetUserGroupId == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetUserGroupId"],
+        message: "Please select a user group",
+      });
+    }
+    if (values.audience === "SHOP_GROUP" && values.targetShopGroupId == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetShopGroupId"],
+        message: "Please select a shop group",
       });
     }
   });

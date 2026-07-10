@@ -8,13 +8,17 @@ export type BroadcastAudience =
   | "SHOP_ADMINS"
   | "OPERATION_ADMINS"
   | "SINGLE_USER"
-  | "SINGLE_SHOP";
+  | "SINGLE_SHOP"
+  | "USER_GROUP"
+  | "SHOP_GROUP";
 
 export interface BroadcastHistoryItem {
   id: number;
   audience: BroadcastAudience;
   targetUserId: number | null;
   targetShopId: number | null;
+  targetUserGroupId: number | null;
+  targetShopGroupId: number | null;
   title: string;
   message: string;
   /** Optional image shown with the announcement. */
@@ -33,6 +37,10 @@ export interface SendBroadcastPayload {
   targetUserId?: number;
   /** Required only when audience is SINGLE_SHOP. */
   targetShopId?: number;
+  /** Required only when audience is USER_GROUP. */
+  targetUserGroupId?: number;
+  /** Required only when audience is SHOP_GROUP. */
+  targetShopGroupId?: number;
   /** Optional image file to attach to the announcement. */
   image?: File | null;
   /** Optional structured payload (deep-link, image url, etc.). */
@@ -60,7 +68,7 @@ interface BroadcastListResponse {
 export const BroadcastService = {
   /** Queue a broadcast for delivery. Returns immediately. */
   send: async (payload: SendBroadcastPayload): Promise<SendBroadcastResult> => {
-    const { image, targetUserId, targetShopId, data, ...rest } = payload;
+    const { image, targetUserId, targetShopId, targetUserGroupId, targetShopGroupId, data, ...rest } = payload;
 
     // Sent as multipart/form-data so an optional image can be attached; the
     // axios interceptor strips the JSON Content-Type when it sees a FormData body.
@@ -68,8 +76,11 @@ export const BroadcastService = {
     form.append("audience", rest.audience);
     form.append("title", rest.title);
     form.append("message", rest.message);
+    
     if (targetUserId != null) form.append("targetUserId", String(targetUserId));
     if (targetShopId != null) form.append("targetShopId", String(targetShopId));
+    if (targetUserGroupId != null) form.append("targetUserGroupId", String(targetUserGroupId));
+    if (targetShopGroupId != null) form.append("targetShopGroupId", String(targetShopGroupId));
     if (data != null) form.append("data", JSON.stringify(data));
     if (image) form.append("image", image);
 
