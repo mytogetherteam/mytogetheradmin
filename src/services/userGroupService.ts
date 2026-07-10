@@ -25,30 +25,30 @@ export interface UserGroupMember {
 
 export const userGroupService = {
   getGroups: async (): Promise<UserGroup[]> => {
-    const { data } = await api.get<UserGroup[]>("/admin/groups/users");
+    const { data } = await api.get<UserGroup[]>("/api/admin/groups/users");
     return data;
   },
 
   createGroup: async (name: string): Promise<UserGroup> => {
-    const { data } = await api.post<UserGroup>("/admin/groups/users", { name });
+    const { data } = await api.post<UserGroup>("/api/admin/groups/users", { name });
     return data;
   },
 
   deleteGroup: async (id: number): Promise<void> => {
-    await api.delete(`/admin/groups/users/${id}`);
+    await api.delete(`/api/admin/groups/users/${id}`);
   },
 
   getGroupMembers: async (groupId: number): Promise<UserGroupMember[]> => {
-    const { data } = await api.get<UserGroupMember[]>(`/admin/groups/users/${groupId}/members`);
+    const { data } = await api.get<UserGroupMember[]>(`/api/admin/groups/users/${groupId}/members`);
     return data;
   },
 
   addUserToGroup: async (groupId: number, userId: number): Promise<UserGroupMember> => {
-    const { data } = await api.post<UserGroupMember>(`/admin/groups/users/${groupId}/members`, { userId });
+    const { data } = await api.post<UserGroupMember>(`/api/admin/groups/users/${groupId}/members`, { userId });
     return data;
   },
 
   removeUserFromGroup: async (groupId: number, userId: number): Promise<void> => {
-    await api.delete(`/admin/groups/users/${groupId}/members/${userId}`);
+    await api.delete(`/api/admin/groups/users/${groupId}/members/${userId}`);
   },
 };

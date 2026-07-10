@@ -25,30 +25,30 @@ export interface ShopGroupMember {
 
 export const shopGroupService = {
   getGroups: async (): Promise<ShopGroup[]> => {
-    const { data } = await api.get<ShopGroup[]>("/admin/groups/shops");
+    const { data } = await api.get<ShopGroup[]>("/api/admin/groups/shops");
     return data;
   },
 
   createGroup: async (name: string): Promise<ShopGroup> => {
-    const { data } = await api.post<ShopGroup>("/admin/groups/shops", { name });
+    const { data } = await api.post<ShopGroup>("/api/admin/groups/shops", { name });
     return data;
   },
 
   deleteGroup: async (id: number): Promise<void> => {
-    await api.delete(`/admin/groups/shops/${id}`);
+    await api.delete(`/api/admin/groups/shops/${id}`);
   },
 
   getGroupMembers: async (groupId: number): Promise<ShopGroupMember[]> => {
-    const { data } = await api.get<ShopGroupMember[]>(`/admin/groups/shops/${groupId}/members`);
+    const { data } = await api.get<ShopGroupMember[]>(`/api/admin/groups/shops/${groupId}/members`);
     return data;
   },
 
   addShopToGroup: async (groupId: number, shopId: number): Promise<ShopGroupMember> => {
-    const { data } = await api.post<ShopGroupMember>(`/admin/groups/shops/${groupId}/members`, { shopId });
+    const { data } = await api.post<ShopGroupMember>(`/api/admin/groups/shops/${groupId}/members`, { shopId });
     return data;
   },
 
   removeShopFromGroup: async (groupId: number, shopId: number): Promise<void> => {
-    await api.delete(`/admin/groups/shops/${groupId}/members/${shopId}`);
+    await api.delete(`/api/admin/groups/shops/${groupId}/members/${shopId}`);
   },
 };
