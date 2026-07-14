@@ -113,6 +113,7 @@ export function optionGroupsFromApiResponse(
       nameTh: apiGroup.nameTh || apiGroup.name_th || "",
       displayOrder: apiGroup.displayOrder ?? apiGroup.display_order ?? 1,
       isAvailable: apiGroup.isAvailable ?? apiGroup.is_available ?? true,
+      maxSelection: apiGroup.maxSelection ?? apiGroup.max_selection ?? null,
       options: [],
     });
   }
@@ -135,6 +136,7 @@ export function optionGroupsFromApiResponse(
           nameTh: embeddedGroup?.nameTh || embeddedGroup?.name_th || "",
           displayOrder: embeddedGroup?.displayOrder ?? embeddedGroup?.display_order ?? 1,
           isAvailable: embeddedGroup?.isAvailable ?? embeddedGroup?.is_available ?? true,
+          maxSelection: embeddedGroup?.maxSelection ?? embeddedGroup?.max_selection ?? null,
           options: [],
         });
       }

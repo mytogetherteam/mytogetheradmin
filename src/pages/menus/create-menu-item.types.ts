@@ -27,6 +27,11 @@ export interface OptionGroupRow {
   nameTh: string;
   displayOrder: number;
   isAvailable: boolean;
+  /**
+   * Max number of add-ons a customer may choose from this group when ordering.
+   * `null`/`undefined` means unlimited (customer can choose as many as they like).
+   */
+  maxSelection?: number | null;
   isDeleted?: boolean;
   /** When true with isDeleted, only the group name is removed; options are kept ungrouped. */
   unlinkOptionsOnly?: boolean;

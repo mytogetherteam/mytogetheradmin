@@ -17,6 +17,17 @@ function hasChildItemPrice(price: number | undefined): boolean {
   return price !== undefined && price !== null && !Number.isNaN(price);
 }
 
+/**
+ * Normalizes an add-on group's "choose up to" limit for the API.
+ * Returns `null` (unlimited) when unset or not a positive whole number,
+ * otherwise the integer limit.
+ */
+function normalizeMaxSelection(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || Number.isNaN(value)) return null;
+  const rounded = Math.floor(value);
+  return rounded >= 1 ? rounded : null;
+}
+
 /** Returns an error message when a variant or add-on row is missing price. */
 export function validateMenuItemChildPrices(snapshot: {
   variantGroups: VariantGroupRow[];
@@ -102,6 +113,8 @@ function buildOptionGroupRowPayload(
       }))
     : [];
 
+  const maxSelection = normalizeMaxSelection(group.maxSelection);
+
   return {
     id: snapshot.editingExistingItem ? group.id : undefined,
     nameEn: group.nameEn || "",
@@ -114,8 +127,8 @@ function buildOptionGroupRowPayload(
     display_order: group.displayOrder ?? groupIndex + 1,
     minSelection: 0,
     min_selection: 0,
-    maxSelection: 99,
-    max_selection: 99,
+    maxSelection,
+    max_selection: maxSelection,
     isAvailable: group.isAvailable !== false,
     is_available: group.isAvailable !== false,
     options: [...activeOptions, ...deletedOptions],
@@ -156,7 +169,7 @@ function buildOptionGroupsPayload(snapshot: MenuItemSubmitFormSnapshot) {
           nameTh: "",
           displayOrder: activeGroups.length + groupIndex + 1,
           minSelection: 0,
-          maxSelection: 99,
+          maxSelection: null,
           isAvailable: true,
           options: group.options
             .filter((option) => option.isDeleted && option.id)

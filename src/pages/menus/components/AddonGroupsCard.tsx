@@ -438,6 +438,37 @@ export function AddonGroupsCard({
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <div className="flex w-full items-center gap-2">
+                              <Label
+                                htmlFor={`addon-max-${group._key}`}
+                                className="text-xs text-muted-foreground whitespace-nowrap"
+                              >
+                                Customers can choose up to
+                              </Label>
+                              <Input
+                                id={`addon-max-${group._key}`}
+                                type="text"
+                                inputMode="numeric"
+                                className="w-20"
+                                placeholder="∞"
+                                value={
+                                  group.maxSelection === undefined || group.maxSelection === null
+                                    ? ""
+                                    : group.maxSelection
+                                }
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === "" || /^\d+$/.test(val)) {
+                                    updateGroup(groupIndex, {
+                                      maxSelection: val === "" ? null : parseInt(val, 10),
+                                    });
+                                  }
+                                }}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                add-on(s) — leave empty for no limit.
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           <div className="flex flex-wrap items-center justify-between gap-2">
