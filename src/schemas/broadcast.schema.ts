@@ -10,9 +10,12 @@ export const broadcastAudienceSchema = z.enum([
   "SINGLE_SHOP",
   "USER_GROUP",
   "SHOP_GROUP",
+  "MULTI_USER",
+  "MULTI_SHOP",
 ]);
 
 const optionalId = z.number().int().positive().optional();
+const idList = z.array(z.number().int().positive()).optional();
 
 /**
  * Compose-broadcast form. `maxLength` values match the Title (200) and Message
@@ -34,8 +37,8 @@ export const broadcastFormSchema = z
       .max(2000, "Message must be 2000 characters or fewer"),
     targetUserId: optionalId,
     targetShopId: optionalId,
-    targetUserGroupId: optionalId,
-    targetShopGroupId: optionalId,
+    targetUserIds: idList,
+    targetShopIds: idList,
   })
   .superRefine((values, ctx) => {
     if (values.audience === "SINGLE_USER" && values.targetUserId == null) {
@@ -52,18 +55,18 @@ export const broadcastFormSchema = z
         message: "Please select a shop",
       });
     }
-    if (values.audience === "USER_GROUP" && values.targetUserGroupId == null) {
+    if (values.audience === "MULTI_USER" && !values.targetUserIds?.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["targetUserGroupId"],
-        message: "Please select a user group",
+        path: ["targetUserIds"],
+        message: "Please select at least one user",
       });
     }
-    if (values.audience === "SHOP_GROUP" && values.targetShopGroupId == null) {
+    if (values.audience === "MULTI_SHOP" && !values.targetShopIds?.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["targetShopGroupId"],
-        message: "Please select a shop group",
+        path: ["targetShopIds"],
+        message: "Please select at least one shop",
       });
     }
   });

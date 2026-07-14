@@ -3,7 +3,6 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { manageUsersService } from "@/services/manageUsersService";
 import { ShopService } from "@/services/shopService";
-import { useQuery } from "@tanstack/react-query";
 import {
   useBroadcastHistory,
   useSendBroadcastMutation,
@@ -11,14 +10,13 @@ import {
 } from "@/hooks/broadcast/useBroadcast";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { BroadcastGroupsDialog } from "./BroadcastGroupsDialog";
-import { userGroupService } from "@/services/userGroupService";
-import { shopGroupService } from "@/services/shopGroupService";
 import type { BroadcastAudience } from "@/services/broadcastService";
 import {
   broadcastFormSchema,
   type BroadcastFormValues,
 } from "@/schemas/broadcast.schema";
 import { InfiniteSearchableSelect } from "@/components/ui/infinite-searchable-select";
+import { InfiniteSearchableMultiSelect } from "@/components/ui/infinite-searchable-multi-select";
 import {
   Table,
   TableBody,
@@ -74,8 +72,8 @@ const AUDIENCE_OPTIONS: {
     { value: "OPERATION_ADMINS", label: "Operation Admins", icon: UserCog },
     { value: "SINGLE_USER", label: "Single User", icon: UserIcon },
     { value: "SINGLE_SHOP", label: "Single Shop", icon: Building2 },
-    { value: "USER_GROUP", label: "User Group", icon: Users },
-    { value: "SHOP_GROUP", label: "Shop Group", icon: Store },
+    { value: "MULTI_USER", label: "Selected Users", icon: Users },
+    { value: "MULTI_SHOP", label: "Selected Shops", icon: Store },
   ];
 
 const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
@@ -85,6 +83,8 @@ const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
   OPERATION_ADMINS: "text-emerald-600 bg-emerald-50 border-emerald-100",
   SINGLE_USER: "text-slate-600 bg-slate-50 border-slate-100",
   SINGLE_SHOP: "text-rose-600 bg-rose-50 border-rose-100",
+  MULTI_USER: "text-cyan-600 bg-cyan-50 border-cyan-100",
+  MULTI_SHOP: "text-orange-600 bg-orange-50 border-orange-100",
   USER_GROUP: "text-sky-600 bg-sky-50 border-sky-100",
   SHOP_GROUP: "text-indigo-600 bg-indigo-50 border-indigo-100",
 };
@@ -105,8 +105,8 @@ export default function Broadcast() {
       message: "",
       targetUserId: undefined,
       targetShopId: undefined,
-      targetUserGroupId: undefined,
-      targetShopGroupId: undefined,
+      targetUserIds: undefined,
+      targetShopIds: undefined,
     },
   });
   const {
@@ -128,19 +128,17 @@ export default function Broadcast() {
     label: string;
     value: string;
   } | null>(null);
+  // Ad-hoc multi-select lists (MULTI_USER / MULTI_SHOP). Chips are kept in local
+  // state for their labels; the form holds the id arrays for validation/submit.
+  const [selectedUsers, setSelectedUsers] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [selectedShops, setSelectedShops] = useState<
+    { label: string; value: string }[]
+  >([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: userGroups = [] } = useQuery({
-    queryKey: ["userGroups"],
-    queryFn: userGroupService.getGroups,
-  });
-
-  const { data: shopGroups = [] } = useQuery({
-    queryKey: ["shopGroups"],
-    queryFn: shopGroupService.getGroups,
-  });
 
   const { data, isPending: loading } = useBroadcastHistory(page, pageSize);
   const { mutateAsync: sendBroadcast, isPending: sending } =
@@ -232,12 +230,16 @@ export default function Broadcast() {
       message: values.message,
       targetUserId: values.targetUserId,
       targetShopId: values.targetShopId,
+      targetUserIds: values.targetUserIds,
+      targetShopIds: values.targetShopIds,
       image: imageFile,
     });
 
     reset();
     setSelectedUserData(null);
     setSelectedShopData(null);
+    setSelectedUsers([]);
+    setSelectedShops([]);
     clearImage();
     setPage(0);
   };
@@ -288,10 +290,12 @@ export default function Broadcast() {
                         // switching audience so a stale id can't be submitted.
                         setValue("targetUserId", undefined);
                         setValue("targetShopId", undefined);
-                        setValue("targetUserGroupId", undefined);
-                        setValue("targetShopGroupId", undefined);
+                        setValue("targetUserIds", undefined);
+                        setValue("targetShopIds", undefined);
                         setSelectedUserData(null);
                         setSelectedShopData(null);
+                        setSelectedUsers([]);
+                        setSelectedShops([]);
                       }}
                     >
                       <SelectTrigger>
@@ -377,69 +381,137 @@ export default function Broadcast() {
                 </div>
               )}
 
-              {audience === "USER_GROUP" && (
+              {audience === "MULTI_USER" && (
                 <div className="space-y-2">
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Select User Group
+                    Select Users
                   </label>
-                  <Controller
-                    control={control}
-                    name="targetUserGroupId"
-                    render={({ field }) => (
-                      <Select
-                        value={field.value ? String(field.value) : undefined}
-                        onValueChange={(v) => field.onChange(Number(v))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a user group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {userGroups.map((g) => (
-                            <SelectItem key={g.id} value={String(g.id)}>
-                              {g.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                  <InfiniteSearchableMultiSelect
+                    fetchData={fetchUserData}
+                    startPage={1}
+                    valueKey="value"
+                    labelKey="label"
+                    selectedValues={selectedUsers}
+                    onChange={(items) => {
+                      const picked = items as {
+                        label: string;
+                        value: string;
+                      }[];
+                      setSelectedUsers(picked);
+                      setValue(
+                        "targetUserIds",
+                        picked.length
+                          ? picked.map((u) => Number(u.value))
+                          : undefined,
+                        { shouldValidate: true },
+                      );
+                    }}
+                    placeholder="Search and add users..."
                   />
-                  {errors.targetUserGroupId ? (
+                  {selectedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {selectedUsers.map((u) => (
+                        <Badge
+                          key={u.value}
+                          variant="secondary"
+                          className="gap-1 pr-1"
+                        >
+                          {u.label}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${u.label}`}
+                            className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                            onClick={() => {
+                              const next = selectedUsers.filter(
+                                (x) => x.value !== u.value,
+                              );
+                              setSelectedUsers(next);
+                              setValue(
+                                "targetUserIds",
+                                next.length
+                                  ? next.map((x) => Number(x.value))
+                                  : undefined,
+                                { shouldValidate: true },
+                              );
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {errors.targetUserIds ? (
                     <p className="text-sm text-destructive">
-                      {errors.targetUserGroupId.message}
+                      {errors.targetUserIds.message}
                     </p>
                   ) : null}
                 </div>
               )}
 
-              {audience === "SHOP_GROUP" && (
+              {audience === "MULTI_SHOP" && (
                 <div className="space-y-2">
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Select Shop Group
+                    Select Shops
                   </label>
-                  <Controller
-                    control={control}
-                    name="targetShopGroupId"
-                    render={({ field }) => (
-                      <Select
-                        value={field.value ? String(field.value) : undefined}
-                        onValueChange={(v) => field.onChange(Number(v))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a shop group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {shopGroups.map((g) => (
-                            <SelectItem key={g.id} value={String(g.id)}>
-                              {g.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                  <InfiniteSearchableMultiSelect
+                    fetchData={fetchShopData}
+                    startPage={1}
+                    valueKey="value"
+                    labelKey="label"
+                    selectedValues={selectedShops}
+                    onChange={(items) => {
+                      const picked = items as {
+                        label: string;
+                        value: string;
+                      }[];
+                      setSelectedShops(picked);
+                      setValue(
+                        "targetShopIds",
+                        picked.length
+                          ? picked.map((s) => Number(s.value))
+                          : undefined,
+                        { shouldValidate: true },
+                      );
+                    }}
+                    placeholder="Search and add shops..."
                   />
-                  {errors.targetShopGroupId ? (
+                  {selectedShops.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {selectedShops.map((s) => (
+                        <Badge
+                          key={s.value}
+                          variant="secondary"
+                          className="gap-1 pr-1"
+                        >
+                          {s.label}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${s.label}`}
+                            className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                            onClick={() => {
+                              const next = selectedShops.filter(
+                                (x) => x.value !== s.value,
+                              );
+                              setSelectedShops(next);
+                              setValue(
+                                "targetShopIds",
+                                next.length
+                                  ? next.map((x) => Number(x.value))
+                                  : undefined,
+                                { shouldValidate: true },
+                              );
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {errors.targetShopIds ? (
                     <p className="text-sm text-destructive">
-                      {errors.targetShopGroupId.message}
+                      {errors.targetShopIds.message}
                     </p>
                   ) : null}
                 </div>
@@ -620,6 +692,12 @@ export default function Broadcast() {
                             : ""}
                           {h.audience === "SINGLE_SHOP" && h.targetShopId
                             ? ` #${h.targetShopId}`
+                            : ""}
+                          {h.audience === "MULTI_USER" && h.targetUserIds?.length
+                            ? ` (${h.targetUserIds.length})`
+                            : ""}
+                          {h.audience === "MULTI_SHOP" && h.targetShopIds?.length
+                            ? ` (${h.targetShopIds.length})`
                             : ""}
                         </Badge>
                       </TableCell>
