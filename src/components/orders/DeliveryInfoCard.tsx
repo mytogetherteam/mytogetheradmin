@@ -2,6 +2,7 @@ import { Order } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Clock, Calendar } from "lucide-react";
+import { ORDER_DELIVERY_TYPE_LABELS } from "./order-format";
 
 export function DeliveryInfoCard({ order }: { order: Order }) {
     return (
@@ -21,6 +22,20 @@ export function DeliveryInfoCard({ order }: { order: Order }) {
                             : (order.deliveryType || "N/A")}
                     </Badge>
                 </div>
+                {order.orderType !== "PICK_UP" && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Delivery Type</span>
+                        {order.orderDeliveryType ? (
+                            <Badge variant="secondary">
+                                {ORDER_DELIVERY_TYPE_LABELS[order.orderDeliveryType] ?? order.orderDeliveryType}
+                            </Badge>
+                        ) : (
+                            // Only set at the payment-slip step, so it is legitimately
+                            // empty on earlier statuses rather than missing.
+                            <span className="font-medium text-muted-foreground">Not set</span>
+                        )}
+                    </div>
+                )}
                 {order.deliveryTier && (
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Tier</span>

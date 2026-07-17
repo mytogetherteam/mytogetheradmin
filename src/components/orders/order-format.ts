@@ -13,6 +13,15 @@ export const STATUS_COLORS: Record<string, string> = {
     CANCELED: "bg-red-100 text-red-800 border-red-200",
 };
 
+/**
+ * FAST/FLEXIBLE labels. Only set once the shop requests a payment slip, and
+ * never for pick-up orders — so expect null on most orders.
+ */
+export const ORDER_DELIVERY_TYPE_LABELS: Record<string, string> = {
+    FAST: "Fast",
+    FLEXIBLE: "Flexible",
+};
+
 export interface Address {
     buildingName?: string;
     floor?: string;
