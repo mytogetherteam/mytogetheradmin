@@ -27,6 +27,8 @@ export default function ManageShopRestaurant() {
             selectedShopId={table.selectedShopId}
             sortConfig={table.sortConfig}
             onSort={actions.onSort}
+            onReorder={actions.onReorder}
+            reordering={table.reordering}
             toggleBusyShopId={table.toggleBusyShopId}
             onToggleStatus={actions.onToggleStatus}
             onToggleVerified={actions.onToggleVerified}

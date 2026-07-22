@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react"
+import type { CSSProperties, MouseEvent, ReactNode } from "react"
 import {
     type Shop,
     resolveShopCityLabel,
@@ -18,10 +18,27 @@ import { Switch } from "@/components/ui/switch"
 import { Loader } from "@/components/ui/loader";
 import { resolveMediaUrl } from "@/lib/resolveMediaUrl"
 import type { SortConfig } from "@/lib/sort-utils"
-import {  Edit, Trash2, UserPlus } from "lucide-react"
+import { Edit, GripVertical, Trash2, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TableImage } from "../TableImage"
 import { ViewCountCell } from "../ViewCountCell"
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 export type ShopTableVariant = "full" | "adminList"
 
@@ -31,6 +48,47 @@ function clickableShopRowClass(selectedShopId: number | null, shopId: number) {
         selectedShopId === shopId
             ? "bg-primary/10 hover:bg-primary/20 active:bg-primary/25"
             : "hover:bg-muted/60 active:bg-muted/80",
+    )
+}
+
+/** Sortable table row that still forwards its own onClick + className. */
+function SortableShopRow({
+    id,
+    className,
+    onClick,
+    children,
+}: {
+    id: number
+    className?: string
+    onClick?: () => void
+    children: (args: {
+        setActivatorNodeRef: (el: HTMLElement | null) => void
+        attributes: ReturnType<typeof useSortable>["attributes"]
+        listeners: ReturnType<typeof useSortable>["listeners"]
+    }) => ReactNode
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        setActivatorNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id })
+
+    const style: CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : undefined,
+        position: "relative",
+        background: isDragging ? "hsl(var(--muted) / 0.5)" : undefined,
+    }
+
+    return (
+        <TableRow ref={setNodeRef} style={style} className={className} onClick={onClick}>
+            {children({ setActivatorNodeRef, attributes, listeners })}
+        </TableRow>
     )
 }
 
@@ -49,6 +107,9 @@ export type ShopTableProps = {
     onOpenReject: (e: MouseEvent, shop: Shop) => void
     onOpenDelete: (shop: Shop) => void
     onAssignAdmin: (shop: Shop) => void
+    /** Persist a drag-reorder; receives the page's shop ids in new order. */
+    onReorder?: (orderedIds: number[]) => void
+    reordering?: boolean
 }
 
 export function ShopTable({
@@ -62,7 +123,24 @@ export function ShopTable({
     onEditShop,
     onOpenDelete,
     onAssignAdmin,
+    onReorder,
+    reordering = false,
 }: ShopTableProps) {
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    )
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+        const oldIndex = shopList.findIndex((s) => s.id === active.id)
+        const newIndex = shopList.findIndex((s) => s.id === over.id)
+        if (oldIndex < 0 || newIndex < 0) return
+        const next = arrayMove(shopList, oldIndex, newIndex)
+        onReorder?.(next.map((s) => s.id))
+    }
+
     if (isLoading) {
         return (
             <div className="flex justify-center items-center py-12">
@@ -74,9 +152,11 @@ export function ShopTable({
 
     return (
         <div className="rounded-md border overflow-x-auto">
+             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
              <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-10" aria-label="Reorder" />
                             <TableHead className="w-[52px]">Photo</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
@@ -90,7 +170,8 @@ export function ShopTable({
                     </TableHeader>
                     <TableBody>
                         {shopList.length > 0 ? (
-                            shopList.map((shop) => {
+                          <SortableContext items={shopList.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                            {shopList.map((shop) => {
                                 const coverSrc = resolveMediaUrl(shop.coverUrl || shop.logoUrl)
                                 const locality = [resolveShopDistrictLabel(shop), resolveShopCityLabel(shop)]
                                     .filter(Boolean)
@@ -99,11 +180,27 @@ export function ShopTable({
                                 const addressDisplay =
                                     [street, locality].filter(Boolean).join(street && locality ? " · " : "") || "—"
                                 return (
-                                    <TableRow
+                                    <SortableShopRow
                                         key={shop.id}
+                                        id={shop.id}
                                         onClick={() => onEditShop(shop)}
                                         className={clickableShopRowClass(selectedShopId, shop.id)}
                                     >
+                                    {({ setActivatorNodeRef, attributes, listeners }) => (
+                                      <>
+                                        <TableCell className="w-10 p-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                type="button"
+                                                ref={setActivatorNodeRef}
+                                                className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded disabled:opacity-40"
+                                                disabled={reordering}
+                                                aria-label="Drag to reorder"
+                                                {...attributes}
+                                                {...listeners}
+                                            >
+                                                <GripVertical className="h-5 w-5" />
+                                            </button>
+                                        </TableCell>
                                         <TableCell className="align-middle">
                                             <TableImage
                                                 src={coverSrc}
@@ -240,18 +337,22 @@ export function ShopTable({
                                                 </Button>
                                             </div>
                                         </TableCell>
-                                    </TableRow>
+                                      </>
+                                    )}
+                                    </SortableShopRow>
                                 )
-                            })
+                            })}
+                          </SortableContext>
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                                     No results.
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
+             </DndContext>
         </div>
     )
 }

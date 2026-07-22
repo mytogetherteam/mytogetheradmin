@@ -71,6 +71,7 @@ export const config = {
       shopProfile: {
         create: '/api/admin/shop-profile',
         list: '/api/admin/shop-profile/list',
+        reorder: '/api/admin/shop-profile/reorder',
         detail: (id: number) => `/api/admin/shop-profile/${id}`,
         operatingHours: (id: number) =>
           `/api/admin/shop-profile/${id}/operating-hours`,

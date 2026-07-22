@@ -11,12 +11,14 @@ import type { SortConfig } from '@/lib/sort-utils';
 import { toggleSort } from '@/lib/sort-utils';
 import {
   adminShopProfilesManageListIncludes,
+  adminShopProfilesQueryKey,
 } from '@/hooks/shops/shared/adminShopProfilesQueryKeys';
 import { useAdminShopProfilesQuery } from './useAdminShopProfilesQuery';
 import { useToggleShopStatusMutation } from './useToggleShopStatusMutation';
 import { exportAdminShopProfilesToExcel } from './exportAdminShopProfiles';
 import { useDeleteShopMutation } from './useDeleteShopMutation';
 import { useAssignAdminMutation } from './useAssignAdminMutation';
+import { useReorderShopsMutation } from './useReorderShopsMutation';
 import type { ShopActionDialogState } from './manageShopRestaurantTypes';
 
 export type { ShopActionDialogState } from './manageShopRestaurantTypes';
@@ -59,6 +61,17 @@ export function useManageShopRestaurant() {
   const toggleShopStatusMutation = useToggleShopStatusMutation();
   const deleteShopMutation = useDeleteShopMutation();
   const assignAdminMutation = useAssignAdminMutation();
+  const reorderShopsMutation = useReorderShopsMutation();
+
+  const listQueryKey = adminShopProfilesQueryKey(
+    currentPage,
+    pageSize,
+    debouncedSearch,
+    selectedCategory,
+    activeFilter,
+    verifiedFilter,
+    adminShopProfilesManageListIncludes,
+  );
 
   const toggleBusyShopId =
     toggleShopStatusMutation.isPending && toggleShopStatusMutation.variables
@@ -182,6 +195,24 @@ export function useManageShopRestaurant() {
     [],
   );
 
+  const handleReorder = useCallback(
+    (orderedIds: number[]) => {
+      const content = shopListData?.content ?? [];
+      if (content.length < 2) return;
+      const byId = new Map(content.map((row) => [row.id, row]));
+      const nextContent = orderedIds
+        .map((id) => byId.get(id))
+        .filter((row): row is (typeof content)[number] => row != null);
+      if (nextContent.length !== content.length) return;
+      reorderShopsMutation.mutate({
+        ids: orderedIds,
+        queryKey: listQueryKey,
+        nextContent,
+      });
+    },
+    [shopListData, listQueryKey, reorderShopsMutation],
+  );
+
   const handleEditShop = useCallback(
     (shop: Shop) => {
       setSelectedShopId(shop.id);
@@ -208,6 +239,7 @@ export function useManageShopRestaurant() {
       selectedShopId,
       sortConfig,
       toggleBusyShopId,
+      reordering: reorderShopsMutation.isPending,
     },
     pagination: {
       currentPage,
@@ -258,6 +290,7 @@ export function useManageShopRestaurant() {
       onOpenDelete: openDeleteDialog,
       onOpenAssign: openAssignDialog,
       onSort: handleSort,
+      onReorder: handleReorder,
       onCreateShop: handleCreateShop,
       onExport: handleExport,
     },

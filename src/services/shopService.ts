@@ -106,6 +106,7 @@ export interface Shop {
   menuItemCount?: number;
   cuisineId?: number;
   viewCount?: number;
+  displayOrder?: number;
   telegramUsername?: string | null;
   telegramConnected?: boolean;
 }
@@ -276,6 +277,7 @@ export interface AdminShopProfileListItem {
   city?: CityDTO | null;
   district?: DistrictDTO | null;
   viewCount?: number;
+  displayOrder?: number;
 }
 
 export interface AdminShopProfileListResponse {
@@ -312,6 +314,7 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     isVerified: row.isVerified,
     taxEnable: row.taxEnable,
     viewCount: row.viewCount ?? 0,
+    displayOrder: row.displayOrder,
   };
 }
 export interface ShopFormDataDTO {
@@ -796,6 +799,17 @@ export const ShopService = {
   reorderMenuCategories: async (categoryIds: number[]): Promise<void> => {
     await apiClient.post<void>(config.endpoints.admin.menu.categoryReorder, {
       categoryIds,
+    });
+  },
+
+  /**
+   * Persist a drag-reorder of shops. `ids` are the shops in their new order
+   * (a single table page); the backend permutes their display-order slots.
+   * POST /api/admin/shop-profile/reorder
+   */
+  reorderShops: async (ids: number[]): Promise<void> => {
+    await apiClient.post<void>(config.endpoints.admin.shopProfile.reorder, {
+      ids,
     });
   },
 
