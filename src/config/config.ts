@@ -241,6 +241,7 @@ export const config = {
         banners: {
           base: '/api/admin/banners',
           detail: (id: string | number) => `/api/admin/banners/${id}`,
+          reorder: '/api/admin/banners/reorder',
         },
         backgroundThemes: {
           base: '/api/admin/background-themes',
