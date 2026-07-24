@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const bannerPositionSchema = z.enum(["Ads", "Promotions"]);
+export const bannerPositionSchema = z.enum([
+  "Ads",
+  "Promotions",
+  "Order",
+  "Splash",
+]);
 export const bannerStatusSchema = z.enum(["Active", "Hide"]);
 
 const toDateInput = (value: string) =>
@@ -18,6 +23,7 @@ const bannerImageRawSchema = z.object({
   link: z.string().nullable().optional(),
   position: bannerPositionSchema,
   status: bannerStatusSchema,
+  displayOrder: z.coerce.number().optional().default(0),
   startDate: z.coerce.string().optional().nullable(),
   endDate: z.coerce.string().optional().nullable(),
   createdAt: z.coerce.string().optional(),
@@ -36,6 +42,7 @@ export const bannerImageSchema = bannerImageRawSchema.transform((banner) => ({
   linkUrl: banner.link ?? undefined,
   position: banner.position,
   isActive: banner.status === "Active",
+  displayOrder: banner.displayOrder ?? 0,
   startDate: toDateInput(
     banner.startDate ?? banner.createdAt ?? new Date().toISOString(),
   ),
@@ -58,9 +65,21 @@ const bannerFormBaseSchema = z.object({
   nameEn: z.string().trim().min(1, "English title is required"),
   nameMm: z.string().trim().min(1, "Myanmar title is required"),
   nameTh: z.string().trim().optional(),
-  descriptionEn: z.string().trim().max(3000, "English description must be less than 3000 characters").optional(),
-  descriptionMm: z.string().trim().max(3000, "Myanmar description must be less than 3000 characters").optional(),
-  descriptionTh: z.string().trim().max(3000, "Thai description must be less than 3000 characters").optional(),
+  descriptionEn: z
+    .string()
+    .trim()
+    .max(3000, "English description must be less than 3000 characters")
+    .optional(),
+  descriptionMm: z
+    .string()
+    .trim()
+    .max(3000, "Myanmar description must be less than 3000 characters")
+    .optional(),
+  descriptionTh: z
+    .string()
+    .trim()
+    .max(3000, "Thai description must be less than 3000 characters")
+    .optional(),
   linkUrl: z.string().trim().optional(),
   position: bannerPositionSchema,
   isActive: z.boolean(),

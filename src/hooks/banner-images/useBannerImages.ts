@@ -88,3 +88,17 @@ export function useDeleteBannerMutation() {
     },
   });
 }
+
+export function useReorderBannersMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => bannerImageService.reorderBanners(ids),
+    onSuccess: () => {
+      toast.success("Order updated");
+      void queryClient.invalidateQueries({ queryKey: bannerImageKeys.all });
+    },
+    onError: (error) => {
+      handleApiError(error, "Failed to update order");
+    },
+  });
+}

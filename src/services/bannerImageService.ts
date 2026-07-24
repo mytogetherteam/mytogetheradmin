@@ -5,6 +5,7 @@ import {
   bannersPageSchema,
   type BannerFormValues,
   type BannerImage,
+  type BannerPosition,
   type BannersPage,
 } from "@/schemas/banner-image.schema";
 
@@ -12,7 +13,7 @@ export interface BannersListParams {
   page?: number;
   size?: number;
   search?: string;
-  position?: "Ads" | "Promotions";
+  position?: BannerPosition;
 }
 
 function buildBannerFormData(
@@ -127,5 +128,11 @@ export const bannerImageService = {
 
   deleteBanner: async (id: number): Promise<void> => {
     await apiClient.delete<void>(config.endpoints.admin.marketing.banners.detail(id));
+  },
+
+  reorderBanners: async (ids: number[]): Promise<void> => {
+    await apiClient.post<void>(config.endpoints.admin.marketing.banners.reorder, {
+      ids,
+    });
   },
 };

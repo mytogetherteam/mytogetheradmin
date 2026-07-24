@@ -20,6 +20,7 @@ import {
   bannerFormSchema,
   type BannerFormValues,
   type BannerImage,
+  type BannerPosition,
 } from "@/schemas/banner-image.schema";
 
 const defaultValues: BannerFormValues = {
@@ -36,10 +37,22 @@ const defaultValues: BannerFormValues = {
   endDate: "",
 };
 
+const POSITION_LABELS: Record<BannerPosition, string> = {
+  Ads: "Ads",
+  Promotions: "Promotions",
+  Order: "Order Waiting",
+  Splash: "Splash",
+};
+
+const BANNER_TAB_POSITIONS: BannerPosition[] = ["Promotions", "Ads"];
+
 interface BannerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   banner?: BannerImage | null;
+  defaultPosition?: BannerFormValues["position"];
+  /** Positions the user may pick in this dialog (scoped to the current tab). */
+  allowedPositions?: BannerPosition[];
   submitting?: boolean;
   onSubmit: (values: BannerFormValues, imageFile?: File) => Promise<void>;
 }
@@ -48,11 +61,21 @@ export function BannerFormDialog({
   open,
   onOpenChange,
   banner,
+  defaultPosition = "Promotions",
+  allowedPositions = BANNER_TAB_POSITIONS,
   submitting = false,
   onSubmit,
 }: BannerFormDialogProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const positions = allowedPositions.length
+    ? allowedPositions
+    : BANNER_TAB_POSITIONS;
+  const lockedPosition = positions.length === 1 ? positions[0] : null;
+  const createPosition =
+    lockedPosition ??
+    (positions.includes(defaultPosition) ? defaultPosition : positions[0]!);
 
   const {
     register,
@@ -62,7 +85,7 @@ export function BannerFormDialog({
     formState: { errors },
   } = useForm<BannerFormValues>({
     resolver: zodResolver(bannerFormSchema) as Resolver<BannerFormValues>,
-    defaultValues,
+    defaultValues: { ...defaultValues, position: createPosition },
   });
 
   useEffect(() => {
@@ -85,10 +108,10 @@ export function BannerFormDialog({
       setImageFile(null);
       return;
     }
-    reset(defaultValues);
+    reset({ ...defaultValues, position: createPosition });
     setImagePreview(null);
     setImageFile(null);
-  }, [banner, open, reset]);
+  }, [banner, createPosition, open, reset]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,19 +129,31 @@ export function BannerFormDialog({
     onOpenChange(false);
   });
 
+  const entityLabel = lockedPosition
+    ? POSITION_LABELS[lockedPosition]
+    : banner
+      ? POSITION_LABELS[banner.position]
+      : "Banner";
+
+  const modalTitle = banner
+    ? `Edit ${entityLabel}`
+    : `Create ${entityLabel}`;
+  const modalDescription = banner
+    ? `Update ${entityLabel.toLowerCase()} details, schedule, and image.`
+    : lockedPosition
+      ? `Create a new ${entityLabel.toLowerCase()} image.`
+      : "Create a new promo or ads banner.";
+  const submitText = banner ? `Update ${entityLabel}` : `Create ${entityLabel}`;
+
   return (
     <Modal
       open={open}
       onClose={() => onOpenChange(false)}
       onSubmit={() => void handleSave()}
       loading={submitting}
-      title={banner ? "Edit Banner" : "Create New Banner"}
-      description={
-        banner
-          ? "Update banner details, schedule, and image."
-          : "Create a new promotional or ads banner."
-      }
-      submitText={banner ? "Update Banner" : "Create Banner"}
+      title={modalTitle}
+      description={modalDescription}
+      submitText={submitText}
       width="sm:max-w-lg"
     >
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -152,7 +187,7 @@ export function BannerFormDialog({
               id="descriptionEn"
               rows={2}
               {...register("descriptionEn")}
-              placeholder="Short banner description in English"
+              placeholder="Short description in English"
             />
             {errors.descriptionEn && (
               <p className="text-xs text-red-500">{errors.descriptionEn.message}</p>
@@ -164,7 +199,7 @@ export function BannerFormDialog({
               id="descriptionMm"
               rows={2}
               {...register("descriptionMm")}
-              placeholder="Short banner description in Myanmar"
+              placeholder="Short description in Myanmar"
             />
             {errors.descriptionMm && (
               <p className="text-xs text-red-500">{errors.descriptionMm.message}</p>
@@ -176,7 +211,7 @@ export function BannerFormDialog({
               id="descriptionTh"
               rows={2}
               {...register("descriptionTh")}
-              placeholder="Short banner description in Thai"
+              placeholder="Short description in Thai"
             />
             {errors.descriptionTh && (
               <p className="text-xs text-red-500">{errors.descriptionTh.message}</p>
@@ -186,21 +221,37 @@ export function BannerFormDialog({
 
         <div className="space-y-2">
           <Label>Position</Label>
-          <Controller
-            name="position"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select position" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Promotions">Promotions</SelectItem>
-                  <SelectItem value="Ads">Ads</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
+          {lockedPosition && !banner ? (
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {POSITION_LABELS[lockedPosition]}
+            </div>
+          ) : (
+            <Controller
+              name="position"
+              control={control}
+              render={({ field }) => {
+                const options = banner
+                  ? Array.from(
+                      new Set<BannerPosition>([...positions, banner.position]),
+                    )
+                  : positions;
+                return (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((pos) => (
+                        <SelectItem key={pos} value={pos}>
+                          {POSITION_LABELS[pos]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              }}
+            />
+          )}
           {errors.position && (
             <p className="text-xs text-red-500">{errors.position.message}</p>
           )}

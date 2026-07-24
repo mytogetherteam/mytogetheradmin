@@ -47,7 +47,20 @@ export function AppSidebar() {
     const isActive = (path?: string) => {
         if (!path) return false;
         if (path === "/" && location.pathname !== "/") return false;
-        return location.pathname === path;
+
+        const [pathname, search] = path.split("?");
+        if (location.pathname !== pathname) return false;
+        if (!search) {
+            // Parent paths without query should not steal active from tabbed children
+            return !location.search;
+        }
+
+        const expected = new URLSearchParams(search);
+        const current = new URLSearchParams(location.search);
+        for (const [key, value] of expected.entries()) {
+            if (current.get(key) !== value) return false;
+        }
+        return true;
     };
 
     const query = searchQuery.toLowerCase();

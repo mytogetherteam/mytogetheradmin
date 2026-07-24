@@ -33,6 +33,8 @@ import {
     Newspaper,
     Bike,
     MonitorSmartphone,
+    ShoppingBag,
+    Star,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -334,7 +336,10 @@ export const navigationConfig: NavGroup[] = [
         title: "Marketing & Comms",
         roles: [AdminRole.ADMIN, AdminRole.ADMIN_SETUP],
         items: [
-            { title: "Banners & Featured", url: "/marketing/banners", icon: ImageIcon, tooltip: "Banners", roles: AdminRole.ADMIN },
+            { title: "Banner", url: "/marketing/banners?tab=banners", icon: ImageIcon, tooltip: "Banner", roles: AdminRole.ADMIN },
+            { title: "Order Waiting", url: "/marketing/banners?tab=order", icon: ShoppingBag, tooltip: "Order Waiting", roles: AdminRole.ADMIN },
+            { title: "Splash", url: "/marketing/banners?tab=splash", icon: Smartphone, tooltip: "Splash", roles: AdminRole.ADMIN },
+            { title: "Featured", url: "/marketing/banners?tab=featured", icon: Star, tooltip: "Featured", roles: AdminRole.ADMIN },
             { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon, tooltip: "Background Themes", roles: AdminRole.ADMIN },
             { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
             { title: "Home Discount Sections", url: "/home-discount-sections/manage", icon: TicketPercent, tooltip: "Home discount carousel config", roles: AdminRole.ADMIN_SETUP },
