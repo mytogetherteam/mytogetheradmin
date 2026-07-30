@@ -24,6 +24,15 @@ export function usePlanFeatures(params?: {
   });
 }
 
+/** The capability catalogue — rarely changes, so it is cached for the session. */
+export function usePlanFeatureKeys() {
+  return useQuery({
+    queryKey: [...planFeatureKeys.all, "keys"],
+    queryFn: () => PlanService.getPlanFeatureKeys(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function usePlanFeature(id: number) {
   return useQuery({
     queryKey: [...planFeatureKeys.all, id],
@@ -32,7 +41,10 @@ export function usePlanFeature(id: number) {
   });
 }
 
-export function useCreatePlanFeatureMutation(options?: { redirectTo?: string }) {
+/** `redirectTo: false` keeps the caller on the page — used by the inline plan picker. */
+export function useCreatePlanFeatureMutation(options?: {
+  redirectTo?: string | false;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   return useMutation({
@@ -41,7 +53,9 @@ export function useCreatePlanFeatureMutation(options?: { redirectTo?: string }) 
     onSuccess: () => {
       toast.success("Plan feature created successfully");
       void queryClient.invalidateQueries({ queryKey: planFeatureKeys.all });
-      navigate(options?.redirectTo ?? "/plan-features/manage");
+      if (options?.redirectTo !== false) {
+        navigate(options?.redirectTo ?? "/plan-features/manage");
+      }
     },
     onError: (error) => {
       handleApiError(error, "Failed to create plan feature");

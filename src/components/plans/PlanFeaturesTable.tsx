@@ -61,7 +61,9 @@ export function PlanFeaturesTable({
             <TableRow>
               <TableHead className="w-10" />
               <TableHead>Name</TableHead>
+              <TableHead>Capability</TableHead>
               <TableHead>Code</TableHead>
+              <TableHead>Options</TableHead>
               <TableHead>Order</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -90,7 +92,23 @@ export function PlanFeaturesTable({
                         </button>
                       </TableCell>
                       <TableCell className="font-medium">{feature.nameEn}</TableCell>
+                      <TableCell>
+                        {feature.featureKeyInfo ? (
+                          <Badge variant="secondary">
+                            {feature.featureKeyInfo.label}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Display only
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{feature.code}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {feature.options?.length
+                          ? `${feature.options.length} option${feature.options.length > 1 ? "s" : ""}`
+                          : "—"}
+                      </TableCell>
                       <TableCell>{feature.displayOrder ?? 0}</TableCell>
                       <TableCell>
                         <Badge

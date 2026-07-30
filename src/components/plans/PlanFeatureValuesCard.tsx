@@ -7,7 +7,9 @@ import {
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import {
+  formatChooseLabel,
   formatFeatureValueSummary,
+  resolveOfferedOptions,
   resolvePlanFeatureName,
 } from "@/lib/plans/plan-form.utils";
 import type {
@@ -23,6 +25,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -51,6 +54,8 @@ interface PlanFeatureValuesCardProps {
   onOpenFeatureValueIdsChange: (ids: string[]) => void;
   onAddFeatureValue: () => void;
   onRemoveFeatureValue: (index: number, fieldId: string) => void;
+  /** Lets the page drop values that no longer apply to the newly picked feature. */
+  onFeatureChanged: (index: number, featureId: number) => void;
 }
 
 export function PlanFeatureValuesCard({
@@ -63,6 +68,7 @@ export function PlanFeatureValuesCard({
   onOpenFeatureValueIdsChange,
   onAddFeatureValue,
   onRemoveFeatureValue,
+  onFeatureChanged,
 }: PlanFeatureValuesCardProps) {
   const hasCatalogue = catalogueFeatures.length > 0;
 
@@ -79,20 +85,16 @@ export function PlanFeatureValuesCard({
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAddFeatureValue}>
             <Plus className="mr-2 h-4 w-4" />
-            {hasCatalogue ? "Add feature" : "Create feature"}
+            Add feature
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!hasCatalogue ? (
+        {featureValueFields.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No plan features in the catalogue yet. Click &quot;Create feature&quot;
-            to add one, then come back here to assign quotas for this plan.
-          </p>
-        ) : featureValueFields.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No features added yet. Use &quot;Add feature&quot; to configure quotas
-            for this plan.
+            {hasCatalogue
+              ? 'No features yet. Use "Add feature" to pick from the catalogue — or create a new one right there.'
+              : 'The catalogue is empty. "Add feature" lets you create your first one without leaving this plan.'}
           </p>
         ) : (
           <Accordion
@@ -108,8 +110,28 @@ export function PlanFeatureValuesCard({
                 catalogueFeatures,
               );
               const summary = value
-                ? formatFeatureValueSummary(value)
+                ? formatFeatureValueSummary(value, catalogueFeatures)
                 : "No quota set";
+              const selectedFeature = catalogueFeatures.find(
+                (feature) => feature.id === value?.featureId,
+              );
+              const catalogueOptions =
+                selectedFeature?.options.filter((option) => option.isActive) ??
+                [];
+              const offeredOptions = resolveOfferedOptions(
+                value,
+                catalogueFeatures,
+              );
+              const chooseLabel = formatChooseLabel(
+                value,
+                offeredOptions.length,
+              );
+              // Only a COUNT capability has an amount to burn through. A LEVEL
+              // (Analytic Report — Basic), a SELECTION package and a display-only
+              // row have no number, so those inputs are hidden rather than left
+              // to collect a value nothing would read.
+              const valueType = selectedFeature?.featureKeyInfo?.valueType;
+              const showsQuantity = valueType === "COUNT";
 
               return (
                 <AccordionItem
@@ -129,6 +151,9 @@ export function PlanFeatureValuesCard({
                         <div className="flex shrink-0 flex-wrap items-center gap-2">
                           {value?.isUnlimited ? (
                             <Badge variant="secondary">Unlimited</Badge>
+                          ) : null}
+                          {chooseLabel ? (
+                            <Badge variant="secondary">{chooseLabel}</Badge>
                           ) : null}
                           <Badge variant="outline">#{index + 1}</Badge>
                         </div>
@@ -161,63 +186,90 @@ export function PlanFeatureValuesCard({
                           render={({ field: featureField }) => (
                             <Select
                               value={String(featureField.value || "")}
-                              onValueChange={(next) =>
-                                featureField.onChange(parseInt(next, 10))
-                              }
+                              onValueChange={(next) => {
+                                const nextId = parseInt(next, 10);
+                                featureField.onChange(nextId);
+                                onFeatureChanged(index, nextId);
+                              }}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger hideClear>
                                 <SelectValue placeholder="Select feature" />
                               </SelectTrigger>
                               <SelectContent>
-                                {catalogueFeatures.map((feature) => (
-                                  <SelectItem
-                                    key={feature.id}
-                                    value={String(feature.id)}
-                                  >
-                                    {feature.nameEn} ({feature.code})
-                                  </SelectItem>
-                                ))}
+                                {/* Features used by other rows are hidden — a plan
+                                    can only hold one row per feature. */}
+                                {catalogueFeatures
+                                  .filter(
+                                    (feature) =>
+                                      feature.id === value?.featureId ||
+                                      !featureValues.some(
+                                        (other, otherIndex) =>
+                                          otherIndex !== index &&
+                                          other.featureId === feature.id,
+                                      ),
+                                  )
+                                  .map((feature) => (
+                                    <SelectItem
+                                      key={feature.id}
+                                      value={String(feature.id)}
+                                    >
+                                      {feature.nameEn} ({feature.code})
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           )}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {selectedFeature?.featureKeyInfo
+                            ? `Enforceable — linked to ${selectedFeature.featureKeyInfo.label}. ${selectedFeature.featureKeyInfo.description}`
+                            : "Display only — this quota shows on the pricing page but the app does not check it. Link a capability on the feature to make it enforceable."}
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Quantity</Label>
-                        <Controller
-                          name={`featureValues.${index}.quantity`}
-                          control={control}
-                          render={({ field: qtyField }) => {
-                            const isUnlimited =
-                              !!featureValues[index]?.isUnlimited;
-                            return (
-                              <Input
-                                type="number"
-                                min={0}
-                                disabled={isUnlimited}
-                                value={isUnlimited ? "" : (qtyField.value ?? "")}
-                                placeholder={isUnlimited ? "Unlimited" : undefined}
-                                onChange={(e) => {
-                                  const next = e.target.value;
-                                  qtyField.onChange(
-                                    next === "" ? undefined : Number(next),
-                                  );
-                                }}
-                              />
-                            );
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Period</Label>
-                        <Controller
-                          name={`featureValues.${index}.period`}
-                          control={control}
-                          render={({ field: periodField }) => (
-                            <Input placeholder="day" {...periodField} />
-                          )}
-                        />
-                      </div>
+                      {showsQuantity ? (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Quantity</Label>
+                            <Controller
+                              name={`featureValues.${index}.quantity`}
+                              control={control}
+                              render={({ field: qtyField }) => {
+                                const isUnlimited =
+                                  !!featureValues[index]?.isUnlimited;
+                                return (
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    disabled={isUnlimited}
+                                    value={
+                                      isUnlimited ? "" : (qtyField.value ?? "")
+                                    }
+                                    placeholder={
+                                      isUnlimited ? "Unlimited" : undefined
+                                    }
+                                    onChange={(e) => {
+                                      const next = e.target.value;
+                                      qtyField.onChange(
+                                        next === "" ? undefined : Number(next),
+                                      );
+                                    }}
+                                  />
+                                );
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Period</Label>
+                            <Controller
+                              name={`featureValues.${index}.period`}
+                              control={control}
+                              render={({ field: periodField }) => (
+                                <Input placeholder="day" {...periodField} />
+                              )}
+                            />
+                          </div>
+                        </>
+                      ) : null}
                       <div className="space-y-2">
                         <Label>Value label</Label>
                         <Controller
@@ -230,6 +282,12 @@ export function PlanFeatureValuesCard({
                             />
                           )}
                         />
+                        {valueType === "LEVEL" ? (
+                          <p className="text-xs text-muted-foreground">
+                            This is the grade shown on the pricing page — e.g.
+                            &quot;Analytic Report - Basic&quot;.
+                          </p>
+                        ) : null}
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>Note</Label>
@@ -244,29 +302,148 @@ export function PlanFeatureValuesCard({
                           )}
                         />
                       </div>
-                      <div className="md:col-span-2">
-                        <Controller
-                          name={`featureValues.${index}.isUnlimited`}
-                          control={control}
-                          render={({ field: unlimitedField }) => (
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={!!unlimitedField.value}
-                                onCheckedChange={(checked) => {
-                                  unlimitedField.onChange(checked);
-                                  if (checked) {
-                                    setValue(
-                                      `featureValues.${index}.quantity`,
-                                      undefined,
+                      {showsQuantity ? (
+                        <div className="md:col-span-2">
+                          <Controller
+                            name={`featureValues.${index}.isUnlimited`}
+                            control={control}
+                            render={({ field: unlimitedField }) => (
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={!!unlimitedField.value}
+                                  onCheckedChange={(checked) => {
+                                    unlimitedField.onChange(checked);
+                                    if (checked) {
+                                      setValue(
+                                        `featureValues.${index}.quantity`,
+                                        undefined,
+                                      );
+                                    }
+                                  }}
+                                />
+                                <Label>Unlimited</Label>
+                              </div>
+                            )}
+                          />
+                        </div>
+                      ) : null}
+
+                      {catalogueOptions.length > 0 ? (
+                        <div className="space-y-3 rounded-lg border p-3 md:col-span-2">
+                          <div>
+                            <Label>Package options</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Tick the options this plan offers — leave all
+                              unticked to offer the full list. Then set how many
+                              a shop may pick.
+                            </p>
+                          </div>
+
+                          <Controller
+                            name={`featureValues.${index}.optionIds`}
+                            control={control}
+                            render={({ field: optionsField }) => {
+                              const selected = optionsField.value ?? [];
+                              return (
+                                <div className="space-y-2">
+                                  {catalogueOptions.map((option) => {
+                                    const checked = selected.includes(option.id);
+                                    return (
+                                      <div
+                                        key={option.id}
+                                        className="flex items-start gap-2"
+                                      >
+                                        <Checkbox
+                                          id={`fv-${index}-opt-${option.id}`}
+                                          checked={checked}
+                                          onCheckedChange={(next) => {
+                                            optionsField.onChange(
+                                              next === true
+                                                ? [...selected, option.id]
+                                                : selected.filter(
+                                                    (id) => id !== option.id,
+                                                  ),
+                                            );
+                                          }}
+                                        />
+                                        <Label
+                                          htmlFor={`fv-${index}-opt-${option.id}`}
+                                          className="text-sm font-normal leading-snug"
+                                        >
+                                          {option.textEn}
+                                        </Label>
+                                      </div>
                                     );
-                                  }
+                                  })}
+                                </div>
+                              );
+                            }}
+                          />
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label>Choose how many</Label>
+                              <Controller
+                                name={`featureValues.${index}.chooseCount`}
+                                control={control}
+                                render={({ field: chooseField }) => {
+                                  const isChooseAll =
+                                    !!featureValues[index]?.isChooseAll;
+                                  return (
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={offeredOptions.length}
+                                      disabled={isChooseAll}
+                                      placeholder={isChooseAll ? "All" : "2"}
+                                      value={
+                                        isChooseAll
+                                          ? ""
+                                          : (chooseField.value ?? "")
+                                      }
+                                      onChange={(e) => {
+                                        const next = e.target.value;
+                                        chooseField.onChange(
+                                          next === "" ? undefined : Number(next),
+                                        );
+                                      }}
+                                    />
+                                  );
                                 }}
                               />
-                              <Label>Unlimited</Label>
                             </div>
-                          )}
-                        />
-                      </div>
+                            <div className="flex items-end pb-2">
+                              <Controller
+                                name={`featureValues.${index}.isChooseAll`}
+                                control={control}
+                                render={({ field: allField }) => (
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={!!allField.value}
+                                      onCheckedChange={(checked) => {
+                                        allField.onChange(checked);
+                                        if (checked) {
+                                          setValue(
+                                            `featureValues.${index}.chooseCount`,
+                                            undefined,
+                                          );
+                                        }
+                                      }}
+                                    />
+                                    <Label>All options included</Label>
+                                  </div>
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground">
+                            {chooseLabel
+                              ? `Pricing page shows: ${featureName.split(" (")[0]} ${chooseLabel} — ${offeredOptions.length} option(s) offered`
+                              : `${offeredOptions.length} option(s) offered, no "Choose N" label`}
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                   </AccordionContent>
                 </AccordionItem>

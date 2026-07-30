@@ -4,14 +4,64 @@ import { api } from "@/utils/axios";
 
 export type PlanBillingPeriod = "MONTHLY" | "YEARLY";
 
+/** Stable key tying a feature to the capability it governs. Null = display-only. */
+export type PlanFeatureKey =
+  | "BOOSTING"
+  | "REMINDER_ALERT"
+  | "ANALYTIC_REPORT"
+  | "FLASH_DROP"
+  | "FLASH_DEAL"
+  | "FLASH_MENU"
+  | "EXCLUSIVE_EVENT"
+  | "BANNER"
+  | "WEBSITE_LOCAL_ADS"
+  | "SOCIAL_MEDIA_PACKAGE"
+  | "DEDICATED_ACCOUNT"
+  | "MYDAY"
+  | "JOB_POST"
+  | "COUPON"
+  | "ITEM_POST";
+
+/** How a plan expresses its allowance for a capability. */
+export type PlanFeatureValueType = "COUNT" | "LEVEL" | "SELECTION";
+
+export interface PlanFeatureKeyInfo {
+  key: PlanFeatureKey;
+  label: string;
+  description: string;
+  valueType: PlanFeatureValueType;
+}
+
+/** A capability plus which feature (if any) already claims it. */
+export interface PlanFeatureKeyOption extends PlanFeatureKeyInfo {
+  usedByFeatureId: number | null;
+  usedByFeatureName: string | null;
+}
+
+/** One selectable item of a "pick N of these" feature, e.g. "Facebook post x 2". */
+export interface PlanFeatureOptionRow {
+  id: number;
+  code: string;
+  textEn: string;
+  textMm: string | null;
+  textTh: string | null;
+  displayOrder: number;
+  isActive: boolean;
+}
+
 export interface PlanFeatureSummary {
   id: number;
   code: string;
+  featureKey: PlanFeatureKey | null;
   nameEn: string;
   nameMm: string | null;
   nameTh: string | null;
+  descriptionEn: string | null;
+  descriptionMm: string | null;
+  descriptionTh: string | null;
   displayOrder: number;
   isActive: boolean;
+  options: PlanFeatureOptionRow[];
 }
 
 export interface PlanFeatureValueRow {
@@ -22,6 +72,16 @@ export interface PlanFeatureValueRow {
   period: string | null;
   valueLabel: string | null;
   note: string | null;
+  /** How many options the shop may pick, e.g. 2 for "(Choose 2)". */
+  chooseCount: number | null;
+  /** True for "(All)" — every offered option is included. */
+  isChooseAll: boolean;
+  /** Options this plan explicitly offers; empty = the feature's whole catalogue. */
+  optionIds: number[];
+  /** Resolved menu the shop picks from. */
+  offeredOptions: PlanFeatureOptionRow[];
+  /** Pricing-page suffix: "(Choose 2)", "(All)" or null. */
+  chooseLabel: string | null;
   displayOrder: number;
   isActive: boolean;
   feature?: PlanFeatureSummary;
@@ -45,6 +105,13 @@ export interface PlanListItem {
   descriptionMm: string | null;
   descriptionTh: string | null;
   price: number | null;
+  /** Total charged for one year; null when the plan has no annual option. */
+  annualPrice: number | null;
+  /** annualPrice / 12 — what the pricing page shows under "Annually". */
+  annualMonthlyPrice: number | null;
+  /** Savings vs. paying monthly, e.g. 20 for "Save 20%". */
+  annualDiscountPercent: number | null;
+  hasAnnualPricing: boolean;
   billingPeriod: PlanBillingPeriod;
   isCustomPricing: boolean;
   isPopular: boolean;
@@ -71,6 +138,10 @@ export interface PlanFeatureValuePayload {
   period?: string;
   valueLabel?: string;
   note?: string;
+  chooseCount?: number;
+  isChooseAll?: boolean;
+  /** Omit or send [] to offer every active option of the feature. */
+  optionIds?: number[];
   displayOrder?: number;
   isActive?: boolean;
 }
@@ -83,6 +154,8 @@ export interface PlanPayload {
   descriptionMm?: string;
   descriptionTh?: string;
   price?: number;
+  /** Pass null to remove the annual option from an existing plan. */
+  annualPrice?: number | null;
   billingPeriod?: PlanBillingPeriod;
   isCustomPricing?: boolean;
   isPopular?: boolean;
@@ -97,19 +170,43 @@ export type UpdatePlanPayload = Partial<PlanPayload>;
 export interface PlanFeatureListItem {
   id: number;
   code: string;
+  featureKey: PlanFeatureKey | null;
+  featureKeyInfo: PlanFeatureKeyInfo | null;
   nameEn: string;
   nameMm: string | null;
   nameTh: string | null;
+  /** Tooltip text on the pricing page. */
+  descriptionEn: string | null;
+  descriptionMm: string | null;
+  descriptionTh: string | null;
   displayOrder: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  options: PlanFeatureOptionRow[];
+}
+
+export interface PlanFeatureOptionPayload {
+  /** Send the existing id back so plans referencing this option keep working. */
+  id?: number;
+  textEn: string;
+  textMm?: string;
+  textTh?: string;
+  displayOrder?: number;
+  isActive?: boolean;
 }
 
 export interface PlanFeaturePayload {
   nameEn: string;
+  /** Pass null to unlink the capability and make the feature display-only. */
+  featureKey?: PlanFeatureKey | null;
   nameMm?: string;
   nameTh?: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
+  descriptionTh?: string;
+  /** Passing this replaces the full option list. */
+  options?: PlanFeatureOptionPayload[];
   isActive?: boolean;
 }
 
@@ -176,16 +273,39 @@ function normalizePaginated<T>(
   };
 }
 
+function toNumberOrNull(value: number | null | undefined): number | null {
+  return value != null ? Number(value) : null;
+}
+
 function normalizePlan(plan: PlanListItem): PlanListItem {
+  const annualPrice = toNumberOrNull(plan.annualPrice);
+  const price = toNumberOrNull(plan.price);
+  const annualMonthlyPrice =
+    toNumberOrNull(plan.annualMonthlyPrice) ??
+    (annualPrice != null ? Math.round((annualPrice / 12) * 100) / 100 : null);
+
   return {
     ...plan,
+    featureValues: (plan.featureValues ?? []).map((value) => ({
+      ...value,
+      optionIds: value.optionIds ?? [],
+      offeredOptions: value.offeredOptions ?? [],
+    })),
     billingPeriod: plan.billingPeriod === "YEARLY" ? "YEARLY" : "MONTHLY",
-    price: plan.price != null ? Number(plan.price) : null,
+    price,
+    annualPrice,
+    annualMonthlyPrice,
+    annualDiscountPercent:
+      toNumberOrNull(plan.annualDiscountPercent) ??
+      (price != null && price > 0 && annualMonthlyPrice != null
+        ? Math.round((1 - annualMonthlyPrice / price) * 100)
+        : null),
+    hasAnnualPricing: plan.hasAnnualPricing ?? annualPrice != null,
   };
 }
 
 function normalizePlanFeature(feature: PlanFeatureListItem): PlanFeatureListItem {
-  return { ...feature };
+  return { ...feature, options: feature.options ?? [] };
 }
 
 export const PlanService = {
@@ -253,6 +373,13 @@ export const PlanService = {
       preservePaginatedMeta: true,
     });
     return normalizePaginated(response, normalizePlanFeature);
+  },
+
+  getPlanFeatureKeys: async (): Promise<PlanFeatureKeyOption[]> => {
+    const keys = await handleApiCall<PlanFeatureKeyOption[]>(() =>
+      api.get(config.endpoints.admin.planFeatures.keys),
+    );
+    return keys ?? [];
   },
 
   getPlanFeatureById: async (id: number): Promise<PlanFeatureListItem> => {

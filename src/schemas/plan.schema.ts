@@ -16,6 +16,12 @@ const planFeatureValueSchema = z.object({
   period: z.string().max(50).optional().or(z.literal("")),
   valueLabel: z.string().max(100).optional().or(z.literal("")),
   note: z.string().max(500).optional().or(z.literal("")),
+  /** "(Choose 2)" — how many of the offered options a shop may pick. */
+  chooseCount: z.coerce.number().int().min(1).optional(),
+  /** "(All)" — every offered option is included. */
+  isChooseAll: z.boolean().optional(),
+  /** Which options this plan offers; empty = all active options of the feature. */
+  optionIds: z.array(z.coerce.number().int().min(1)).optional(),
   displayOrder: z.coerce.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
 });
@@ -29,6 +35,7 @@ export const planSchema = z
     descriptionMm: z.string().max(5000).optional().or(z.literal("")),
     descriptionTh: z.string().max(5000).optional().or(z.literal("")),
     price: z.coerce.number().min(0).optional(),
+    annualPrice: z.coerce.number().min(0).optional(),
     billingPeriod: z.enum(PLAN_BILLING_PERIODS).default("MONTHLY"),
     isCustomPricing: z.boolean().default(false),
     isPopular: z.boolean().default(false),
@@ -38,14 +45,26 @@ export const planSchema = z
     highlights: z.array(planHighlightSchema).optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.isCustomPricing) {
-      if (data.price === undefined || Number.isNaN(data.price)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Price is required unless custom pricing is enabled",
-          path: ["price"],
-        });
-      }
+    if (data.isCustomPricing) return;
+
+    if (data.price === undefined || Number.isNaN(data.price)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Price is required unless custom pricing is enabled",
+        path: ["price"],
+      });
+    }
+
+    const hasAnnual =
+      data.annualPrice !== undefined && !Number.isNaN(data.annualPrice);
+
+    if (data.billingPeriod === "YEARLY" && !hasAnnual) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Annual price is required when the default billing period is Yearly",
+        path: ["annualPrice"],
+      });
     }
   });
 

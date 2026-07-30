@@ -16,7 +16,10 @@ import {
   usePlan,
   useUpdatePlanMutation,
 } from "@/hooks/plans/usePlan";
-import { usePlanFeatures } from "@/hooks/plans/usePlanFeature";
+import {
+  usePlanFeatureKeys,
+  usePlanFeatures,
+} from "@/hooks/plans/usePlanFeature";
 import { planSchema, type PlanFormValues } from "@/schemas/plan.schema";
 import {
   collectErrorMessages,
@@ -25,6 +28,7 @@ import {
 } from "@/lib/plans/plan-form.utils";
 import { FormValidationAlert } from "@/components/common/FormValidationAlert";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { AddPlanFeatureDialog } from "@/components/plans/AddPlanFeatureDialog";
 import { PlanFeatureValuesCard } from "@/components/plans/PlanFeatureValuesCard";
 import { PlanFormActions } from "@/components/plans/PlanFormActions";
 import { PlanFormDetailsCard } from "@/components/plans/PlanFormDetailsCard";
@@ -39,12 +43,13 @@ export default function CreatePlan() {
   const isEditMode = !!id;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addFeatureOpen, setAddFeatureOpen] = useState(false);
   const [showValidationAlert, setShowValidationAlert] = useState(false);
   const [openFeatureValueIds, setOpenFeatureValueIds] = useState<string[]>([]);
   const prevFeatureValueCountRef = useRef(0);
 
   const { data: plan, isPending: loadingPlan } = usePlan(id);
-  const { data: featuresData } = usePlanFeatures({
+  const { data: featuresData, isPending: loadingFeatures } = usePlanFeatures({
     page: 1,
     size: 500,
     isActive: true,
@@ -55,6 +60,8 @@ export default function CreatePlan() {
     useUpdatePlanMutation();
   const { mutateAsync: deletePlan, isPending: isDeleting } =
     useDeletePlanMutation();
+
+  const { data: keyOptions } = usePlanFeatureKeys();
 
   const features = featuresData?.content ?? [];
 
@@ -109,25 +116,55 @@ export default function CreatePlan() {
     prevFeatureValueCountRef.current = plan.featureValues.length;
   }, [isEditMode, plan, reset]);
 
-  const handleAddFeatureValue = () => {
-    if (features.length === 0) {
-      const returnPath =
-        isEditMode && id ? `/plans/create?id=${id}` : "/plans/create";
-      navigate(
-        `/plan-features/create?return=${encodeURIComponent(returnPath)}`,
-      );
-      return;
-    }
+  // The dialog's async "create & add" resolves a render behind, so read the
+  // catalogue through a ref to get the just-created feature's value type.
+  const featuresRef = useRef(features);
+  featuresRef.current = features;
 
-    appendFeatureValue({
-      featureId: features[0]?.id ?? 0,
-      quantity: 1,
-      isUnlimited: false,
-      period: "",
-      valueLabel: "",
-      note: "",
-      isActive: true,
-    });
+  // Rows the admin just added should expand; rows that arrive from the loaded
+  // plan must stay collapsed. Counting alone cannot tell them apart, so the
+  // click records how many rows it is about to add.
+  const pendingOpenCountRef = useRef(0);
+
+  const handleAddFeatures = (featureIds: number[]) => {
+    pendingOpenCountRef.current += featureIds.length;
+    for (const featureId of featureIds) {
+      const feature = featuresRef.current.find((item) => item.id === featureId);
+      // A tier label or a "pick N" package has no quantity — starting it at 1
+      // would print "Analytic Report 1 · Basic" on the pricing page.
+      const isCountBased =
+        feature?.featureKeyInfo?.valueType !== "LEVEL" &&
+        feature?.featureKeyInfo?.valueType !== "SELECTION";
+
+      appendFeatureValue({
+        featureId,
+        quantity: isCountBased ? 1 : undefined,
+        isUnlimited: false,
+        period: "",
+        valueLabel: "",
+        note: "",
+        isChooseAll: false,
+        optionIds: [],
+        isActive: true,
+      });
+    }
+  };
+
+  /** Wipe the inputs the newly picked feature does not use, so nothing stale saves. */
+  const handleFeatureChanged = (index: number, featureId: number) => {
+    const feature = featuresRef.current.find((item) => item.id === featureId);
+    const valueType = feature?.featureKeyInfo?.valueType;
+
+    if (valueType !== "COUNT") {
+      setValue(`featureValues.${index}.quantity`, undefined);
+      setValue(`featureValues.${index}.period`, "");
+      setValue(`featureValues.${index}.isUnlimited`, false);
+    }
+    if (valueType !== "SELECTION") {
+      setValue(`featureValues.${index}.chooseCount`, undefined);
+      setValue(`featureValues.${index}.isChooseAll`, false);
+      setValue(`featureValues.${index}.optionIds`, []);
+    }
   };
 
   useEffect(() => {
@@ -140,13 +177,17 @@ export default function CreatePlan() {
       return;
     }
 
-    if (count === previousCount + 1) {
-      const latestId = featureValueFields[count - 1]?.id;
-      if (latestId) {
-        setOpenFeatureValueIds((current) =>
-          current.includes(latestId) ? current : [...current, latestId],
-        );
-      }
+    const justAdded = pendingOpenCountRef.current;
+    if (justAdded > 0 && count > previousCount) {
+      // Expand only the rows this click added, whether one or a batch.
+      pendingOpenCountRef.current = 0;
+      const addedIds = featureValueFields
+        .slice(Math.max(0, count - justAdded))
+        .map((field) => field.id);
+      setOpenFeatureValueIds((current) => [
+        ...current,
+        ...addedIds.filter((fieldId) => !current.includes(fieldId)),
+      ]);
     } else if (count < previousCount) {
       const validIds = new Set(featureValueFields.map((field) => field.id));
       setOpenFeatureValueIds((current) => current.filter((id) => validIds.has(id)));
@@ -176,7 +217,7 @@ export default function CreatePlan() {
 
   const onSubmit = async (values: PlanFormValues) => {
     setShowValidationAlert(false);
-    const payload = toPlanPayload(values);
+    const payload = toPlanPayload(values, featuresRef.current);
     if (isEditMode) {
       await updatePlan({ id, payload });
     } else {
@@ -193,7 +234,9 @@ export default function CreatePlan() {
   const submitting = isCreating || isUpdating;
   const errorMessages = collectErrorMessages(errors);
 
-  if (isEditMode && loadingPlan) {
+  // Wait for the catalogue too: a row's Feature select renders blank if its
+  // value lands before the matching option has mounted.
+  if ((isEditMode && loadingPlan) || loadingFeatures) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -235,8 +278,18 @@ export default function CreatePlan() {
           featureValues={featureValues}
           openFeatureValueIds={openFeatureValueIds}
           onOpenFeatureValueIdsChange={setOpenFeatureValueIds}
-          onAddFeatureValue={handleAddFeatureValue}
+          onAddFeatureValue={() => setAddFeatureOpen(true)}
           onRemoveFeatureValue={handleRemoveFeatureValue}
+          onFeatureChanged={handleFeatureChanged}
+        />
+
+        <AddPlanFeatureDialog
+          open={addFeatureOpen}
+          onOpenChange={setAddFeatureOpen}
+          catalogueFeatures={features}
+          usedFeatureIds={featureValues.map((item) => item.featureId)}
+          keyOptions={keyOptions ?? []}
+          onAdd={handleAddFeatures}
         />
 
         <PlanHighlightsCard

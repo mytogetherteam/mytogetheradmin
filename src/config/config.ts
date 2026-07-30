@@ -61,6 +61,7 @@ export const config = {
         base: '/api/admin/plan-features',
         detail: (id: number) => `/api/admin/plan-features/${id}`,
         reorder: '/api/admin/plan-features/reorder',
+        keys: '/api/admin/plan-features/keys',
       },
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
