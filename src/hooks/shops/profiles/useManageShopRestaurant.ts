@@ -20,6 +20,7 @@ import { useDeleteShopMutation } from './useDeleteShopMutation';
 import { useAssignAdminMutation } from './useAssignAdminMutation';
 import { useReorderShopsMutation } from './useReorderShopsMutation';
 import type { ShopActionDialogState } from './manageShopRestaurantTypes';
+import type { EditShopSlugDialogState } from '@/components/shop/manage/EditShopSlugDialog';
 
 export type { ShopActionDialogState } from './manageShopRestaurantTypes';
 
@@ -27,6 +28,13 @@ const closedDialog = (): ShopActionDialogState => ({
   open: false,
   id: 0,
   name: '',
+});
+
+const closedSlugDialog = (): EditShopSlugDialogState => ({
+  open: false,
+  id: 0,
+  name: '',
+  slug: '',
 });
 
 function shopDisplayName(shop: Shop): string {
@@ -43,6 +51,7 @@ export function useManageShopRestaurant() {
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<ShopActionDialogState>(closedDialog);
   const [assignDialog, setAssignDialog] = useState<ShopActionDialogState>(closedDialog);
+  const [slugDialog, setSlugDialog] = useState<EditShopSlugDialogState>(closedSlugDialog);
 
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>();
@@ -178,6 +187,19 @@ export function useManageShopRestaurant() {
     setAssignDialog(closedDialog());
   }, []);
 
+  const openSlugDialog = useCallback((shop: Shop) => {
+    setSlugDialog({
+      open: true,
+      id: shop.id,
+      name: shopDisplayName(shop),
+      slug: shop.slug ?? '',
+    });
+  }, []);
+
+  const closeSlugDialog = useCallback(() => {
+    setSlugDialog(closedSlugDialog());
+  }, []);
+
   const handleDeleteConfirm = useCallback(() => {
     deleteShopMutation.mutate(
       { id: deleteDialog.id, name: deleteDialog.name },
@@ -265,6 +287,10 @@ export function useManageShopRestaurant() {
       onOpenChange: (open: boolean) => !open && closeAssignDialog(),
       mutate: assignAdminMutation.mutate,
     },
+    slugDialog: {
+      state: slugDialog,
+      onOpenChange: (open: boolean) => !open && closeSlugDialog(),
+    },
     filters: {
       selectedCategory,
       activeFilter,
@@ -287,6 +313,7 @@ export function useManageShopRestaurant() {
       onToggleVerified: handleToggleVerified,
       onToggleTaxEnable: handleToggleTaxEnable,
       onEditShop: handleEditShop,
+      onEditSlug: openSlugDialog,
       onOpenDelete: openDeleteDialog,
       onOpenAssign: openAssignDialog,
       onSort: handleSort,
