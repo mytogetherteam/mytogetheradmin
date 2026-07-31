@@ -5,7 +5,9 @@ import { useGrantSubscriptionMutation } from "@/hooks/subscriptions/useSubscript
 import { usePlans } from "@/hooks/plans/usePlan";
 import type { PlanBillingPeriod } from "@/services/planService";
 import { ShopSelect } from "@/components/ShopSelect";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +26,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+
+/**
+ * Applies a "choose N" tick without ever exceeding N. With N = 1 the new pick
+ * replaces the old one, which is what a single-choice list should do; above that
+ * the extra boxes are disabled instead.
+ */
+function toggleWithinFeature(params: {
+  current: number[];
+  optionId: number;
+  checked: boolean;
+  featureOptionIds: number[];
+  required: number;
+}) {
+  const { current, optionId, checked, featureOptionIds, required } = params;
+  if (!checked) return current.filter((id) => id !== optionId);
+
+  const pickedHere = current.filter((id) => featureOptionIds.includes(id));
+  if (pickedHere.length < required) return [...current, optionId];
+  if (required === 1) {
+    // Swap: drop this feature's other pick, keep every other feature's.
+    return [
+      ...current.filter((id) => !featureOptionIds.includes(id)),
+      optionId,
+    ];
+  }
+  return current;
+}
 
 interface GrantSubscriptionDialogProps {
   open: boolean;
@@ -44,6 +73,7 @@ export function GrantSubscriptionDialog({
     useState<PlanBillingPeriod>("MONTHLY");
   const [amount, setAmount] = useState("");
   const [adminNote, setAdminNote] = useState("");
+  const [selectedOptionIds, setSelectedOptionIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const { data: plansData, isPending: loadingPlans } = usePlans({
@@ -56,12 +86,28 @@ export function GrantSubscriptionDialog({
   const plans = plansData?.content ?? [];
   const selectedPlan = plans.find((plan) => String(plan.id) === planId);
 
+  /**
+   * "Choose N" features must be answered before the plan can be granted — the
+   * API rejects the grant otherwise. "(All)" needs no answer: it takes the lot.
+   */
+  const selectableFeatures = (selectedPlan?.featureValues ?? []).filter(
+    (featureValue) =>
+      featureValue.offeredOptions.length > 0 && !featureValue.isChooseAll,
+  );
+
+  const requiredFor = (featureValue: (typeof selectableFeatures)[number]) =>
+    Math.min(
+      featureValue.chooseCount ?? featureValue.offeredOptions.length,
+      featureValue.offeredOptions.length,
+    );
+
   const close = () => {
     setShopId(null);
     setPlanId("");
     setBillingPeriod("MONTHLY");
     setAmount("");
     setAdminNote("");
+    setSelectedOptionIds([]);
     setError(null);
     onOpenChange(false);
   };
@@ -92,6 +138,18 @@ export function GrantSubscriptionDialog({
       );
     }
 
+    for (const featureValue of selectableFeatures) {
+      const required = requiredFor(featureValue);
+      const picked = featureValue.offeredOptions.filter((option) =>
+        selectedOptionIds.includes(option.id),
+      ).length;
+      if (picked !== required) {
+        return setError(
+          `Choose ${required} option(s) for "${featureValue.feature?.nameEn ?? "this feature"}" — ${picked} selected.`,
+        );
+      }
+    }
+
     setError(null);
     await grant({
       shopId,
@@ -99,6 +157,7 @@ export function GrantSubscriptionDialog({
       billingPeriod,
       ...(amount.trim() ? { amount: Number(amount) } : {}),
       ...(adminNote.trim() ? { adminNote: adminNote.trim() } : {}),
+      ...(selectedOptionIds.length ? { selectedOptionIds } : {}),
     });
     close();
   };
@@ -123,7 +182,16 @@ export function GrantSubscriptionDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="grant-plan">Plan</Label>
-              <Select value={planId} onValueChange={setPlanId}>
+              <Select
+                value={planId}
+                onValueChange={(next) => {
+                  setPlanId(next);
+                  // Options belong to the old plan; keeping them would send ids
+                  // the new plan does not offer.
+                  setSelectedOptionIds([]);
+                  setError(null);
+                }}
+              >
                 <SelectTrigger id="grant-plan" hideClear>
                   <SelectValue
                     placeholder={loadingPlans ? "Loading…" : "Select a plan"}
@@ -181,6 +249,67 @@ export function GrantSubscriptionDialog({
                 : "Leave empty to record the plan's own price."}
             </p>
           </div>
+
+          {selectableFeatures.map((featureValue) => {
+            const required = requiredFor(featureValue);
+            const picked = featureValue.offeredOptions.filter((option) =>
+              selectedOptionIds.includes(option.id),
+            ).length;
+            return (
+              <div key={featureValue.featureId} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>{featureValue.feature?.nameEn}</Label>
+                  <Badge variant={picked === required ? "default" : "secondary"}>
+                    {picked}/{required} chosen
+                  </Badge>
+                </div>
+                <div className="divide-y rounded-md border">
+                  {featureValue.offeredOptions.map((option) => {
+                    const checked = selectedOptionIds.includes(option.id);
+                    const featureOptionIds = featureValue.offeredOptions.map(
+                      (item) => item.id,
+                    );
+                    return (
+                      <label
+                        key={option.id}
+                        htmlFor={`grant-opt-${option.id}`}
+                        className="flex cursor-pointer items-center gap-3 p-3 text-sm hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={`grant-opt-${option.id}`}
+                          checked={checked}
+                          // Over-picking is refused at the tick rather than at
+                          // submit: "2/1 chosen" is not a state worth allowing.
+                          disabled={!checked && picked >= required && required > 1}
+                          onCheckedChange={(next) => {
+                            setError(null);
+                            setSelectedOptionIds((current) =>
+                              toggleWithinFeature({
+                                current,
+                                optionId: option.id,
+                                checked: next === true,
+                                featureOptionIds,
+                                required,
+                              }),
+                            );
+                          }}
+                        />
+                        <span className="flex-1">{option.textEn}</span>
+                        {option.quantity != null ? (
+                          <Badge variant="outline">×{option.quantity}</Badge>
+                        ) : null}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {required === 1
+                    ? "Pick one — ticking another swaps it."
+                    : `The shop must be given exactly ${required} of these.`}
+                </p>
+              </div>
+            );
+          })}
 
           <div className="space-y-2">
             <Label htmlFor="grant-note">Internal note</Label>

@@ -83,13 +83,31 @@ function EditOptionsForm({
       featureValue.offeredOptions.length > 0 && !featureValue.isChooseAll,
   );
 
-  const handleToggle = (optionId: number, checked: boolean) => {
+  /**
+   * Never lets a feature go over its "choose N". With N = 1 the new tick
+   * replaces the old one; above that the spare boxes are disabled instead.
+   */
+  const handleToggle = (params: {
+    optionId: number;
+    checked: boolean;
+    featureOptionIds: number[];
+    required: number;
+  }) => {
+    const { optionId, checked, featureOptionIds, required } = params;
     setError(null);
-    setSelected((current) =>
-      checked
-        ? [...current, optionId]
-        : current.filter((id) => id !== optionId),
-    );
+    setSelected((current) => {
+      if (!checked) return current.filter((id) => id !== optionId);
+
+      const pickedHere = current.filter((id) => featureOptionIds.includes(id));
+      if (pickedHere.length < required) return [...current, optionId];
+      if (required === 1) {
+        return [
+          ...current.filter((id) => !featureOptionIds.includes(id)),
+          optionId,
+        ];
+      }
+      return current;
+    });
   };
 
   const handleSave = async () => {
@@ -157,6 +175,11 @@ function EditOptionsForm({
                       const delivered = deliveredByOptionId.get(option.id) ?? 0;
                       const locked = delivered > 0;
                       const checked = selected.includes(option.id);
+                      const featureOptionIds = featureValue.offeredOptions.map(
+                        (item) => item.id,
+                      );
+                      const atCapacity =
+                        !checked && picked >= required && required > 1;
                       return (
                         <label
                           key={option.id}
@@ -168,9 +191,14 @@ function EditOptionsForm({
                           <Checkbox
                             id={`opt-${option.id}`}
                             checked={checked}
-                            disabled={locked}
+                            disabled={locked || atCapacity}
                             onCheckedChange={(next) =>
-                              handleToggle(option.id, next === true)
+                              handleToggle({
+                                optionId: option.id,
+                                checked: next === true,
+                                featureOptionIds,
+                                required,
+                              })
                             }
                           />
                           <div className="min-w-0 flex-1">
