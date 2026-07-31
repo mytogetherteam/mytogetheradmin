@@ -1,4 +1,5 @@
 import {
+    Wallet,
     LayoutDashboard,
     UtensilsCrossed,
     Tags,
@@ -166,6 +167,15 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Manage Plans", url: "/plans/manage", icon: Settings2 },
                     { title: "Create Feature", url: "/plan-features/create", icon: Plus },
                     { title: "Manage Features", url: "/plan-features/manage", icon: List },
+                ]
+            },
+            {
+                title: "Payment Accounts",
+                icon: Wallet,
+                tooltip: "Your accounts that shops transfer plan payments into",
+                items: [
+                    { title: "Add Account", url: "/platform-payment-accounts/create", icon: Plus },
+                    { title: "Manage Accounts", url: "/platform-payment-accounts/manage", icon: List },
                 ]
             }
         ]

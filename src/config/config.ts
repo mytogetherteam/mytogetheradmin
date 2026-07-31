@@ -63,6 +63,11 @@ export const config = {
         reorder: '/api/admin/plan-features/reorder',
         keys: '/api/admin/plan-features/keys',
       },
+      platformPaymentAccounts: {
+        base: '/api/admin/platform-payment-accounts',
+        detail: (id: number) => `/api/admin/platform-payment-accounts/${id}`,
+        reorder: '/api/admin/platform-payment-accounts/reorder',
+      },
       shopSubCategories: '/api/admin/shop-sub-categories',
       shopSubCategory: (id: number) => `/api/admin/shop-sub-categories/${id}`,
       cuisines: {
