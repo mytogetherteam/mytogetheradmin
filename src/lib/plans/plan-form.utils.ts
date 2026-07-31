@@ -1,9 +1,10 @@
 import type { FieldErrors, UseFormSetError } from "react-hook-form";
 import type { z } from "zod";
 
-import type {
-  PlanFeatureValueFormValues,
-  PlanFormValues,
+import {
+  PLAN_FEATURE_PERIODS,
+  type PlanFeatureValueFormValues,
+  type PlanFormValues,
 } from "@/schemas/plan.schema";
 import type {
   PlanFeatureListItem,
@@ -48,12 +49,15 @@ export function mapPlanToFormValues(plan: PlanListItem): PlanFormValues {
       featureId: item.featureId,
       quantity: item.quantity ?? undefined,
       isUnlimited: item.isUnlimited,
-      period: item.period ?? "",
+      period: toFormPeriod(item.period),
       valueLabel: item.valueLabel ?? "",
       note: item.note ?? "",
       chooseCount: item.chooseCount ?? undefined,
       isChooseAll: item.isChooseAll,
-      optionIds: item.optionIds ?? [],
+      options: (item.optionSelections ?? []).map((selection) => ({
+        optionId: selection.optionId,
+        quantity: selection.quantity ?? undefined,
+      })),
       displayOrder: item.displayOrder,
       isActive: item.isActive,
     })),
@@ -85,7 +89,7 @@ function stripUnusedFeatureValueFields(
       : { quantity: undefined, period: "", isUnlimited: false }),
     ...(valueType === "SELECTION"
       ? {}
-      : { chooseCount: undefined, isChooseAll: false, optionIds: [] }),
+      : { chooseCount: undefined, isChooseAll: false, options: [] }),
   };
 }
 
@@ -120,7 +124,7 @@ export function toPlanPayload(
         // "(All)" wins over "(Choose N)"; the API stores them mutually exclusive.
         chooseCount: item.isChooseAll ? undefined : item.chooseCount,
         isChooseAll: item.isChooseAll ?? false,
-        optionIds: item.optionIds ?? [],
+        options: item.options ?? [],
         displayOrder: item.displayOrder ?? index,
         isActive: item.isActive ?? true,
       })),
@@ -186,6 +190,20 @@ export function formatPlanPrice(plan: PlanListItem): string {
     : `${monthly} · ${annual}`;
 }
 
+/**
+ * Narrows a stored period to the closed set the form accepts. Legacy free-text
+ * values (an old "1", say) fall back to "per billing cycle" rather than crashing
+ * the select.
+ */
+function toFormPeriod(
+  period: string | null | undefined,
+): PlanFeatureValueFormValues["period"] {
+  const value = period?.trim().toLowerCase();
+  return value && (PLAN_FEATURE_PERIODS as readonly string[]).includes(value)
+    ? (value as PlanFeatureValueFormValues["period"])
+    : "";
+}
+
 export function resolvePlanFeatureName(
   featureId: number,
   features: PlanFeatureListItem[],
@@ -204,9 +222,19 @@ export function resolveOfferedOptions(
     features.find((item) => item.id === value?.featureId)?.options ?? []
   ).filter((option) => option.isActive);
 
-  const selected = value?.optionIds ?? [];
+  const selected = value?.options ?? [];
   if (selected.length === 0) return catalogue;
-  return catalogue.filter((option) => selected.includes(option.id));
+
+  // The plan's own amount wins over the option's default, mirroring the API.
+  const quantityByOptionId = new Map(
+    selected.map((item) => [item.optionId, item.quantity]),
+  );
+  return catalogue
+    .filter((option) => quantityByOptionId.has(option.id))
+    .map((option) => ({
+      ...option,
+      quantity: quantityByOptionId.get(option.id) ?? option.quantity,
+    }));
 }
 
 /** Mirrors the API's chooseLabel: "(Choose 2)", "(All)" or null. */

@@ -12,9 +12,12 @@ import {
   resolveOfferedOptions,
   resolvePlanFeatureName,
 } from "@/lib/plans/plan-form.utils";
-import type {
-  PlanFeatureValueFormValues,
-  PlanFormValues,
+import {
+  NO_PERIOD,
+  PLAN_FEATURE_PERIODS,
+  PLAN_FEATURE_PERIOD_LABELS,
+  type PlanFeatureValueFormValues,
+  type PlanFormValues,
 } from "@/schemas/plan.schema";
 import type { PlanFeatureListItem } from "@/services/planService";
 import {
@@ -259,14 +262,48 @@ export function PlanFeatureValuesCard({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Period</Label>
+                            <Label>Resets</Label>
                             <Controller
                               name={`featureValues.${index}.period`}
                               control={control}
                               render={({ field: periodField }) => (
-                                <Input placeholder="day" {...periodField} />
+                                <Select
+                                  value={periodField.value || NO_PERIOD}
+                                  onValueChange={(next) =>
+                                    // The sentinel means "no window" — the
+                                    // allowance covers the whole billing cycle.
+                                    periodField.onChange(
+                                      next === NO_PERIOD ? "" : next,
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger hideClear>
+                                    <SelectValue>
+                                      {
+                                        PLAN_FEATURE_PERIOD_LABELS[
+                                          periodField.value || NO_PERIOD
+                                        ]
+                                      }
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={NO_PERIOD}>
+                                      {PLAN_FEATURE_PERIOD_LABELS[NO_PERIOD]}
+                                    </SelectItem>
+                                    {PLAN_FEATURE_PERIODS.map((period) => (
+                                      <SelectItem key={period} value={period}>
+                                        {PLAN_FEATURE_PERIOD_LABELS[period]}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               )}
                             />
+                            <p className="text-xs text-muted-foreground">
+                              {featureValues[index]?.period
+                                ? `Shows as "×${featureValues[index]?.quantity ?? "N"}/${featureValues[index]?.period}" and resets every ${featureValues[index]?.period}.`
+                                : "The whole quantity is available for the billing cycle."}
+                            </p>
                           </div>
                         </>
                       ) : null}
@@ -334,20 +371,25 @@ export function PlanFeatureValuesCard({
                             <Label>Package options</Label>
                             <p className="text-xs text-muted-foreground">
                               Tick the options this plan offers — leave all
-                              unticked to offer the full list. Then set how many
-                              a shop may pick.
+                              unticked to offer the full list. Qty is what
+                              <em> this plan </em>gives; blank uses the option's
+                              own amount.
                             </p>
                           </div>
 
                           <Controller
-                            name={`featureValues.${index}.optionIds`}
+                            name={`featureValues.${index}.options`}
                             control={control}
                             render={({ field: optionsField }) => {
                               const selected = optionsField.value ?? [];
+                              const selectedById = new Map(
+                                selected.map((item) => [item.optionId, item]),
+                              );
                               return (
                                 <div className="space-y-2">
                                   {catalogueOptions.map((option) => {
-                                    const checked = selected.includes(option.id);
+                                    const picked = selectedById.get(option.id);
+                                    const checked = !!picked;
                                     return (
                                       <div
                                         key={option.id}
@@ -359,19 +401,49 @@ export function PlanFeatureValuesCard({
                                           onCheckedChange={(next) => {
                                             optionsField.onChange(
                                               next === true
-                                                ? [...selected, option.id]
+                                                ? [
+                                                    ...selected,
+                                                    { optionId: option.id },
+                                                  ]
                                                 : selected.filter(
-                                                    (id) => id !== option.id,
+                                                    (item) =>
+                                                      item.optionId !== option.id,
                                                   ),
                                             );
                                           }}
                                         />
                                         <Label
                                           htmlFor={`fv-${index}-opt-${option.id}`}
-                                          className="text-sm font-normal leading-snug"
+                                          className="flex-1 text-sm font-normal leading-snug"
                                         >
                                           {option.textEn}
                                         </Label>
+                                        {/* Per-plan amount: Starter may give 1
+                                            Facebook post where Pro gives 4. */}
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          className="h-8 w-20 shrink-0"
+                                          disabled={!checked}
+                                          placeholder={
+                                            option.quantity != null
+                                              ? `${option.quantity}`
+                                              : "—"
+                                          }
+                                          value={picked?.quantity ?? ""}
+                                          onChange={(e) => {
+                                            const raw = e.target.value;
+                                            const quantity =
+                                              raw === "" ? undefined : Number(raw);
+                                            optionsField.onChange(
+                                              selected.map((item) =>
+                                                item.optionId === option.id
+                                                  ? { ...item, quantity }
+                                                  : item,
+                                              ),
+                                            );
+                                          }}
+                                        />
                                       </div>
                                     );
                                   })}

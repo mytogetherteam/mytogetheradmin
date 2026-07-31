@@ -1,5 +1,6 @@
 import {
     Wallet,
+    Receipt,
     LayoutDashboard,
     UtensilsCrossed,
     Tags,
@@ -167,6 +168,14 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Manage Plans", url: "/plans/manage", icon: Settings2 },
                     { title: "Create Feature", url: "/plan-features/create", icon: Plus },
                     { title: "Manage Features", url: "/plan-features/manage", icon: List },
+                ]
+            },
+            {
+                title: "Subscriptions",
+                icon: Receipt,
+                tooltip: "Shop plan purchases and approvals",
+                items: [
+                    { title: "Manage Subscriptions", url: "/subscriptions/manage", icon: List },
                 ]
             },
             {

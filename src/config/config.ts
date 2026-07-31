@@ -65,6 +65,15 @@ export const config = {
         reorder: '/api/admin/plan-features/reorder',
         keys: '/api/admin/plan-features/keys',
       },
+      subscriptions: {
+        base: '/api/admin/subscriptions',
+        detail: (id: number) => `/api/admin/subscriptions/${id}`,
+        summary: '/api/admin/subscriptions/summary',
+        grant: '/api/admin/subscriptions/grant',
+        approve: (id: number) => `/api/admin/subscriptions/${id}/approve`,
+        reject: (id: number) => `/api/admin/subscriptions/${id}/reject`,
+        cancel: (id: number) => `/api/admin/subscriptions/${id}/cancel`,
+      },
       platformPaymentAccounts: {
         base: '/api/admin/platform-payment-accounts',
         detail: (id: number) => `/api/admin/platform-payment-accounts/${id}`,

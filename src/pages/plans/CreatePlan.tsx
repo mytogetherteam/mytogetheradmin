@@ -144,7 +144,7 @@ export default function CreatePlan() {
         valueLabel: "",
         note: "",
         isChooseAll: false,
-        optionIds: [],
+        options: [],
         isActive: true,
       });
     }
@@ -163,7 +163,7 @@ export default function CreatePlan() {
     if (valueType !== "SELECTION") {
       setValue(`featureValues.${index}.chooseCount`, undefined);
       setValue(`featureValues.${index}.isChooseAll`, false);
-      setValue(`featureValues.${index}.optionIds`, []);
+      setValue(`featureValues.${index}.options`, []);
     }
   };
 

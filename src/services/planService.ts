@@ -45,6 +45,8 @@ export interface PlanFeatureOptionRow {
   textEn: string;
   textMm: string | null;
   textTh: string | null;
+  /** How many of this deliverable are included, e.g. 2 Facebook posts. */
+  quantity: number | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -78,6 +80,8 @@ export interface PlanFeatureValueRow {
   isChooseAll: boolean;
   /** Options this plan explicitly offers; empty = the feature's whole catalogue. */
   optionIds: number[];
+  /** Raw per-plan rows — quantity null means "use the option's own amount". */
+  optionSelections: { optionId: number; quantity: number | null }[];
   /** Resolved menu the shop picks from. */
   offeredOptions: PlanFeatureOptionRow[];
   /** Pricing-page suffix: "(Choose 2)", "(All)" or null. */
@@ -140,8 +144,8 @@ export interface PlanFeatureValuePayload {
   note?: string;
   chooseCount?: number;
   isChooseAll?: boolean;
-  /** Omit or send [] to offer every active option of the feature. */
-  optionIds?: number[];
+  /** Omit or send [] to offer every active option at the catalogue's amounts. */
+  options?: { optionId: number; quantity?: number }[];
   displayOrder?: number;
   isActive?: boolean;
 }
@@ -190,6 +194,7 @@ export interface PlanFeatureOptionPayload {
   /** Send the existing id back so plans referencing this option keep working. */
   id?: number;
   textEn: string;
+  quantity?: number;
   textMm?: string;
   textTh?: string;
   displayOrder?: number;
@@ -289,6 +294,7 @@ function normalizePlan(plan: PlanListItem): PlanListItem {
     featureValues: (plan.featureValues ?? []).map((value) => ({
       ...value,
       optionIds: value.optionIds ?? [],
+      optionSelections: value.optionSelections ?? [],
       offeredOptions: value.offeredOptions ?? [],
     })),
     billingPeriod: plan.billingPeriod === "YEARLY" ? "YEARLY" : "MONTHLY",

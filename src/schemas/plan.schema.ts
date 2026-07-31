@@ -1,5 +1,31 @@
 import { z } from "zod";
 
+/**
+ * Reset window for a quantity quota. A closed set, not free text: quota
+ * enforcement has to turn this into a date range. Empty = the whole billing cycle.
+ * Mirrors PLAN_FEATURE_PERIODS on the API.
+ */
+export const PLAN_FEATURE_PERIODS = [
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "year",
+] as const;
+
+export const NO_PERIOD = "__PER_CYCLE__";
+
+export const PLAN_FEATURE_PERIOD_LABELS: Record<string, string> = {
+  [NO_PERIOD]: "Per billing cycle",
+  minute: "Per minute",
+  hour: "Per hour",
+  day: "Per day",
+  week: "Per week",
+  month: "Per month",
+  year: "Per year",
+};
+
 export const PLAN_BILLING_PERIODS = ["MONTHLY", "YEARLY"] as const;
 
 const planHighlightSchema = z.object({
@@ -13,15 +39,26 @@ const planFeatureValueSchema = z.object({
   featureId: z.coerce.number().int().min(1, "Feature is required"),
   quantity: z.coerce.number().int().min(0).optional(),
   isUnlimited: z.boolean().optional(),
-  period: z.string().max(50).optional().or(z.literal("")),
+  period: z.enum(PLAN_FEATURE_PERIODS).optional().or(z.literal("")),
   valueLabel: z.string().max(100).optional().or(z.literal("")),
   note: z.string().max(500).optional().or(z.literal("")),
   /** "(Choose 2)" — how many of the offered options a shop may pick. */
   chooseCount: z.coerce.number().int().min(1).optional(),
   /** "(All)" — every offered option is included. */
   isChooseAll: z.boolean().optional(),
-  /** Which options this plan offers; empty = all active options of the feature. */
-  optionIds: z.array(z.coerce.number().int().min(1)).optional(),
+  /**
+   * Which options this plan offers and how much of each it gives.
+   * Empty = all active options at the catalogue's own amounts.
+   */
+  options: z
+    .array(
+      z.object({
+        optionId: z.coerce.number().int().min(1),
+        /** Per-plan amount; blank inherits the option's own. */
+        quantity: z.coerce.number().int().min(1).optional(),
+      }),
+    )
+    .optional(),
   displayOrder: z.coerce.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
 });

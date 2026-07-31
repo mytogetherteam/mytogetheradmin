@@ -250,7 +250,9 @@ export function PlanFeatureFormCard({
               <p className="text-xs text-muted-foreground">
                 Only for &quot;pick N of these&quot; features such as the Social
                 Media package. Each plan then decides how many of these a shop may
-                choose.
+                choose. Put the count in <strong>Qty</strong> — not in the text —
+                so deliveries can be ticked off (&quot;1 of 2 posted&quot;). Leave
+                Qty blank for something uncountable.
               </p>
             </div>
             <Button
@@ -277,10 +279,7 @@ export function PlanFeatureFormCard({
                       name={`options.${index}.textEn`}
                       control={control}
                       render={({ field: textField }) => (
-                        <Input
-                          placeholder="Facebook post x 2"
-                          {...textField}
-                        />
+                        <Input placeholder="Facebook post" {...textField} />
                       )}
                     />
                     {errors.options?.[index]?.textEn ? (
@@ -288,6 +287,28 @@ export function PlanFeatureFormCard({
                         {errors.options[index]?.textEn?.message}
                       </p>
                     ) : null}
+                  </div>
+                  {/* The count belongs here, not inside the text: delivery
+                      progress ("1 of 2 posted") can only be tracked off a number. */}
+                  <div className="w-24 shrink-0">
+                    <Controller
+                      name={`options.${index}.quantity`}
+                      control={control}
+                      render={({ field: qtyField }) => (
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="Qty"
+                          value={qtyField.value ?? ""}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            qtyField.onChange(
+                              next === "" ? undefined : Number(next),
+                            );
+                          }}
+                        />
+                      )}
+                    />
                   </div>
                   <Button
                     type="button"

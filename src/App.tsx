@@ -106,6 +106,7 @@ const ManagePlanFeatures = lazy(() => import("@/pages/plan-features/ManagePlanFe
 const CreatePlanFeature = lazy(() => import("@/pages/plan-features/CreatePlanFeature"));
 const ManagePlatformPaymentAccounts = lazy(() => import("@/pages/platform-payment-accounts/ManagePlatformPaymentAccounts"));
 const CreatePlatformPaymentAccount = lazy(() => import("@/pages/platform-payment-accounts/CreatePlatformPaymentAccount"));
+const ManageSubscriptions = lazy(() => import("@/pages/subscriptions/ManageSubscriptions"));
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
@@ -281,6 +282,7 @@ function App() {
                 <Route path="/plan-features/create" element={<CreatePlanFeature />} />
                 <Route path="/platform-payment-accounts/manage" element={<ManagePlatformPaymentAccounts />} />
                 <Route path="/platform-payment-accounts/create" element={<CreatePlatformPaymentAccount />} />
+                <Route path="/subscriptions/manage" element={<ManageSubscriptions />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
