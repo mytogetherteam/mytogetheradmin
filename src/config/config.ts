@@ -1,5 +1,7 @@
 export const config = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://mytogetherapi-production.up.railway.app'),
+  /** Public EMenu site base (no trailing slash). QR → `${eMenuUrl}/{slug}` */
+  eMenuUrl: String(import.meta.env.VITE_EMENU_URL ?? '').replace(/\/+$/, ''),
   endpoints: {
     auth: {
       login: '/api/admin/auth/login',

@@ -4,10 +4,11 @@ import { DataTablePagination } from '@/components/DataTablePagination';
 import { ManageShopRestaurantHeader } from '@/components/shop/manage/ManageShopRestaurantHeader';
 import { DeleteShopDialog } from '@/components/shop/manage/DeleteShopDialog';
 import { AssignAdminDialog } from '@/components/shop/manage/AssignAdminDialog';
+import { EditShopSlugDialog } from '@/components/shop/manage/EditShopSlugDialog';
 import { useManageShopRestaurant } from '@/hooks/shops/profiles/useManageShopRestaurant';
 
 export default function ManageShopRestaurant() {
-  const { table, pagination, search, deleteDialog, assignDialog, filters, actions } =
+  const { table, pagination, search, deleteDialog, assignDialog, slugDialog, filters, actions } =
     useManageShopRestaurant();
 
   return (
@@ -34,6 +35,7 @@ export default function ManageShopRestaurant() {
             onToggleVerified={actions.onToggleVerified}
             onToggleTaxEnable={actions.onToggleTaxEnable}
             onEditShop={actions.onEditShop}
+            onEditSlug={actions.onEditSlug}
             onOpenReject={() => console.log('open reject')}
             onOpenDelete={actions.onOpenDelete}
             onAssignAdmin={actions.onOpenAssign}
@@ -58,6 +60,10 @@ export default function ManageShopRestaurant() {
         isLoading={assignDialog.isLoading}
         onOpenChange={assignDialog.onOpenChange}
         onConfirm={assignDialog.mutate}
+      />
+      <EditShopSlugDialog
+        state={slugDialog.state}
+        onOpenChange={slugDialog.onOpenChange}
       />
     </div>
   );

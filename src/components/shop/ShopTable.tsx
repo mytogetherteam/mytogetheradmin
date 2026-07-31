@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { Loader } from "@/components/ui/loader";
 import { resolveMediaUrl } from "@/lib/resolveMediaUrl"
 import type { SortConfig } from "@/lib/sort-utils"
-import { Edit, GripVertical, Trash2, UserPlus } from "lucide-react"
+import { Edit, GripVertical, Link2, Trash2, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TableImage } from "../TableImage"
 import { ViewCountCell } from "../ViewCountCell"
@@ -103,6 +103,7 @@ export type ShopTableProps = {
     onToggleVerified?: (shop: Shop, nextVerified: boolean) => void
     onToggleTaxEnable?: (shop: Shop, nextTaxEnable: boolean) => void
     onEditShop: (shop: Shop) => void
+    onEditSlug?: (shop: Shop) => void
     onVerify?: (e: MouseEvent, shop: Shop) => void
     onOpenReject: (e: MouseEvent, shop: Shop) => void
     onOpenDelete: (shop: Shop) => void
@@ -121,6 +122,7 @@ export function ShopTable({
     onToggleVerified,
     onToggleTaxEnable,
     onEditShop,
+    onEditSlug,
     onOpenDelete,
     onAssignAdmin,
     onReorder,
@@ -165,6 +167,7 @@ export function ShopTable({
                             <TableHead className="w-[100px]">Verified</TableHead>
                             <TableHead className="w-[100px]">Tax Enable</TableHead>
                             <TableHead className="w-[100px]">Views</TableHead>
+                            <TableHead className="w-[140px]">Slug</TableHead>
                             <TableHead className="text-right min-w-[188px] w-[188px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -289,6 +292,28 @@ export function ShopTable({
                                         <TableCell className="align-middle">
                                             <ViewCountCell count={shop.viewCount} />
                                         </TableCell>
+                                        <TableCell
+                                            className="align-middle max-w-[140px]"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <button
+                                                type="button"
+                                                className={cn(
+                                                    "inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm transition-colors",
+                                                    "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                                    shop.slug
+                                                        ? "text-foreground"
+                                                        : "text-muted-foreground",
+                                                )}
+                                                title={shop.slug ? `Edit slug: ${shop.slug}` : "Set slug"}
+                                                onClick={() => onEditSlug?.(shop)}
+                                            >
+                                                <Link2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                                <span className="truncate font-mono text-xs">
+                                                    {shop.slug || "Set slug"}
+                                                </span>
+                                            </button>
+                                        </TableCell>
                                         <TableCell className="text-right align-middle p-2">
                                             <div
                                                 className="inline-flex flex-nowrap items-center justify-end gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5"
@@ -345,7 +370,7 @@ export function ShopTable({
                           </SortableContext>
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                                     No results.
                                 </TableCell>
                             </TableRow>
