@@ -107,6 +107,7 @@ export interface Shop {
   cuisineId?: number;
   viewCount?: number;
   displayOrder?: number;
+  slug?: string | null;
   telegramUsername?: string | null;
   telegramConnected?: boolean;
 }
@@ -278,6 +279,7 @@ export interface AdminShopProfileListItem {
   district?: DistrictDTO | null;
   viewCount?: number;
   displayOrder?: number;
+  slug?: string | null;
 }
 
 export interface AdminShopProfileListResponse {
@@ -315,6 +317,7 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     taxEnable: row.taxEnable,
     viewCount: row.viewCount ?? 0,
     displayOrder: row.displayOrder,
+    slug: row.slug ?? null,
   };
 }
 export interface ShopFormDataDTO {
