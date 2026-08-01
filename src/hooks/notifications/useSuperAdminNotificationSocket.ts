@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import { config } from '@/config/config';
 
+/**
+ * Any SuperAdmin alert pushed on this channel — an order escalation, or a shop
+ * subscription purchase waiting for review. `mainType` says which.
+ */
 export interface EscalationSocketPayload {
-  type?: string; // 'ORDER_ESCALATION'
+  type?: string; // 'ORDER_ESCALATION' | 'SUBSCRIPTION_NOTIFICATION'
+  mainType?: string; // 'ESCALATION' | 'SUBSCRIPTION'
+  subType?: string; // 'SHOP_NO_RESPONSE' | 'SUBSCRIPTION_PURCHASED' | …
+  notificationId?: number;
   orderId?: number;
   shopId?: number;
   status?: string;
   message?: string;
   order?: unknown;
+  data?: unknown;
   title?: string;
   [key: string]: unknown;
 }

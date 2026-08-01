@@ -117,7 +117,15 @@ export interface ActivationPreview {
   /** True when it queues behind a period the shop already paid for. */
   isRenewal: boolean;
   stackedOnSubscriptionId: number | null;
+  /** Running periods that would be cut short at the new start date. */
   supersedes: { id: number; endDate: string | null; daysCutShort: number }[];
+  /** Paid periods that have not started yet and would be cancelled outright. */
+  cancels: {
+    id: number;
+    startDate: string | null;
+    endDate: string | null;
+    daysLost: number;
+  }[];
 }
 
 export interface SubscriptionDetail extends SubscriptionListItem {
@@ -199,9 +207,12 @@ export const SubscriptionService = {
     return { content: list, totalElements: list.length, totalPages: 1 };
   },
 
-  getSummary: async (): Promise<SubscriptionSummary> => {
+  /** Status counts, scoped to one shop when `shopId` is given. */
+  getSummary: async (shopId?: number): Promise<SubscriptionSummary> => {
     return handleApiCall<SubscriptionSummary>(() =>
-      api.get(config.endpoints.admin.subscriptions.summary),
+      api.get(config.endpoints.admin.subscriptions.summary, {
+        params: shopId ? { shopId } : undefined,
+      }),
     );
   },
 

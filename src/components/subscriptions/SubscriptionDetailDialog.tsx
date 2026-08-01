@@ -300,7 +300,8 @@ export function SubscriptionDetailDialog({
                 subscription.activationPreview ? (
                   <div
                     className={`space-y-1 rounded-md border p-3 text-sm ${
-                      subscription.activationPreview.supersedes.length > 0
+                      subscription.activationPreview.supersedes.length > 0 ||
+                      subscription.activationPreview.cancels.length > 0
                         ? "border-amber-500/40 bg-amber-500/10"
                         : "bg-muted/40"
                     }`}
@@ -320,6 +321,17 @@ export function SubscriptionDetailDialog({
                         ⚠ Ends subscription #{item.id} early — the shop loses{" "}
                         {item.daysCutShort} paid day
                         {item.daysCutShort === 1 ? "" : "s"}.
+                      </p>
+                    ))}
+                    {/* A queued period is cancelled whole, not trimmed — the
+                        shop paid for days it will never get. */}
+                    {subscription.activationPreview.cancels.map((item) => (
+                      <p key={item.id} className="text-red-600 dark:text-red-400">
+                        ⚠ Cancels queued subscription #{item.id} (
+                        {formatDateTime(item.startDate)} →{" "}
+                        {formatDateTime(item.endDate)}) — {item.daysLost} paid
+                        day{item.daysLost === 1 ? "" : "s"} never used. The shop
+                        may be owed a refund.
                       </p>
                     ))}
                   </div>

@@ -5,11 +5,12 @@ import { api } from '@/utils/axios';
 export interface SuperAdminNotification {
   id: number;
   orderId: number | null;
-  mainType: string; // 'ESCALATION'
-  subType: string; // 'SHOP_NO_RESPONSE'
+  mainType: string; // 'ESCALATION' | 'SUBSCRIPTION'
+  subType: string; // 'SHOP_NO_RESPONSE' | 'SUBSCRIPTION_PURCHASED' | …
   title: string;
   message: string;
-  data?: unknown; // frozen order snapshot
+  /** Frozen order snapshot, or the purchase details for a subscription alert. */
+  data?: unknown;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;

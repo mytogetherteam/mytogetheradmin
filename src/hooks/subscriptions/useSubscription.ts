@@ -20,11 +20,11 @@ export function useSubscriptions(params?: SubscriptionListParams) {
   });
 }
 
-/** Status counts for the filter tabs. */
-export function useSubscriptionSummary() {
+/** Status counts for the filter tabs — pass `shopId` to match a filtered list. */
+export function useSubscriptionSummary(shopId?: number) {
   return useQuery({
-    queryKey: [...subscriptionKeys.all, "summary"],
-    queryFn: () => SubscriptionService.getSummary(),
+    queryKey: [...subscriptionKeys.all, "summary", shopId ?? null],
+    queryFn: () => SubscriptionService.getSummary(shopId),
   });
 }
 

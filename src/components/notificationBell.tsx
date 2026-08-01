@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ export function NotificationBell() {
   const isSuperAdmin = hasAccess(authService.getUserData()?.role, AdminRole.ADMIN);
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: unreadCount = 0 } = useSuperAdminUnreadCount({ enabled: isSuperAdmin });
   const { data: page, isLoading } = useSuperAdminNotifications(
@@ -42,12 +44,17 @@ export function NotificationBell() {
   const markRead = useMarkNotificationReadMutation();
   const markAllRead = useMarkAllNotificationsReadMutation();
 
-  // Realtime: a new escalation arrives → toast + refresh badge/list from server.
+  // Realtime: a new alert arrives → toast + refresh badge/list from server.
   const handleRealtime = useCallback(
     (payload: EscalationSocketPayload) => {
-      console.log("work")
-      toast.warning(payload.title, {
-        description: payload.message ?? 'An order is waiting too long for a shop reply.',
+      const isSubscription = payload.mainType === 'SUBSCRIPTION';
+      const notify = isSubscription ? toast.info : toast.warning;
+      notify(payload.title, {
+        description:
+          payload.message ??
+          (isSubscription
+            ? 'A shop bought a plan and is waiting for review.'
+            : 'An order is waiting too long for a shop reply.'),
         position: 'bottom-right',
         duration: 8000,
       });
@@ -64,6 +71,14 @@ export function NotificationBell() {
 
   const onItemClick = (n: SuperAdminNotification) => {
     if (!n.isRead) markRead.mutate(n.id);
+
+    // A plan purchase is only useful next to its transfer slip — open it.
+    const subscriptionId = (n.data as { subscriptionId?: number } | null)
+      ?.subscriptionId;
+    if (n.mainType === 'SUBSCRIPTION' && subscriptionId) {
+      setOpen(false);
+      void navigate(`/subscriptions/manage?subscriptionId=${subscriptionId}`);
+    }
   };
 
 
