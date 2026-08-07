@@ -54,7 +54,12 @@ export interface ActiveActor {
 export interface ActiveActorsDay {
   date: string;
   actorType: ActorType;
+  /** Everyone who was on that day — not just the ones on this page. */
   total: number;
+  page: number;
+  size: number;
+  returned: number;
+  hasMore: boolean;
   actors: ActiveActor[];
 }
 
@@ -75,10 +80,17 @@ export const activeUsersService = {
       api.get(config.endpoints.admin.analytics.activeUsersSummary),
     ),
 
-  day: (params?: { date?: string; actorType?: ActorType }): Promise<ActiveActorsDay> => {
+  day: (params?: {
+    date?: string;
+    actorType?: ActorType;
+    page?: number;
+    size?: number;
+  }): Promise<ActiveActorsDay> => {
     const query = new URLSearchParams();
     if (params?.date) query.append('date', params.date);
     if (params?.actorType) query.append('actorType', params.actorType);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.size) query.append('size', String(params.size));
     const qs = query.toString();
     const url = qs
       ? `${config.endpoints.admin.analytics.activeUsersDay}?${qs}`

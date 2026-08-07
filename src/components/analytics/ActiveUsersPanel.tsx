@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
     Area,
     AreaChart,
@@ -165,19 +165,66 @@ function StatTile({
  * live on their own chart rather than a second axis: they run orders of
  * magnitude higher, and one axis per chart is the rule.
  */
-export function ActiveUsersPanel() {
-    const [rangeDays, setRangeDays] = useState<number>(30);
-
-    const { from, to } = useMemo(() => {
+export function ActiveUsersPanel({
+    from: fromProp,
+    to: toProp,
+    onRangeChange,
+}: {
+    /** Range from the page's date filter. Falls back to the last 30 days. */
+    from?: string;
+    to?: string;
+    /** Lets the quick presets drive the same filter instead of competing with it. */
+    onRangeChange?: (from: string, to: string) => void;
+} = {}) {
+    const fallback = useMemo(() => {
         const end = new Date();
         const start = new Date();
-        start.setDate(start.getDate() - (rangeDays - 1));
+        start.setDate(start.getDate() - 29);
         return { from: toDateString(start), to: toDateString(end) };
-    }, [rangeDays]);
+    }, []);
+
+    const from = fromProp || fallback.from;
+    const to = toProp || fallback.to;
+
+    /** Which preset the current range matches, so the button state stays honest. */
+    const activeRangeDays = useMemo(() => {
+        const days =
+            Math.round(
+                (new Date(`${to}T00:00:00`).getTime() -
+                    new Date(`${from}T00:00:00`).getTime()) /
+                86_400_000,
+            ) + 1;
+        return RANGES.some((range) => range.days === days) ? days : null;
+    }, [from, to]);
+
+    const applyPreset = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - (days - 1));
+        onRangeChange?.(toDateString(start), toDateString(end));
+    };
 
     const { data: summary, isPending: summaryLoading } = useActiveUsersSummary();
     const { data: series, isPending: seriesLoading } = useActiveUsersSeries({ from, to });
-    const { data: today, isPending: todayLoading } = useActiveUsersDay({ actorType: "ADMIN" });
+    // The list follows the end of the range, so it answers for the day on screen.
+    const {
+        data: dayPages,
+        isPending: dayLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+    } = useActiveUsersDay({ date: to, actorType: "ADMIN" });
+
+    const day = dayPages?.pages[0];
+    const actors = dayPages?.pages.flatMap((page) => page.actors) ?? [];
+    const isToday = to === toDateString(new Date());
+
+    /** Pull the next page in before the scrollbar bottoms out. */
+    const onListScroll = (event: React.UIEvent<HTMLDivElement>) => {
+        const el = event.currentTarget;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight > 120) return;
+        if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+    };
 
     const points: ActiveUsersPoint[] = series?.series ?? [];
     const hasAnyActivity = points.some(
@@ -263,8 +310,10 @@ export function ActiveUsersPanel() {
                                 <Button
                                     key={range.days}
                                     size="sm"
-                                    variant={rangeDays === range.days ? "secondary" : "ghost"}
-                                    onClick={() => setRangeDays(range.days)}
+                                    variant={
+                                        activeRangeDays === range.days ? "secondary" : "ghost"
+                                    }
+                                    onClick={() => applyPreset(range.days)}
                                 >
                                     {range.label}
                                 </Button>
@@ -409,26 +458,31 @@ export function ActiveUsersPanel() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">
-                                Who was on today
-                                {today?.total ? (
+                                {isToday ? "Who was on today" : `Who was on ${shortDate(to)}`}
+                                {day?.total ? (
                                     <Badge variant="secondary" className="ml-2">
-                                        {today.total}
+                                        {day.total}
                                     </Badge>
                                 ) : null}
                             </CardTitle>
                             <CardDescription>
-                                Admins only, most recent first.
+                                Admins only, most recent first. Scroll for more.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {todayLoading ? (
+                            {dayLoading ? (
                                 <Skeleton className="h-[220px] w-full" />
-                            ) : !today?.actors.length ? (
+                            ) : !actors.length ? (
                                 <p className="py-16 text-center text-sm text-muted-foreground">
-                                    No admin has used the app today yet.
+                                    {isToday
+                                        ? "No admin has used the app today yet."
+                                        : "No admin used the app that day."}
                                 </p>
                             ) : (
-                                <div className="max-h-[220px] overflow-y-auto">
+                                <div
+                                    className="max-h-[220px] overflow-y-auto"
+                                    onScroll={onListScroll}
+                                >
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -439,8 +493,8 @@ export function ActiveUsersPanel() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {today.actors.map((actor) => (
-                                                <TableRow key={actor.actorId}>
+                                            {actors.map((actor) => (
+                                                <TableRow key={`${actor.actorId}-${actor.shopId ?? "none"}`}>
                                                     <TableCell className="font-medium">
                                                         {actor.name ?? actor.contact ?? `#${actor.actorId}`}
                                                     </TableCell>
@@ -457,8 +511,19 @@ export function ActiveUsersPanel() {
                                             ))}
                                         </TableBody>
                                     </Table>
+                                    {isFetchingNextPage ? (
+                                        <p className="py-2 text-center text-xs text-muted-foreground">
+                                            Loading more…
+                                        </p>
+                                    ) : null}
                                 </div>
                             )}
+                            {actors.length > 0 && day ? (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    Showing {actors.length} of {day.total}
+                                    {hasNextPage ? " — scroll for more" : ""}.
+                                </p>
+                            ) : null}
                         </CardContent>
                     </Card>
                 </div>

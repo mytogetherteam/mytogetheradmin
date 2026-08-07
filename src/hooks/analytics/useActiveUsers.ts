@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   activeUsersService,
   type ActorType,
@@ -37,13 +37,21 @@ export function useActiveUsersSummary(options: { enabled?: boolean } = {}) {
   });
 }
 
+/**
+ * The day list, a page at a time — the panel asks for the next one when the
+ * table is scrolled near its end, so a busy day never arrives all at once.
+ */
 export function useActiveUsersDay(
-  params: { date?: string; actorType?: ActorType } = {},
+  params: { date?: string; actorType?: ActorType; size?: number } = {},
   options: { enabled?: boolean } = {},
 ) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: activeUsersKeys.day(params.date, params.actorType),
-    queryFn: () => activeUsersService.day(params),
+    queryFn: ({ pageParam }) =>
+      activeUsersService.day({ ...params, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
     enabled: options.enabled ?? true,
     staleTime: STALE_MS,
   });

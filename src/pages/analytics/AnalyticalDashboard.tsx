@@ -48,7 +48,7 @@ export default function AnalyticalDashboard() {
     const defaults = getDefaultDates();
     const [startDate, setStartDate] = useState(defaults.start);
     const [endDate, setEndDate] = useState(defaults.end);
-    const [activeTab, setActiveTab] = useState("revenue");
+    const [activeTab, setActiveTab] = useState("active");
 
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
@@ -193,7 +193,7 @@ export default function AnalyticalDashboard() {
                 </div>
             </div>
 
-            <Tabs defaultValue="revenue" value={activeTab} onValueChange={setActiveTab}>
+            <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="active" className="flex items-center gap-2"><UserCheck className="h-4 w-4" /> Daily Active</TabsTrigger>
                     <TabsTrigger value="revenue" className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Revenue</TabsTrigger>
@@ -206,7 +206,16 @@ export default function AnalyticalDashboard() {
                 {/* Mounted only while selected: its three queries should not run
                     behind a tab nobody opened. */}
                 <TabsContent value="active" className="mt-6">
-                    {activeTab === "active" ? <ActiveUsersPanel /> : null}
+                    {activeTab === "active" ? (
+                        <ActiveUsersPanel
+                            from={startDate}
+                            to={endDate}
+                            onRangeChange={(from, to) => {
+                                setStartDate(from);
+                                setEndDate(to);
+                            }}
+                        />
+                    ) : null}
                 </TabsContent>
 
                 <TabsContent value="revenue" className="mt-6 space-y-4">
