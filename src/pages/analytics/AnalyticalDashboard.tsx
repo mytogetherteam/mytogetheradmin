@@ -22,9 +22,10 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { TrendingUp, Users, MapPin, BarChart2, Smartphone, Activity, FileSpreadsheet, Search } from "lucide-react";
+import { TrendingUp, Users, MapPin, BarChart2, Smartphone, Activity, FileSpreadsheet, Search, UserCheck } from "lucide-react";
 import { exportService } from "@/services/exportService";
 import { ShopService, Shop } from "@/services/shopService";
+import { ActiveUsersPanel } from "@/components/analytics/ActiveUsersPanel";
 
 const COLORS = ["#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#14b8a6"];
 const FEED_TYPES = ["FOR_YOU", "TRENDING_NEARBY", "HOT_DEALS", "NEW_SHOPS", "POPULAR_DISHES"];
@@ -193,13 +194,20 @@ export default function AnalyticalDashboard() {
             </div>
 
             <Tabs defaultValue="revenue" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
+                    <TabsTrigger value="active" className="flex items-center gap-2"><UserCheck className="h-4 w-4" /> Daily Active</TabsTrigger>
                     <TabsTrigger value="revenue" className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Revenue</TabsTrigger>
                     <TabsTrigger value="users" className="flex items-center gap-2"><Users className="h-4 w-4" /> Users & Sessions</TabsTrigger>
                     <TabsTrigger value="shops" className="flex items-center gap-2"><BarChart2 className="h-4 w-4" /> Shops & Categories</TabsTrigger>
                     <TabsTrigger value="locations" className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Locations</TabsTrigger>
                     <TabsTrigger value="feed" className="flex items-center gap-2"><Activity className="h-4 w-4" /> Feed Performance</TabsTrigger>
                 </TabsList>
+
+                {/* Mounted only while selected: its three queries should not run
+                    behind a tab nobody opened. */}
+                <TabsContent value="active" className="mt-6">
+                    {activeTab === "active" ? <ActiveUsersPanel /> : null}
+                </TabsContent>
 
                 <TabsContent value="revenue" className="mt-6 space-y-4">
                     {cancellationRate && (

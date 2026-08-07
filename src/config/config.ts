@@ -295,6 +295,9 @@ export const config = {
         features: '/api/admin/analytics/features',
         deviceStats: '/api/admin/analytics/devices',
         deviceDetail: (deviceId: string) => `/api/admin/analytics/device/${deviceId}`,
+        activeUsers: '/api/admin/analytics/active-users',
+        activeUsersSummary: '/api/admin/analytics/active-users/summary',
+        activeUsersDay: '/api/admin/analytics/active-users/day',
       },
       system: {
         latency: '/api/admin/system/latency',
