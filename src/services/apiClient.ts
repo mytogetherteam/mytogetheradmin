@@ -53,9 +53,9 @@ class ApiClient {
     this.refreshSubscribers = [];
   }
 
-  // private addRefreshSubscriber(cb: (token: string) => void) {
-  //   this.refreshSubscribers.push(cb);
-  // }
+  private addRefreshSubscriber(cb: (token: string) => void) {
+    this.refreshSubscribers.push(cb);
+  }
 
   private decodeJwtExpiry(token: string): number | null {
     // Invalidate cache if the token string itself has changed (e.g. after fresh login)
@@ -215,27 +215,9 @@ class ApiClient {
     }
     // else: no body → no Content-Type header
 
-    // const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}${endpoint}`;
 
     try {
-      console.log(`[MOCK API] ${options.method || 'GET'} ${endpoint}`);
-      
-      const mockData: any = [];
-      mockData.content = [];
-      mockData.totalElements = 0;
-      mockData.totalPages = 0;
-      mockData.size = 20;
-      mockData.number = 0;
-      mockData.data = [];
-      mockData.success = true;
-      mockData.message = 'Mocked request';
-      mockData.id = 1;
-      mockData.name = 'Mock Data';
-
-      // Always return mock data to run UI without backend
-      return mockData as unknown as T;
-
-      /*
       const response = await fetch(url, {
         ...options,
         headers,
@@ -261,9 +243,9 @@ class ApiClient {
         }
 
         // If already refreshing, wait for it to finish
-        return new Promise<T>((resolve) => {
+        return new Promise<T>((resolve, reject) => {
           this.addRefreshSubscriber(() => {
-            resolve(this.request<T>(endpoint, options));
+            this.request<T>(endpoint, options).then(resolve).catch(reject);
           });
         });
       }
@@ -290,7 +272,6 @@ class ApiClient {
       }
 
       return data;
-      */
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -339,6 +320,16 @@ class ApiClient {
     };
     return this.request<T>(endpoint, {
       method: 'PUT',
+      body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
+    const isFormData = (body: unknown): body is FormData => {
+      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
+    };
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
       body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
     });
   }

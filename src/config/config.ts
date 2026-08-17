@@ -56,16 +56,23 @@ export const config = {
       moderation: {
         reports: '/api/admin/moderation/reports',
         resolveReport: (id: string) => `/api/admin/moderation/reports/${id}/resolve`,
-        posts: '/api/admin/community/posts',
-        postDetail: (id: string) => `/api/admin/community/posts/${id}`,
-        comments: '/api/admin/community/comments',
-        commentDetail: (id: string) => `/api/admin/community/comments/${id}`,
-        hidePost: (id: string) => `/api/admin/community/posts/${id}/hide`,
+        posts: '/api/admin/posts',
+        postDetail: (id: string) => `/api/admin/posts/${id}`,
+        comments: '/api/admin/posts/comments',
+        commentDetail: (id: string) => `/api/admin/posts/comments/${id}`,
+        hidePost: (id: string) => `/api/admin/posts/${id}/hide`,
         banUser: (userId: string) => `/api/admin/users/${userId}/ban`,
         userShopReports: {
           list: '/api/admin/reports',
           status: (id: number) => `/api/admin/reports/${id}/status`,
         }
+      },
+      posts: {
+        list: '/api/admin/posts',
+        detail: (id: number | string) => `/api/admin/posts/${id}`,
+        hide: (id: number | string) => `/api/admin/posts/${id}/hide`,
+        comments: '/api/admin/posts/comments',
+        commentDetail: (id: number | string) => `/api/admin/posts/comments/${id}`,
       },
       lostFound: {
         posts: '/api/admin/community/posts',

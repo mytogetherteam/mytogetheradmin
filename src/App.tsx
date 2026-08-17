@@ -70,6 +70,7 @@ const ReviewDetail = lazy(() => import("@/pages/review/ReviewDetail"));
 // Community
 const CommunityMgt = lazy(() => import("@/pages/community/CommunityMgt"));
 const PostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
+const SocialPostForm = lazy(() => import("@/pages/community/SocialPostForm"));
 const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
 const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 
@@ -187,6 +188,8 @@ function App() {
                     <Route path="/master-items/manage" element={<ManageMasterItems />} />
                     <Route path="/master-items/create" element={<CreateMasterItem />} />
                     <Route path="/community/posts" element={<CommunityMgt />} />
+                    <Route path="/community/posts/create" element={<SocialPostForm />} />
+                    <Route path="/community/posts/:id/edit" element={<SocialPostForm />} />
                     <Route path="/community/posts/:id" element={<PostDetailPage />} />
                     <Route path="/community/comments" element={<CommentBoard />} />
                     <Route path="/lostfound" element={<LostFound />} />

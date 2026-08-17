@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { moderationService } from "@/services/moderationService";
+import { socialPostsService, CommunityCommentRow } from "@/services/socialPostsService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,18 +18,8 @@ import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
 
-interface Comment {
-    id: string;
-    authorName: string;
-    authorId: string;
-    content: string;
-    postId?: string;
-    postTitle?: string;
-    createdAt: string;
-}
-
 export default function CommentBoard() {
-    const [comments, setComments] = useState<Comment[]>([]);
+    const [comments, setComments] = useState<CommunityCommentRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
@@ -42,7 +32,12 @@ export default function CommentBoard() {
     const fetchComments = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await moderationService.getComments(currentPage - 1, pageSize, postIdFilter || undefined, search);
+            const data = await socialPostsService.getComments(
+                currentPage - 1,
+                pageSize,
+                postIdFilter || undefined,
+                search,
+            );
             const content = data?.content ?? [];
             setComments(content);
             setTotalElements(data?.totalElements ?? content.length);
@@ -59,7 +54,7 @@ export default function CommentBoard() {
     const handleDelete = async () => {
         if (!deleteId) return;
         try {
-            await moderationService.deleteComment(deleteId);
+            await socialPostsService.deleteComment(deleteId);
             toast.success("Comment deleted");
             setDeleteId(null);
             fetchComments();
@@ -85,110 +80,104 @@ export default function CommentBoard() {
                 <h1 className="text-lg font-semibold md:text-2xl">Comment Board</h1>
             </div>
 
-            {/* Filters */}
-            <form onSubmit={handleSearch} className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search comments..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9"
-                    />
-                </div>
-                <Input
-                    placeholder="Filter by Post ID (optional)"
-                    value={postIdFilter}
-                    onChange={(e) => setPostIdFilter(e.target.value)}
-                    className="max-w-[200px]"
-                />
-                <Button type="submit" variant="secondary" size="sm">Search</Button>
-            </form>
-
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-base">All Comments</CardTitle>
+                    <CardTitle className="text-base">Social post comments</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                    <div className="rounded-md border-t overflow-x-auto">
-                        <Table>
-                            <TableHeader>
+                <CardContent className="space-y-4">
+                    <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search comments..."
+                                className="pl-9"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <Input
+                            placeholder="Filter by post ID"
+                            className="md:w-48"
+                            value={postIdFilter}
+                            onChange={(e) => setPostIdFilter(e.target.value)}
+                        />
+                        <Button type="submit">Search</Button>
+                    </form>
+
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <SortableTableHead label="Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableTableHead label="Post Author" sortKey="postAuthorName" sortConfig={sortConfig} onSort={handleSort} />
+                                <TableHead>Comment</TableHead>
+                                <TableHead>Post</TableHead>
+                                <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                [...Array(5)].map((_, i) => (
+                                    <TableRow key={i}>
+                                        {[...Array(6)].map((__, j) => (
+                                            <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : sortedComments.length === 0 ? (
                                 <TableRow>
-                                    <SortableTableHead label="Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
-                                    <TableHead>Comment</TableHead>
-                                    <TableHead>Parent Post</TableHead>
-                                    <SortableTableHead label="Date" sortKey="createdAt" sortConfig={sortConfig} onSort={handleSort} />
-                                    <TableHead>Actions</TableHead>
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                        No comments found.
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    [...Array(5)].map((_, i) => (
-                                        <TableRow key={i}>
-                                            {[...Array(5)].map((__, j) => (
-                                                <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))
-                                ) : sortedComments.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                            No comments found.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : sortedComments.map((c) => (
-                                    <TableRow key={c.id}>
-                                        <TableCell className="text-sm font-medium">{c.authorName}</TableCell>
-                                        <TableCell className="max-w-[300px]">
-                                            <p className="text-sm truncate">{c.content}</p>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground font-mono">
-                                            {c.postId?.slice(-8) ?? "—"}
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {new Date(c.createdAt).toLocaleDateString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                size="sm" variant="ghost"
-                                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                onClick={() => setDeleteId(c.id)}
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                            ) : sortedComments.map((c) => (
+                                <TableRow key={c.id}>
+                                    <TableCell className="text-sm font-medium">{c.authorName}</TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">{c.postAuthorName}</TableCell>
+                                    <TableCell className="max-w-sm">
+                                        <p className="text-sm truncate">{c.content}</p>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">#{c.postId}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                        {new Date(c.createdAt).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-destructive"
+                                            onClick={() => setDeleteId(c.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+
+                    <DataTablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalElements}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+                    />
                 </CardContent>
             </Card>
 
-            {/* Pagination */}
-            <DataTablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalElements}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-            />
-
-            {/* Delete Confirm */}
-            <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                        <AlertDialogTitle>Delete comment?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. The comment will be permanently removed.
+                            This permanently deletes the comment. This cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
