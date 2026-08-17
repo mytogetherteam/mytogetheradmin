@@ -69,10 +69,14 @@ const ReviewDetail = lazy(() => import("@/pages/review/ReviewDetail"));
 
 // Community
 const CommunityMgt = lazy(() => import("@/pages/community/CommunityMgt"));
-const PostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
-const SocialPostForm = lazy(() => import("@/pages/community/SocialPostForm"));
+const CommunityPostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
 const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
 const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
+
+// Social Media
+const SocialMediaMgt = lazy(() => import("@/pages/social-media/SocialMediaMgt"));
+const SocialPostDetailPage = lazy(() => import("@/pages/social-media/PostDetailPage"));
+const SocialPostForm = lazy(() => import("@/pages/social-media/SocialPostForm"));
 
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
@@ -142,6 +146,7 @@ function App() {
           <Route path="/manage-users" element={<LegacyRedirect to="/users/manage" />} />
           <Route path="/manage-shops" element={<LegacyRedirect to="/shops/manage" />} />
           <Route path="/create-shop" element={<LegacyRedirect to="/shops/create" />} />
+          <Route path="/community/posts/create" element={<LegacyRedirect to="/social-media/posts/create" />} />
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 {/* Core (Anyone authenticated) */}
@@ -188,10 +193,12 @@ function App() {
                     <Route path="/master-items/manage" element={<ManageMasterItems />} />
                     <Route path="/master-items/create" element={<CreateMasterItem />} />
                     <Route path="/community/posts" element={<CommunityMgt />} />
-                    <Route path="/community/posts/create" element={<SocialPostForm />} />
-                    <Route path="/community/posts/:id/edit" element={<SocialPostForm />} />
-                    <Route path="/community/posts/:id" element={<PostDetailPage />} />
+                    <Route path="/community/posts/:id" element={<CommunityPostDetailPage />} />
                     <Route path="/community/comments" element={<CommentBoard />} />
+                    <Route path="/social-media/posts" element={<SocialMediaMgt />} />
+                    <Route path="/social-media/posts/create" element={<SocialPostForm />} />
+                    <Route path="/social-media/posts/:id/edit" element={<SocialPostForm />} />
+                    <Route path="/social-media/posts/:id" element={<SocialPostDetailPage />} />
                     <Route path="/lostfound" element={<LostFound />} />
                     <Route path="/cuisines/manage" element={<ManageCuisines />} />
                     <Route path="/cuisines/create" element={<CuisineForm />} />

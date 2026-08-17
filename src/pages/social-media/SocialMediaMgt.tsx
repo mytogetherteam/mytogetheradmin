@@ -1,6 +1,10 @@
 ﻿import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { moderationService, Post, Comment } from "@/services/moderationService";
+import {
+    socialPostsService,
+    CommunityPostRow,
+    CommunityCommentRow,
+} from "@/services/socialPostsService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -8,10 +12,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Search, User, Shield, Users } from "lucide-react";
+import { EyeOff, Pencil, Plus, Search, Share2, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -27,11 +30,10 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 
-export default function CommunityMgt() {
+export default function SocialMediaMgt() {
     const navigate = useNavigate();
-    const [posts, setPosts] = useState<Post[]>([]);
-
-    const [comments, setComments] = useState<Comment[]>([]);
+    const [posts, setPosts] = useState<CommunityPostRow[]>([]);
+    const [comments, setComments] = useState<CommunityCommentRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const tab = (searchParams.get("tab") || "posts") as "posts" | "comments";
@@ -39,20 +41,16 @@ export default function CommunityMgt() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
-    const [postType, setPostType] = useState<string>("ALL");
     const [pageSize, setPageSize] = useState(20);
     const [totalElements, setTotalElements] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
-    // Delete Confirmation
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<"post" | "comment">("post");
 
     const fetchPosts = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await moderationService.getPosts(
-                page, pageSize, postType === "ALL" ? undefined : postType, search
-            );
+            const data = await socialPostsService.getPosts(page, pageSize, search);
             setPosts(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
@@ -61,12 +59,12 @@ export default function CommunityMgt() {
         } finally {
             setLoading(false);
         }
-    }, [page, postType, search, pageSize]);
+    }, [page, search, pageSize]);
 
     const fetchComments = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await moderationService.getComments(page, pageSize, undefined, search);
+            const data = await socialPostsService.getComments(page, pageSize, undefined, search);
             setComments(data.content);
             setTotalPages(data.totalPages);
             setTotalElements(data.totalElements ?? data.content.length);
@@ -86,11 +84,11 @@ export default function CommunityMgt() {
         if (!deleteId) return;
         try {
             if (deleteTarget === "post") {
-                await moderationService.deletePost(deleteId);
-                setPosts(prev => prev.filter(p => p.id !== deleteId));
+                await socialPostsService.deletePost(deleteId);
+                setPosts((prev) => prev.filter((p) => p.id !== deleteId));
             } else {
-                await moderationService.deleteComment(deleteId);
-                setComments(prev => prev.filter(c => c.id !== deleteId));
+                await socialPostsService.deleteComment(deleteId);
+                setComments((prev) => prev.filter((c) => c.id !== deleteId));
             }
             toast.success(`${deleteTarget === "post" ? "Post" : "Comment"} deleted`);
         } catch (error) {
@@ -100,7 +98,17 @@ export default function CommunityMgt() {
         }
     };
 
-
+    const handleHide = async (postId: string) => {
+        try {
+            await socialPostsService.hidePost(postId);
+            setPosts((prev) =>
+                prev.map((p) => (p.id === postId ? { ...p, isHidden: true } : p)),
+            );
+            toast.success("Post hidden from feed");
+        } catch (error) {
+            handleApiError(error, "Failed to hide post");
+        }
+    };
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
     const sortedPosts = sortData(posts, sortConfig);
@@ -108,9 +116,15 @@ export default function CommunityMgt() {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-primary" />
-                <h1 className="text-lg font-semibold md:text-2xl">Community Management</h1>
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <Share2 className="h-6 w-6 text-primary" />
+                    <h1 className="text-lg font-semibold md:text-2xl">Social Media</h1>
+                </div>
+                <Button onClick={() => navigate("/social-media/posts/create")}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Post
+                </Button>
             </div>
 
             <Tabs value={tab} onValueChange={(v) => { setTab(v as "posts" | "comments"); setPage(0); }}>
@@ -127,29 +141,34 @@ export default function CommunityMgt() {
                             className="pl-9"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    setPage(0);
+                                    if (tab === "posts") fetchPosts();
+                                    else fetchComments();
+                                }
+                            }}
                         />
                     </div>
-                    {tab === "posts" && (
-                        <Select value={postType} onValueChange={setPostType}>
-                            <SelectTrigger className="w-full md:w-48">
-                                <SelectValue placeholder="All Post Types" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ALL">All Types</SelectItem>
-                                <SelectItem value="GENERAL">General</SelectItem>
-                                <SelectItem value="NEWS">News</SelectItem>
-                                <SelectItem value="ALERT">Alert</SelectItem>
-                                <SelectItem value="EVENT">Event</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    )}
+                    <Button
+                        variant="secondary"
+                        onClick={() => {
+                            setPage(0);
+                            if (tab === "posts") fetchPosts();
+                            else fetchComments();
+                        }}
+                    >
+                        Search
+                    </Button>
                 </div>
 
                 <TabsContent value="posts" className="space-y-4">
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-base">Community Posts</CardTitle>
-                            <CardDescription>Manage user-generated content and platform updates.</CardDescription>
+                            <CardTitle className="text-base">Social Feed Posts</CardTitle>
+                            <CardDescription>
+                                Admin-authored posts (optional shop attribution). Hide soft-removes from the app feed.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
@@ -179,10 +198,10 @@ export default function CommunityMgt() {
                                             </TableCell>
                                         </TableRow>
                                     ) : sortedPosts.map((p) => (
-                                        <TableRow 
-                                            key={p.id} 
+                                        <TableRow
+                                            key={p.id}
                                             className="cursor-pointer hover:bg-muted/50"
-                                            onClick={() => navigate(`/community/posts/${p.id}`)}
+                                            onClick={() => navigate(`/social-media/posts/${p.id}`)}
                                         >
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center gap-2">
@@ -197,8 +216,12 @@ export default function CommunityMgt() {
                                             </TableCell>
                                             <TableCell className="max-w-xs">
                                                 <div className="flex flex-col">
-                                                    <p className="text-sm truncate">{p.content}</p>
-                                                    {p.imageUrl && <p className="text-[10px] text-accent mt-1 flex items-center gap-1"><Shield className="h-2 w-2" /> Has Attachment</p>}
+                                                    <p className="text-sm truncate">{p.content || "(media only)"}</p>
+                                                    {p.mediaCount > 0 && (
+                                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                                            {p.mediaCount} media
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -220,7 +243,32 @@ export default function CommunityMgt() {
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <TooltipProvider>
                                                     <div className="flex gap-1">
-
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => navigate(`/social-media/posts/${p.id}/edit`)}
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Edit</TooltipContent>
+                                                        </Tooltip>
+                                                        {!p.isHidden && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleHide(p.id)}
+                                                                    >
+                                                                        <EyeOff className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Hide from feed</TooltipContent>
+                                                            </Tooltip>
+                                                        )}
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -311,7 +359,6 @@ export default function CommunityMgt() {
                     </Card>
                 </TabsContent>
 
-                {/* Pagination */}
                 <DataTablePagination
                     currentPage={page + 1}
                     totalPages={totalPages}
@@ -322,7 +369,6 @@ export default function CommunityMgt() {
                 />
             </Tabs>
 
-            {/* Delete Confirmation */}
             <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -347,11 +393,10 @@ export default function CommunityMgt() {
     );
 }
 
-// Re-using Badge from UI if possible, or simple span
 function Badge({ className, children }: { className?: string, children: React.ReactNode }) {
     return (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${className}`}>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${className}`}>
             {children}
         </span>
-    )
+    );
 }

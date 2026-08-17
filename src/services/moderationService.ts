@@ -127,91 +127,40 @@ class ModerationService {
     return apiClient.put<void>(config.endpoints.admin.moderation.userShopReports.status(id), { status, resolutionNotes });
   }
 
-  async getPosts(page = 0, size = 20, _postType?: string, search = ''): Promise<PostsPage> {
-    // Prefer socialPostsService — Nest /api/admin/posts uses 1-based pages.
-    const { socialPostsService } = await import('./socialPostsService');
-    const data = await socialPostsService.getPosts(page, size, search);
-    return {
-      content: data.content.map((p) => ({
-        id: p.id,
-        authorName: p.authorName,
-        authorId: p.authorId,
-        content: p.content,
-        imageUrl: p.imageUrl,
-        likeCount: p.likeCount,
-        commentCount: p.commentCount,
-        createdAt: p.createdAt,
-        isHidden: p.isHidden,
-      })),
-      totalElements: data.totalElements,
-      totalPages: data.totalPages,
-      number: data.number,
-    };
+  async getPosts(page = 0, size = 20, postType?: string, search = ''): Promise<PostsPage> {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+      search: search,
+    });
+    if (postType) params.append('postType', postType);
+    return apiClient.get<PostsPage>(`${config.endpoints.admin.moderation.posts}?${params.toString()}`);
   }
 
   async getComments(page = 0, size = 20, postId?: string, search = ''): Promise<CommentsPage> {
-    const { socialPostsService } = await import('./socialPostsService');
-    const data = await socialPostsService.getComments(page, size, postId, search);
-    return {
-      content: data.content.map((c) => ({
-        id: c.id,
-        authorName: c.authorName,
-        authorId: c.authorId,
-        content: c.content,
-        postId: c.postId,
-        postAuthorName: c.postAuthorName,
-        createdAt: c.createdAt,
-        isHidden: c.isHidden,
-      })),
-      totalElements: data.totalElements,
-      totalPages: data.totalPages,
-      number: data.number,
-    };
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+      search: search,
+    });
+    if (postId) params.append('postId', postId);
+    return apiClient.get<CommentsPage>(`${config.endpoints.admin.moderation.comments}?${params.toString()}`);
   }
 
   async deleteComment(id: string): Promise<void> {
-    const { socialPostsService } = await import('./socialPostsService');
-    await socialPostsService.deleteComment(id);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.commentDetail(id));
   }
 
   async hidePost(id: string): Promise<Post> {
-    const { socialPostsService } = await import('./socialPostsService');
-    const updated = await socialPostsService.hidePost(id);
-    const { mapSocialPostToRow } = await import('./socialPostsService');
-    const row = mapSocialPostToRow(updated);
-    return {
-      id: row.id,
-      authorName: row.authorName,
-      authorId: row.authorId,
-      content: row.content,
-      imageUrl: row.imageUrl,
-      likeCount: row.likeCount,
-      commentCount: row.commentCount,
-      createdAt: row.createdAt,
-      isHidden: row.isHidden,
-    };
+    return apiClient.put<Post>(config.endpoints.admin.moderation.hidePost(id), {});
   }
 
   async getPostDetail(id: string): Promise<Post> {
-    const { socialPostsService, mapSocialPostToRow } = await import('./socialPostsService');
-    const post = await socialPostsService.getPostDetail(id);
-    const row = mapSocialPostToRow(post);
-    return {
-      id: row.id,
-      authorName: row.authorName,
-      authorId: row.authorId,
-      content: row.content,
-      imageUrl: row.imageUrl,
-      likeCount: row.likeCount,
-      commentCount: row.commentCount,
-      createdAt: row.createdAt,
-      isHidden: row.isHidden,
-    };
+    return apiClient.get<Post>(config.endpoints.admin.moderation.postDetail(id));
   }
 
   async deletePost(id: string): Promise<void> {
-    const { socialPostsService } = await import('./socialPostsService');
-    await socialPostsService.deletePost(id);
+    return apiClient.delete<void>(config.endpoints.admin.moderation.postDetail(id));
   }
 
   async banUser(userId: string, reason: string): Promise<void> {

@@ -56,11 +56,11 @@ export const config = {
       moderation: {
         reports: '/api/admin/moderation/reports',
         resolveReport: (id: string) => `/api/admin/moderation/reports/${id}/resolve`,
-        posts: '/api/admin/posts',
-        postDetail: (id: string) => `/api/admin/posts/${id}`,
-        comments: '/api/admin/posts/comments',
-        commentDetail: (id: string) => `/api/admin/posts/comments/${id}`,
-        hidePost: (id: string) => `/api/admin/posts/${id}/hide`,
+        posts: '/api/admin/community/posts',
+        postDetail: (id: string) => `/api/admin/community/posts/${id}`,
+        comments: '/api/admin/community/comments',
+        commentDetail: (id: string) => `/api/admin/community/comments/${id}`,
+        hidePost: (id: string) => `/api/admin/community/posts/${id}/hide`,
         banUser: (userId: string) => `/api/admin/users/${userId}/ban`,
         userShopReports: {
           list: '/api/admin/reports',

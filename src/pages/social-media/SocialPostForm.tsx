@@ -56,7 +56,7 @@ export default function SocialPostForm() {
         applyPost(post);
       } catch (error) {
         handleApiError(error, "Failed to load post");
-        navigate("/community/posts");
+        navigate("/social-media/posts");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -172,7 +172,7 @@ export default function SocialPostForm() {
         });
         toast.success("Post published");
       }
-      navigate("/community/posts");
+      navigate("/social-media/posts");
     } catch (error) {
       handleApiError(error, isEditMode ? "Failed to update post" : "Failed to create post");
     } finally {
@@ -192,7 +192,7 @@ export default function SocialPostForm() {
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/community/posts")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/social-media/posts")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -372,7 +372,7 @@ export default function SocialPostForm() {
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate("/community/posts")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/social-media/posts")}>
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
