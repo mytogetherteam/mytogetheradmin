@@ -235,7 +235,7 @@ function App() {
                 <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
                 <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                 <Route path="/community/posts" element={<CommunityMgt />} />
-                <Route path="/community/posts/:id" element={<PostDetailPage />} />
+                <Route path="/community/posts/:id" element={<CommunityPostDetailPage />} />
                 <Route path="/community/comments" element={<CommentBoard />} />
                 <Route path="/social-media/posts" element={<SocialMediaMgt />} />
                 <Route path="/social-media/posts/create" element={<SocialPostForm />} />
@@ -292,6 +292,31 @@ function App() {
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
+                {/* News */}
+                <Route path="/news/manage" element={<ManageNews />} />
+                <Route path="/news/create" element={<CreateNews />} />
+
+                {/* Collections */}
+                <Route path="/collections/manage" element={<ManageCollections />} />
+                <Route path="/collections/create" element={<CreateCollection />} />
+
+                {/* Flash Events */}
+                <Route path="/flash-events/manage" element={<ManageFlashEvents />} />
+                <Route path="/flash-events/create" element={<CreateFlashEvent />} />
+
+                {/* Shop Coupons */}
+                <Route path="/shop-coupons/manage" element={<ManageShopCoupons />} />
+                <Route path="/shop-coupons/create" element={<CreateShopCoupon />} />
+
+                {/* Subscriptions & Plans */}
+                <Route path="/plans/manage" element={<ManagePlans />} />
+                <Route path="/plans/create" element={<CreatePlan />} />
+                <Route path="/plan-features/manage" element={<ManagePlanFeatures />} />
+                <Route path="/plan-features/create" element={<CreatePlanFeature />} />
+                <Route path="/subscriptions/manage" element={<ManageSubscriptions />} />
+                <Route path="/platform-payment-accounts/manage" element={<ManagePlatformPaymentAccounts />} />
+                <Route path="/platform-payment-accounts/create" element={<CreatePlatformPaymentAccount />} />
+
                 <Route path="/admins/manage" element={<ManageAdmins />} />
                 <Route path="/admins/create" element={<PlatformAdminForm />} />
                 <Route path="/admins/edit/:id" element={<PlatformAdminForm />} />

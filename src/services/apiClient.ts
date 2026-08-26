@@ -359,17 +359,7 @@ class ApiClient {
   async patch<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
-      body: data !== undefined && data !== null ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
-    const isFormData = (body: unknown): body is FormData => {
-      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
-    };
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
+      body: isFormDataBody(data) ? data : data != null ? JSON.stringify(data) : undefined,
     });
   }
 
