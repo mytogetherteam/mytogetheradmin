@@ -37,6 +37,7 @@ import {
     MonitorSmartphone,
     ShoppingBag,
     Star,
+    Share2,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -349,6 +350,14 @@ export const navigationConfig: NavGroup[] = [
         items: [
             { title: "Posts & Comments", url: "/community/posts", icon: List, tooltip: "Posts & Comments" },
             { title: "Lost & Found", url: "/lostfound", icon: Package, tooltip: "Lost & Found" }
+        ]
+    },
+    {
+        title: "Social Media",
+        roles: AdminRole.ADMIN_SETUP,
+        items: [
+            { title: "Posts & Comments", url: "/social-media/posts", icon: Share2, tooltip: "Social Media Posts" },
+            { title: "Create Post", url: "/social-media/posts/create", icon: Plus, tooltip: "Create Social Post" }
         ]
     },
     {

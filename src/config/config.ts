@@ -161,6 +161,13 @@ export const config = {
           status: (id: number) => `/api/admin/reports/${id}/status`,
         }
       },
+      posts: {
+        list: '/api/admin/posts',
+        detail: (id: number | string) => `/api/admin/posts/${id}`,
+        hide: (id: number | string) => `/api/admin/posts/${id}/hide`,
+        comments: '/api/admin/posts/comments',
+        commentDetail: (id: number | string) => `/api/admin/posts/comments/${id}`,
+      },
       lostFound: {
         posts: '/api/admin/community/posts',
         resolve: (postId: string) => `/api/admin/lost-found/posts/${postId}/resolve`,

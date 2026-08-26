@@ -128,20 +128,20 @@ class ModerationService {
   }
 
   async getPosts(page = 0, size = 20, postType?: string, search = ''): Promise<PostsPage> {
-    const params = new URLSearchParams({ 
-      page: String(page), 
+    const params = new URLSearchParams({
+      page: String(page),
       size: String(size),
-      search: search
+      search: search,
     });
     if (postType) params.append('postType', postType);
     return apiClient.get<PostsPage>(`${config.endpoints.admin.moderation.posts}?${params.toString()}`);
   }
 
   async getComments(page = 0, size = 20, postId?: string, search = ''): Promise<CommentsPage> {
-    const params = new URLSearchParams({ 
-      page: String(page), 
+    const params = new URLSearchParams({
+      page: String(page),
       size: String(size),
-      search: search
+      search: search,
     });
     if (postId) params.append('postId', postId);
     return apiClient.get<CommentsPage>(`${config.endpoints.admin.moderation.comments}?${params.toString()}`);

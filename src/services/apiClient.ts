@@ -115,6 +115,11 @@ class ApiClient {
     this.refreshSubscribers = [];
   }
 
+
+  private addRefreshSubscriber(cb: (token: string) => void) {
+    this.refreshSubscribers.push(cb);
+  }
+
   private decodeJwtExpiry(token: string): number | null {
     if (this.cachedTokenString !== token) {
       this.tokenExpiryCache = null;
@@ -272,6 +277,13 @@ class ApiClient {
           await this.performRefresh();
           return this.request<T>(endpoint, options);
         }
+
+        // If already refreshing, wait for it to finish
+        return new Promise<T>((resolve, reject) => {
+          this.addRefreshSubscriber(() => {
+            this.request<T>(endpoint, options).then(resolve).catch(reject);
+          });
+        });
       }
 
       if (!response.ok) {
@@ -348,6 +360,16 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data !== undefined && data !== null ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
+    const isFormData = (body: unknown): body is FormData => {
+      return body instanceof FormData || (body !== null && typeof body === 'object' && body.constructor.name === 'FormData');
+    };
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: isFormData(data) ? data : (data ? JSON.stringify(data) : undefined),
     });
   }
 

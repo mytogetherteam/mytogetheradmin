@@ -27,6 +27,7 @@ const routeLabels: Record<string, string> = {
     "review": "Review",
     "reviews": "Reviews",
     "community": "Community",
+    "social-media": "Social Media",
     "posts": "Posts",
     "comments": "Comments",
     "lostfound": "Lost & Found",
