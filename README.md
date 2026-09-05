@@ -71,3 +71,6 @@ export default defineConfig([
   },
 ])
 ```
+
+
+<!-- Security scan triggered at 2026-09-05 07:26:34 -->
