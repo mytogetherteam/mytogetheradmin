@@ -27,6 +27,7 @@ import {
     Flag,
     TicketPercent,
     Share2,
+    Gift,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -214,6 +215,7 @@ export const navigationConfig: NavGroup[] = [
         items: [
             { title: "Banners & Featured", url: "/marketing/banners", icon: ImageIcon, tooltip: "Banners", roles: AdminRole.ADMIN },
             { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
+            { title: "Referral & Promote Codes", url: "/referrals/manage", icon: Gift, tooltip: "Referral Program", roles: AdminRole.ADMIN },
             { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Broadcast", roles: AdminRole.ADMIN_SETUP }
         ]
     },

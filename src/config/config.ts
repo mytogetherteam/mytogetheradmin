@@ -165,6 +165,16 @@ export const config = {
         shopActions: {
             boost: (shopId: string) => `/api/admin/marketing/shops/${shopId}/boost`,
             featured: (shopId: string) => `/api/admin/marketing/shops/${shopId}/featured`,
+        },
+        referrals: {
+            config: '/api/admin/referral/config',
+            codes: '/api/admin/referral/codes',
+            redemptions: '/api/admin/referral/redemptions',
+            applyToAll: (couponId: number | string) => `/api/admin/referral/coupons/${couponId}/apply-to-all`,
+        },
+        coupons: {
+            base: '/api/admin/shop-coupons',
+            applyToAll: (id: number | string) => `/api/admin/shop-coupons/${id}/apply-to-all-users`,
         }
       },
       analytics: {

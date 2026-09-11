@@ -51,6 +51,7 @@ const ManageItemTags = lazy(() => import("@/pages/item-tags/ManageItemTags"));
 const CreateItemTag = lazy(() => import("@/pages/item-tags/CreateItemTag"));
 const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
 const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
+const ReferralManagement = lazy(() => import("@/pages/referrals/ReferralManagement"));
 const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
 const CreateMasterMenuCategory = lazy(() => import("@/pages/master-menu-categories/CreateMasterMenuCategory"));
 const ManageMasterItems = lazy(() => import("@/pages/master-items/ManageMasterItems"));
@@ -188,6 +189,7 @@ function App() {
                     <Route path="/item-tags/create" element={<CreateItemTag />} />
                     <Route path="/promotions/manage" element={<ManagePromotions />} />
                     <Route path="/promotions/create" element={<CreatePromotion />} />
+                    <Route path="/referrals/manage" element={<ReferralManagement />} />
                     <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
                     <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                     <Route path="/master-items/manage" element={<ManageMasterItems />} />
