@@ -6,7 +6,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -29,6 +28,13 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+const CASE_FILTERS: { value: string; label: string }[] = [
+    { value: "ALL", label: "All" },
+    { value: "LOST", label: "Lost items" },
+    { value: "FOUND", label: "Found items" },
+];
 
 export default function LostFound() {
     const [cases, setCases] = useState<LostFoundPost[]>([]);
@@ -148,31 +154,54 @@ export default function LostFound() {
                         />
                     </div>
                     {tab === "cases" && (
-                        <Select 
-                            value={typeFilter} 
-                            onValueChange={(val) => {
-                                setTypeFilter(val);
-                                setPage(0);
-                            }}
+                        <div
+                            className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-muted/40 p-1"
+                            role="tablist"
+                            aria-label="Filter cases by type"
                         >
-                            <SelectTrigger className="w-full md:w-48">
-                                <SelectValue placeholder="All Posts" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ALL">All Posts</SelectItem>
-                                <SelectItem value="LOST">Lost Items</SelectItem>
-                                <SelectItem value="FOUND">Found Items</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            {CASE_FILTERS.map((filter) => {
+                                const selected = typeFilter === filter.value;
+                                return (
+                                    <button
+                                        key={filter.value}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={selected}
+                                        onClick={() => {
+                                            setTypeFilter(filter.value);
+                                            setPage(0);
+                                        }}
+                                        className={cn(
+                                            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                                            selected
+                                                ? filter.value === "LOST"
+                                                    ? "bg-red-600 text-white shadow-sm"
+                                                    : filter.value === "FOUND"
+                                                      ? "bg-emerald-600 text-white shadow-sm"
+                                                      : "bg-primary text-primary-foreground shadow-sm"
+                                                : "text-muted-foreground hover:bg-background/80 hover:text-foreground",
+                                        )}
+                                    >
+                                        {filter.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
 
                 <TabsContent value="cases" className="space-y-4">
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-primary">Lost & Found Cases</CardTitle>
+                            <CardTitle className="text-base text-primary">
+                                {typeFilter === "LOST"
+                                    ? "Lost items"
+                                    : typeFilter === "FOUND"
+                                      ? "Found items"
+                                      : "Lost & Found cases"}
+                            </CardTitle>
                             <CardDescription>
-                                Click any row or the eye icon to view complete details, photos, reporter information, and coordinates.
+                                Showing {typeFilter === "ALL" ? "all reports" : typeFilter === "LOST" ? "lost reports only" : "found reports only"}. Click a row to view details.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
