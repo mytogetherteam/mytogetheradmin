@@ -11,6 +11,21 @@ export class ApiError extends Error {
   }
 }
 
+function apiErrorMessage(errorData: unknown, fallback: string): string {
+  if (!errorData || typeof errorData !== 'object') return fallback;
+  const data = errorData as Record<string, unknown>;
+  if (typeof data.message === 'string' && data.message.trim()) {
+    return data.message;
+  }
+  if (data.message && typeof data.message === 'object') {
+    const nested = data.message as Record<string, unknown>;
+    if (typeof nested.message === 'string' && nested.message.trim()) {
+      return nested.message;
+    }
+  }
+  return fallback;
+}
+
 export interface ApiResponseData<T> {
   success: boolean;
   message: string;
@@ -229,7 +244,7 @@ class ApiClient {
         if (isAuthEndpoint) {
           const errorData = await response.json().catch(() => ({}));
           throw new ApiError(
-            errorData.message || 'Authentication failed',
+            apiErrorMessage(errorData, 'Authentication failed'),
             401,
             errorData
           );
@@ -253,7 +268,7 @@ class ApiClient {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          apiErrorMessage(errorData, `HTTP ${response.status}: ${response.statusText}`),
           response.status,
           errorData
         );

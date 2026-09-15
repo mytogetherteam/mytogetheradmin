@@ -44,6 +44,7 @@ export interface CommunityPostRow {
   id: string;
   authorName: string;
   authorId: string;
+  authorType: 'USER' | 'SHOP' | 'ADMIN' | 'UNKNOWN';
   content: string;
   imageUrl?: string;
   likeCount: number;
@@ -113,6 +114,7 @@ export function mapSocialPostToRow(post: SocialPost): CommunityPostRow {
     id: String(post.id),
     authorName: author.name,
     authorId: author.id,
+    authorType: post.author?.type ?? 'UNKNOWN',
     content: post.content || '',
     imageUrl: previewUrl(post),
     likeCount: post.likeCount ?? 0,
@@ -421,6 +423,10 @@ class SocialPostsService {
 
   async hidePost(id: string | number): Promise<SocialPost> {
     return apiClient.put<SocialPost>(config.endpoints.admin.posts.hide(id), {});
+  }
+
+  async unhidePost(id: string | number): Promise<SocialPost> {
+    return apiClient.put<SocialPost>(config.endpoints.admin.posts.unhide(id), {});
   }
 
   async deletePost(id: string | number): Promise<void> {

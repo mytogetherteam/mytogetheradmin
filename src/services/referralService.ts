@@ -121,6 +121,13 @@ export const referralService = {
     );
   },
 
+  setCodeStatus: async (id: number, isActive: boolean): Promise<ReferralCodeDTO> => {
+    return apiClient.put<ReferralCodeDTO>(
+      config.endpoints.admin.marketing.referrals.codeStatus(id),
+      { isActive },
+    );
+  },
+
   getShopCoupons: async (params?: { search?: string; isActive?: boolean }): Promise<ShopCouponSummary[]> => {
     const urlParams = new URLSearchParams({
       page: '1',

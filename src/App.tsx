@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import AppLayout from "@/layouts/AppLayout";
 import { authService } from "@/services/authService";
@@ -68,10 +68,9 @@ const UserShopReports = lazy(() => import("@/pages/moderation/UserShopReports"))
 const Reviews = lazy(() => import("@/pages/review/Reviews"));
 const ReviewDetail = lazy(() => import("@/pages/review/ReviewDetail"));
 
-// Community
-const CommunityMgt = lazy(() => import("@/pages/community/CommunityMgt"));
-const CommunityPostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
-const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
+// Places & Activities
+const ManagePlaces = lazy(() => import("@/pages/places/ManagePlaces"));
+
 const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 
 // Social Media
@@ -130,6 +129,11 @@ function LegacyRedirect({ to }: { to: string }) {
   return <Navigate to={`${to}${location.search}`} replace />;
 }
 
+function CommunityPostRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/social-media/posts/${id}`} replace />;
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -148,6 +152,9 @@ function App() {
           <Route path="/manage-shops" element={<LegacyRedirect to="/shops/manage" />} />
           <Route path="/create-shop" element={<LegacyRedirect to="/shops/create" />} />
           <Route path="/community/posts/create" element={<LegacyRedirect to="/social-media/posts/create" />} />
+          <Route path="/community/posts/:id" element={<CommunityPostRedirect />} />
+          <Route path="/community/posts" element={<LegacyRedirect to="/social-media/posts" />} />
+          <Route path="/community/comments" element={<LegacyRedirect to="/social-media/posts?tab=comments" />} />
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 {/* Core (Anyone authenticated) */}
@@ -189,14 +196,11 @@ function App() {
                     <Route path="/item-tags/create" element={<CreateItemTag />} />
                     <Route path="/promotions/manage" element={<ManagePromotions />} />
                     <Route path="/promotions/create" element={<CreatePromotion />} />
-                    <Route path="/referrals/manage" element={<ReferralManagement />} />
                     <Route path="/master-menu-categories/manage" element={<ManageMasterMenuCategories />} />
                     <Route path="/master-menu-categories/create" element={<CreateMasterMenuCategory />} />
                     <Route path="/master-items/manage" element={<ManageMasterItems />} />
                     <Route path="/master-items/create" element={<CreateMasterItem />} />
-                    <Route path="/community/posts" element={<CommunityMgt />} />
-                    <Route path="/community/posts/:id" element={<CommunityPostDetailPage />} />
-                    <Route path="/community/comments" element={<CommentBoard />} />
+                    <Route path="/places" element={<ManagePlaces />} />
                     <Route path="/social-media/posts" element={<SocialMediaMgt />} />
                     <Route path="/social-media/posts/create" element={<SocialPostForm />} />
                     <Route path="/social-media/posts/:id/edit" element={<SocialPostForm />} />
@@ -240,6 +244,7 @@ function App() {
                     <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                     <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                     <Route path="/marketing/banners" element={<BannerManagement />} />
+                    <Route path="/referrals/manage" element={<ReferralManagement />} />
                     <Route path="/marketing/broadcast" element={<Broadcast />} />
                     <Route path="/system/feature-flags" element={<FeatureFlags />} />
                     <Route path="/system/configs" element={<SystemConfigManagement />} />

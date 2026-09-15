@@ -15,6 +15,12 @@ export interface LostFoundPost {
   reward?: string;
   postedBy: string;
   createdAt: string;
+  phoneNumber?: string;
+  photos?: string[];
+  latitude?: number;
+  longitude?: number;
+  likeCount?: number;
+  commentCount?: number;
 }
 
 export interface LostFoundPage {
@@ -52,9 +58,45 @@ class LostFoundService {
     });
     if (type) params.append('postType', type);
     
-    // Using community posts endpoint with postType=LOST or FOUND as per spec
-    const response = await apiClient.get<LostFoundPage>(`${config.endpoints.admin.lostFound.posts}?${params.toString()}`);
-    return response;
+    try {
+      const response = await apiClient.get<any>(`${config.endpoints.admin.lostFound.posts}?${params.toString()}`);
+      if (!response) {
+        return { content: [], totalElements: 0, totalPages: 1, number: page };
+      }
+      if (Array.isArray(response)) {
+        return {
+          content: response,
+          totalElements: response.length,
+          totalPages: 1,
+          number: page,
+        };
+      }
+      if (Array.isArray(response.content)) {
+        return {
+          content: response.content,
+          totalElements: response.totalElements ?? response.content.length,
+          totalPages: response.totalPages ?? 1,
+          number: response.number ?? page,
+        };
+      }
+      if (Array.isArray(response.items)) {
+        return {
+          content: response.items,
+          totalElements: response.meta?.total ?? response.items.length,
+          totalPages: response.meta?.last_page ?? 1,
+          number: page,
+        };
+      }
+      return { content: [], totalElements: 0, totalPages: 1, number: page };
+    } catch (e) {
+      console.error("Failed to fetch cases:", e);
+      throw e;
+    }
+  }
+
+  async getCaseById(id: number | string): Promise<LostFoundPost> {
+    const res = await apiClient.get<any>(`${config.endpoints.admin.lostFound.posts}/${id}`);
+    return res.data?.data || res.data || res;
   }
 
   async forceResolve(postId: number | string): Promise<void> {
@@ -72,8 +114,26 @@ class LostFoundService {
         search: search
     });
     if (postId) params.append('postId', String(postId));
-    const response = await apiClient.get<SightingPage>(`${config.endpoints.admin.lostFound.sightings}?${params.toString()}`);
-    return response;
+    try {
+      const response = await apiClient.get<any>(`${config.endpoints.admin.lostFound.sightings}?${params.toString()}`);
+      if (!response) {
+        return { content: [], totalElements: 0, totalPages: 0, number: page };
+      }
+      if (Array.isArray(response)) {
+        return { content: response, totalElements: response.length, totalPages: 1, number: page };
+      }
+      if (Array.isArray(response.content)) {
+        return {
+          content: response.content,
+          totalElements: response.totalElements ?? response.content.length,
+          totalPages: response.totalPages ?? 0,
+          number: page,
+        };
+      }
+      return { content: [], totalElements: 0, totalPages: 0, number: page };
+    } catch {
+      return { content: [], totalElements: 0, totalPages: 0, number: page };
+    }
   }
 
   async deleteSighting(id: number | string): Promise<void> {

@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Send,
   Loader2,
+  Ban,
 } from "lucide-react";
 import {
   Card,
@@ -84,6 +85,7 @@ export default function ReferralManagement() {
   const [redemptions, setRedemptions] = useState<ReferralRedemptionDTO[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(false);
   const [redemptionsSearch, setRedemptionsSearch] = useState("");
+  const [togglingCodeId, setTogglingCodeId] = useState<number | null>(null);
 
   const loadConfigAndCoupons = async () => {
     setConfigLoading(true);
@@ -124,6 +126,24 @@ export default function ReferralManagement() {
       toast.error("Failed to load promote codes");
     } finally {
       setCodesLoading(false);
+    }
+  };
+
+  const handleToggleCode = async (code: ReferralCodeDTO) => {
+    setTogglingCodeId(code.id);
+    try {
+      const updated = await referralService.setCodeStatus(code.id, !code.isActive);
+      setCodes((prev) => prev.map((c) => (c.id === code.id ? { ...c, ...updated } : c)));
+      toast.success(
+        updated.isActive
+          ? `${updated.code} is live again`
+          : `${updated.code} is disabled — new claims are blocked`,
+      );
+    } catch (error) {
+      console.error("Failed to update promote code:", error);
+      toast.error("Failed to update promote code status");
+    } finally {
+      setTogglingCodeId(null);
     }
   };
 
@@ -486,7 +506,7 @@ export default function ReferralManagement() {
                 <div>
                   <CardTitle className="text-lg">User Promote Codes</CardTitle>
                   <CardDescription>
-                    Custom codes registered by app users to invite their friends.
+                    Custom codes registered by app users. Disable a code to stop new claims without deleting history.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -525,6 +545,7 @@ export default function ReferralManagement() {
                       <TableHead className="text-center">Times Claimed</TableHead>
                       <TableHead>Created Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -549,6 +570,25 @@ export default function ReferralManagement() {
                           <Badge variant={c.isActive ? "outline" : "secondary"}>
                             {c.isActive ? "Active" : "Disabled"}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={togglingCodeId === c.id}
+                            onClick={() => handleToggleCode(c)}
+                          >
+                            {togglingCodeId === c.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : c.isActive ? (
+                              <>
+                                <Ban className="h-4 w-4 mr-1" />
+                                Disable
+                              </>
+                            ) : (
+                              "Enable"
+                            )}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

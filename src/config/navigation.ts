@@ -197,7 +197,7 @@ export const navigationConfig: NavGroup[] = [
         title: "Community",
         roles: AdminRole.ADMIN_SETUP,
         items: [
-            { title: "Posts & Comments", url: "/community/posts", icon: List, tooltip: "Posts & Comments" },
+            { title: "Places & Activities", url: "/places", icon: MapPin, tooltip: "Chill Spots & Activities" },
             { title: "Lost & Found", url: "/lostfound", icon: Package, tooltip: "Lost & Found" }
         ]
     },

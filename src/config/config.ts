@@ -1,5 +1,5 @@
 export const config = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://mytogetherapi-production.up.railway.app'),
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://api.mytogether.org'),
   endpoints: {
     auth: {
       login: '/api/admin/auth/login',
@@ -19,6 +19,11 @@ export const config = {
         orders: '/api/admin/export/orders',
       },
       auditLogs: '/api/admin/audit-logs',
+      places: {
+        base: '/api/admin/places',
+        detail: (id: number | string) => `/api/admin/places/${id}`,
+        reorder: '/api/admin/places/reorder',
+      },
       payment: {
         shopFormData: '/api/admin/setup/shop-form-data',
         cuisineTypes: '/api/admin/setup/cuisine-types',
@@ -56,11 +61,11 @@ export const config = {
       moderation: {
         reports: '/api/admin/moderation/reports',
         resolveReport: (id: string) => `/api/admin/moderation/reports/${id}/resolve`,
-        posts: '/api/admin/community/posts',
-        postDetail: (id: string) => `/api/admin/community/posts/${id}`,
-        comments: '/api/admin/community/comments',
-        commentDetail: (id: string) => `/api/admin/community/comments/${id}`,
-        hidePost: (id: string) => `/api/admin/community/posts/${id}/hide`,
+        posts: '/api/admin/lost-found/posts',
+        postDetail: (id: string) => `/api/admin/posts/${id}`,
+        comments: '/api/admin/posts/comments',
+        commentDetail: (id: string) => `/api/admin/posts/comments/${id}`,
+        hidePost: (id: string) => `/api/admin/posts/${id}/hide`,
         banUser: (userId: string) => `/api/admin/users/${userId}/ban`,
         userShopReports: {
           list: '/api/admin/reports',
@@ -71,11 +76,12 @@ export const config = {
         list: '/api/admin/posts',
         detail: (id: number | string) => `/api/admin/posts/${id}`,
         hide: (id: number | string) => `/api/admin/posts/${id}/hide`,
+        unhide: (id: number | string) => `/api/admin/posts/${id}/unhide`,
         comments: '/api/admin/posts/comments',
         commentDetail: (id: number | string) => `/api/admin/posts/comments/${id}`,
       },
       lostFound: {
-        posts: '/api/admin/community/posts',
+        posts: '/api/admin/lost-found/posts',
         resolve: (postId: string) => `/api/admin/lost-found/posts/${postId}/resolve`,
         sightings: '/api/admin/lost-found/sightings',
         sightingDetail: (id: string) => `/api/admin/lost-found/sightings/${id}`,
@@ -169,6 +175,7 @@ export const config = {
         referrals: {
             config: '/api/admin/referral/config',
             codes: '/api/admin/referral/codes',
+            codeStatus: (id: number | string) => `/api/admin/referral/codes/${id}/status`,
             redemptions: '/api/admin/referral/redemptions',
             applyToAll: (couponId: number | string) => `/api/admin/referral/coupons/${couponId}/apply-to-all`,
         },

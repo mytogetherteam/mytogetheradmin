@@ -22,6 +22,7 @@ import {
     Shield,
     Image as ImageIcon,
     AlertCircle,
+    Eye,
     EyeOff,
     Pencil,
 } from "lucide-react";
@@ -112,6 +113,18 @@ export default function PostDetailPage() {
         }
     };
 
+    const handleUnhide = async () => {
+        if (!post) return;
+        try {
+            const updated = await socialPostsService.unhidePost(post.id);
+            setRawPost(updated);
+            setPost(mapSocialPostToRow(updated));
+            toast.success("Post restored to feed");
+        } catch (error) {
+            handleApiError(error, "Failed to restore post");
+        }
+    };
+
     if (loading) {
         return (
             <div className="container mx-auto py-6 space-y-6">
@@ -165,10 +178,15 @@ export default function PostDetailPage() {
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                     </Button>
-                    {!post.isHidden && (
+                    {!post.isHidden ? (
                         <Button variant="outline" size="sm" onClick={handleHide}>
                             <EyeOff className="h-4 w-4 mr-2" />
                             Hide
+                        </Button>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={handleUnhide}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Show in feed
                         </Button>
                     )}
                     <Button

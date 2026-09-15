@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle, Trash2, MapPin, Package } from "lucide-react";
+import { 
+    Search, CheckCircle, Trash2, MapPin, Package, Eye, Phone, 
+    Calendar, User, ExternalLink, Heart, MessageSquare, Image as ImageIcon, 
+    Copy, Check
+} from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -34,10 +38,15 @@ export default function LostFound() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<string>("LOST");
+    const [typeFilter, setTypeFilter] = useState<string>("ALL");
     const [pageSize, setPageSize] = useState(20);
     const [totalElements, setTotalElements] = useState(0);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+    // Details & Preview
+    const [selectedCase, setSelectedCase] = useState<LostFoundPost | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [copiedPhone, setCopiedPhone] = useState(false);
 
     // Action dialogs
     const [confirmId, setConfirmId] = useState<string | number | null>(null);
@@ -85,10 +94,12 @@ export default function LostFound() {
             if (actionType === "resolve") {
                 await lostFoundService.forceResolve(confirmId);
                 setCases(prev => prev.map(c => c.id === confirmId ? { ...c, status: "RESOLVED" } : c));
+                setSelectedCase(prev => prev && prev.id === confirmId ? { ...prev, status: "RESOLVED" } : prev);
                 toast.success("Case resolved");
             } else if (actionType === "delete_case") {
                 await lostFoundService.deleteCase(confirmId);
                 setCases(prev => prev.filter(c => c.id !== confirmId));
+                setSelectedCase(prev => prev && prev.id === confirmId ? null : prev);
                 toast.success("Case deleted");
             } else {
                 await lostFoundService.deleteSighting(confirmId);
@@ -100,6 +111,13 @@ export default function LostFound() {
         } finally {
             setConfirmId(null);
         }
+    };
+
+    const handleCopyPhone = (phone: string) => {
+        navigator.clipboard.writeText(phone);
+        setCopiedPhone(true);
+        toast.success("Phone number copied to clipboard");
+        setTimeout(() => setCopiedPhone(false), 2000);
     };
 
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
@@ -130,11 +148,18 @@ export default function LostFound() {
                         />
                     </div>
                     {tab === "cases" && (
-                        <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <Select 
+                            value={typeFilter} 
+                            onValueChange={(val) => {
+                                setTypeFilter(val);
+                                setPage(0);
+                            }}
+                        >
                             <SelectTrigger className="w-full md:w-48">
-                                <SelectValue placeholder="All types" />
+                                <SelectValue placeholder="All Posts" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="ALL">All Posts</SelectItem>
                                 <SelectItem value="LOST">Lost Items</SelectItem>
                                 <SelectItem value="FOUND">Found Items</SelectItem>
                             </SelectContent>
@@ -146,7 +171,9 @@ export default function LostFound() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base text-primary">Lost & Found Cases</CardTitle>
-                            <CardDescription>Monitor and resolve community lost/found reports.</CardDescription>
+                            <CardDescription>
+                                Click any row or the eye icon to view complete details, photos, reporter information, and coordinates.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <Table>
@@ -176,9 +203,16 @@ export default function LostFound() {
                                             </TableCell>
                                         </TableRow>
                                     ) : sortedCases.map((c) => (
-                                        <TableRow key={c.id}>
+                                        <TableRow 
+                                            key={c.id} 
+                                            className="cursor-pointer hover:bg-muted/40 transition-colors"
+                                            onClick={() => setSelectedCase(c)}
+                                        >
                                             <TableCell>
-                                                <Badge variant={c.postType === "LOST" ? "destructive" : "default"} className="text-[10px]">
+                                                <Badge 
+                                                    variant={c.postType === "LOST" ? "destructive" : "default"} 
+                                                    className="text-[10px]"
+                                                >
                                                     {c.postType}
                                                 </Badge>
                                             </TableCell>
@@ -193,18 +227,41 @@ export default function LostFound() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className={c.status === "RESOLVED" ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50"}>
+                                                <Badge 
+                                                    variant="outline" 
+                                                    className={c.status === "RESOLVED" ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50"}
+                                                >
                                                     {c.status}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex gap-1">
+                                                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className="h-8 w-8 p-0" 
+                                                        title="View Details"
+                                                        onClick={() => setSelectedCase(c)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
                                                     {c.status === "OPEN" && (
-                                                        <Button size="sm" variant="outline" onClick={() => { setConfirmId(c.id); setActionType("resolve"); }}>
-                                                            <CheckCircle className="h-3 w-3 mr-1" /> Resolve
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline" 
+                                                            className="h-8 text-xs"
+                                                            onClick={() => { setConfirmId(c.id); setActionType("resolve"); }}
+                                                        >
+                                                            <CheckCircle className="h-3 w-3 mr-1 text-green-600" /> Resolve
                                                         </Button>
                                                     )}
-                                                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { setConfirmId(c.id); setActionType("delete_case"); }}>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive" 
+                                                        title="Delete Case"
+                                                        onClick={() => { setConfirmId(c.id); setActionType("delete_case"); }}
+                                                    >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -259,7 +316,7 @@ export default function LostFound() {
                                             <TableCell>
                                                 <Badge 
                                                     variant="outline" 
-                                                    className={`text-[9px] uppercase ${s.status === 'YES' ? 'text-green-600 bg-green-50' : ''}`}
+                                                    className={`text-[9px] uppercase ${s.status === "YES" ? "text-green-600 bg-green-50" : ""}`}
                                                 >
                                                     {s.status}
                                                 </Badge>
@@ -290,6 +347,217 @@ export default function LostFound() {
                     onPageSizeChange={(size) => { setPageSize(size); setPage(0); }}
                 />
             </Tabs>
+
+            {/* Case Details Dialog */}
+            <Dialog open={!!selectedCase} onOpenChange={(open) => !open && setSelectedCase(null)}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+                    {selectedCase && (
+                        <div className="flex flex-col">
+                            {/* Header */}
+                            <div className="p-6 border-b bg-muted/20">
+                                <div className="flex items-center justify-between gap-4 mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant={selectedCase.postType === "LOST" ? "destructive" : "default"}
+                                            className="text-xs font-semibold px-2.5 py-0.5"
+                                        >
+                                            {selectedCase.postType}
+                                        </Badge>
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                selectedCase.status === "RESOLVED"
+                                                    ? "text-green-600 bg-green-50 border-green-200"
+                                                    : "text-amber-600 bg-amber-50 border-amber-200"
+                                            }
+                                        >
+                                            {selectedCase.status}
+                                        </Badge>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                        Case #{selectedCase.id}
+                                    </span>
+                                </div>
+                                <DialogTitle className="text-xl font-bold leading-tight">
+                                    {selectedCase.title || (selectedCase.postType === "LOST" ? "Lost Item" : "Found Item")}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Reported on {new Date(selectedCase.createdAt).toLocaleString(undefined, {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                    })}
+                                </DialogDescription>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Photos Gallery */}
+                                <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+                                        <ImageIcon className="h-3.5 w-3.5" /> Photos ({selectedCase.photos?.length || 0})
+                                    </h4>
+                                    {selectedCase.photos && selectedCase.photos.length > 0 ? (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {selectedCase.photos.map((url, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="relative group rounded-lg overflow-hidden border bg-muted/40 aspect-square cursor-pointer shadow-sm hover:shadow transition-shadow"
+                                                    onClick={() => setPreviewImage(url)}
+                                                >
+                                                    <img
+                                                        src={url}
+                                                        alt={`Photo ${idx + 1}`}
+                                                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium">
+                                                        Click to view
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 p-4 rounded-lg bg-muted/30 border border-dashed text-xs text-muted-foreground">
+                                            <ImageIcon className="h-4 w-4 text-muted-foreground/60" />
+                                            No photos attached to this report.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                                        Description
+                                    </h4>
+                                    <div className="p-4 rounded-lg bg-muted/20 border text-sm whitespace-pre-wrap leading-relaxed">
+                                        {selectedCase.description || "No description provided."}
+                                    </div>
+                                </div>
+
+                                {/* Information Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Reporter Box */}
+                                    <div className="p-4 rounded-lg border bg-card space-y-2">
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <User className="h-3.5 w-3.5" /> Reporter Details
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{selectedCase.postedBy}</p>
+                                        </div>
+                                        {selectedCase.phoneNumber ? (
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <a
+                                                    href={`tel:${selectedCase.phoneNumber}`}
+                                                    className="text-xs text-primary hover:underline font-medium"
+                                                >
+                                                    {selectedCase.phoneNumber}
+                                                </a>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 ml-auto"
+                                                    title="Copy phone number"
+                                                    onClick={() => handleCopyPhone(selectedCase.phoneNumber!)}
+                                                >
+                                                    {copiedPhone ? (
+                                                        <Check className="h-3.5 w-3.5 text-green-600" />
+                                                    ) : (
+                                                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">No phone number provided</p>
+                                        )}
+                                    </div>
+
+                                    {/* Location Box */}
+                                    <div className="p-4 rounded-lg border bg-card space-y-2">
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <MapPin className="h-3.5 w-3.5" /> Location
+                                        </div>
+                                        <p className="text-sm font-medium">{selectedCase.location}</p>
+                                        {selectedCase.latitude != null && selectedCase.longitude != null ? (
+                                            <div className="pt-1 flex items-center justify-between">
+                                                <span className="text-xs text-muted-foreground font-mono">
+                                                    {selectedCase.latitude.toFixed(5)}, {selectedCase.longitude.toFixed(5)}
+                                                </span>
+                                                <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${selectedCase.latitude},${selectedCase.longitude}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" /> Maps
+                                                </a>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                {/* Engagement / Activity stats */}
+                                <div className="flex items-center gap-6 pt-2 text-xs text-muted-foreground border-t">
+                                    <div className="flex items-center gap-1.5">
+                                        <Heart className="h-3.5 w-3.5 text-red-500" />
+                                        <span>{selectedCase.likeCount ?? 0} Likes</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                                        <span>{selectedCase.commentCount ?? 0} Comments</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer with Actions */}
+                            <div className="p-4 border-t bg-muted/10 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    {selectedCase.status === "OPEN" && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setConfirmId(selectedCase.id);
+                                                setActionType("resolve");
+                                            }}
+                                        >
+                                            <CheckCircle className="h-3.5 w-3.5 mr-1.5 text-green-600" />
+                                            Resolve Case
+                                        </Button>
+                                    )}
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-destructive hover:text-destructive"
+                                        onClick={() => {
+                                            setConfirmId(selectedCase.id);
+                                            setActionType("delete_case");
+                                        }}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                        Delete Case
+                                    </Button>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => setSelectedCase(null)}>
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Full Image Preview Dialog */}
+            <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+                <DialogContent className="max-w-3xl p-2 bg-black/90 border-0 flex items-center justify-center">
+                    {previewImage && (
+                        <img
+                            src={previewImage}
+                            alt="Enlarged preview"
+                            className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Action Dialog */}
             <Dialog open={!!confirmId} onOpenChange={(open) => !open && setConfirmId(null)}>
