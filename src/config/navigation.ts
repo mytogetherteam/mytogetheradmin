@@ -38,6 +38,7 @@ import {
     ShoppingBag,
     Star,
     Share2,
+    Gift,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -348,7 +349,7 @@ export const navigationConfig: NavGroup[] = [
         title: "Community",
         roles: AdminRole.ADMIN_SETUP,
         items: [
-            { title: "Posts & Comments", url: "/community/posts", icon: List, tooltip: "Posts & Comments" },
+            { title: "Places & Activities", url: "/places", icon: MapPin, tooltip: "Chill Spots & Activities" },
             { title: "Lost & Found", url: "/lostfound", icon: Package, tooltip: "Lost & Found" }
         ]
     },
@@ -371,6 +372,7 @@ export const navigationConfig: NavGroup[] = [
             { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon, tooltip: "Background Themes", roles: AdminRole.ADMIN },
             { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
             { title: "Home Discount Sections", url: "/home-discount-sections/manage", icon: TicketPercent, tooltip: "Home discount carousel config", roles: AdminRole.ADMIN_SETUP },
+            { title: "Referral & Promote Codes", url: "/referrals/manage", icon: Gift, tooltip: "Referral Program", roles: AdminRole.ADMIN },
             { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Broadcast", roles: AdminRole.ADMIN_SETUP }
         ]
     },

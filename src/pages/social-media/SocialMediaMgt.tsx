@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EyeOff, Pencil, Plus, Search, Share2, Trash2, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Eye, EyeOff, Pencil, Plus, Search, Share2, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
 import { DataTablePagination } from "@/components/DataTablePagination";
@@ -110,6 +111,18 @@ export default function SocialMediaMgt() {
         }
     };
 
+    const handleUnhide = async (postId: string) => {
+        try {
+            await socialPostsService.unhidePost(postId);
+            setPosts((prev) =>
+                prev.map((p) => (p.id === postId ? { ...p, isHidden: false } : p)),
+            );
+            toast.success("Post restored to feed");
+        } catch (error) {
+            handleApiError(error, "Failed to restore post");
+        }
+    };
+
     const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
     const sortedPosts = sortData(posts, sortConfig);
     const sortedComments = sortData(comments, sortConfig);
@@ -167,7 +180,7 @@ export default function SocialMediaMgt() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-base">Social Feed Posts</CardTitle>
                             <CardDescription>
-                                Admin-authored posts (optional shop attribution). Hide soft-removes from the app feed.
+                                All social feed posts from users, shops, and admin. Hide removes a post from the app feed without deleting it.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -210,7 +223,9 @@ export default function SocialMediaMgt() {
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-medium">{p.authorName}</p>
-                                                        <p className="text-[10px] text-muted-foreground">ID: {p.authorId}</p>
+                                                        <p className="text-[10px] text-muted-foreground">
+                                                            {p.authorType === 'SHOP' ? 'Shop' : p.authorType === 'USER' ? 'User' : p.authorType === 'ADMIN' ? 'Admin' : 'Unknown'} · ID: {p.authorId}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -255,7 +270,7 @@ export default function SocialMediaMgt() {
                                                             </TooltipTrigger>
                                                             <TooltipContent>Edit</TooltipContent>
                                                         </Tooltip>
-                                                        {!p.isHidden && (
+                                                        {!p.isHidden ? (
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button
@@ -267,6 +282,19 @@ export default function SocialMediaMgt() {
                                                                     </Button>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>Hide from feed</TooltipContent>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleUnhide(p.id)}
+                                                                    >
+                                                                        <Eye className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Show in feed</TooltipContent>
                                                             </Tooltip>
                                                         )}
                                                         <Tooltip>

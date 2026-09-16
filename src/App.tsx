@@ -59,6 +59,7 @@ const ManagePlaces = lazy(() => import("@/pages/places/ManagePlaces"));
 const CreatePlace = lazy(() => import("@/pages/places/CreatePlace"));
 const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
 const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
+const ReferralManagement = lazy(() => import("@/pages/referrals/ReferralManagement"));
 const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
 const CreateMasterMenuCategory = lazy(() => import("@/pages/master-menu-categories/CreateMasterMenuCategory"));
 const ManageCollections = lazy(() => import("@/pages/collections/ManageCollections"));
@@ -77,11 +78,11 @@ const UserShopReports = lazy(() => import("@/pages/moderation/UserShopReports"))
 const Reviews = lazy(() => import("@/pages/review/Reviews"));
 const ReviewDetail = lazy(() => import("@/pages/review/ReviewDetail"));
 
-// Community
+const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
+
 const CommunityMgt = lazy(() => import("@/pages/community/CommunityMgt"));
 const CommunityPostDetailPage = lazy(() => import("@/pages/community/PostDetailPage"));
 const CommentBoard = lazy(() => import("@/pages/community/CommentBoard"));
-const LostFound = lazy(() => import("@/pages/lostfound/LostFound"));
 
 // Shop feedback
 const ManageShopFeedback = lazy(
@@ -242,6 +243,7 @@ function App() {
                 <Route path="/social-media/posts/:id/edit" element={<SocialPostForm />} />
                 <Route path="/social-media/posts/:id" element={<SocialPostDetailPage />} />
                 <Route path="/lostfound" element={<LostFound />} />
+                <Route path="/places" element={<ManagePlaces />} />
                 <Route path="/cuisines/manage" element={<ManageCuisines />} />
                 <Route path="/cuisines/create" element={<CuisineForm />} />
                 <Route path="/cuisines/edit/:id" element={<CuisineForm />} />
@@ -280,6 +282,7 @@ function App() {
                 <Route path="/shop-payment-types/create" element={<CreateShopPaymentType />} />
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
+                <Route path="/referrals/manage" element={<ReferralManagement />} />
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />

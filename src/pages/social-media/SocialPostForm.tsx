@@ -140,8 +140,8 @@ export default function SocialPostForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() && totalMediaCount === 0) {
-      toast.error("Add a caption or at least one media file");
+    if (!content.trim() && !totalMediaCount) {
+      toast.error("Add a caption or at least one photo or video");
       return;
     }
 
@@ -200,7 +200,7 @@ export default function SocialPostForm() {
             {isEditMode ? "Edit Social Post" : "Create Social Post"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Publish images and uploaded video to the Social feed. Shop is optional.
+            Publish text, photos, or video to the Social feed. A post needs a caption or at least one media item.
           </p>
         </div>
       </div>
@@ -294,7 +294,7 @@ export default function SocialPostForm() {
           <CardHeader>
             <CardTitle className="text-base">Media</CardTitle>
             <CardDescription>
-              Images and videos (max 10). Video thumbnails are generated automatically.
+              Photos and videos (max 10, optional if you write a caption). Video thumbnails are generated automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -375,7 +375,7 @@ export default function SocialPostForm() {
           <Button type="button" variant="outline" onClick={() => navigate("/social-media/posts")}>
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" disabled={submitting || totalMediaCount === 0}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditMode ? "Save changes" : "Publish"}
           </Button>

@@ -15,6 +15,19 @@ import type {
 
 export type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, UserData };
 
+/** Backend JWT roles → Admin Panel RBAC roles (`ADMIN` is Super Admin). */
+function mapBackendRole(role: string | undefined): string {
+  switch (role) {
+    case 'SuperAdmin':
+    case 'MASTER_ADMIN':
+      return 'ADMIN';
+    case 'OperationAdmin':
+      return 'ADMIN_OPS';
+    default:
+      return role || 'ADMIN';
+  }
+}
+
 function mapAdminPayloadToLoginResponse(
   credentials: LoginRequest,
   data: {
@@ -46,7 +59,7 @@ function mapAdminPayloadToLoginResponse(
     username: guessedUsername,
     email: data.email,
     fullName,
-    role: data.role,
+    role: mapBackendRole(data.role),
     authorities: [`ROLE_${data.role}`],
   };
 }
