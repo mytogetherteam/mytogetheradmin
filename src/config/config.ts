@@ -140,7 +140,7 @@ export const config = {
       },
       places: {
         base: '/api/admin/places',
-        detail: (id: number) => `/api/admin/places/${id}`,
+        detail: (id: number | string) => `/api/admin/places/${id}`,
         reorder: '/api/admin/places/reorder',
       },
       masterMenuSubCategories: {
