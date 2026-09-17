@@ -39,6 +39,8 @@ export const broadcastFormSchema = z
     targetShopId: optionalId,
     targetUserIds: idList,
     targetShopIds: idList,
+    sendMode: z.enum(["now", "schedule"]),
+    scheduledAt: z.string().optional(),
   })
   .superRefine((values, ctx) => {
     if (values.audience === "SINGLE_USER" && values.targetUserId == null) {
@@ -68,6 +70,25 @@ export const broadcastFormSchema = z
         path: ["targetShopIds"],
         message: "Please select at least one shop",
       });
+    }
+    if (values.sendMode === "schedule") {
+      const raw = values.scheduledAt?.trim();
+      if (!raw) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["scheduledAt"],
+          message: "Please choose a send time",
+        });
+      } else {
+        const when = new Date(raw);
+        if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now() + 30_000) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["scheduledAt"],
+            message: "Schedule time must be at least 30 seconds in the future",
+          });
+        }
+      }
     }
   });
 

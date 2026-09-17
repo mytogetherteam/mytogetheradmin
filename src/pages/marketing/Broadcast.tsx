@@ -10,6 +10,7 @@ import {
 } from "@/hooks/broadcast/useBroadcast";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { BroadcastGroupsDialog } from "./BroadcastGroupsDialog";
+import { BroadcastConfirmDialog } from "./BroadcastConfirmDialog";
 import type { BroadcastAudience } from "@/services/broadcastService";
 import {
   broadcastFormSchema,
@@ -54,6 +55,7 @@ import {
   ImagePlus,
   X,
   Trash2,
+  Clock,
 } from "lucide-react";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -92,6 +94,19 @@ const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
 const audienceLabel = (audience: BroadcastAudience) =>
   AUDIENCE_OPTIONS.find((o) => o.value === audience)?.label ?? audience;
 
+function toIso(local: string): string {
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+function datetimeLocalMin(): string {
+  const d = new Date(Date.now() + 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
 export default function Broadcast() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -107,6 +122,8 @@ export default function Broadcast() {
       targetShopId: undefined,
       targetUserIds: undefined,
       targetShopIds: undefined,
+      sendMode: "now",
+      scheduledAt: "",
     },
   });
   const {
@@ -119,6 +136,7 @@ export default function Broadcast() {
     formState: { errors },
   } = form;
   const audience = watch("audience");
+  const sendMode = watch("sendMode");
 
   const [selectedUserData, setSelectedUserData] = useState<{
     label: string;
@@ -151,6 +169,8 @@ export default function Broadcast() {
     id: number;
     title: string;
   }>({ open: false, id: 0, title: "" });
+  const [pendingBroadcast, setPendingBroadcast] =
+    useState<BroadcastFormValues | null>(null);
 
   const handleDeleteConfirm = () => {
     deleteBroadcast(deleteDialog.id, {
@@ -223,18 +243,11 @@ export default function Broadcast() {
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const onSubmit = async (values: BroadcastFormValues) => {
-    await sendBroadcast({
-      audience: values.audience,
-      title: values.title,
-      message: values.message,
-      targetUserId: values.targetUserId,
-      targetShopId: values.targetShopId,
-      targetUserIds: values.targetUserIds,
-      targetShopIds: values.targetShopIds,
-      image: imageFile,
-    });
+  const onSubmit = (values: BroadcastFormValues) => {
+    setPendingBroadcast(values);
+  };
 
+  const resetCompose = () => {
     reset();
     setSelectedUserData(null);
     setSelectedShopData(null);
@@ -242,7 +255,49 @@ export default function Broadcast() {
     setSelectedShops([]);
     clearImage();
     setPage(0);
+    setPendingBroadcast(null);
   };
+
+  const handleConfirmSend = async () => {
+    if (!pendingBroadcast) return;
+    await sendBroadcast({
+      audience: pendingBroadcast.audience,
+      title: pendingBroadcast.title,
+      message: pendingBroadcast.message,
+      targetUserId: pendingBroadcast.targetUserId,
+      targetShopId: pendingBroadcast.targetShopId,
+      targetUserIds: pendingBroadcast.targetUserIds,
+      targetShopIds: pendingBroadcast.targetShopIds,
+      image: imageFile,
+      scheduledAt:
+        pendingBroadcast.sendMode === "schedule" && pendingBroadcast.scheduledAt
+          ? toIso(pendingBroadcast.scheduledAt)
+          : undefined,
+    });
+    resetCompose();
+  };
+
+  const pendingAudienceDetail = (() => {
+    if (!pendingBroadcast) return undefined;
+    if (pendingBroadcast.audience === "SINGLE_USER") {
+      return selectedUserData?.label ? `(${selectedUserData.label})` : undefined;
+    }
+    if (pendingBroadcast.audience === "SINGLE_SHOP") {
+      return selectedShopData?.label ? `(${selectedShopData.label})` : undefined;
+    }
+    if (pendingBroadcast.audience === "MULTI_USER") {
+      return selectedUsers.length ? `(${selectedUsers.length} users)` : undefined;
+    }
+    if (pendingBroadcast.audience === "MULTI_SHOP") {
+      return selectedShops.length ? `(${selectedShops.length} shops)` : undefined;
+    }
+    return undefined;
+  })();
+
+  const pendingWhenLabel =
+    pendingBroadcast?.sendMode === "schedule" && pendingBroadcast.scheduledAt
+      ? new Date(pendingBroadcast.scheduledAt).toLocaleString()
+      : "Send now";
 
   return (
     <div className="flex flex-col gap-6">
@@ -269,7 +324,9 @@ export default function Broadcast() {
               <Send className="h-4 w-4" /> Compose Announcement
             </CardTitle>
             <CardDescription>
-              Send a push notification to a chosen audience.
+              Send a push notification to a chosen audience. Mass sends require
+              confirmation so Everyone / All Users / Shop Admins cannot go out
+              by mistake.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -595,8 +652,56 @@ export default function Broadcast() {
                 )}
               </div>
 
+              <div className="space-y-2">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  When to send
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={sendMode === "now" ? "default" : "outline"}
+                    onClick={() => {
+                      setValue("sendMode", "now", { shouldValidate: true });
+                      setValue("scheduledAt", "", { shouldValidate: true });
+                    }}
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Send now
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={sendMode === "schedule" ? "default" : "outline"}
+                    onClick={() =>
+                      setValue("sendMode", "schedule", { shouldValidate: true })
+                    }
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Schedule
+                  </Button>
+                </div>
+                {sendMode === "schedule" ? (
+                  <div className="space-y-2 pt-1">
+                    <Input
+                      type="datetime-local"
+                      min={datetimeLocalMin()}
+                      aria-invalid={Boolean(errors.scheduledAt)}
+                      {...register("scheduledAt")}
+                    />
+                    {errors.scheduledAt ? (
+                      <p className="text-sm text-destructive">
+                        {errors.scheduledAt.message}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Recipients will not see this until the scheduled time.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
               <Button type="submit" className="w-full" disabled={sending}>
-                {sending ? "Sending..." : "Send Now"}
+                {sendMode === "schedule" ? "Review & Schedule" : "Review & Send"}
               </Button>
             </form>
           </CardContent>
@@ -640,6 +745,9 @@ export default function Broadcast() {
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
+                  <TableCell className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </TableCell>
                   <TableCell className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Actions
                   </TableCell>
@@ -665,6 +773,9 @@ export default function Broadcast() {
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
                       <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
                         <Skeleton className="ml-auto h-8 w-8 rounded" />
                       </TableCell>
                     </TableRow>
@@ -672,7 +783,7 @@ export default function Broadcast() {
                 ) : sortedHistory.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center py-12 text-muted-foreground italic"
                     >
                       No broadcast history found.
@@ -721,9 +832,30 @@ export default function Broadcast() {
                         </p>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {h.createdAt
-                          ? new Date(h.createdAt).toLocaleString()
-                          : "—"}
+                        {h.scheduledAt && !h.sentAt
+                          ? new Date(h.scheduledAt).toLocaleString()
+                          : h.sentAt
+                            ? new Date(h.sentAt).toLocaleString()
+                            : h.createdAt
+                              ? new Date(h.createdAt).toLocaleString()
+                              : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {h.scheduledAt && !h.sentAt ? (
+                          <Badge
+                            variant="outline"
+                            className="text-amber-600 bg-amber-50 border-amber-100"
+                          >
+                            Scheduled
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-emerald-600 bg-emerald-50 border-emerald-100"
+                          >
+                            Sent
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -761,6 +893,28 @@ export default function Broadcast() {
           />
         </Card>
       </div>
+
+      <BroadcastConfirmDialog
+        open={pendingBroadcast != null}
+        onOpenChange={(open) => {
+          if (!open && !sending) setPendingBroadcast(null);
+        }}
+        audience={pendingBroadcast?.audience ?? "ALL"}
+        audienceLabel={
+          pendingBroadcast ? audienceLabel(pendingBroadcast.audience) : ""
+        }
+        audienceDetail={pendingAudienceDetail}
+        title={pendingBroadcast?.title ?? ""}
+        message={pendingBroadcast?.message ?? ""}
+        whenLabel={pendingWhenLabel}
+        confirmText={
+          pendingBroadcast?.sendMode === "schedule"
+            ? "Confirm schedule"
+            : "Confirm send"
+        }
+        loading={sending}
+        onConfirm={handleConfirmSend}
+      />
 
       <ConfirmDialog
         open={deleteDialog.open}

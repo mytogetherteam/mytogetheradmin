@@ -24,8 +24,12 @@ export function useSendBroadcastMutation() {
   return useMutation({
     mutationFn: (payload: SendBroadcastPayload) =>
       BroadcastService.send(payload),
-    onSuccess: () => {
-      toast.success("Broadcast queued successfully");
+    onSuccess: (result) => {
+      toast.success(
+        result?.status === "scheduled"
+          ? "Broadcast scheduled"
+          : "Broadcast queued successfully",
+      );
       void queryClient.invalidateQueries({ queryKey: broadcastKeys.all });
     },
     onError: (error) => {

@@ -28,6 +28,10 @@ export interface BroadcastHistoryItem {
   /** Optional image shown with the announcement. */
   imageUrl?: string | null;
   data?: Record<string, unknown> | null;
+  /** ISO datetime. Present when the broadcast is scheduled for later. */
+  scheduledAt?: string | null;
+  /** ISO datetime. Present after the worker has delivered the push. */
+  sentAt?: string | null;
   createdByAdminId: number;
   createdAt: string;
   updatedAt: string;
@@ -49,11 +53,14 @@ export interface SendBroadcastPayload {
   image?: File | null;
   /** Optional structured payload (deep-link, image url, etc.). */
   data?: Record<string, unknown>;
+  /** ISO datetime. Omit to send immediately. */
+  scheduledAt?: string;
 }
 
 export interface SendBroadcastResult {
   status: string;
   broadcastId: number;
+  scheduledAt?: string | null;
 }
 
 export interface PaginatedBroadcasts {
@@ -72,7 +79,7 @@ interface BroadcastListResponse {
 export const BroadcastService = {
   /** Queue a broadcast for delivery. Returns immediately. */
   send: async (payload: SendBroadcastPayload): Promise<SendBroadcastResult> => {
-    const { image, targetUserId, targetShopId, targetUserIds, targetShopIds, data, ...rest } = payload;
+    const { image, targetUserId, targetShopId, targetUserIds, targetShopIds, data, scheduledAt, ...rest } = payload;
 
     // Sent as multipart/form-data so an optional image can be attached; the
     // axios interceptor strips the JSON Content-Type when it sees a FormData body.
@@ -87,6 +94,7 @@ export const BroadcastService = {
     // array server-side (see toNumberArray in create-broadcast.dto.ts).
     if (targetUserIds?.length) form.append("targetUserIds", JSON.stringify(targetUserIds));
     if (targetShopIds?.length) form.append("targetShopIds", JSON.stringify(targetShopIds));
+    if (scheduledAt) form.append("scheduledAt", scheduledAt);
     if (data != null) form.append("data", JSON.stringify(data));
     if (image) form.append("image", image);
 
