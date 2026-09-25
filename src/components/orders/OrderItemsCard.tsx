@@ -56,8 +56,28 @@ export function OrderItemsCard({ order }: { order: Order }) {
                     </div>
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Delivery Fee</span>
-                        <span>{renderCurrency(order.displayDeliveryFee ?? order.deliveryFee)}</span>
+                        <span className={order.isFreeDelivery || String(order.displayDeliveryFee ?? "").toUpperCase() === "FREE" ? "font-medium text-emerald-600" : undefined}>
+                            {order.isFreeDelivery
+                                ? "FREE"
+                                : renderCurrency(order.displayDeliveryFee ?? order.deliveryFee)}
+                        </span>
                     </div>
+                    {(order.discountAmount ?? 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Coupon Discount</span>
+                            <span className="text-emerald-600">
+                                -{renderCurrency(order.displayDiscountAmount ?? order.discountAmount)}
+                            </span>
+                        </div>
+                    )}
+                    {(order.transactionDiscount ?? 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Shop Discount</span>
+                            <span className="text-emerald-600">
+                                -{renderCurrency(order.displayTransactionDiscount ?? order.transactionDiscount)}
+                            </span>
+                        </div>
+                    )}
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total Amount</span>

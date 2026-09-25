@@ -71,6 +71,13 @@ export interface Shop {
   descriptionTh?: string;
   descriptionEn?: string;
   deliveryEnabled?: boolean;
+  freeDeliveryEnabled?: boolean;
+  freeDeliveryStartsAt?: string | null;
+  freeDeliveryEndsAt?: string | null;
+  freeDeliveryActive?: boolean;
+  freeDeliveryOptOutOfGlobal?: boolean;
+  freeDeliverySource?: string;
+  globalFreeDeliveryActive?: boolean;
   isPickUp?: boolean;
   hasParking?: boolean;
   hasWifi?: boolean;

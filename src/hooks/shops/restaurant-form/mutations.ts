@@ -238,6 +238,14 @@ export async function fetchShopRestaurantEditBundle(
     descriptionMm: shop.descriptionMm || '',
     descriptionTh: shop.descriptionTh || '',
     deliveryEnabled: shop.deliveryEnabled ?? false,
+    freeDeliveryEnabled: shop.freeDeliveryEnabled ?? false,
+    freeDeliveryStartsAt: shop.freeDeliveryStartsAt
+      ? new Date(shop.freeDeliveryStartsAt)
+      : null,
+    freeDeliveryEndsAt: shop.freeDeliveryEndsAt
+      ? new Date(shop.freeDeliveryEndsAt)
+      : null,
+    freeDeliveryOptOutOfGlobal: shop.freeDeliveryOptOutOfGlobal ?? false,
     isPickUp: shop.isPickUp ?? false,
     hasParking: shop.hasParking ?? false,
     hasWifi: shop.hasWifi ?? false,

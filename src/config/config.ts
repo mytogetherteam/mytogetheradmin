@@ -289,6 +289,9 @@ export const config = {
             redemptions: '/api/admin/referral/redemptions',
             applyToAll: (couponId: number | string) => `/api/admin/referral/coupons/${couponId}/apply-to-all`,
         },
+        freeDelivery: {
+            config: '/api/admin/free-delivery/config',
+        },
         coupons: {
             base: '/api/admin/shop-coupons',
             applyToAll: (id: number | string) => `/api/admin/shop-coupons/${id}/apply-to-all-users`,

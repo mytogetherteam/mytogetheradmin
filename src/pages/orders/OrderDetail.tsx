@@ -11,6 +11,7 @@ import { STATUS_COLORS } from "@/components/orders/order-format";
 import { ShopInfoCard } from "@/components/orders/ShopInfoCard";
 import { OrderItemsCard } from "@/components/orders/OrderItemsCard";
 import { PaymentSlipCard } from "@/components/orders/PaymentSlipCard";
+import { DeliveryProofCard } from "@/components/orders/DeliveryProofCard";
 import { CustomerCard } from "@/components/orders/CustomerCard";
 import { DeliveryInfoCard } from "@/components/orders/DeliveryInfoCard";
 import { OrderTimelineCard } from "@/components/orders/OrderTimelineCard";
@@ -102,6 +103,7 @@ export default function OrderDetail() {
                     <ShopInfoCard order={order} />
                     <OrderItemsCard order={order} />
                     <PaymentSlipCard order={order} />
+                    <DeliveryProofCard order={order} />
                 </div>
 
                 {/* Sidebar */}

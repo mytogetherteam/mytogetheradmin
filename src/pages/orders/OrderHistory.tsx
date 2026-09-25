@@ -144,8 +144,10 @@ export default function OrderHistory() {
         setCurrentPage(1);
     };
 
+    // Backend admin order list is 1-based (`Math.max(1, page)`). Sending
+    // `currentPage - 1` made UI pages 1 and 2 both request page 1.
     const filters: OrderFilters = useMemo(() => ({
-        page: currentPage - 1,
+        page: currentPage,
         size: pageSize,
         startDate,
         endDate,

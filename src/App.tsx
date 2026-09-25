@@ -120,6 +120,7 @@ const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashb
 // System
 const AuditLogs = lazy(() => import("@/pages/system/AuditLogs"));
 const OrderTimeoutManagement = lazy(() => import("@/pages/system/OrderTimeoutManagement"));
+const FreeDeliveryManagement = lazy(() => import("@/pages/system/FreeDeliveryManagement"));
 const SystemConfigManagement = lazy(() => import("@/pages/system/SystemConfigManagement"));
 const AppContentManagement = lazy(() => import("@/pages/system/AppContentManagement"));
 const AppVersionManagement = lazy(() => import("@/pages/system/AppVersionManagement"));
@@ -261,6 +262,7 @@ function App() {
                 <Route path="/system/app-content" element={<AppContentManagement />} />
                 <Route path="/system/app-versions" element={<AppVersionManagement />} />
                 <Route path="/system/onboarding" element={<OnboardingManagement />} />
+                <Route path="/system/free-delivery" element={<FreeDeliveryManagement />} />
               </Route>
 
               {/* FINANCE Routes */}

@@ -21,6 +21,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { DateTimePickerField } from "@/components/common/DateTimePickerField"
 import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Pencil, Eye, EyeOff, Shield, User, Loader2, Users } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
 import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
@@ -1315,6 +1316,82 @@ export default function CreateShopRestaurant() {
                                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
                                                     <div className="space-y-0.5">
                                                         <FormLabel>Delivery Enabled</FormLabel>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="freeDeliveryEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Free Delivery</FormLabel>
+                                                        <FormDescription>
+                                                            When on, shops and customers see FREE instead of a delivery fee. Start and end are optional.
+                                                        </FormDescription>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        {form.watch("freeDeliveryEnabled") && (
+                                            <div className="grid gap-4 sm:grid-cols-2 rounded-lg border p-3 bg-muted/10">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="freeDeliveryStartsAt"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <DateTimePickerField
+                                                                label="Free delivery starts (optional)"
+                                                                value={field.value ?? null}
+                                                                onChange={field.onChange}
+                                                            />
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="freeDeliveryEndsAt"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <DateTimePickerField
+                                                                label="Free delivery ends (optional)"
+                                                                value={field.value ?? null}
+                                                                onChange={field.onChange}
+                                                                error={
+                                                                    form.watch("freeDeliveryStartsAt") &&
+                                                                    field.value &&
+                                                                    field.value < form.watch("freeDeliveryStartsAt")!
+                                                                        ? "End must be after start"
+                                                                        : undefined
+                                                                }
+                                                            />
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <FormField
+                                            control={form.control}
+                                            name="freeDeliveryOptOutOfGlobal"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Opt out of platform free delivery</FormLabel>
+                                                        <FormDescription>
+                                                            When on, this shop ignores the global free delivery campaign. Shop-level free delivery above still applies.
+                                                        </FormDescription>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />

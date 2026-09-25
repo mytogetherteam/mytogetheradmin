@@ -78,6 +78,11 @@ export interface Order {
   deliveryAddress?: string | Record<string, unknown> | null;
   deliveryFee: number;
   displayDeliveryFee?: string | null;
+  discountAmount?: number | null;
+  displayDiscountAmount?: string | null;
+  transactionDiscount?: number | null;
+  displayTransactionDiscount?: string | null;
+  isFreeDelivery?: boolean;
   totalAmount: number;
   displayTotalAmount?: string | null;
   displayItemPrice?: string | null;
@@ -85,6 +90,8 @@ export interface Order {
   itemCount?: number | null;
   items: OrderItem[] | null;
   paymentSlipUrl?: string | null;
+  proofPhotoUrl?: string | null;
+  trackingUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   queueNo?: number;
@@ -149,7 +156,7 @@ export interface UpdateOrderStatusPayload {
 
 export interface OrderHistoryEntry {
   id: number;
-  fromStatus: OrderStatus;
+  fromStatus: OrderStatus | null;
   toStatus: OrderStatus;
   changedBy: string;
   changedByAdminId?: number;

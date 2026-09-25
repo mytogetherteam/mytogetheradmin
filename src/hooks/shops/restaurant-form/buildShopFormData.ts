@@ -18,6 +18,10 @@ export type AdminShopProfileFormFields = {
   descriptionMm: string;
   descriptionTh: string;
   deliveryEnabled: boolean;
+  freeDeliveryEnabled: boolean;
+  freeDeliveryStartsAt: Date | null;
+  freeDeliveryEndsAt: Date | null;
+  freeDeliveryOptOutOfGlobal: boolean;
   isPickUp: boolean;
   hasParking: boolean;
   hasWifi: boolean;
@@ -76,6 +80,17 @@ export function appendCreateAdminShopProfileFields(
   fd.append('descriptionMm', p.descriptionMm);
   fd.append('descriptionTh', p.descriptionTh);
   fd.append('deliveryEnabled', String(p.deliveryEnabled));
+  fd.append('freeDeliveryEnabled', String(p.freeDeliveryEnabled));
+  // Empty string clears the window on the API when the admin leaves dates blank.
+  fd.append(
+    'freeDeliveryStartsAt',
+    p.freeDeliveryStartsAt ? p.freeDeliveryStartsAt.toISOString() : '',
+  );
+  fd.append(
+    'freeDeliveryEndsAt',
+    p.freeDeliveryEndsAt ? p.freeDeliveryEndsAt.toISOString() : '',
+  );
+  fd.append('freeDeliveryOptOutOfGlobal', String(p.freeDeliveryOptOutOfGlobal));
   fd.append('isPickUp', String(p.isPickUp));
   fd.append('hasParking', String(p.hasParking));
   fd.append('hasWifi', String(p.hasWifi));
@@ -149,6 +164,10 @@ export function shopFormValuesToAdminProfileFields(
     descriptionMm: data.descriptionMm || '',
     descriptionTh: data.descriptionTh || '',
     deliveryEnabled: data.deliveryEnabled ?? false,
+    freeDeliveryEnabled: data.freeDeliveryEnabled ?? false,
+    freeDeliveryStartsAt: data.freeDeliveryStartsAt ?? null,
+    freeDeliveryEndsAt: data.freeDeliveryEndsAt ?? null,
+    freeDeliveryOptOutOfGlobal: data.freeDeliveryOptOutOfGlobal ?? false,
     isPickUp: data.isPickUp ?? false,
     hasParking: data.hasParking ?? false,
     hasWifi: data.hasWifi ?? false,
