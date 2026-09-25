@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { config } from '../config/config';
+import { config } from '@/config/config';
 
 export interface FreeDeliveryConfigDTO {
   id: number;
@@ -18,18 +18,18 @@ export interface UpdateFreeDeliveryConfigPayload {
 
 class FreeDeliveryService {
   async getConfig(): Promise<FreeDeliveryConfigDTO> {
-    const res = await apiClient.get(config.api.admin.freeDelivery.config);
-    return (res.data?.data ?? res.data) as FreeDeliveryConfigDTO;
+    return apiClient.get<FreeDeliveryConfigDTO>(
+      config.endpoints.admin.system.freeDelivery.config,
+    );
   }
 
   async updateConfig(
     payload: UpdateFreeDeliveryConfigPayload,
   ): Promise<FreeDeliveryConfigDTO> {
-    const res = await apiClient.put(
-      config.api.admin.freeDelivery.config,
+    return apiClient.put<FreeDeliveryConfigDTO>(
+      config.endpoints.admin.system.freeDelivery.config,
       payload,
     );
-    return (res.data?.data ?? res.data) as FreeDeliveryConfigDTO;
   }
 }
 
