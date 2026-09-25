@@ -262,7 +262,6 @@ function App() {
                 <Route path="/system/app-content" element={<AppContentManagement />} />
                 <Route path="/system/app-versions" element={<AppVersionManagement />} />
                 <Route path="/system/onboarding" element={<OnboardingManagement />} />
-                <Route path="/system/free-delivery" element={<FreeDeliveryManagement />} />
               </Route>
 
               {/* FINANCE Routes */}
@@ -274,6 +273,7 @@ function App() {
 
               {/* SUPER ADMIN Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
+                <Route path="/system/free-delivery" element={<FreeDeliveryManagement />} />
                 <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                 <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
                 <Route path="/import/single-shop-excel" element={<SingleShopExcelImport />} />
