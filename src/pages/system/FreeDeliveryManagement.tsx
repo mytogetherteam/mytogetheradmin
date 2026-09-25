@@ -127,26 +127,23 @@ export default function FreeDeliveryManagement() {
                 <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
               </div>
 
-              {isEnabled && (
-                <div className="grid gap-4 sm:grid-cols-2 rounded-lg border p-3 bg-muted/10">
-                  <DateTimePickerField
-                    label="Starts (optional)"
-                    value={startsAt}
-                    onChange={setStartsAt}
-                  />
-                  <DateTimePickerField
-                    label="Ends (optional)"
-                    value={endsAt}
-                    onChange={setEndsAt}
-                    error={
-                      startsAt && endsAt && endsAt < startsAt
-                        ? "End must be after start"
-                        : undefined
-                    }
-                  />
-                </div>
-              )}
-
+              <div className="grid gap-4 sm:grid-cols-2 rounded-lg border p-3 bg-muted/10">
+                <DateTimePickerField
+                  label="Starts (optional)"
+                  value={startsAt}
+                  onChange={setStartsAt}
+                />
+                <DateTimePickerField
+                  label="Ends (optional)"
+                  value={endsAt}
+                  onChange={setEndsAt}
+                  error={
+                    startsAt && endsAt && endsAt < startsAt
+                      ? "End must be after start"
+                      : undefined
+                  }
+                />
+              </div>
               {updatedAt && (
                 <p className="text-xs text-muted-foreground">
                   Last updated: {new Date(updatedAt).toLocaleString()}

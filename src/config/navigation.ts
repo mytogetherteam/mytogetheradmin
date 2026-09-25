@@ -88,7 +88,8 @@ export const navigationConfig: NavGroup[] = [
         items: [
             { title: "Create Shop/Restaurant", url: "/shops/create", icon: Plus, tooltip: "Create Shop/Restaurant" },
             { title: "Manage Shop/Restaurant", url: "/shops/manage", icon: Settings2, tooltip: "Manage Shop/Restaurant" },
-            { title: "Shop Operating Hours", url: "/shops/operating-hours", icon: Clock, tooltip: "Shop Operating Hours" }
+            { title: "Shop Operating Hours", url: "/shops/operating-hours", icon: Clock, tooltip: "Shop Operating Hours" },
+            { title: "Free Delivery", url: "/shops/free-delivery", icon: Truck, tooltip: "Platform free delivery campaign", roles: AdminRole.ADMIN },
         ]
     },
     {
@@ -448,7 +449,6 @@ export const navigationConfig: NavGroup[] = [
             { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList, tooltip: "Audit Logs", roles: AdminRole.ADMIN },
             { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone, tooltip: "Active admin sessions & force logout", roles: AdminRole.ADMIN },
             { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, tooltip: "Order Timeouts", roles: AdminRole.ADMIN_FINANCE },
-            { title: "Free Delivery", url: "/system/free-delivery", icon: Truck, tooltip: "Platform free delivery campaign", roles: AdminRole.ADMIN },
             { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, tooltip: "Onboarding", roles: AdminRole.ADMIN_SETUP },
             { title: "Configurations", url: "/system/configs", icon: Settings2, tooltip: "Configurations", roles: AdminRole.ADMIN_SETUP },
             { title: "Feature Flags", url: "/system/feature-flags", icon: Flag, tooltip: "Feature Flags", roles: AdminRole.ADMIN_SETUP },

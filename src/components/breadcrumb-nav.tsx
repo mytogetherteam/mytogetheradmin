@@ -37,6 +37,7 @@ const routeLabels: Record<string, string> = {
     "background-themes": "Background Themes",
     "broadcast": "Broadcast",
     "system": "System",
+    "free-delivery": "Free Delivery",
     "audit-logs": "Audit Logs",
     "cities": "Cities",
     "districts": "Districts",

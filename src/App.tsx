@@ -273,7 +273,8 @@ function App() {
 
               {/* SUPER ADMIN Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
-                <Route path="/system/free-delivery" element={<FreeDeliveryManagement />} />
+                <Route path="/shops/free-delivery" element={<FreeDeliveryManagement />} />
+                <Route path="/system/free-delivery" element={<Navigate to="/shops/free-delivery" replace />} />
                 <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                 <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
                 <Route path="/import/single-shop-excel" element={<SingleShopExcelImport />} />
