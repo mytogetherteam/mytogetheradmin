@@ -13,6 +13,8 @@ export interface AnalogClockTimePickerProps {
   onChange: (d: Date) => void;
   className?: string;
   useAmPm?: boolean;
+  /** Smaller dial for tight dialogs / short viewports. */
+  compact?: boolean;
 }
 
 export function AnalogClockTimePicker({
@@ -21,6 +23,7 @@ export function AnalogClockTimePicker({
   onChange,
   className,
   useAmPm = true,
+  compact = false,
 }: AnalogClockTimePickerProps) {
   const date = value ?? new Date();
   const [stage, setStage] = useState<Stage>("hour");
@@ -30,6 +33,8 @@ export function AnalogClockTimePicker({
   const hourDisplay = (date.getHours() % 12) || 12;
   const hourForMath = date.getHours() % 12;
   const minute = date.getMinutes();
+  const labelRadius = compact ? 68 : 88;
+  const handLen = stage === "hour" ? (compact ? 52 : 68) : (compact ? 70 : 88);
 
   const angle = useMemo(
     () => (stage === "hour" ? hourForMath * 30 + (minute / 60) * 30 : minute * 6),
@@ -158,7 +163,8 @@ export function AnalogClockTimePicker({
       <div
         ref={dialRef}
         className={cn(
-          "relative w-64 h-64 rounded-full select-none",
+          "relative mx-auto rounded-full select-none",
+          compact ? "h-48 w-48" : "h-64 w-64",
           "bg-muted/60 dark:bg-slate-800/60",
           "shadow-inner"
         )}
@@ -171,7 +177,7 @@ export function AnalogClockTimePicker({
         {/* animated hand */}
         <svg className="absolute inset-0" viewBox="0 0 200 200" width="100%" height="100%">
           {(() => {
-            const LEN = stage === "hour" ? 68 : 88;
+            const LEN = handLen;
             const cx = 100,
               cy = 100;
             const a = ((angle) * Math.PI) / 180;
@@ -198,7 +204,7 @@ export function AnalogClockTimePicker({
         {stage === "hour"
           ? hours.map((h, i) => {
             const deg = i * 30;
-            const r = 88;
+            const r = labelRadius;
             const x = Math.sin((deg * Math.PI) / 180) * r;
             const y = -Math.cos((deg * Math.PI) / 180) * r;
             const selected = h === hourDisplay;
@@ -207,7 +213,8 @@ export function AnalogClockTimePicker({
                 key={h}
                 type="button"
                 className={cn(
-                  "absolute w-10 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full text-sm",
+                  "absolute -translate-x-1/2 -translate-y-1/2 rounded-full text-sm",
+                  compact ? "h-8 w-8 text-xs" : "h-10 w-10",
                   "flex items-center justify-center transition",
                   selected ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                 )}
@@ -225,7 +232,7 @@ export function AnalogClockTimePicker({
             .filter((m) => m % 5 === 0)
             .map((m, i) => {
               const deg = i * 30;
-              const r = 88;
+              const r = labelRadius;
               const x = Math.sin((deg * Math.PI) / 180) * r;
               const y = -Math.cos((deg * Math.PI) / 180) * r;
               const selected = m === Math.round(minute / 5) * 5;
@@ -234,7 +241,8 @@ export function AnalogClockTimePicker({
                   type="button"
                   key={m}
                   className={cn(
-                    "absolute w-10 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full text-sm",
+                    "absolute -translate-x-1/2 -translate-y-1/2 rounded-full text-sm",
+                    compact ? "h-8 w-8 text-xs" : "h-10 w-10",
                     "flex items-center justify-center transition",
                     selected ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                   )}
