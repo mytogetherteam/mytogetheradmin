@@ -130,16 +130,23 @@ export function DateTimePickerField({
           </div>
         </PopoverTrigger>
 
-        <PopoverContent className="p-0 w-auto min-w-[20rem]" align="start">
+        <PopoverContent
+          className="p-0 w-auto min-w-[20rem] max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden"
+          align="start"
+          side="bottom"
+          sideOffset={6}
+          collisionPadding={16}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <Tabs
             value={tab}
             onValueChange={(v) => {
               if (v === "time" && !timeEnabled) return;
               setTab(v as "date" | "time");
             }}
-            className="w-full"
+            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
           >
-            <TabsList className="grid grid-cols-2">
+            <TabsList className="grid shrink-0 grid-cols-2 rounded-none border-b">
               <TabsTrigger value="date">Date</TabsTrigger>
               <TabsTrigger
                 value="time"
@@ -151,7 +158,10 @@ export function DateTimePickerField({
             </TabsList>
 
             {/* DATE TAB */}
-            <TabsContent value="date" className="p-3 space-y-3 mt-0">
+            <TabsContent
+              value="date"
+              className="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 space-y-3 data-[state=inactive]:hidden"
+            >
               <div className="flex justify-center">
                 <Calendar
                   mode="single"
@@ -204,17 +214,24 @@ export function DateTimePickerField({
               )}
             </TabsContent>
 
-            {/* TIME TAB */}
-            <TabsContent value="time" className="p-3 border-t space-y-3">
-              <AnalogClockTimePicker
-                value={selected}
-                onChange={(d) => onChange(d)}
-                useAmPm
-                label="Select Time"
-              />
-              <Button className="w-full" onClick={() => setOpen(false)}>
-                Confirm
-              </Button>
+            {/* TIME TAB — scrollable body + sticky Confirm */}
+            <TabsContent
+              value="time"
+              className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden border-t data-[state=inactive]:hidden"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+                <AnalogClockTimePicker
+                  value={selected}
+                  onChange={(d) => onChange(d)}
+                  useAmPm
+                  label="Select Time"
+                />
+              </div>
+              <div className="shrink-0 border-t bg-popover p-3">
+                <Button className="w-full" type="button" onClick={() => setOpen(false)}>
+                  Confirm
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </PopoverContent>
