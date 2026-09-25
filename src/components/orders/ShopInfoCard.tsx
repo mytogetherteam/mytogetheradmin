@@ -28,7 +28,12 @@ export function ShopInfoCard({ order }: { order: Order }) {
                         {order.shopNameMm && <p className="text-muted-foreground truncate">{order.shopNameMm}</p>}
                         <p className="text-xs text-muted-foreground mt-1">ID: {order.shopId}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/shops/${order.shopId}`)}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!order.shopId}
+                        onClick={() => navigate(`/shops/create?id=${order.shopId}`)}
+                    >
                         View Shop
                     </Button>
                 </div>
