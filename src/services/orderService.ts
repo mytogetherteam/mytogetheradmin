@@ -110,6 +110,13 @@ export interface Order {
   note?: string | null;
   cancelReason?: string | null;
   canceledBy?: OrderCanceledBy | null;
+
+  /** Distance-based fee hint for shop/admin when entering deliveryFee. */
+  estimatedDeliveryDistanceKm?: number | null;
+  estimatedDeliveryFeeMin?: number | null;
+  estimatedDeliveryFeeMax?: number | null;
+  estimatedDeliveryFeeMid?: number | null;
+  estimatedDeliveryFeeLabel?: string | null;
   
   // Backward compatibility fields if any
   customerName?: string;

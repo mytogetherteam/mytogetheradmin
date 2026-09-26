@@ -524,20 +524,25 @@ export function VariantGroupsCard({
                                             })
                                           }
                                         />
-                                        <div className="flex items-center gap-1 w-32">
-                                          <span className="text-sm font-medium">Price:</span>
-                                          <PriceInput
-                                            placeholder="0"
-                                            value={variant.price ?? ""}
-                                            onValueChange={(val) =>
-                                              updateVariant(groupIndex, variantIndex, {
-                                                price:
-                                                  val.trim() === ""
-                                                    ? undefined
-                                                    : parseFloat(val),
-                                              })
-                                            }
-                                          />
+                                        <div className="flex flex-col gap-0.5 w-36">
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-sm font-medium">Price:</span>
+                                            <PriceInput
+                                              placeholder="0"
+                                              value={variant.price ?? ""}
+                                              onValueChange={(val) =>
+                                                updateVariant(groupIndex, variantIndex, {
+                                                  price:
+                                                    val.trim() === ""
+                                                      ? undefined
+                                                      : parseFloat(val),
+                                                })
+                                              }
+                                            />
+                                          </div>
+                                          <span className="text-[10px] text-muted-foreground leading-tight">
+                                            Full item price (not +extra)
+                                          </span>
                                         </div>
                                         <div className="flex items-center gap-2 mx-2">
                                           <Switch

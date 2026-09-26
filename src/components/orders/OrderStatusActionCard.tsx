@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -32,6 +33,8 @@ export function OrderStatusActionCard({ order }: Props) {
         register,
         handleSubmit,
         reset,
+        setValue,
+        getValues,
         formState: { errors },
     } = useForm<OrderStatusActionValues>({
         resolver: zodResolver(orderStatusActionSchema),
@@ -40,6 +43,32 @@ export function OrderStatusActionCard({ order }: Props) {
 
     const status = useWatch({ control, name: "status" });
 
+    const isFreeDelivery =
+        order.isFreeDelivery === true ||
+        String(order.displayDeliveryFee ?? "").toUpperCase() === "FREE" ||
+        String(order.estimatedDeliveryFeeLabel ?? "").toUpperCase() === "FREE";
+
+    // Suggest midpoint of distance-based estimate when entering delivery fee.
+    // FREE promo: lock in 0 — do not suggest a Grab/Bolt mid range.
+    useEffect(() => {
+        if (status !== "PAYMENT_SLIP_REQUESTED") return;
+        const current = getValues("deliveryFee");
+        if (current !== "") return;
+
+        if (isFreeDelivery) {
+            setValue("deliveryFee", "0");
+            return;
+        }
+        if (order.estimatedDeliveryFeeMid == null) return;
+        setValue("deliveryFee", String(order.estimatedDeliveryFeeMid));
+    }, [
+        status,
+        isFreeDelivery,
+        order.estimatedDeliveryFeeMid,
+        getValues,
+        setValue,
+    ]);
+
     const onSubmit = (v: OrderStatusActionValues) => {
         const payload: UpdateOrderStatusPayload = { status: v.status as OrderStatus };
 
@@ -47,7 +76,7 @@ export function OrderStatusActionCard({ order }: Props) {
         if (v.status === "ON_THE_WAY") payload.driverId = Number(v.driverId);
         if (v.status === "PAYMENT_SLIP_REQUESTED") {
             payload.orderDeliveryType = v.orderDeliveryType as "FAST" | "FLEXIBLE";
-            payload.deliveryFee = Number(v.deliveryFee);
+            payload.deliveryFee = isFreeDelivery ? 0 : Number(v.deliveryFee);
             payload.waitingTimeMinutes = Number(v.waitingTimeMinutes);
         }
         if (v.status === "REVISED") {
@@ -140,7 +169,35 @@ export function OrderStatusActionCard({ order }: Props) {
                                 )}
                             />
                             {errors.orderDeliveryType && <p className="text-xs text-destructive">{errors.orderDeliveryType.message}</p>}
-                            <Input type="number" placeholder="Delivery fee" className="h-8 text-sm" {...register("deliveryFee")} />
+                            <Input
+                                type="number"
+                                placeholder={
+                                    isFreeDelivery
+                                        ? "0"
+                                        : order.estimatedDeliveryFeeMid != null
+                                          ? String(order.estimatedDeliveryFeeMid)
+                                          : "Delivery fee"
+                                }
+                                className="h-8 text-sm"
+                                readOnly={isFreeDelivery}
+                                disabled={isFreeDelivery}
+                                {...register("deliveryFee")}
+                            />
+                            {isFreeDelivery ? (
+                                <p className="text-[11px] font-medium text-emerald-600 leading-snug">
+                                    FREE delivery — no fee charged
+                                </p>
+                            ) : (
+                                order.estimatedDeliveryFeeLabel && (
+                                    <p className="text-[11px] text-muted-foreground leading-snug">
+                                        Est. {order.estimatedDeliveryFeeLabel}
+                                        {order.estimatedDeliveryDistanceKm != null
+                                            ? ` (${order.estimatedDeliveryDistanceKm} km)`
+                                            : ""}{" "}
+                                        — based on distance; adjust to actual Grab/Bolt
+                                    </p>
+                                )
+                            )}
                             {errors.deliveryFee && <p className="text-xs text-destructive">{errors.deliveryFee.message}</p>}
                             <Input type="number" placeholder="Waiting time (minutes)" className="h-8 text-sm" {...register("waitingTimeMinutes")} />
                             {errors.waitingTimeMinutes && <p className="text-xs text-destructive">{errors.waitingTimeMinutes.message}</p>}
