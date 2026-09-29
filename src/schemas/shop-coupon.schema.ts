@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const PROMOTION_TYPES = ["BUY_X_GET_DISCOUNT", "BUY_X_GET_FREE"] as const;
 export const DISCOUNT_TYPES = ["PERCENTAGE", "FIXED_AMOUNT"] as const;
-export const COUPON_TARGETS = ["ALL", "EARLY_BIRD"] as const;
+export const COUPON_TARGETS = ["ALL", "EARLY_BIRD", "REFERRAL"] as const;
 export const COUPON_LIMIT_TYPES = ["ONE_TIME", "PERMANENT"] as const;
 export const COUPON_ITEM_TYPES = ["BUY", "GET"] as const;
 
@@ -110,7 +110,8 @@ export type ShopCouponFormValues = z.infer<typeof shopCouponSchema>;
 export function normalizeCouponTarget(
   value: unknown,
 ): (typeof COUPON_TARGETS)[number] {
-  return value === "EARLY_BIRD" ? "EARLY_BIRD" : "ALL";
+  if (value === "EARLY_BIRD" || value === "REFERRAL") return value;
+  return "ALL";
 }
 
 export function normalizeCouponLimitType(

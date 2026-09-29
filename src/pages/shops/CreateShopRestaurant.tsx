@@ -1390,7 +1390,7 @@ export default function CreateShopRestaurant() {
                                                     <div className="space-y-0.5">
                                                         <FormLabel>Opt out of platform free delivery</FormLabel>
                                                         <FormDescription>
-                                                            When on, this shop ignores the global free delivery campaign. Shop-level free delivery above still applies.
+                                                            When on, this shop ignores platform free delivery, including a new user's first order. Shop-level free delivery above still applies.
                                                         </FormDescription>
                                                     </div>
                                                     <FormControl>

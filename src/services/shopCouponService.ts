@@ -4,7 +4,7 @@ import { api } from "@/utils/axios";
 
 export type PromotionType = "BUY_X_GET_DISCOUNT" | "BUY_X_GET_FREE";
 export type DiscountRewardType = "PERCENTAGE" | "FIXED_AMOUNT";
-export type CouponTarget = "ALL" | "EARLY_BIRD";
+export type CouponTarget = "ALL" | "EARLY_BIRD" | "REFERRAL";
 export type CouponLimitType = "ONE_TIME" | "PERMANENT";
 export type CouponItemType = "BUY" | "GET";
 
@@ -100,7 +100,10 @@ function normalizeShopCoupon(
         : "BUY_X_GET_DISCOUNT",
     discountType:
       coupon.discountType === "FIXED_AMOUNT" ? "FIXED_AMOUNT" : coupon.discountType,
-    target: coupon.target === "EARLY_BIRD" ? "EARLY_BIRD" : "ALL",
+    target:
+      coupon.target === "EARLY_BIRD" || coupon.target === "REFERRAL"
+        ? coupon.target
+        : "ALL",
     limitType: coupon.limitType === "PERMANENT" ? "PERMANENT" : "ONE_TIME",
   };
 }

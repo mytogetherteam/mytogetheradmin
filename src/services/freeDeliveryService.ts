@@ -4,6 +4,7 @@ import { config } from '@/config/config';
 export interface FreeDeliveryConfigDTO {
   id: number;
   isEnabled: boolean;
+  newUserFirstOrderEnabled: boolean;
   startsAt: string | null;
   endsAt: string | null;
   isActive: boolean;
@@ -12,6 +13,7 @@ export interface FreeDeliveryConfigDTO {
 
 export interface UpdateFreeDeliveryConfigPayload {
   isEnabled?: boolean;
+  newUserFirstOrderEnabled?: boolean;
   startsAt?: string | null;
   endsAt?: string | null;
 }

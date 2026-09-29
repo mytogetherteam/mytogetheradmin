@@ -23,6 +23,7 @@ export default function FreeDeliveryManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [newUserFirstOrderEnabled, setNewUserFirstOrderEnabled] = useState(false);
   const [startsAt, setStartsAt] = useState<Date | null>(null);
   const [endsAt, setEndsAt] = useState<Date | null>(null);
   const [isActive, setIsActive] = useState(false);
@@ -30,6 +31,7 @@ export default function FreeDeliveryManagement() {
 
   const applyConfig = (config: FreeDeliveryConfigDTO) => {
     setIsEnabled(Boolean(config.isEnabled));
+    setNewUserFirstOrderEnabled(Boolean(config.newUserFirstOrderEnabled));
     setStartsAt(config.startsAt ? new Date(config.startsAt) : null);
     setEndsAt(config.endsAt ? new Date(config.endsAt) : null);
     setIsActive(Boolean(config.isActive));
@@ -61,6 +63,7 @@ export default function FreeDeliveryManagement() {
     try {
       const updated = await freeDeliveryService.updateConfig({
         isEnabled,
+        newUserFirstOrderEnabled,
         startsAt: startsAt ? startsAt.toISOString() : null,
         endsAt: endsAt ? endsAt.toISOString() : null,
       });
@@ -125,6 +128,22 @@ export default function FreeDeliveryManagement() {
                   </p>
                 </div>
                 <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
+              </div>
+
+              <div className="flex flex-row items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <div className="space-y-0.5 pr-4">
+                  <Label>Free delivery for a new user's first order</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Their first delivery order has no delivery fee, except at
+                    shops that opted out. Pickup does not use this offer. A
+                    canceled order does not count, so the next delivery is
+                    still free.
+                  </p>
+                </div>
+                <Switch
+                  checked={newUserFirstOrderEnabled}
+                  onCheckedChange={setNewUserFirstOrderEnabled}
+                />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 rounded-lg border p-3 bg-muted/10">

@@ -69,6 +69,7 @@ export default function ReferralManagement() {
   const [referrerCustomText, setReferrerCustomText] = useState("");
   const [referredCouponId, setReferredCouponId] = useState<number | null>(null);
   const [referredCustomText, setReferredCustomText] = useState("");
+  const [referrerTargetCount, setReferrerTargetCount] = useState("");
   const [shopCoupons, setShopCoupons] = useState<ShopCouponSummary[]>([]);
 
   // Mass Distribution State
@@ -102,6 +103,11 @@ export default function ReferralManagement() {
         setReferrerCustomText(configData.referrerCustomText || "");
         setReferredCouponId(configData.referredCouponId || null);
         setReferredCustomText(configData.referredCustomText || "");
+        setReferrerTargetCount(
+          configData.referrerTargetCount != null
+            ? String(configData.referrerTargetCount)
+            : "",
+        );
       }
       setShopCoupons(couponsData || []);
     } catch (error) {
@@ -176,6 +182,15 @@ export default function ReferralManagement() {
   const handleSaveConfig = async () => {
     setSavingConfig(true);
     try {
+      const targetRaw = referrerTargetCount.trim();
+      const targetCount = targetRaw === "" ? null : Number(targetRaw);
+      if (
+        targetCount != null &&
+        (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 1000)
+      ) {
+        toast.error("Referral target must be a whole number from 1 to 1000, or empty");
+        return;
+      }
       await referralService.updateConfig({
         isActive,
         rewardTarget,
@@ -183,6 +198,7 @@ export default function ReferralManagement() {
         referrerCustomText: referrerCustomText || null,
         referredCouponId,
         referredCustomText: referredCustomText || null,
+        referrerTargetCount: targetCount,
       });
       toast.success("Referral program settings updated successfully!");
     } catch (error: any) {
@@ -209,7 +225,7 @@ export default function ReferralManagement() {
     try {
       const result = await referralService.applyCouponToAllUsers(massCouponId);
       toast.success(
-        `Holiday distribution complete! Granted to ${result.distributedCount || "all"} active users.`
+        `Private access granted to ${result.distributedCount ?? 0} users. People who already had this coupon were skipped.`
       );
       setShowMassConfirmDialog(false);
       setMassCouponId(null);
@@ -283,7 +299,7 @@ export default function ReferralManagement() {
                       />
                     </CardTitle>
                     <CardDescription>
-                      Turn on rewards when users invite friends. When turned OFF, users can still share custom codes, but coupons are not awarded.
+                      Turn on rewards when users invite friends. While this is off, a friend can still share a code, but entering it is rejected and is not saved.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -299,13 +315,30 @@ export default function ReferralManagement() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="BOTH">🎁 Reward Both (Referrer & New User)</SelectItem>
-                          <SelectItem value="REFERRED_ONLY">👤 New Registered User Only</SelectItem>
+                          <SelectItem value="REFERRED_ONLY">👤 New User Only</SelectItem>
                           <SelectItem value="REFERRER_ONLY">📢 Referrer Only</SelectItem>
                           <SelectItem value="NONE">❌ No Coupon Reward (Logging Only)</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Controls whether one party or both parties receive a saved coupon in their account.
+                        A new account can claim once, within 7 days of signup and before the first order.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Referrer target</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        step={1}
+                        placeholder="Empty = reward every referral"
+                        value={referrerTargetCount}
+                        onChange={(e) => setReferrerTargetCount(e.target.value)}
+                        className="max-w-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty to give the referrer their coupon on every successful claim. Set 10 to give that coupon once, when 10 friends have joined.
                       </p>
                     </div>
 
@@ -395,8 +428,8 @@ export default function ReferralManagement() {
 
                     {/* Quick Action: Apply single coupon to both */}
                     <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md bg-blue-50 border border-blue-200">
-                      <div className="text-xs text-blue-800">
-                        <strong>Tip:</strong> Want to award the same coupon to both referrer and new user?
+                        <div className="text-xs text-blue-800">
+                        <strong>Tip:</strong> A coupon selected here becomes invite-only. Other customers can no longer use it unless they receive a grant.
                       </div>
                       <Select
                         onValueChange={(val) => handleApplyToBoth(Number(val))}
@@ -440,7 +473,7 @@ export default function ReferralManagement() {
                       <span>🧧 Festival Mass Distribution</span>
                     </CardTitle>
                     <CardDescription className="text-red-700/80 text-xs">
-                      Instantly grant a holiday coupon (e.g. Chinese New Year, Songkran) to <strong>every registered user's</strong> saved coupons list in one click.
+                      Give every registered user private access to one coupon. Access stops at the coupon cap, and people who already have a grant are skipped. The coupon becomes invite-only.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -489,7 +522,7 @@ export default function ReferralManagement() {
                       Apply to All Users
                     </Button>
                     <p className="text-[11px] text-gray-500 text-center">
-                      Executes idempotently without duplicating coupons for users who already have it.
+                      Does not add a second grant for someone who already has this coupon. Dates and the usage cap are checked first.
                     </p>
                   </CardContent>
                 </Card>
@@ -506,7 +539,7 @@ export default function ReferralManagement() {
                 <div>
                   <CardTitle className="text-lg">User Promote Codes</CardTitle>
                   <CardDescription>
-                    Custom codes registered by app users. Disable a code to stop new claims without deleting history.
+                    Disable a code to stop new claims. The owner cannot turn it back on from the app. The redemption log keeps the code text from the day it was claimed.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -722,7 +755,7 @@ export default function ReferralManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-2 text-xs text-muted-foreground bg-gray-50 p-3 rounded-md">
-            This will directly add the coupon into the Saved Coupons wishlist of every active user in the database.
+            This grants private access, up to the coupon cap. People who already have a grant are skipped, and other customers can no longer use this coupon.
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button

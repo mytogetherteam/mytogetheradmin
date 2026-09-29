@@ -29,6 +29,8 @@ export interface ReferralConfigDTO {
   referrerCustomText?: string | null;
   referredCouponId?: number | null;
   referredCustomText?: string | null;
+  /** Friends required before the referrer is rewarded once. Null rewards every claim. */
+  referrerTargetCount?: number | null;
   referrerCoupon?: ShopCouponSummary | null;
   referredCoupon?: ShopCouponSummary | null;
   updatedAt?: string;
@@ -79,6 +81,7 @@ export interface UpdateReferralConfigPayload {
   referrerCustomText?: string | null;
   referredCouponId?: number | null;
   referredCustomText?: string | null;
+  referrerTargetCount?: number | null;
 }
 
 export const referralService = {

@@ -31,6 +31,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+function formatStay(seconds: number) {
+    const total = Math.max(0, Math.round(seconds));
+    const minutes = Math.round(total / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const remain = minutes % 60;
+    return remain ? `${hours}h ${remain}m` : `${hours}h`;
+}
+
 function getDefaultDates() {
     const end = new Date();
     const start = new Date();
@@ -447,6 +456,60 @@ export default function Dashboard() {
                 <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} trend="↓ 2%" trendColor="text-red-500" />
             </div>
 
+            {extendedStats?.appUsage && (
+                <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Clock className="h-4 w-4" /> Time in the app
+                            </CardTitle>
+                            <CardDescription>Average visit, last 30 days</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold">
+                                {formatStay(extendedStats.appUsage.avgSessionSeconds)}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                {extendedStats.appUsage.sessions.toLocaleString()} visits · {extendedStats.appUsage.users.toLocaleString()} people
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card className="md:col-span-2">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <MapPin className="h-4 w-4" /> Where people use the app
+                            </CardTitle>
+                            <CardDescription>Districts from the last 30 days</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {extendedStats.appUsage.districts.length > 0 ? (
+                                <div className="space-y-3">
+                                    {extendedStats.appUsage.districts.map((row: {
+                                        district: string;
+                                        users: number;
+                                        sessions: number;
+                                        avgSessionSeconds: number;
+                                    }) => (
+                                        <div key={row.district} className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium truncate">{row.district}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {row.users.toLocaleString()} {row.users === 1 ? "person" : "people"} · {row.sessions.toLocaleString()} visits
+                                                </p>
+                                            </div>
+                                            <Badge variant="secondary">{formatStay(row.avgSessionSeconds)} avg</Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    No visits yet. This fills in as people open the app and leave it.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Row 3: Order Pipeline & Activity Feed */}
             <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 delay-300 duration-700 fill-mode-both">

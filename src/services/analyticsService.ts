@@ -84,6 +84,17 @@ export interface ExtendedDashboardStats {
     total: number;
   };
   avgDeliveryTime: number;
+  appUsage?: {
+    avgSessionSeconds: number;
+    sessions: number;
+    users: number;
+    districts: Array<{
+      district: string;
+      users: number;
+      sessions: number;
+      avgSessionSeconds: number;
+    }>;
+  };
   topSearches: Array<{ term: string; count: number }>;
 }
 

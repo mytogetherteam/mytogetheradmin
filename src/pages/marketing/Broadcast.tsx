@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { manageUsersService } from "@/services/manageUsersService";
@@ -11,7 +11,10 @@ import {
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import { BroadcastGroupsDialog } from "./BroadcastGroupsDialog";
 import { BroadcastConfirmDialog } from "./BroadcastConfirmDialog";
-import type { BroadcastAudience } from "@/services/broadcastService";
+import { BroadcastService, type BroadcastAudience } from "@/services/broadcastService";
+import { districtService } from "@/services/districtService";
+import { cityService } from "@/services/cityService";
+import { AsyncSelectField } from "@/components/common/AsyncSelectField";
 import {
   broadcastFormSchema,
   type BroadcastFormValues,
@@ -56,6 +59,7 @@ import {
   X,
   Trash2,
   Clock,
+  MapPin,
 } from "lucide-react";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -76,6 +80,7 @@ const AUDIENCE_OPTIONS: {
     { value: "SINGLE_SHOP", label: "Single Shop", icon: Building2 },
     { value: "MULTI_USER", label: "Selected Users", icon: Users },
     { value: "MULTI_SHOP", label: "Selected Shops", icon: Store },
+    { value: "AREA", label: "Users in an area", icon: MapPin },
   ];
 
 const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
@@ -87,12 +92,35 @@ const AUDIENCE_BADGE: Record<BroadcastAudience, string> = {
   SINGLE_SHOP: "text-rose-600 bg-rose-50 border-rose-100",
   MULTI_USER: "text-cyan-600 bg-cyan-50 border-cyan-100",
   MULTI_SHOP: "text-orange-600 bg-orange-50 border-orange-100",
+  AREA: "text-teal-700 bg-teal-50 border-teal-100",
   USER_GROUP: "text-sky-600 bg-sky-50 border-sky-100",
   SHOP_GROUP: "text-indigo-600 bg-indigo-50 border-indigo-100",
 };
 
 const audienceLabel = (audience: BroadcastAudience) =>
   AUDIENCE_OPTIONS.find((o) => o.value === audience)?.label ?? audience;
+
+const RADIUS_OPTIONS: { value: NonNullable<BroadcastFormValues["radiusMode"]>; label: string }[] = [
+  { value: "district", label: "Whole district" },
+  { value: "5", label: "5 km" },
+  { value: "10", label: "10 km" },
+  { value: "15", label: "15 km" },
+  { value: "20", label: "20 km" },
+  { value: "custom", label: "Custom" },
+];
+
+function areaRadiusKm(
+  mode?: BroadcastFormValues["radiusMode"],
+  custom?: number,
+): number | undefined {
+  if (!mode || mode === "district") return undefined;
+  if (mode === "custom") {
+    if (custom == null || Number.isNaN(custom)) return undefined;
+    return custom;
+  }
+  const n = Number(mode);
+  return Number.isFinite(n) ? n : undefined;
+}
 
 function toIso(local: string): string {
   const d = new Date(local);
@@ -122,6 +150,9 @@ export default function Broadcast() {
       targetShopId: undefined,
       targetUserIds: undefined,
       targetShopIds: undefined,
+      targetDistrictIds: undefined,
+      radiusMode: "district",
+      customRadiusKm: undefined,
       sendMode: "now",
       scheduledAt: "",
     },
@@ -137,6 +168,9 @@ export default function Broadcast() {
   } = form;
   const audience = watch("audience");
   const sendMode = watch("sendMode");
+  const radiusMode = watch("radiusMode");
+  const customRadiusKm = watch("customRadiusKm");
+  const targetDistrictIds = watch("targetDistrictIds");
 
   const [selectedUserData, setSelectedUserData] = useState<{
     label: string;
@@ -154,6 +188,13 @@ export default function Broadcast() {
   const [selectedShops, setSelectedShops] = useState<
     { label: string; value: string }[]
   >([]);
+  const [selectedDistricts, setSelectedDistricts] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const districtLabels = useRef<Record<string, string>>({});
+  const [areaCount, setAreaCount] = useState<number | null>(null);
+  const [areaCountError, setAreaCountError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -218,6 +259,79 @@ export default function Broadcast() {
     [],
   );
 
+  const fetchCityOptions = useCallback(
+    async (page: number, size: number, search?: string) => {
+      const res = await cityService.getCities({
+        page,
+        size,
+        search: search || "",
+      });
+      return {
+        data: (res?.content || []).map((c) => ({
+          label: c.nameEn,
+          value: String(c.id),
+        })),
+        totalCount: res?.totalElements ?? 0,
+      };
+    },
+    [],
+  );
+
+  const fetchDistrictOptions = useCallback(
+    async (page: number, size: number, search?: string) => {
+      if (!selectedCityId) return { data: [], totalCount: 0 };
+      const res = await districtService.getDistricts({
+        page,
+        size,
+        search: search || "",
+        cityId: selectedCityId,
+      });
+      const data = (res?.content || []).map((d) => {
+        const label = d.nameEn || d.nameMm || `District #${d.id}`;
+        districtLabels.current[String(d.id)] = label;
+        return { label, value: String(d.id) };
+      });
+      return { data, totalCount: res?.totalElements ?? data.length };
+    },
+    [selectedCityId],
+  );
+
+  const districtKey = (targetDistrictIds ?? []).join(",");
+  useEffect(() => {
+    const districtIds = districtKey
+      ? districtKey.split(",").map((id) => Number(id)).filter((id) => id > 0)
+      : [];
+    if (audience !== "AREA" || districtIds.length === 0) {
+      setAreaCount(null);
+      setAreaCountError(null);
+      return;
+    }
+    const radiusKm = areaRadiusKm(radiusMode, customRadiusKm);
+    if (radiusMode === "custom" && (radiusKm == null || radiusKm < 1 || radiusKm > 100)) {
+      setAreaCount(null);
+      setAreaCountError(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      BroadcastService.previewArea({ districtIds, radiusKm })
+        .then((res) => {
+          if (cancelled) return;
+          setAreaCount(res?.count ?? 0);
+          setAreaCountError(null);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setAreaCount(null);
+          setAreaCountError("Could not count users in this area.");
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [audience, districtKey, radiusMode, customRadiusKm]);
+
   const handleSort = (key: string) => setSortConfig(toggleSort(sortConfig, key));
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,6 +367,10 @@ export default function Broadcast() {
     setSelectedShopData(null);
     setSelectedUsers([]);
     setSelectedShops([]);
+    setSelectedDistricts([]);
+    setSelectedCityId(null);
+    setAreaCount(null);
+    setAreaCountError(null);
     clearImage();
     setPage(0);
     setPendingBroadcast(null);
@@ -268,6 +386,11 @@ export default function Broadcast() {
       targetShopId: pendingBroadcast.targetShopId,
       targetUserIds: pendingBroadcast.targetUserIds,
       targetShopIds: pendingBroadcast.targetShopIds,
+      targetDistrictIds: pendingBroadcast.targetDistrictIds,
+      radiusKm: areaRadiusKm(
+        pendingBroadcast.radiusMode,
+        pendingBroadcast.customRadiusKm,
+      ),
       image: imageFile,
       scheduledAt:
         pendingBroadcast.sendMode === "schedule" && pendingBroadcast.scheduledAt
@@ -290,6 +413,16 @@ export default function Broadcast() {
     }
     if (pendingBroadcast.audience === "MULTI_SHOP") {
       return selectedShops.length ? `(${selectedShops.length} shops)` : undefined;
+    }
+    if (pendingBroadcast.audience === "AREA") {
+      const names = selectedDistricts.map((d) => d.label).join(", ");
+      const km = areaRadiusKm(
+        pendingBroadcast.radiusMode,
+        pendingBroadcast.customRadiusKm,
+      );
+      const distance = km == null ? "whole district" : `${km} km`;
+      const people = areaCount == null ? "" : ` · ${areaCount} users`;
+      return names ? `(${names} · ${distance}${people})` : undefined;
     }
     return undefined;
   })();
@@ -349,10 +482,17 @@ export default function Broadcast() {
                         setValue("targetShopId", undefined);
                         setValue("targetUserIds", undefined);
                         setValue("targetShopIds", undefined);
+                        setValue("targetDistrictIds", undefined);
+                        setValue("radiusMode", "district");
+                        setValue("customRadiusKm", undefined);
                         setSelectedUserData(null);
                         setSelectedShopData(null);
                         setSelectedUsers([]);
                         setSelectedShops([]);
+                        setSelectedDistricts([]);
+                        setSelectedCityId(null);
+                        setAreaCount(null);
+                        setAreaCountError(null);
                       }}
                     >
                       <SelectTrigger>
@@ -571,6 +711,126 @@ export default function Broadcast() {
                       {errors.targetShopIds.message}
                     </p>
                   ) : null}
+                </div>
+              )}
+
+              {audience === "AREA" && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      City
+                    </label>
+                    <AsyncSelectField
+                      label="City"
+                      hideLabel
+                      fetchFunction={fetchCityOptions}
+                      value={selectedCityId ? String(selectedCityId) : ""}
+                      onValueChange={(val) => {
+                        const id = Number(val);
+                        setSelectedCityId(Number.isFinite(id) && id > 0 ? id : null);
+                        setSelectedDistricts([]);
+                        setValue("targetDistrictIds", undefined, {
+                          shouldValidate: true,
+                        });
+                      }}
+                      placeholder="Search city..."
+                      emptyTriggerLabel="Choose a city"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      District
+                    </label>
+                    <AsyncSelectField
+                      key={selectedCityId ?? "no-city"}
+                      multiple
+                      label="District"
+                      hideLabel
+                      disabled={!selectedCityId}
+                      fetchFunction={fetchDistrictOptions}
+                      value={selectedDistricts.map((d) => d.value)}
+                      initialValues={selectedDistricts}
+                      onValueChange={(ids) => {
+                        const picked = ids.map((id) => ({
+                          value: id,
+                          label: districtLabels.current[id] || `District #${id}`,
+                        }));
+                        setSelectedDistricts(picked);
+                        setValue(
+                          "targetDistrictIds",
+                          picked.length
+                            ? picked.map((d) => Number(d.value))
+                            : undefined,
+                          { shouldValidate: true },
+                        );
+                      }}
+                      placeholder="Search district..."
+                    />
+                    {!selectedCityId ? (
+                      <p className="text-xs text-muted-foreground">
+                        Choose a city first, then choose one or more districts.
+                      </p>
+                    ) : null}
+                    {errors.targetDistrictIds ? (
+                      <p className="text-sm text-destructive">
+                        {errors.targetDistrictIds.message}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Distance from district centre
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {RADIUS_OPTIONS.map((option) => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          size="sm"
+                          variant={radiusMode === option.value ? "default" : "outline"}
+                          onClick={() =>
+                            setValue("radiusMode", option.value, {
+                              shouldValidate: true,
+                            })
+                          }
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                    {radiusMode === "custom" && (
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        step={1}
+                        placeholder="Kilometres (1–100)"
+                        aria-invalid={Boolean(errors.customRadiusKm)}
+                        {...register("customRadiusKm", { valueAsNumber: true })}
+                      />
+                    )}
+                    {errors.customRadiusKm ? (
+                      <p className="text-sm text-destructive">
+                        {errors.customRadiusKm.message}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Whole district uses each person’s current location.
+                        A distance keeps only people within that many kilometres
+                        of the district centre. People with no saved location
+                        are not included.
+                      </p>
+                    )}
+                    {areaCount != null && (
+                      <p className="text-sm font-medium">
+                        {areaCount.toLocaleString()} {areaCount === 1 ? "user" : "users"} will receive this
+                      </p>
+                    )}
+                    {areaCountError ? (
+                      <p className="text-sm text-destructive">{areaCountError}</p>
+                    ) : null}
+                  </div>
                 </div>
               )}
 
@@ -809,6 +1069,9 @@ export default function Broadcast() {
                             : ""}
                           {h.audience === "MULTI_SHOP" && h.targetShopIds?.length
                             ? ` (${h.targetShopIds.length})`
+                            : ""}
+                          {h.audience === "AREA"
+                            ? ` (${h.targetUserIds?.length ?? 0}${h.radiusKm ? ` · ${h.radiusKm} km` : ""})`
                             : ""}
                         </Badge>
                       </TableCell>

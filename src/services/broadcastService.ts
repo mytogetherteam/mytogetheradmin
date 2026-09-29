@@ -12,7 +12,8 @@ export type BroadcastAudience =
   | "USER_GROUP"
   | "SHOP_GROUP"
   | "MULTI_USER"
-  | "MULTI_SHOP";
+  | "MULTI_SHOP"
+  | "AREA";
 
 export interface BroadcastHistoryItem {
   id: number;
@@ -23,6 +24,10 @@ export interface BroadcastHistoryItem {
   targetUserIds?: number[];
   /** Set when audience is MULTI_SHOP. */
   targetShopIds?: number[];
+  /** Set when audience is AREA. */
+  targetDistrictIds?: number[];
+  /** Kilometres from each district centre. Absent means the whole district. */
+  radiusKm?: number | null;
   title: string;
   message: string;
   /** Optional image shown with the announcement. */
@@ -49,6 +54,10 @@ export interface SendBroadcastPayload {
   targetUserIds?: number[];
   /** Required only when audience is MULTI_SHOP. */
   targetShopIds?: number[];
+  /** Required only when audience is AREA. */
+  targetDistrictIds?: number[];
+  /** Optional kilometres from each district centre. */
+  radiusKm?: number;
   /** Optional image file to attach to the announcement. */
   image?: File | null;
   /** Optional structured payload (deep-link, image url, etc.). */
@@ -79,7 +88,7 @@ interface BroadcastListResponse {
 export const BroadcastService = {
   /** Queue a broadcast for delivery. Returns immediately. */
   send: async (payload: SendBroadcastPayload): Promise<SendBroadcastResult> => {
-    const { image, targetUserId, targetShopId, targetUserIds, targetShopIds, data, scheduledAt, ...rest } = payload;
+    const { image, targetUserId, targetShopId, targetUserIds, targetShopIds, targetDistrictIds, radiusKm, data, scheduledAt, ...rest } = payload;
 
     // Sent as multipart/form-data so an optional image can be attached; the
     // axios interceptor strips the JSON Content-Type when it sees a FormData body.
@@ -94,6 +103,8 @@ export const BroadcastService = {
     // array server-side (see toNumberArray in create-broadcast.dto.ts).
     if (targetUserIds?.length) form.append("targetUserIds", JSON.stringify(targetUserIds));
     if (targetShopIds?.length) form.append("targetShopIds", JSON.stringify(targetShopIds));
+    if (targetDistrictIds?.length) form.append("targetDistrictIds", JSON.stringify(targetDistrictIds));
+    if (radiusKm != null) form.append("radiusKm", String(radiusKm));
     if (scheduledAt) form.append("scheduledAt", scheduledAt);
     if (data != null) form.append("data", JSON.stringify(data));
     if (image) form.append("image", image);
@@ -116,6 +127,16 @@ export const BroadcastService = {
       totalElements: res?.totalCount ?? 0,
       totalPages: res?.totalPages ?? 1,
     };
+  },
+
+  /** How many users currently match an area. */
+  previewArea: async (payload: {
+    districtIds: number[];
+    radiusKm?: number;
+  }): Promise<{ count: number }> => {
+    return handleApiCall(() =>
+      api.post(`${config.endpoints.admin.broadcasts.base}/area-preview`, payload),
+    );
   },
 
   /** Delete a sent broadcast from the history. */

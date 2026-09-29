@@ -784,6 +784,9 @@ export default function CreateShopCoupon() {
                     {errors.target.message}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Referral users are people who claimed a friend's code, or whose own code a friend has used.
+                </p>
               </div>
             </div>
 

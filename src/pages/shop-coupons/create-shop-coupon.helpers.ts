@@ -33,6 +33,7 @@ export const discountTypeLabels: Record<
 export const targetLabels: Record<(typeof COUPON_TARGETS)[number], string> = {
   ALL: "All users",
   EARLY_BIRD: "Early bird (new users)",
+  REFERRAL: "Referral users",
 };
 
 export const limitTypeLabels: Record<

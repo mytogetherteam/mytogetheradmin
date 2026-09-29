@@ -73,7 +73,9 @@ function promotionSummary(coupon: ShopCouponListItem) {
 }
 
 function targetLabel(target: ShopCouponListItem["target"]) {
-  return target === "EARLY_BIRD" ? "Early bird" : "All users";
+  if (target === "EARLY_BIRD") return "Early bird";
+  if (target === "REFERRAL") return "Referral users";
+  return "All users";
 }
 
 function limitLabel(limitType: ShopCouponListItem["limitType"]) {

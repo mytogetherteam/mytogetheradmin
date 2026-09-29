@@ -12,6 +12,7 @@ export const broadcastAudienceSchema = z.enum([
   "SHOP_GROUP",
   "MULTI_USER",
   "MULTI_SHOP",
+  "AREA",
 ]);
 
 const optionalId = z.number().int().positive().optional();
@@ -39,6 +40,10 @@ export const broadcastFormSchema = z
     targetShopId: optionalId,
     targetUserIds: idList,
     targetShopIds: idList,
+    targetDistrictIds: idList,
+    /** Whole district, a preset kilometre distance, or a custom number. */
+    radiusMode: z.enum(["district", "5", "10", "15", "20", "custom"]).optional(),
+    customRadiusKm: z.number().optional(),
     sendMode: z.enum(["now", "schedule"]),
     scheduledAt: z.string().optional(),
   })
@@ -70,6 +75,23 @@ export const broadcastFormSchema = z
         path: ["targetShopIds"],
         message: "Please select at least one shop",
       });
+    }
+    if (values.audience === "AREA" && !values.targetDistrictIds?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["targetDistrictIds"],
+        message: "Please select at least one district",
+      });
+    }
+    if (values.audience === "AREA" && values.radiusMode === "custom") {
+      const km = values.customRadiusKm;
+      if (km == null || Number.isNaN(km) || km < 1 || km > 100 || !Number.isInteger(km)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customRadiusKm"],
+          message: "Enter a whole number from 1 to 100",
+        });
+      }
     }
     if (values.sendMode === "schedule") {
       const raw = values.scheduledAt?.trim();
