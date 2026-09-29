@@ -94,6 +94,11 @@ export interface ExtendedDashboardStats {
       sessions: number;
       avgSessionSeconds: number;
     }>;
+    busyHours?: Array<{
+      hour: number;
+      users: number;
+      sessions: number;
+    }>;
   };
   topSearches: Array<{ term: string; count: number }>;
 }

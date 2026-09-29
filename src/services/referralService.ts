@@ -100,9 +100,7 @@ export const referralService = {
       ...(params.search ? { search: params.search } : {}),
     });
     const result = await apiClient.get<any>(`${config.endpoints.admin.marketing.referrals.codes}?${urlParams.toString()}`);
-    if (Array.isArray(result)) return result;
-    if (result && Array.isArray(result.items)) return result.items;
-    return [];
+    return listFromResponse<ReferralCodeDTO>(result);
   },
 
   getRedemptions: async (params: { page: number; size: number; search?: string }): Promise<ReferralRedemptionDTO[]> => {
@@ -112,9 +110,7 @@ export const referralService = {
       ...(params.search ? { search: params.search } : {}),
     });
     const result = await apiClient.get<any>(`${config.endpoints.admin.marketing.referrals.redemptions}?${urlParams.toString()}`);
-    if (Array.isArray(result)) return result;
-    if (result && Array.isArray(result.items)) return result.items;
-    return [];
+    return listFromResponse<ReferralRedemptionDTO>(result);
   },
 
   applyCouponToAllUsers: async (couponId: number): Promise<{ couponId: number; distributedCount: number }> => {
@@ -139,8 +135,16 @@ export const referralService = {
       ...(params?.isActive !== undefined ? { isActive: String(params.isActive) } : {}),
     });
     const result = await apiClient.get<any>(`${config.endpoints.admin.marketing.coupons.base}?${urlParams.toString()}`);
-    if (Array.isArray(result)) return result;
-    if (result && Array.isArray(result.items)) return result.items;
-    return [];
+    return listFromResponse<ShopCouponSummary>(result);
   },
 };
+
+function listFromResponse<T>(result: unknown): T[] {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === "object") {
+    const page = result as { items?: unknown; content?: unknown };
+    if (Array.isArray(page.content)) return page.content as T[];
+    if (Array.isArray(page.items)) return page.items as T[];
+  }
+  return [];
+}

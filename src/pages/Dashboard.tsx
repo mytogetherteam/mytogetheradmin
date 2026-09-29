@@ -31,6 +31,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+function formatHourRange(hour: number) {
+    const start = ((hour % 24) + 24) % 24;
+    const end = (start + 1) % 24;
+    const label = (value: number) => {
+        const suffix = value < 12 ? "AM" : "PM";
+        const clock = value % 12 === 0 ? 12 : value % 12;
+        return `${clock} ${suffix}`;
+    };
+    return `${label(start)} – ${label(end)}`;
+}
+
 function formatStay(seconds: number) {
     const total = Math.max(0, Math.round(seconds));
     const minutes = Math.round(total / 60);
@@ -472,6 +483,21 @@ export default function Dashboard() {
                             <p className="text-xs text-muted-foreground mt-2">
                                 {extendedStats.appUsage.sessions.toLocaleString()} visits · {extendedStats.appUsage.users.toLocaleString()} people
                             </p>
+                            {(extendedStats.appUsage.busyHours?.length ?? 0) > 0 ? (
+                                <div className="mt-4 space-y-2 border-t pt-4">
+                                    <p className="text-xs font-medium text-muted-foreground">When most people are in the app</p>
+                                    {extendedStats.appUsage.busyHours!.slice(0, 4).map((row, index) => (
+                                        <div key={row.hour} className="flex items-center justify-between gap-3">
+                                            <p className={`text-sm truncate ${index === 0 ? "font-semibold" : ""}`}>
+                                                {formatHourRange(row.hour)}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground shrink-0">
+                                                {row.users.toLocaleString()} {row.users === 1 ? "person" : "people"}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
                         </CardContent>
                     </Card>
                     <Card className="md:col-span-2">
