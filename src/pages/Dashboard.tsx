@@ -486,7 +486,11 @@ export default function Dashboard() {
                             {(extendedStats.appUsage.busyHours?.length ?? 0) > 0 ? (
                                 <div className="mt-4 space-y-2 border-t pt-4">
                                     <p className="text-xs font-medium text-muted-foreground">When most people are in the app</p>
-                                    {extendedStats.appUsage.busyHours!.slice(0, 4).map((row, index) => (
+                                    {extendedStats.appUsage.busyHours.slice(0, 4).map((row: {
+                                        hour: number;
+                                        users: number;
+                                        sessions: number;
+                                    }, index: number) => (
                                         <div key={row.hour} className="flex items-center justify-between gap-3">
                                             <p className={`text-sm truncate ${index === 0 ? "font-semibold" : ""}`}>
                                                 {formatHourRange(row.hour)}
