@@ -286,6 +286,8 @@ export const config = {
             config: '/api/admin/referral/config',
             codes: '/api/admin/referral/codes',
             codeStatus: (id: number | string) => `/api/admin/referral/codes/${id}/status`,
+            codeDetail: (id: number | string) => `/api/admin/referral/codes/${id}`,
+            reward: (id: number | string) => `/api/admin/referral/codes/${id}/reward`,
             redemptions: '/api/admin/referral/redemptions',
             applyToAll: (couponId: number | string) => `/api/admin/referral/coupons/${couponId}/apply-to-all`,
         },
@@ -343,6 +345,7 @@ export const config = {
           base: '/api/admin/app-version',
           platform: (platform: string) => `/api/admin/app-version/${platform}`,
         },
+        languagePolicy: '/api/admin/app/language-policy',
         appManagement: {
           onboarding: '/api/admin/app-management/onboarding',
           onboardingDetail: (id: number) => `/api/admin/app-management/onboarding/${id}`,

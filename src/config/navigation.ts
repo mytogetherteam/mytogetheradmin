@@ -40,6 +40,7 @@ import {
     Star,
     Share2,
     Gift,
+    Languages,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -450,6 +451,7 @@ export const navigationConfig: NavGroup[] = [
             { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone, tooltip: "Active admin sessions & force logout", roles: AdminRole.ADMIN },
             { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, tooltip: "Order Timeouts", roles: AdminRole.ADMIN_FINANCE },
             { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, tooltip: "Onboarding", roles: AdminRole.ADMIN_SETUP },
+            { title: "App Language", url: "/system/language", icon: Languages, tooltip: "Set MyTogether, MyShop, or the website to Thai", roles: AdminRole.ADMIN },
             { title: "Configurations", url: "/system/configs", icon: Settings2, tooltip: "Configurations", roles: AdminRole.ADMIN_SETUP },
             { title: "Feature Flags", url: "/system/feature-flags", icon: Flag, tooltip: "Feature Flags", roles: AdminRole.ADMIN_SETUP },
             { title: "App Content", url: "/system/app-content", icon: FileText, tooltip: "App Content", roles: AdminRole.ADMIN_SETUP },

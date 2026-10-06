@@ -60,6 +60,8 @@ const CreatePlace = lazy(() => import("@/pages/places/CreatePlace"));
 const ManagePromotions = lazy(() => import("@/pages/promotions/ManagePromotions"));
 const CreatePromotion = lazy(() => import("@/pages/promotions/CreatePromotion"));
 const ReferralManagement = lazy(() => import("@/pages/referrals/ReferralManagement"));
+const ReferralCodeDetail = lazy(() => import("@/pages/referrals/ReferralCodeDetail"));
+const AppLanguageControl = lazy(() => import("@/pages/system/AppLanguageControl"));
 const ManageMasterMenuCategories = lazy(() => import("@/pages/master-menu-categories/ManageMasterMenuCategories"));
 const CreateMasterMenuCategory = lazy(() => import("@/pages/master-menu-categories/CreateMasterMenuCategory"));
 const ManageCollections = lazy(() => import("@/pages/collections/ManageCollections"));
@@ -286,6 +288,8 @@ function App() {
                 <Route path="/shop-payment-types/edit/:shopId/:id" element={<CreateShopPaymentType />} />
                 <Route path="/marketing/banners" element={<BannerManagement />} />
                 <Route path="/referrals/manage" element={<ReferralManagement />} />
+                <Route path="/referrals/codes/:id" element={<ReferralCodeDetail />} />
+                <Route path="/system/language" element={<AppLanguageControl />} />
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />

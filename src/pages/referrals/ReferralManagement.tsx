@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Gift,
@@ -12,6 +13,7 @@ import {
   Send,
   Loader2,
   Ban,
+  Eye,
 } from "lucide-react";
 import {
   Card,
@@ -58,6 +60,7 @@ import {
 } from "@/services/referralService";
 
 export default function ReferralManagement() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("config");
 
   // Config State
@@ -575,7 +578,7 @@ export default function ReferralManagement() {
                       <TableHead>Promote Code</TableHead>
                       <TableHead>User Name</TableHead>
                       <TableHead>Phone Number</TableHead>
-                      <TableHead className="text-center">Times Claimed</TableHead>
+                      <TableHead className="text-center">People referred</TableHead>
                       <TableHead>Created Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -605,6 +608,15 @@ export default function ReferralManagement() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/referrals/codes/${c.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Details
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -622,6 +634,7 @@ export default function ReferralManagement() {
                               "Enable"
                             )}
                           </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

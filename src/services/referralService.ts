@@ -14,6 +14,7 @@ export interface ShopCouponSummary {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  requiresGrant?: boolean;
   isCurrentlyValid?: boolean;
   shop?: {
     id: number;
@@ -34,6 +35,23 @@ export interface ReferralConfigDTO {
   referrerCoupon?: ShopCouponSummary | null;
   referredCoupon?: ShopCouponSummary | null;
   updatedAt?: string;
+}
+
+export interface ReferralPersonDTO {
+  id: number;
+  claimedAt: string;
+  user: {
+    id: number;
+    name: string | null;
+    phone: string | null;
+    username: string | null;
+    createdAt?: string;
+  };
+}
+
+export interface ReferralCodeDetailDTO extends ReferralCodeDTO {
+  peopleCount: number;
+  people: ReferralPersonDTO[];
 }
 
 export interface ReferralCodeDTO {
@@ -117,6 +135,22 @@ export const referralService = {
     return apiClient.post<{ couponId: number; distributedCount: number }>(
       config.endpoints.admin.marketing.referrals.applyToAll(couponId),
       {}
+    );
+  },
+
+  getCode: async (id: number): Promise<ReferralCodeDetailDTO> => {
+    return apiClient.get<ReferralCodeDetailDTO>(
+      config.endpoints.admin.marketing.referrals.codeDetail(id),
+    );
+  },
+
+  rewardCodeOwner: async (
+    id: number,
+    couponId: number,
+  ): Promise<{ couponId: number; couponName: string; couponCode: string }> => {
+    return apiClient.post(
+      config.endpoints.admin.marketing.referrals.reward(id),
+      { couponId },
     );
   },
 
