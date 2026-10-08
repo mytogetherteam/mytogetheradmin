@@ -236,7 +236,7 @@ export default function PaymentMethodForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/payment-methods/manage")}
+                  onClick={() => navigate("/payment/methods")}
                   disabled={submitting}
                 >
                   Cancel

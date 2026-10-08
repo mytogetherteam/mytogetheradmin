@@ -2,7 +2,7 @@ import { config } from '@/config/config';
 import { handleApiCall } from '@/lib/handleApiCall';
 import { api } from '@/utils/axios';
 
-export type PlatformAdminRole = 'SuperAdmin' | 'OperationAdmin';
+export type PlatformAdminRole = 'SuperAdmin' | 'OperationAdmin' | 'MarketingAdmin';
 
 export interface PlatformAdminDTO {
   id: number;

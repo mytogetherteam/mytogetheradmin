@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Pencil, Plus, Search, Share2, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { handleApiError } from "@/lib/error-utils";
+import { useMarketingAction } from "@/utils/marketingAccess";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { SortableTableHead } from "@/components/SortableTableHead";
 import { SortConfig, toggleSort, sortData } from "@/lib/sort-utils";
@@ -31,8 +32,29 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 
+function PostMediaPreview({ post }: { post: CommunityPostRow }) {
+    if (post.mediaType === "VIDEO" && post.videoUrl) {
+        return (
+            <video
+                src={post.videoUrl}
+                poster={post.imageUrl}
+                controls
+                preload="metadata"
+                className="h-24 w-40 rounded-md bg-black object-contain"
+            />
+        );
+    }
+    if (post.imageUrl) {
+        return <img src={post.imageUrl} alt="" className="h-24 w-40 rounded-md object-cover" />;
+    }
+    return <span className="text-xs text-muted-foreground">No media</span>;
+}
+
 export default function SocialMediaMgt() {
     const navigate = useNavigate();
+    const canCreate = useMarketingAction("create");
+    const canEdit = useMarketingAction("edit");
+    const canDelete = useMarketingAction("delete");
     const [posts, setPosts] = useState<CommunityPostRow[]>([]);
     const [comments, setComments] = useState<CommunityCommentRow[]>([]);
     const [loading, setLoading] = useState(false);
@@ -134,10 +156,12 @@ export default function SocialMediaMgt() {
                     <Share2 className="h-6 w-6 text-primary" />
                     <h1 className="text-lg font-semibold md:text-2xl">Social Media</h1>
                 </div>
+                {canCreate && (
                 <Button onClick={() => navigate("/social-media/posts/create")}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Post
                 </Button>
+                )}
             </div>
 
             <Tabs value={tab} onValueChange={(v) => { setTab(v as "posts" | "comments"); setPage(0); }}>
@@ -188,6 +212,7 @@ export default function SocialMediaMgt() {
                                 <TableHeader>
                                     <TableRow>
                                         <SortableTableHead label="Author" sortKey="authorName" sortConfig={sortConfig} onSort={handleSort} />
+                                        <TableHead>Media</TableHead>
                                         <TableHead>Content</TableHead>
                                         <TableHead>Stats</TableHead>
                                         <SortableTableHead label="Status" sortKey="isHidden" sortConfig={sortConfig} onSort={handleSort} />
@@ -199,14 +224,14 @@ export default function SocialMediaMgt() {
                                     {loading ? (
                                         [...Array(5)].map((_, i) => (
                                             <TableRow key={i}>
-                                                {[...Array(6)].map((__, j) => (
+                                                {[...Array(7)].map((__, j) => (
                                                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                                 ))}
                                             </TableRow>
                                         ))
                                     ) : sortedPosts.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                                            <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                                                 No posts found.
                                             </TableCell>
                                         </TableRow>
@@ -228,6 +253,9 @@ export default function SocialMediaMgt() {
                                                         </p>
                                                     </div>
                                                 </div>
+                                            </TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()} className="w-[180px]">
+                                                <PostMediaPreview post={p} />
                                             </TableCell>
                                             <TableCell className="max-w-xs">
                                                 <div className="flex flex-col">
@@ -258,6 +286,7 @@ export default function SocialMediaMgt() {
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                 <TooltipProvider>
                                                     <div className="flex gap-1">
+                                                        {canEdit && (
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -270,7 +299,8 @@ export default function SocialMediaMgt() {
                                                             </TooltipTrigger>
                                                             <TooltipContent>Edit</TooltipContent>
                                                         </Tooltip>
-                                                        {!p.isHidden ? (
+                                                        )}
+                                                        {canEdit && (!p.isHidden ? (
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button
@@ -296,7 +326,8 @@ export default function SocialMediaMgt() {
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>Show in feed</TooltipContent>
                                                             </Tooltip>
-                                                        )}
+                                                        ))}
+                                                        {canDelete && (
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -308,6 +339,7 @@ export default function SocialMediaMgt() {
                                                             </TooltipTrigger>
                                                             <TooltipContent>Delete post permanently</TooltipContent>
                                                         </Tooltip>
+                                                        )}
                                                     </div>
                                                 </TooltipProvider>
                                             </TableCell>
@@ -365,6 +397,7 @@ export default function SocialMediaMgt() {
                                                 {new Date(c.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
+                                                {canDelete && (
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
@@ -378,6 +411,7 @@ export default function SocialMediaMgt() {
                                                         <TooltipContent>Delete comment</TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}

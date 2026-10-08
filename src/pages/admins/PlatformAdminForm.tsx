@@ -198,6 +198,7 @@ export default function PlatformAdminForm() {
                     <SelectItem value="OperationAdmin">
                       Operation Admin
                     </SelectItem>
+                    <SelectItem value="MarketingAdmin">Marketing Admin</SelectItem>
                     <SelectItem value="SuperAdmin">Super Admin</SelectItem>
                   </SelectContent>
                 </Select>
@@ -210,7 +211,9 @@ export default function PlatformAdminForm() {
                 <span className="font-medium">
                   {roleName === "SuperAdmin"
                     ? "Super Admin"
-                    : "Operation Admin"}
+                    : roleName === "MarketingAdmin"
+                      ? "Marketing Admin"
+                      : "Operation Admin"}
                 </span>
               </div>
             )}

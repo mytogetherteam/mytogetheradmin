@@ -43,7 +43,7 @@ export function useCreatePaymentMethodMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       toast.success("Payment method created successfully!");
-      navigate("/payment-methods/manage");
+      navigate("/payment/methods");
     },
     onError: (error) =>
       handleApiError(error, "Failed to create payment method"),
@@ -65,7 +65,7 @@ export function useUpdatePaymentMethodMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       toast.success("Payment method updated successfully!");
-      navigate("/payment-methods/manage");
+      navigate("/payment/methods");
     },
     onError: (error) =>
       handleApiError(error, "Failed to update payment method"),

@@ -28,8 +28,10 @@ import { authService } from "@/services/authService"
 import { useAuthStore } from "@/store/useAuthStore"
 import { cn } from "@/lib/utils"
 import { hasAccess, AdminRole } from "@/utils/rbac"
+import { isMarketingRole, marketingAllows } from "@/utils/marketingAccess"
+import { useMarketingStore } from "@/store/useMarketingStore"
 import { useState } from "react"
-import { navigationConfig, NavItem } from "@/config/navigation"
+import { navigationConfig, NavItem, NavSubItem } from "@/config/navigation"
 
 export function AppSidebar() {
     const location = useLocation();
@@ -38,10 +40,24 @@ export function AppSidebar() {
     const persistedUser = useAuthStore((s) => s.user);
     const userData = persistedUser ?? authService.getUserData();
     const userRole = userData?.role;
+    const marketingUser = isMarketingRole(userRole);
+    const marketingSections = useMarketingStore((s) => s.sections);
 
-    const canSee = (requiredRole?: AdminRole | AdminRole[]) => {
+    const canSee = (requiredRole?: AdminRole | AdminRole[], url?: string) => {
+        if (marketingUser) {
+            if (!url || url === "#") return false;
+            return marketingAllows(marketingSections, url.split("?")[0]);
+        }
         if (!requiredRole) return true;
         return hasAccess(userRole, requiredRole);
+    };
+
+    const itemVisible = (item: { roles?: AdminRole | AdminRole[]; url?: string; items?: NavSubItem[] }) => {
+        if (marketingUser) {
+            if (item.url && item.url !== "#") return canSee(item.roles, item.url);
+            return Boolean(item.items?.some((sub) => canSee(sub.roles, sub.url)));
+        }
+        return canSee(item.roles, item.url);
     };
 
     const isActive = (path?: string) => {
@@ -70,7 +86,7 @@ export function AppSidebar() {
         const result: NavItem[] = [];
 
         for (const item of items) {
-            if (!canSee(item.roles)) continue;
+            if (!itemVisible(item)) continue;
 
             // If the item itself matches
             const matchesQuery = item.title.toLowerCase().includes(query);
@@ -78,12 +94,12 @@ export function AppSidebar() {
             // If any of its sub-items match
             const matchingSubItems = item.items?.filter(sub => {
                 const subMatchesQuery = sub.title.toLowerCase().includes(query);
-                return canSee(sub.roles) && subMatchesQuery;
+                return canSee(sub.roles, sub.url) && subMatchesQuery;
             });
 
             if (matchesQuery) {
                 // Return item with all its visible subitems
-                const visibleSubItems = item.items?.filter(sub => canSee(sub.roles));
+                const visibleSubItems = item.items?.filter(sub => canSee(sub.roles, sub.url));
                 result.push({ ...item, items: visibleSubItems });
             } else if (matchingSubItems && matchingSubItems.length > 0) {
                 // Return item with only matching subitems
@@ -95,15 +111,15 @@ export function AppSidebar() {
     };
 
     const filteredConfig = navigationConfig.map(group => {
-        if (!canSee(group.roles)) return { ...group, items: [] };
+        if (!marketingUser && !canSee(group.roles)) return { ...group, items: [] };
 
         let filteredItems = filterNavItems(group.items);
 
         // If the group title matches the query, show all items under it
         if (query && group.title && group.title.toLowerCase().includes(query)) {
-            filteredItems = group.items.filter(item => canSee(item.roles)).map(item => {
+            filteredItems = group.items.filter(item => itemVisible(item)).map(item => {
                 if (item.items) {
-                    return { ...item, items: item.items.filter(sub => canSee(sub.roles)) };
+                    return { ...item, items: item.items.filter(sub => canSee(sub.roles, sub.url)) };
                 }
                 return item;
             });

@@ -99,7 +99,7 @@ export default function PaymentMethods() {
                                     }}
                                 />
                             </div>
-                            <Button onClick={() => navigate("/payment-methods/create")}>
+                            <Button onClick={() => navigate("/payment/methods/create")}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create New
                             </Button>
@@ -134,7 +134,7 @@ export default function PaymentMethods() {
                                                 <TableRow
                                                     key={item.id}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigate(`/payment-methods/edit/${item.id}`)}
+                                                    onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
                                                 >
                                                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                                                     <TableCell>
@@ -163,7 +163,7 @@ export default function PaymentMethods() {
                                                                             size="icon"
                                                                             variant="ghost"
                                                                             className="h-8 w-8"
-                                                                            onClick={() => navigate(`/payment-methods/edit/${item.id}`)}
+                                                                            onClick={() => navigate(`/payment/methods/edit/${item.id}`)}
                                                                         >
                                                                             <Edit className="h-4 w-4" />
                                                                         </Button>

@@ -6,7 +6,7 @@ import { authService } from "@/services/authService";
 import { ProtectedRoute } from "@/middleware/authMiddleware";
 import { ErrorBoundary } from "@/middleware/errorBoundary";
 import { ExcelImportProvider } from "@/context/ExcelImportContext";
-import { AdminRole } from "@/utils/rbac";
+import { AdminRole, isBlockedPanelRole } from "@/utils/rbac";
 
 // ─── Eager (tiny, always needed) ────────────────────────────────────────────
 import Login from "@/pages/auth/Login";
@@ -153,10 +153,15 @@ const RegionForm = lazy(() => import("@/pages/regions/RegionForm"));
 // Platform admins
 const ManageAdmins = lazy(() => import("@/pages/admins/ManageAdmins"));
 const PlatformAdminForm = lazy(() => import("@/pages/admins/PlatformAdminForm"));
+const MarketingAccessPage = lazy(() => import("@/pages/admins/MarketingAccessPage"));
 
 // ─── Route guards ────────────────────────────────────────────────────────────
 
 function PublicOnlyRoute() {
+  if (isBlockedPanelRole(authService.getUserData()?.role)) {
+    authService.clearLocalSession();
+    return <Outlet />;
+  }
   if (authService.isAuthenticated()) {
     return <Navigate to="/" replace />;
   }
@@ -195,6 +200,11 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
+              <Route path="/no-access" element={
+                <div className="p-8 text-sm text-muted-foreground">
+                  This account does not have access to that page. A Super Admin can turn sections on for Marketing Admin.
+                </div>
+              } />
 
               {/* OPS Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN_OPS}><Outlet /></ProtectedRoute>}>
@@ -328,6 +338,7 @@ function App() {
                 <Route path="/platform-payment-accounts/create" element={<CreatePlatformPaymentAccount />} />
 
                 <Route path="/admins/manage" element={<ManageAdmins />} />
+                <Route path="/admins/marketing-access" element={<MarketingAccessPage />} />
                 <Route path="/admins/create" element={<PlatformAdminForm />} />
                 <Route path="/admins/edit/:id" element={<PlatformAdminForm />} />
               </Route>

@@ -52,6 +52,8 @@ export interface CommunityPostRow {
   createdAt: string;
   isHidden: boolean;
   mediaCount: number;
+  mediaType?: SocialMediaType;
+  videoUrl?: string;
 }
 
 export interface CommunityCommentRow {
@@ -104,7 +106,7 @@ function authorLabel(author: SocialPostAuthor | null | undefined): { name: strin
 function previewUrl(post: SocialPost): string | undefined {
   const first = post.media?.[0];
   if (!first) return undefined;
-  if (first.type === 'VIDEO') return first.thumbnailUrl || first.url;
+  if (first.type === 'VIDEO') return first.thumbnailUrl || undefined;
   return first.url;
 }
 
@@ -122,6 +124,8 @@ export function mapSocialPostToRow(post: SocialPost): CommunityPostRow {
     createdAt: post.createdAt,
     isHidden: post.isActive === false,
     mediaCount: post.media?.length ?? 0,
+    mediaType: post.media?.[0]?.type,
+    videoUrl: post.media?.[0]?.type === 'VIDEO' ? post.media[0].url : undefined,
   };
 }
 

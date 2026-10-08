@@ -19,6 +19,11 @@ const operationAdminAccess: readonly AdminRole[] = [
   AdminRole.ADMIN_FINANCE,
 ];
 
+/** Roles that must not hold an admin-panel session. Operation Admin uses the shop app. */
+export function isBlockedPanelRole(role: string | undefined | null): boolean {
+  return role === 'OperationAdmin' || role === AdminRole.ADMIN_OPS || role === 'ShopAdmin';
+}
+
 export const hasAccess = (userRole: string | undefined, requiredRole: AdminRole | AdminRole[]): boolean => {
   if (!userRole) return false;
 

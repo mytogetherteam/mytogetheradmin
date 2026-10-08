@@ -40,6 +40,7 @@ import { handleApiError } from "@/lib/error-utils";
 const ROLE_LABEL: Record<PlatformAdminRole, string> = {
   SuperAdmin: "Super Admin",
   OperationAdmin: "Operation Admin",
+  MarketingAdmin: "Marketing Admin",
 };
 
 export default function ManageAdmins() {
@@ -156,6 +157,7 @@ export default function ManageAdmins() {
                 <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="SuperAdmin">Super Admin</SelectItem>
                 <SelectItem value="OperationAdmin">Operation Admin</SelectItem>
+                <SelectItem value="MarketingAdmin">Marketing Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -227,7 +229,7 @@ export default function ManageAdmins() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {admin.role.name === "OperationAdmin" && (
+                          {(admin.role.name === "OperationAdmin" || admin.role.name === "MarketingAdmin") && (
                             <Button
                               variant="ghost"
                               size="icon"

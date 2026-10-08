@@ -4,6 +4,8 @@ import { ApiError, apiClient } from '@/services/apiClient';
 import { api } from '@/utils/axios';
 import { adminLoginApiResponseSchema } from '@/schemas/admin-login.schema';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useMarketingStore } from '@/store/useMarketingStore';
+import { marketingPermissionsService } from '@/services/marketingPermissionsService';
 import axios from 'axios';
 import type {
   LoginRequest,
@@ -23,6 +25,8 @@ function mapBackendRole(role: string | undefined): string {
       return 'ADMIN';
     case 'OperationAdmin':
       return 'ADMIN_OPS';
+    case 'MarketingAdmin':
+      return 'MARKETING';
     default:
       return role || 'ADMIN';
   }
@@ -162,6 +166,14 @@ export const authService = {
       );
     }
 
+    if (
+      body.data.role !== 'SuperAdmin' &&
+      body.data.role !== 'MASTER_ADMIN' &&
+      body.data.role !== 'MarketingAdmin'
+    ) {
+      throw new ApiError('This account is not authorized here.', undefined, json);
+    }
+
     const mapped = mapAdminPayloadToLoginResponse(credentials, body.data);
     authService.saveAuthData(mapped);
     useAuthStore.getState().setUser({
@@ -172,6 +184,15 @@ export const authService = {
       role: mapped.role,
       authorities: mapped.authorities,
     });
+    if (mapped.role === 'MARKETING') {
+      try {
+        await marketingPermissionsService.loadMine();
+      } catch {
+        useMarketingStore.getState().markReady();
+      }
+    } else {
+      useMarketingStore.getState().clear();
+    }
     return mapped;
   },
 
@@ -205,12 +226,17 @@ export const authService = {
     return mockResponse;
   },
 
-  logout: async (): Promise<void> => {
+  clearLocalSession: (): void => {
+    useMarketingStore.getState().clear();
     useAuthStore.getState().clearAuth();
     apiClient.clearTokenCache();
     localStorage.removeItem(config.storage.tokenKey);
     localStorage.removeItem(config.storage.refreshTokenKey);
     localStorage.removeItem(config.storage.userKey);
+  },
+
+  logout: async (): Promise<void> => {
+    authService.clearLocalSession();
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
