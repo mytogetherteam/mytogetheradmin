@@ -19,6 +19,8 @@ export interface BannersListParams {
 function buildBannerFormData(
   values: Partial<BannerFormValues>,
   imageFile?: File,
+  videoFile?: File,
+  removeVideo?: boolean,
 ) {
   const formData = new FormData();
   if (values.nameEn !== undefined) formData.append("nameEn", values.nameEn);
@@ -39,6 +41,8 @@ function buildBannerFormData(
   if (values.startDate !== undefined) formData.append("startDate", values.startDate);
   if (values.endDate !== undefined) formData.append("endDate", values.endDate);
   if (imageFile) formData.append("image", imageFile);
+  if (videoFile) formData.append("video", videoFile);
+  if (removeVideo) formData.append("removeVideo", "true");
   return formData;
 }
 
@@ -106,10 +110,11 @@ export const bannerImageService = {
   createBanner: async (
     values: BannerFormValues,
     imageFile: File,
+    videoFile?: File,
   ): Promise<BannerImage> => {
     const response = await apiClient.post<unknown>(
       config.endpoints.admin.marketing.banners.base,
-      buildBannerFormData(values, imageFile),
+      buildBannerFormData(values, imageFile, videoFile),
     );
     return bannerImageSchema.parse(response);
   },
@@ -118,10 +123,12 @@ export const bannerImageService = {
     id: number,
     values: Partial<BannerFormValues>,
     imageFile?: File,
+    videoFile?: File,
+    removeVideo?: boolean,
   ): Promise<BannerImage> => {
     const response = await apiClient.put<unknown>(
       config.endpoints.admin.marketing.banners.detail(id),
-      buildBannerFormData(values, imageFile),
+      buildBannerFormData(values, imageFile, videoFile, removeVideo),
     );
     return bannerImageSchema.parse(response);
   },

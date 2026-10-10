@@ -36,10 +36,12 @@ export function useCreateBannerMutation() {
     mutationFn: ({
       values,
       imageFile,
+      videoFile,
     }: {
       values: BannerFormValues;
       imageFile: File;
-    }) => bannerImageService.createBanner(values, imageFile),
+      videoFile?: File;
+    }) => bannerImageService.createBanner(values, imageFile, videoFile),
     onSuccess: () => {
       toast.success("Banner created");
       void queryClient.invalidateQueries({ queryKey: bannerImageKeys.all });
@@ -57,11 +59,22 @@ export function useUpdateBannerMutation() {
       id,
       values,
       imageFile,
+      videoFile,
+      removeVideo,
     }: {
       id: number;
       values: Partial<BannerFormValues>;
       imageFile?: File;
-    }) => bannerImageService.updateBanner(id, values, imageFile),
+      videoFile?: File;
+      removeVideo?: boolean;
+    }) =>
+      bannerImageService.updateBanner(
+        id,
+        values,
+        imageFile,
+        videoFile,
+        removeVideo,
+      ),
     onSuccess: (_data, variables) => {
       toast.success("Banner updated");
       void queryClient.invalidateQueries({ queryKey: bannerImageKeys.all });

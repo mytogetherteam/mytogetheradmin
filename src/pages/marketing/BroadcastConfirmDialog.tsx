@@ -130,7 +130,7 @@ export function BroadcastConfirmDialog({
               Message
             </dt>
             <dd className="mt-1 max-h-28 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground">
-              {message}
+              {message.trim() ? message : "No message body"}
             </dd>
           </div>
         </dl>

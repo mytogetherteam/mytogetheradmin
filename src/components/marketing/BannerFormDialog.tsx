@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, Resolver, useForm } from "react-hook-form";
+import { Controller, Resolver, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "@/components/common/Modal";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,12 @@ interface BannerFormDialogProps {
   /** Positions the user may pick in this dialog (scoped to the current tab). */
   allowedPositions?: BannerPosition[];
   submitting?: boolean;
-  onSubmit: (values: BannerFormValues, imageFile?: File) => Promise<void>;
+  onSubmit: (
+    values: BannerFormValues,
+    imageFile?: File,
+    videoFile?: File,
+    removeVideo?: boolean,
+  ) => Promise<void>;
 }
 
 export function BannerFormDialog({
@@ -68,6 +73,9 @@ export function BannerFormDialog({
 }: BannerFormDialogProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [removeVideo, setRemoveVideo] = useState(false);
 
   const positions = allowedPositions.length
     ? allowedPositions
@@ -87,6 +95,8 @@ export function BannerFormDialog({
     resolver: zodResolver(bannerFormSchema) as Resolver<BannerFormValues>,
     defaultValues: { ...defaultValues, position: createPosition },
   });
+  const watchedPosition = useWatch({ control, name: "position" });
+  const showVideo = watchedPosition === "Order";
 
   useEffect(() => {
     if (!open) return;
@@ -106,12 +116,24 @@ export function BannerFormDialog({
       });
       setImagePreview(banner.imageUrl);
       setImageFile(null);
+      setVideoFile(null);
+      setVideoPreviewUrl(null);
+      setRemoveVideo(false);
       return;
     }
     reset({ ...defaultValues, position: createPosition });
     setImagePreview(null);
     setImageFile(null);
+    setVideoFile(null);
+    setVideoPreviewUrl(null);
+    setRemoveVideo(false);
   }, [banner, createPosition, open, reset]);
+
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    };
+  }, [videoPreviewUrl]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,12 +142,50 @@ export function BannerFormDialog({
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const inferred =
+      file.type ||
+      (file.name.toLowerCase().endsWith(".webm")
+        ? "video/webm"
+        : file.name.toLowerCase().endsWith(".mov")
+          ? "video/quicktime"
+          : file.name.toLowerCase().endsWith(".mp4")
+            ? "video/mp4"
+            : "");
+    if (!["video/mp4", "video/quicktime", "video/webm"].includes(inferred)) {
+      toast.error("Video must be an mp4, mov, or webm file.");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Video must be 50 MB or smaller.");
+      return;
+    }
+    const typed = file.type ? file : new File([file], file.name, { type: inferred });
+    setVideoFile(typed);
+    setVideoPreviewUrl(URL.createObjectURL(typed));
+    setRemoveVideo(false);
+  };
+
+  const clearSelectedVideo = () => {
+    setVideoFile(null);
+    setVideoPreviewUrl(null);
+  };
+
   const handleSave = handleSubmit(async (values) => {
     if (!banner && !imageFile) {
       toast.error("An image is required to create a new banner.");
       return;
     }
-    await onSubmit(values, imageFile ?? undefined);
+    const isOrder = values.position === "Order";
+    await onSubmit(
+      values,
+      imageFile ?? undefined,
+      isOrder ? (videoFile ?? undefined) : undefined,
+      isOrder ? removeVideo : false,
+    );
     onOpenChange(false);
   });
 
@@ -140,9 +200,11 @@ export function BannerFormDialog({
     : `Create ${entityLabel}`;
   const modalDescription = banner
     ? `Update ${entityLabel.toLowerCase()} details, schedule, and image.`
-    : lockedPosition
-      ? `Create a new ${entityLabel.toLowerCase()} image.`
-      : "Create a new promo or ads banner.";
+    : lockedPosition === "Order"
+      ? "Create an order waiting image. A video is optional."
+      : lockedPosition
+        ? `Create a new ${entityLabel.toLowerCase()} image.`
+        : "Create a new promo or ads banner.";
   const submitText = banner ? `Update ${entityLabel}` : `Create ${entityLabel}`;
 
   return (
@@ -300,6 +362,80 @@ export function BannerFormDialog({
             </p>
           )}
         </div>
+
+        {showVideo && (
+          <div className="space-y-2">
+            <Label>Video (optional)</Label>
+            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+              {videoPreviewUrl ? (
+                <div className="relative">
+                  <video
+                    src={videoPreviewUrl}
+                    className="h-32 w-full rounded object-cover"
+                    muted
+                    controls
+                    playsInline
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0"
+                    onClick={clearSelectedVideo}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : banner?.videoUrl && !removeVideo ? (
+                <div className="space-y-2">
+                  <video
+                    src={banner.videoUrl}
+                    className="h-32 w-full rounded object-cover"
+                    muted
+                    controls
+                    playsInline
+                  />
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRemoveVideo(true)}
+                    >
+                      Remove video
+                    </Button>
+                    <label className="inline-flex h-8 cursor-pointer items-center rounded-md border px-3 text-sm font-medium hover:bg-muted">
+                      Replace
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                        onChange={handleVideoChange}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 cursor-pointer">
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    {removeVideo ? "Video will be removed" : "Click to upload a video"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">MP4, MOV, or WebM, up to 50 MB</p>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                    onChange={handleVideoChange}
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Plays muted on the order waiting screen. The image stays as the poster.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="linkUrl">Link URL (optional)</Label>

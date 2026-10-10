@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Order, OrderHistoryEntry } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, User } from "lucide-react";
@@ -16,6 +17,48 @@ function formatTs(value?: string | null) {
         hour: "2-digit",
         minute: "2-digit",
     });
+}
+
+/** "2 hrs", "3 hrs and 20 min", "1 day, 2 hrs and 5 min". Null when the gap is zero or invalid. */
+function formatElapsed(from?: string | null, to?: string | null): string | null {
+    if (!from || !to) return null;
+    const start = new Date(from).getTime();
+    const end = new Date(to).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+    const ms = end - start;
+    if (ms <= 0) return null;
+    if (ms < 30_000) return "< 1 min";
+
+    const totalMinutes = Math.round(ms / 60_000);
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+    const parts: string[] = [];
+    if (days > 0) parts.push(days === 1 ? "1 day" : `${days} days`);
+    if (hours > 0) parts.push(hours === 1 ? "1 hr" : `${hours} hrs`);
+    if (minutes > 0) parts.push(`${minutes} min`);
+    if (parts.length === 0) return "< 1 min";
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+    return `${parts[0]}, ${parts[1]} and ${parts[2]}`;
+}
+
+function TimestampRow({ label, at }: { label: string; at?: string | null }) {
+    return (
+        <div className="flex justify-between gap-3 text-xs">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-medium tabular-nums text-right">{formatTs(at)}</span>
+        </div>
+    );
+}
+
+/** Full span from placement. Same-minute orders read as under a minute. */
+function orderLength(from?: string | null, to?: string | null): string | null {
+    if (!from || !to) return null;
+    const start = new Date(from).getTime();
+    const end = new Date(to).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+    return formatElapsed(from, to) ?? "< 1 min";
 }
 
 /** Terminal status label for the timestamps strip. */
@@ -45,6 +88,27 @@ export function OrderTimelineCard({ order, history }: Props) {
         )?.changedAt ??
         (terminalLabel(order.status) ? order.updatedAt : null);
     const terminal = terminalLabel(order.status);
+    const rows: { label: string; at: string }[] = [
+        { label: "Created", at: order.createdAt },
+    ];
+    if (confirmedAt) rows.push({ label: "Confirmed", at: confirmedAt });
+    if (terminal && terminalAt) rows.push({ label: terminal, at: terminalAt });
+    rows.push({ label: "Last Updated", at: order.updatedAt });
+    const finished = Boolean(terminal && terminalAt);
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (finished) return;
+        const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+        return () => window.clearInterval(timer);
+    }, [finished]);
+    const lengthEnd = finished ? terminalAt : new Date(now).toISOString();
+    const length = orderLength(order.createdAt, lengthEnd);
+    const lengthLabel =
+        order.status === "CANCELED"
+            ? "Canceled after"
+            : finished
+              ? "Completed in"
+              : "Open for";
 
     return (
         <Card>
@@ -57,26 +121,15 @@ export function OrderTimelineCard({ order, history }: Props) {
             <CardContent className="space-y-4 pt-1">
                 {/* Key timestamps — always visible, additive only */}
                 <div className="rounded-md border bg-muted/20 px-3 py-2 space-y-1.5">
-                    <div className="flex justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">Created</span>
-                        <span className="font-medium tabular-nums text-right">{formatTs(order.createdAt)}</span>
-                    </div>
-                    {confirmedAt && (
-                        <div className="flex justify-between gap-3 text-xs">
-                            <span className="text-muted-foreground">Confirmed</span>
-                            <span className="font-medium tabular-nums text-right">{formatTs(confirmedAt)}</span>
+                    {rows.map((row) => (
+                        <TimestampRow key={`${row.label}-${row.at}`} label={row.label} at={row.at} />
+                    ))}
+                    {length ? (
+                        <div className="flex justify-between gap-3 border-t pt-1.5 text-xs">
+                            <span className="text-muted-foreground">{lengthLabel}</span>
+                            <span className="font-semibold text-primary">{length}</span>
                         </div>
-                    )}
-                    {terminal && terminalAt && (
-                        <div className="flex justify-between gap-3 text-xs">
-                            <span className="text-muted-foreground">{terminal}</span>
-                            <span className="font-medium tabular-nums text-right">{formatTs(terminalAt)}</span>
-                        </div>
-                    )}
-                    <div className="flex justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">Last Updated</span>
-                        <span className="font-medium tabular-nums text-right">{formatTs(order.updatedAt)}</span>
-                    </div>
+                    ) : null}
                 </div>
 
                 {history.length > 0 ? (

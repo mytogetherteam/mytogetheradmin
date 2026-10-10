@@ -853,7 +853,10 @@ export default function Broadcast() {
 
               <div className="space-y-2">
                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Message Body
+                  Message Body{" "}
+                  <span className="normal-case text-[10px] text-muted-foreground/70">
+                    (optional)
+                  </span>
                 </label>
                 <Textarea
                   placeholder="Enter message content..."
@@ -1090,8 +1093,8 @@ export default function Broadcast() {
                         {h.title}
                       </TableCell>
                       <TableCell className="max-w-xs">
-                        <p className="text-xs truncate" title={h.message}>
-                          {h.message}
+                        <p className="text-xs truncate" title={h.message || undefined}>
+                          {h.message?.trim() ? h.message : "—"}
                         </p>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">

@@ -244,6 +244,11 @@ export function BannersTab({
                                     banner.descriptionTh}
                                 </p>
                               )}
+                              {banner.videoUrl && (
+                                <p className="text-xs text-muted-foreground">
+                                  Includes video
+                                </p>
+                              )}
                             </div>
                           </TableCell>
                           {showAll && (

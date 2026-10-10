@@ -125,22 +125,34 @@ export function useBannerManagement(
   }, []);
 
   const handleSubmit = useCallback(
-    async (values: BannerFormValues, imageFile?: File) => {
+    async (
+      values: BannerFormValues,
+      imageFile?: File,
+      videoFile?: File,
+      removeVideo?: boolean,
+    ) => {
       const parsed = bannerFormSchema.safeParse(values);
       if (!parsed.success) {
         toast.error(parsed.error.issues[0]?.message ?? "Invalid banner data");
         return;
       }
+      const orderVideo = parsed.data.position === "Order";
       if (editingBanner) {
         await updateBanner({
           id: editingBanner.id,
           values: parsed.data,
           imageFile,
+          videoFile: orderVideo ? videoFile : undefined,
+          removeVideo: orderVideo ? removeVideo : Boolean(editingBanner.videoUrl),
         });
         return;
       }
       if (!imageFile) return;
-      await createBanner({ values: parsed.data, imageFile });
+      await createBanner({
+        values: parsed.data,
+        imageFile,
+        videoFile: orderVideo ? videoFile : undefined,
+      });
     },
     [createBanner, editingBanner, updateBanner],
   );
