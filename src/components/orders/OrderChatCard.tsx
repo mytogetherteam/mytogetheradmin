@@ -27,6 +27,9 @@ import {
     Mic,
     Phone,
     PhoneMissed,
+    ExternalLink,
+    Globe,
+    MapPin,
 } from "lucide-react";
 
 interface OrderChatCardProps {
@@ -236,6 +239,200 @@ function AudioPlayer({
                     </span>
                 </div>
             </div>
+        </div>
+    );
+}
+
+const URL_REGEX = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s]|www\.[^\s<]+[^<.,:;"')\]\s])/gi;
+
+function parseTextWithLinks(text: string) {
+    const parts: { type: "text" | "link"; content: string; url?: string }[] = [];
+    let lastIndex = 0;
+    URL_REGEX.lastIndex = 0;
+    const matches = Array.from(text.matchAll(URL_REGEX));
+
+    if (matches.length === 0) {
+        return [{ type: "text" as const, content: text }];
+    }
+
+    for (const match of matches) {
+        const matchIndex = match.index ?? 0;
+        if (matchIndex > lastIndex) {
+            parts.push({
+                type: "text" as const,
+                content: text.slice(lastIndex, matchIndex),
+            });
+        }
+        const rawUrl = match[0];
+        const href =
+            rawUrl.startsWith("http://") || rawUrl.startsWith("https://")
+                ? rawUrl
+                : `https://${rawUrl}`;
+        parts.push({
+            type: "link" as const,
+            content: rawUrl,
+            url: href,
+        });
+        lastIndex = matchIndex + rawUrl.length;
+    }
+
+    if (lastIndex < text.length) {
+        parts.push({
+            type: "text" as const,
+            content: text.slice(lastIndex),
+        });
+    }
+
+    return parts;
+}
+
+function extractUrls(text: string): string[] {
+    URL_REGEX.lastIndex = 0;
+    const matches = text.match(URL_REGEX);
+    if (!matches) return [];
+    return Array.from(new Set(matches)).map((u) =>
+        u.startsWith("http://") || u.startsWith("https://") ? u : `https://${u}`
+    );
+}
+
+function getDomainFromUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+        return parsed.hostname.replace(/^www\./, "");
+    } catch {
+        return url;
+    }
+}
+
+/** Messenger-style Link Preview Card */
+function MessengerLinkPreview({
+    url,
+    variant = "customer",
+}: {
+    url: string;
+    variant?: "customer" | "shop" | "system";
+}) {
+    const domain = getDomainFromUrl(url);
+    const isShop = variant === "shop";
+    const isMaps = domain.includes("google") && (url.includes("maps") || url.includes("goo.gl"));
+
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={`mt-2 block rounded-xl overflow-hidden border transition-all duration-200 group/preview shadow-xs ${
+                isShop
+                    ? "bg-black/20 hover:bg-black/30 border-white/25 text-white"
+                    : variant === "system"
+                    ? "bg-white/90 dark:bg-zinc-800/90 hover:bg-white dark:hover:bg-zinc-800 border-border/80 hover:border-sky-500/50 hover:shadow-md text-foreground"
+                    : "bg-slate-50/90 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-900 border-slate-200 dark:border-zinc-700/80 hover:border-sky-500/50 hover:shadow-md text-foreground"
+            }`}
+        >
+            <div className="p-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            isShop
+                                ? "bg-white/20 text-white"
+                                : isMaps
+                                ? "bg-pink-500/10 text-pink-600 dark:text-pink-400"
+                                : "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                        }`}
+                    >
+                        {isMaps ? <MapPin className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                            <span
+                                className={`text-xs font-semibold truncate ${
+                                    isShop ? "text-white" : "text-foreground"
+                                }`}
+                            >
+                                {isMaps ? "Google Maps Location" : domain}
+                            </span>
+                            <span
+                                className={`text-[10px] uppercase font-mono px-1 rounded ${
+                                    isShop
+                                        ? "bg-white/15 text-white/90"
+                                        : "bg-muted text-muted-foreground"
+                                }`}
+                            >
+                                Link
+                            </span>
+                        </div>
+                        <p
+                            className={`text-[11px] truncate mt-0.5 ${
+                                isShop ? "text-white/80" : "text-muted-foreground"
+                            }`}
+                        >
+                            {url}
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    className={`p-1.5 rounded-md shrink-0 transition-transform group-hover/preview:translate-x-0.5 ${
+                        isShop
+                            ? "text-white/80 group-hover/preview:text-white"
+                            : "text-muted-foreground group-hover/preview:text-sky-600 dark:group-hover/preview:text-sky-400"
+                    }`}
+                >
+                    <ExternalLink className="h-4 w-4" />
+                </div>
+            </div>
+        </a>
+    );
+}
+
+/** Messenger-style Text Content with Auto-Linking and Link Preview */
+function ChatMessageContent({
+    content,
+    variant = "customer",
+}: {
+    content: string;
+    variant?: "customer" | "shop" | "system";
+}) {
+    const isShop = variant === "shop";
+    const parts = useMemo(() => parseTextWithLinks(content), [content]);
+    const detectedUrls = useMemo(() => extractUrls(content), [content]);
+
+    return (
+        <div className="space-y-1">
+            <p className="whitespace-pre-wrap leading-relaxed select-text text-sm">
+                {parts.map((part, index) => {
+                    if (part.type === "link" && part.url) {
+                        return (
+                            <a
+                                key={index}
+                                href={part.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className={`inline-flex items-baseline gap-0.5 break-all transition-colors ${
+                                    isShop
+                                        ? "text-white underline underline-offset-2 decoration-white/70 hover:decoration-white font-semibold"
+                                        : "text-sky-600 dark:text-sky-400 underline underline-offset-2 hover:text-sky-700 dark:hover:text-sky-300 font-semibold"
+                                }`}
+                            >
+                                <span>{part.content}</span>
+                                <ExternalLink className="h-3 w-3 inline shrink-0 self-center opacity-85 ml-0.5" />
+                            </a>
+                        );
+                    }
+                    return <span key={index}>{part.content}</span>;
+                })}
+            </p>
+
+            {/* Messenger-style Link Preview Cards */}
+            {detectedUrls.length > 0 && (
+                <div className="pt-0.5 space-y-1.5">
+                    {detectedUrls.slice(0, 3).map((url, i) => (
+                        <MessengerLinkPreview key={i} url={url} variant={variant} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -533,9 +730,10 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                     {/* Content Card: Gray Glass Style */}
                                                     <div className="w-full bg-slate-100/75 dark:bg-zinc-800/60 backdrop-blur-md border border-slate-200/90 dark:border-zinc-700/70 rounded-2xl p-3.5 shadow-sm space-y-2">
                                                         {msg.content && (
-                                                            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed select-text text-center sm:text-left">
-                                                                {msg.content}
-                                                            </p>
+                                                            <ChatMessageContent
+                                                                content={msg.content}
+                                                                variant="system"
+                                                            />
                                                         )}
 
                                                         {/* Attachments Section */}
@@ -627,9 +825,10 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                     >
                                                         {/* Text Content */}
                                                         {msg.content && (
-                                                            <p className="whitespace-pre-wrap leading-relaxed select-text">
-                                                                {msg.content}
-                                                            </p>
+                                                            <ChatMessageContent
+                                                                content={msg.content}
+                                                                variant={isCustomer ? "customer" : "shop"}
+                                                            />
                                                         )}
 
                                                         {/* Attachments Section */}

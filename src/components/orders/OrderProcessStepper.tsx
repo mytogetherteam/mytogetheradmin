@@ -26,7 +26,6 @@ interface StepDefinition {
     key: string;
     aliasKeys?: string[];
     name: string;
-    nameMm?: string;
     description: string;
     icon: React.ComponentType<{ className?: string }>;
 }
@@ -35,7 +34,6 @@ const DELIVERY_STEPS: StepDefinition[] = [
     {
         key: "PENDING",
         name: "Order Placed",
-        nameMm: "စတင်မှာယူထားသည်",
         description: "Customer placed the order",
         icon: ShoppingBag,
     },
@@ -43,7 +41,6 @@ const DELIVERY_STEPS: StepDefinition[] = [
         key: "PAYMENT_SLIP_REQUESTED",
         aliasKeys: ["CONFIRMED", "ACCEPTED"],
         name: "Slip Requested",
-        nameMm: "ငွေလွှဲပြေစာတောင်းဆိုထားသည်",
         description: "Waiting for payment slip",
         icon: Receipt,
     },
@@ -51,14 +48,12 @@ const DELIVERY_STEPS: StepDefinition[] = [
         key: "AWAITING_APPROVAL",
         aliasKeys: ["PAYMENT_UPLOADED"],
         name: "Under Review",
-        nameMm: "ပြေစာစိစစ်ဆဲ",
         description: "Slip submitted for verification",
         icon: Clock,
     },
     {
         key: "PAYMENT_VERIFIED",
         name: "Payment Verified",
-        nameMm: "ငွေပေးချေမှုအတည်ပြုပြီး",
         description: "Payment approved by shop/admin",
         icon: CheckCircle2,
     },
@@ -66,7 +61,6 @@ const DELIVERY_STEPS: StepDefinition[] = [
         key: "COOKING",
         aliasKeys: ["PREPARING"],
         name: "Preparing Food",
-        nameMm: "ပြင်ဆင်ချက်ပြုတ်နေသည်",
         description: "Kitchen is preparing items",
         icon: ChefHat,
     },
@@ -74,7 +68,6 @@ const DELIVERY_STEPS: StepDefinition[] = [
         key: "READY_FOR_PICKUP",
         aliasKeys: ["READY"],
         name: "Ready for Pickup",
-        nameMm: "အဆင်သင့်ဖြစ်ပြီ",
         description: "Order packed and ready",
         icon: PackageCheck,
     },
@@ -82,14 +75,12 @@ const DELIVERY_STEPS: StepDefinition[] = [
         key: "ON_THE_WAY",
         aliasKeys: ["DELIVERING"],
         name: "On The Way",
-        nameMm: "ပို့ဆောင်နေသည်",
         description: "Rider delivering to customer",
         icon: Bike,
     },
     {
         key: "DELIVERED",
         name: "Delivered",
-        nameMm: "ပို့ဆောင်ပြီးစီး",
         description: "Order successfully delivered",
         icon: CheckCheck,
     },
@@ -99,7 +90,6 @@ const PICKUP_STEPS: StepDefinition[] = [
     {
         key: "PENDING",
         name: "Order Placed",
-        nameMm: "စတင်မှာယူထားသည်",
         description: "Customer placed the order",
         icon: ShoppingBag,
     },
@@ -107,7 +97,6 @@ const PICKUP_STEPS: StepDefinition[] = [
         key: "PAYMENT_SLIP_REQUESTED",
         aliasKeys: ["CONFIRMED", "ACCEPTED"],
         name: "Slip Requested",
-        nameMm: "ငွေလွှဲပြေစာတောင်းဆိုထားသည်",
         description: "Waiting for payment slip",
         icon: Receipt,
     },
@@ -115,14 +104,12 @@ const PICKUP_STEPS: StepDefinition[] = [
         key: "AWAITING_APPROVAL",
         aliasKeys: ["PAYMENT_UPLOADED"],
         name: "Under Review",
-        nameMm: "ပြေစာစိစစ်ဆဲ",
         description: "Slip submitted for verification",
         icon: Clock,
     },
     {
         key: "PAYMENT_VERIFIED",
         name: "Payment Verified",
-        nameMm: "ငွေပေးချေမှုအတည်ပြုပြီး",
         description: "Payment approved by shop/admin",
         icon: CheckCircle2,
     },
@@ -130,7 +117,6 @@ const PICKUP_STEPS: StepDefinition[] = [
         key: "COOKING",
         aliasKeys: ["PREPARING"],
         name: "Preparing Food",
-        nameMm: "ပြင်ဆင်ချက်ပြုတ်နေသည်",
         description: "Kitchen is preparing items",
         icon: ChefHat,
     },
@@ -138,14 +124,12 @@ const PICKUP_STEPS: StepDefinition[] = [
         key: "READY_FOR_PICKUP",
         aliasKeys: ["READY"],
         name: "Ready for Pickup",
-        nameMm: "အဆင်သင့်ဖြစ်ပြီ",
         description: "Order packed and ready",
         icon: PackageCheck,
     },
     {
         key: "PICKED_UP",
         name: "Picked Up",
-        nameMm: "ယူဆောင်ပြီးစီး",
         description: "Collected by customer",
         icon: CheckCheck,
     },
@@ -405,21 +389,7 @@ export function OrderProcessStepper({ order, history = [] }: Props) {
                                             {step.name}
                                         </p>
 
-                                        {/* Myanmar Subtitle */}
-                                        {step.nameMm && (
-                                            <span
-                                                className={`text-[10px] text-center max-w-[92px] leading-tight line-clamp-1 mt-0.5 ${
-                                                    isCurrent
-                                                        ? "text-pink-600 dark:text-pink-400 font-medium"
-                                                        : isCompleted
-                                                        ? "text-muted-foreground"
-                                                        : "text-muted-foreground/50"
-                                                }`}
-                                                title={step.nameMm}
-                                            >
-                                                {step.nameMm}
-                                            </span>
-                                        )}
+
 
                                         {/* Timestamp if reached */}
                                         {formattedTime && (
