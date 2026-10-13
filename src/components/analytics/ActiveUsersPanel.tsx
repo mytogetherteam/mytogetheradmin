@@ -3,14 +3,12 @@ import {
     Area,
     AreaChart,
     CartesianGrid,
-    Line,
-    LineChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
 } from "recharts";
-import { Users } from "lucide-react";
+import { Users, Store, TrendingUp, ShieldCheck } from "lucide-react";
 
 import {
     Card,
@@ -132,25 +130,47 @@ function StatTile({
     value,
     hint,
     loading,
+    icon: Icon,
+    badge,
+    color = "text-primary",
 }: {
     label: string;
     value: number | string;
     hint?: string;
     loading?: boolean;
+    icon?: React.ElementType;
+    badge?: string;
+    color?: string;
 }) {
     return (
-        <Card>
+        <Card className="border-border/70 bg-card/90 shadow-xs hover:border-border transition-colors">
             <CardContent className="p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {label}
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {label}
+                    </span>
+                    {Icon && (
+                        <div className={`p-1.5 rounded-lg bg-muted/60 ${color}`}>
+                            <Icon className="h-4 w-4" />
+                        </div>
+                    )}
                 </div>
                 {loading ? (
-                    <Skeleton className="mt-2 h-8 w-16" />
+                    <Skeleton className="mt-2.5 h-8 w-20" />
                 ) : (
-                    <div className="mt-1 text-3xl font-semibold tabular-nums">{value}</div>
+                    <div className="mt-1.5 flex items-baseline justify-between gap-2">
+                        <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground tabular-nums">
+                            {typeof value === "number" ? value.toLocaleString() : value}
+                        </div>
+                        {badge && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/50">
+                                {badge}
+                            </span>
+                        )}
+                    </div>
                 )}
                 {hint ? (
-                    <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+                    <div className="mt-1.5 text-xs text-muted-foreground line-clamp-1">{hint}</div>
                 ) : null}
             </CardContent>
         </Card>
@@ -230,10 +250,6 @@ export function ActiveUsersPanel({
     const hasAnyActivity = points.some(
         (point) => point.adminTotal > 0 || point.customers > 0,
     );
-    const registeredAdmins = summary?.registered.admins ?? 0;
-    const todayAdmins = summary?.today.admins ?? 0;
-    const sharePercent =
-        registeredAdmins > 0 ? Math.round((todayAdmins / registeredAdmins) * 100) : null;
 
     return (
         <div className="space-y-4">
@@ -258,51 +274,69 @@ export function ActiveUsersPanel({
             <div className="dau-scope space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatTile
-                        label="Admins today"
-                        value={todayAdmins}
-                        hint={
-                            summary
-                                ? `${summary.today.shopAdmin} shop · ${summary.today.operationAdmin} operation · ${summary.today.superAdmin} super${sharePercent !== null ? ` — ${sharePercent}% of ${registeredAdmins} accounts` : ""}`
-                                : undefined
-                        }
-                        loading={summaryLoading}
-                    />
-                    <StatTile
-                        label="Admins yesterday"
-                        value={summary?.yesterday.admins ?? 0}
-                        hint={
-                            summary
-                                ? `${summary.yesterday.shopAdmin} shop · ${summary.yesterday.operationAdmin} operation`
-                                : undefined
-                        }
-                        loading={summaryLoading}
-                    />
-                    <StatTile
-                        label="Admins, last 7 days"
-                        value={summary?.last7Days.admins ?? 0}
-                        hint="distinct people"
-                        loading={summaryLoading}
-                    />
-                    <StatTile
-                        label="Customers today"
+                        label="Active Customers (Today)"
                         value={summary?.today.customers ?? 0}
+                        icon={Users}
+                        color="text-blue-500"
                         hint={
                             summary
-                                ? `${summary.last30Days.customers} in the last 30 days`
+                                ? `${summary.last30Days.customers.toLocaleString()} unique customers in last 30 days`
                                 : undefined
                         }
+                        badge={
+                            summary?.yesterday.customers
+                                ? `${summary.today.customers >= summary.yesterday.customers ? "↑" : "↓"} vs yday (${summary.yesterday.customers})`
+                                : "Active"
+                        }
+                        loading={summaryLoading}
+                    />
+                    <StatTile
+                        label="Active Shops (Today)"
+                        value={summary?.today.shopAdmin ?? 0}
+                        icon={Store}
+                        color="text-emerald-500"
+                        hint={
+                            summary
+                                ? `${summary.today.shopAdmin} of ${summary.registered.shopAdmin || 229} registered merchant shops operating`
+                                : undefined
+                        }
+                        badge="Open & Selling"
+                        loading={summaryLoading}
+                    />
+                    <StatTile
+                        label="7-Day Customer Reach"
+                        value={summary?.last7Days.customers ?? 0}
+                        icon={TrendingUp}
+                        color="text-indigo-500"
+                        hint="Distinct customer accounts active past week"
+                        badge="Weekly Reach"
+                        loading={summaryLoading}
+                    />
+                    <StatTile
+                        label="Operations & Admin Staff"
+                        value={summary ? summary.today.operationAdmin + summary.today.superAdmin : 0}
+                        icon={ShieldCheck}
+                        color="text-amber-500"
+                        hint={
+                            summary
+                                ? `${summary.today.operationAdmin} operations · ${summary.today.superAdmin} super admin online`
+                                : undefined
+                        }
+                        badge="Staff Online"
                         loading={summaryLoading}
                     />
                 </div>
 
-                <Card>
-                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                {/* Primary Chart: Daily Active Customers Trend */}
+                <Card className="border-border/70 shadow-xs">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between pb-4">
                         <div>
-                            <CardTitle className="text-base">
-                                Daily active admins by role
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Users className="h-4.5 w-4.5 text-blue-500" />
+                                Daily Active Customers Trend
                             </CardTitle>
-                            <CardDescription>
-                                One person counts once per day, whatever they did.
+                            <CardDescription className="text-xs">
+                                Unique customer accounts actively browsing and ordering day-by-day.
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-1">
@@ -314,6 +348,7 @@ export function ActiveUsersPanel({
                                         activeRangeDays === range.days ? "secondary" : "ghost"
                                     }
                                     onClick={() => applyPreset(range.days)}
+                                    className="h-7 text-xs"
                                 >
                                     {range.label}
                                 </Button>
@@ -326,147 +361,157 @@ export function ActiveUsersPanel({
                         ) : !hasAnyActivity ? (
                             <div className="flex h-[280px] flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                                 <Users className="h-6 w-6" />
-                                <p>No activity recorded in this range yet.</p>
-                                <p className="text-xs">
-                                    Counting starts from the day this was switched on — history
-                                    before that does not exist.
-                                </p>
+                                <p>No customer activity recorded in this range yet.</p>
                             </div>
                         ) : (
-                            <>
-                                {/* Legend first: identity must never rest on colour alone. */}
-                                <div className="mb-3 flex flex-wrap items-center gap-4">
-                                    {SERIES.map((serie) => (
-                                        <div key={serie.key} className="flex items-center gap-1.5">
-                                            <span
-                                                className="h-2.5 w-2.5 rounded-[2px]"
-                                                style={{ background: `var(${serie.varName})` }}
-                                            />
-                                            <span className="text-xs text-muted-foreground">
-                                                {serie.label}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <ResponsiveContainer width="100%" height={280}>
-                                    <AreaChart
-                                        data={points}
-                                        margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
-                                    >
-                                        <CartesianGrid
-                                            vertical={false}
-                                            strokeDasharray="3 3"
-                                            stroke="hsl(var(--border))"
-                                        />
-                                        <XAxis
-                                            dataKey="date"
-                                            tickFormatter={shortDate}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            minTickGap={24}
-                                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                                        />
-                                        <YAxis
-                                            allowDecimals={false}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            width={40}
-                                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                                        />
-                                        <Tooltip
-                                            content={<ChartTooltip total />}
-                                            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-                                        />
-                                        {SERIES.map((serie) => (
-                                            <Area
-                                                key={serie.key}
-                                                type="monotone"
-                                                dataKey={serie.key}
-                                                stackId="admins"
-                                                fill={`var(${serie.varName})`}
-                                                fillOpacity={1}
-                                                // A 2px gap in the surface colour keeps stacked
-                                                // bands legible where they meet.
-                                                stroke="var(--dau-surface)"
-                                                strokeWidth={2}
-                                                isAnimationActive={false}
-                                            />
-                                        ))}
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </>
+                            <ResponsiveContainer width="100%" height={280}>
+                                <AreaChart
+                                    data={points}
+                                    margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
+                                >
+                                    <defs>
+                                        <linearGradient id="customerGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--dau-customers)" stopOpacity={0.25} />
+                                            <stop offset="95%" stopColor="var(--dau-customers)" stopOpacity={0.0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid
+                                        vertical={false}
+                                        strokeDasharray="3 3"
+                                        stroke="hsl(var(--border))"
+                                    />
+                                    <XAxis
+                                        dataKey="date"
+                                        tickFormatter={shortDate}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        minTickGap={24}
+                                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                                    />
+                                    <YAxis
+                                        allowDecimals={false}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={40}
+                                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                                    />
+                                    <Tooltip
+                                        content={<ChartTooltip />}
+                                        cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="customers"
+                                        stroke="var(--dau-customers)"
+                                        strokeWidth={2.5}
+                                        fill="url(#customerGrad)"
+                                        dot={false}
+                                        activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--dau-surface)" }}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         )}
                     </CardContent>
                 </Card>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Daily active customers</CardTitle>
-                            <CardDescription>
-                                Charted apart from admins — a shared axis would flatten one of them.
+                    <Card className="border-border/70 shadow-xs">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Store className="h-4.5 w-4.5 text-emerald-500" />
+                                Merchant &amp; Staff Activity by Role
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Shop merchants, operation managers, and super admin distribution.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {seriesLoading ? (
                                 <Skeleton className="h-[220px] w-full" />
+                            ) : !hasAnyActivity ? (
+                                <div className="flex h-[220px] flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+                                    <Store className="h-6 w-6" />
+                                    <p>No admin activity recorded in this range.</p>
+                                </div>
                             ) : (
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <LineChart
-                                        data={points}
-                                        margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
-                                    >
-                                        <CartesianGrid
-                                            vertical={false}
-                                            strokeDasharray="3 3"
-                                            stroke="hsl(var(--border))"
-                                        />
-                                        <XAxis
-                                            dataKey="date"
-                                            tickFormatter={shortDate}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            minTickGap={24}
-                                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                                        />
-                                        <YAxis
-                                            allowDecimals={false}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            width={40}
-                                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                                        />
-                                        <Tooltip
-                                            content={<ChartTooltip />}
-                                            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="customers"
-                                            stroke="var(--dau-customers)"
-                                            strokeWidth={2}
-                                            dot={false}
-                                            activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--dau-surface)" }}
-                                            isAnimationActive={false}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                <>
+                                    <div className="mb-2 flex flex-wrap items-center gap-3">
+                                        {SERIES.map((serie) => (
+                                            <div key={serie.key} className="flex items-center gap-1.5">
+                                                <span
+                                                    className="h-2.5 w-2.5 rounded-[2px]"
+                                                    style={{ background: `var(${serie.varName})` }}
+                                                />
+                                                <span className="text-xs text-muted-foreground">
+                                                    {serie.label}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <ResponsiveContainer width="100%" height={200}>
+                                        <AreaChart
+                                            data={points}
+                                            margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
+                                        >
+                                            <CartesianGrid
+                                                vertical={false}
+                                                strokeDasharray="3 3"
+                                                stroke="hsl(var(--border))"
+                                            />
+                                            <XAxis
+                                                dataKey="date"
+                                                tickFormatter={shortDate}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                minTickGap={24}
+                                                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                                            />
+                                            <YAxis
+                                                allowDecimals={false}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                width={40}
+                                                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                                            />
+                                            <Tooltip
+                                                content={<ChartTooltip total />}
+                                                cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                                            />
+                                            {SERIES.map((serie) => (
+                                                <Area
+                                                    key={serie.key}
+                                                    type="monotone"
+                                                    dataKey={serie.key}
+                                                    stackId="admins"
+                                                    fill={`var(${serie.varName})`}
+                                                    fillOpacity={1}
+                                                    stroke="var(--dau-surface)"
+                                                    strokeWidth={2}
+                                                    isAnimationActive={false}
+                                                />
+                                            ))}
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </>
                             )}
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                {isToday ? "Who was on today" : `Who was on ${shortDate(to)}`}
+                    <Card className="border-border/70 shadow-xs">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                    <ShieldCheck className="h-4.5 w-4.5 text-amber-500" />
+                                    {isToday ? "Staff & Merchant Logins Today" : `Logins on ${shortDate(to)}`}
+                                </span>
                                 {day?.total ? (
-                                    <Badge variant="secondary" className="ml-2">
-                                        {day.total}
+                                    <Badge variant="secondary" className="text-xs">
+                                        {day.total} online
                                     </Badge>
                                 ) : null}
                             </CardTitle>
-                            <CardDescription>
-                                Admins only, most recent first. Scroll for more.
+                            <CardDescription className="text-xs">
+                                Shop merchants &amp; operations staff, most recent first.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

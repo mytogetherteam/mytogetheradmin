@@ -101,6 +101,11 @@ export interface ExtendedDashboardStats {
     }>;
   };
   topSearches: Array<{ term: string; count: number }>;
+  userRegistrationStats?: {
+    total: number;
+    phoneCount: number;
+    googleCount: number;
+  };
 }
 
 export interface FeatureUsageData {

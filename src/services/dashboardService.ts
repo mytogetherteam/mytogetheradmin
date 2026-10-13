@@ -7,7 +7,9 @@ export type DashboardCardKey =
   | 'totalReviews'
   | 'pendingOrders'
   | 'shopPendingCount'
-  | 'shopFeedbackCount';
+  | 'shopFeedbackCount'
+  | 'phoneUsers'
+  | 'googleUsers';
 
 export interface DashboardCard {
   key: DashboardCardKey;
