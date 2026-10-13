@@ -716,6 +716,21 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                         <div ref={messagesEndRef} />
                     </div>
 
+                    {/* System Admin Notice Banner */}
+                    <div className="px-3.5 py-1.5 bg-slate-100/90 dark:bg-zinc-800/80 border-t border-border/40 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <img
+                                src="/logo-mytogether.jpg"
+                                alt="myTogether"
+                                className="h-4 w-4 rounded-full object-cover shrink-0 ring-1 ring-border/50"
+                            />
+                            <span>Sending as <strong className="text-pink-600 dark:text-pink-400 font-semibold">System Admin</strong></span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                            Delivered to customer & shop
+                        </span>
+                    </div>
+
                     {/* Attachment Previews */}
                     {filePreviewUrls.length > 0 && (
                         <div className="px-4 py-2 border-t border-border/40 bg-muted/30 flex items-center gap-2 overflow-x-auto">
@@ -723,18 +738,32 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                 <div key={idx} className="relative group shrink-0">
                                     <img
                                         src={url}
-                                        alt="Preview"
-                                        className="h-14 w-14 rounded-lg object-cover border border-border"
+                                        alt={selectedFiles[idx]?.name || "Preview"}
+                                        className="h-14 w-14 rounded-lg object-cover border border-border shadow-xs"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => removeFile(idx)}
                                         className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full p-0.5 shadow hover:scale-110 transition-transform"
+                                        title="Remove attachment"
                                     >
                                         <X className="h-3 w-3" />
                                     </button>
+                                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] px-1 truncate rounded-b-lg text-center">
+                                        {selectedFiles[idx]?.name}
+                                    </span>
                                 </div>
                             ))}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-14 w-14 border border-dashed border-border rounded-lg flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground shrink-0"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <ImageIcon className="h-4 w-4 mb-0.5" />
+                                <span className="text-[9px]">+Add</span>
+                            </Button>
                         </div>
                     )}
 
@@ -746,7 +775,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="image/*,audio/*"
+                            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,audio/*"
                             multiple
                             className="hidden"
                             onChange={handleFileSelect}
@@ -756,15 +785,20 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:border-pink-500/50"
+                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:border-pink-500/50 relative"
                             onClick={() => fileInputRef.current?.click()}
-                            title="Attach images or audio"
+                            title="Attach images to send as System Admin"
                         >
                             <ImageIcon className="h-4 w-4" />
+                            {selectedFiles.length > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                                    {selectedFiles.length}
+                                </span>
+                            )}
                         </Button>
 
                         <Input
-                            placeholder="Type a message to customer or shop..."
+                            placeholder="Send message or upload image as System Admin..."
                             value={messageText}
                             onChange={(e) => setMessageText(e.target.value)}
                             className="flex-1 h-9 text-sm focus-visible:ring-pink-500"

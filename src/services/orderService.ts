@@ -313,24 +313,20 @@ class OrderService {
 
   /**
    * Retrieves chat conversation & messages for an order.
-   * Uses shop-chat endpoint directly when shopId is available to avoid 404s,
-   * falls back to admin endpoint if needed.
    */
   async getOrderChat(orderId: string | number, shopId?: number | string): Promise<OrderChatConversation> {
+    const headers: Record<string, string> = {};
     if (shopId) {
-      try {
-        return await apiClient.get<OrderChatConversation>(`/api/shop/chat/orders/${orderId}`, {
-          headers: { 'x-shop-id': String(shopId) },
-        });
-      } catch (err) {
-        console.warn('Shop chat endpoint failed, falling back to admin endpoint:', err);
-      }
+      headers['x-shop-id'] = String(shopId);
     }
-    return apiClient.get<OrderChatConversation>(config.endpoints.admin.orders.chat(orderId));
+    return apiClient.get<OrderChatConversation>(`/api/shop/chat/orders/${orderId}`, {
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+    });
   }
 
   /**
    * Send a chat message on an order as Admin / Shop.
+   * Sends directly to `/api/shop/chat/orders/:orderId/messages`.
    */
   async sendOrderChatMessage(
     orderId: string | number,
@@ -338,31 +334,30 @@ class OrderService {
     shopId?: number | string
   ): Promise<ChatMessage> {
     const hasFiles = payload.attachments && payload.attachments.length > 0;
-    let body: FormData | { content?: string };
+    let body: FormData | { content?: string; type?: string };
     if (hasFiles) {
       const fd = new FormData();
-      if (payload.content) fd.append('content', payload.content);
+      if (payload.content) {
+        fd.append('content', payload.content);
+        fd.append('type', 'MIXED');
+      } else {
+        fd.append('type', 'IMAGE');
+      }
       payload.attachments!.forEach((f) => fd.append('attachments', f));
       body = fd;
     } else {
-      body = { content: payload.content };
+      body = { content: payload.content, type: 'TEXT' };
     }
 
+    const headers: Record<string, string> = {};
     if (shopId) {
-      try {
-        return await apiClient.post<ChatMessage>(
-          `/api/shop/chat/orders/${orderId}/messages`,
-          body,
-          { headers: { 'x-shop-id': String(shopId) } }
-        );
-      } catch (err) {
-        console.warn('Shop chat send failed, falling back to admin endpoint:', err);
-      }
+      headers['x-shop-id'] = String(shopId);
     }
 
     return apiClient.post<ChatMessage>(
-      config.endpoints.admin.orders.chatMessages(orderId),
-      body
+      `/api/shop/chat/orders/${orderId}/messages`,
+      body,
+      Object.keys(headers).length > 0 ? { headers } : undefined
     );
   }
 }
