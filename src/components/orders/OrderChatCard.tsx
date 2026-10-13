@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Order } from "@/services/orderService";
 import { useOrderChat, useSendOrderChatMessageMutation } from "@/hooks/orders/useOrders";
+import { useOrderChatSocket } from "@/hooks/orders/useOrderChatSocket";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,6 +141,8 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
         refetch,
     } = useOrderChat(order.id, order.shopId);
 
+    const { connected: isWsConnected } = useOrderChatSocket(order.id, order.shopId);
+
     const sendMutation = useSendOrderChatMessageMutation(order.id, order.shopId);
 
     const [messageText, setMessageText] = useState("");
@@ -210,10 +213,30 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                     <CardTitle className="text-base font-semibold">
                                         Order Message Chat
                                     </CardTitle>
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    <span
+                                        className="relative flex h-2 w-2"
+                                        title={
+                                            isWsConnected
+                                                ? "Live WebSocket connected (instant updates)"
+                                                : "Auto-refreshing (polling every 4s)"
+                                        }
+                                    >
+                                        <span
+                                            className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                                                isWsConnected ? "bg-emerald-400" : "bg-amber-400"
+                                            } opacity-75`}
+                                        ></span>
+                                        <span
+                                            className={`relative inline-flex rounded-full h-2 w-2 ${
+                                                isWsConnected ? "bg-emerald-500" : "bg-amber-500"
+                                            }`}
+                                        ></span>
                                     </span>
+                                    {isWsConnected && (
+                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/50">
+                                            Live
+                                        </span>
+                                    )}
                                 </div>
                                 <CardDescription className="text-xs">
                                     Live conversation between customer ({order.userFullName || "Customer"}) and shop ({order.shopName})
@@ -260,15 +283,19 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                         ) : (
                             messages.map((msg, index) => {
                                 const isCustomer = msg.senderType === "USER";
-                                const isShop = msg.senderType === "SHOP";
-                                const isSystem = msg.senderType === "SYSTEM" || msg.type === "SYSTEM";
+                                const isAdminOrSystem = msg.senderType === "SYSTEM" || !!msg.senderAdmin;
+                                const isAutomatedNotice =
+                                    msg.type === "SYSTEM" &&
+                                    !msg.senderAdmin &&
+                                    (!msg.attachments || msg.attachments.length === 0);
+                                const isShop = !isCustomer && !isAdminOrSystem;
 
                                 const showDateDivider =
                                     index === 0 ||
                                     formatChatDate(msg.createdAt) !==
                                         formatChatDate(messages[index - 1]?.createdAt);
 
-                                if (isSystem) {
+                                if (isAutomatedNotice) {
                                     return (
                                         <div key={msg.id || index} className="space-y-2">
                                             {showDateDivider && (
@@ -334,23 +361,24 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                                 Customer
                                                             </span>
                                                         </>
-                                                    ) : (
+                                                    ) : isAdminOrSystem ? (
                                                         <>
-                                                            <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-1.5 py-0.2 rounded font-medium">
-                                                                {msg.senderAdmin ? "Admin / Support" : "Shop"}
+                                                            <span className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                                                <ShieldCheck className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                                                System
                                                             </span>
                                                             <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                {msg.senderAdmin ? (
-                                                                    <>
-                                                                        <ShieldCheck className="h-3 w-3 text-purple-600" />
-                                                                        {msg.senderAdmin.name || "Admin"}
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <Store className="h-3 w-3 text-amber-600" />
-                                                                        {order.shopName}
-                                                                    </>
-                                                                )}
+                                                                {msg.senderAdmin?.name ? `${msg.senderAdmin.name} (Admin)` : "System Support"}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">
+                                                                Shop
+                                                            </span>
+                                                            <span className="font-semibold text-foreground flex items-center gap-1">
+                                                                <Store className="h-3 w-3 text-amber-600" />
+                                                                {order.shopName}
                                                             </span>
                                                         </>
                                                     )}
@@ -361,7 +389,9 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                     className={`p-3 rounded-2xl shadow-sm text-sm break-words ${
                                                         isCustomer
                                                             ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm"
-                                                            : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm"
+                                                            : isAdminOrSystem
+                                                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-sm shadow-sm"
+                                                            : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm shadow-sm"
                                                     }`}
                                                 >
                                                     {/* Text Content */}
@@ -419,7 +449,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                         className={`flex items-center justify-end gap-1 text-[10px] mt-1.5 ${
                                                             isCustomer
                                                                 ? "text-muted-foreground"
-                                                                : "text-blue-100"
+                                                                : "text-white/80"
                                                         }`}
                                                     >
                                                         <span>{formatChatTime(msg.createdAt)}</span>
@@ -439,10 +469,18 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                             {/* Shop / Admin Avatar on the Right */}
                                             {!isCustomer && (
                                                 <Avatar className="h-7 w-7 ring-1 ring-border shrink-0">
-                                                    <AvatarImage src={order.shopImageUrl || undefined} />
-                                                    <AvatarFallback className="text-[11px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                                        {order.shopName?.charAt(0) || "S"}
-                                                    </AvatarFallback>
+                                                    {isAdminOrSystem ? (
+                                                        <div className="h-full w-full bg-purple-600 text-white flex items-center justify-center text-[11px] font-bold rounded-full">
+                                                            <ShieldCheck className="h-4 w-4" />
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <AvatarImage src={order.shopImageUrl || undefined} />
+                                                            <AvatarFallback className="text-[11px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                                {order.shopName?.charAt(0) || "S"}
+                                                            </AvatarFallback>
+                                                        </>
+                                                    )}
                                                 </Avatar>
                                             )}
                                         </div>

@@ -313,23 +313,20 @@ class OrderService {
 
   /**
    * Retrieves chat conversation & messages for an order.
-   * Tries admin-specific endpoint first, falls back to shop-chat endpoint.
+   * Uses shop-chat endpoint directly when shopId is available to avoid 404s,
+   * falls back to admin endpoint if needed.
    */
   async getOrderChat(orderId: string | number, shopId?: number | string): Promise<OrderChatConversation> {
-    try {
-      return await apiClient.get<OrderChatConversation>(config.endpoints.admin.orders.chat(orderId));
-    } catch (err) {
-      if (shopId) {
-        try {
-          return await apiClient.get<OrderChatConversation>(`/api/shop/chat/orders/${orderId}`, {
-            headers: { 'x-shop-id': String(shopId) },
-          });
-        } catch {
-          // Both endpoints failed, let fallback handling manage it
-        }
+    if (shopId) {
+      try {
+        return await apiClient.get<OrderChatConversation>(`/api/shop/chat/orders/${orderId}`, {
+          headers: { 'x-shop-id': String(shopId) },
+        });
+      } catch (err) {
+        console.warn('Shop chat endpoint failed, falling back to admin endpoint:', err);
       }
-      throw err;
     }
+    return apiClient.get<OrderChatConversation>(config.endpoints.admin.orders.chat(orderId));
   }
 
   /**
@@ -351,21 +348,22 @@ class OrderService {
       body = { content: payload.content };
     }
 
-    try {
-      return await apiClient.post<ChatMessage>(
-        config.endpoints.admin.orders.chatMessages(orderId),
-        body
-      );
-    } catch (err) {
-      if (shopId) {
+    if (shopId) {
+      try {
         return await apiClient.post<ChatMessage>(
           `/api/shop/chat/orders/${orderId}/messages`,
           body,
           { headers: { 'x-shop-id': String(shopId) } }
         );
+      } catch (err) {
+        console.warn('Shop chat send failed, falling back to admin endpoint:', err);
       }
-      throw err;
     }
+
+    return apiClient.post<ChatMessage>(
+      config.endpoints.admin.orders.chatMessages(orderId),
+      body
+    );
   }
 }
 
