@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Order, ChatAttachment } from "@/services/orderService";
 import { useOrderChat, useSendOrderChatMessageMutation } from "@/hooks/orders/useOrders";
+import { parseCallChat, describeCallChat } from "@/lib/callChat";
 import { useOrderChatSocket } from "@/hooks/orders/useOrderChatSocket";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
     Sparkles,
     AlertCircle,
     Mic,
+    Phone,
+    PhoneMissed,
 } from "lucide-react";
 
 interface OrderChatCardProps {
@@ -431,6 +434,46 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                     index === 0 ||
                                     formatChatDate(msg.createdAt) !==
                                         formatChatDate(sortedMessages[index - 1]?.createdAt);
+
+                                // Call outcome (missed / declined / ended 02:15 …) — centered pill like Messenger
+                                const callEvent = parseCallChat(msg.content);
+                                if (callEvent) {
+                                    const desc = describeCallChat(callEvent);
+                                    const missed = desc.tone === "missed";
+                                    return (
+                                        <div key={msg.id || index} className="space-y-2">
+                                            {showDateDivider && (
+                                                <div className="flex items-center justify-center my-2">
+                                                    <span className="text-[10px] bg-muted px-2.5 py-0.5 rounded-full text-muted-foreground uppercase tracking-wider font-medium">
+                                                        {formatChatDate(msg.createdAt)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center justify-center">
+                                                <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-100/80 dark:bg-zinc-800/70 backdrop-blur-md border border-slate-200/90 dark:border-zinc-700/70 shadow-sm">
+                                                    <span
+                                                        className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
+                                                            missed
+                                                                ? "bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400"
+                                                                : "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
+                                                        }`}
+                                                    >
+                                                        {missed ? <PhoneMissed className="h-3.5 w-3.5" /> : <Phone className="h-3.5 w-3.5" />}
+                                                    </span>
+                                                    <div className="leading-tight">
+                                                        <div className={`text-xs font-semibold ${missed ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                                                            {desc.title}
+                                                        </div>
+                                                        <div className="text-[11px] text-muted-foreground">{desc.subtitle}</div>
+                                                    </div>
+                                                    <span className="text-[10px] text-muted-foreground opacity-75 self-end">
+                                                        {formatChatTime(msg.createdAt)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
 
                                 if (isAutomatedNotice) {
                                     return (
