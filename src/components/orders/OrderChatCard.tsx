@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Order } from "@/services/orderService";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Order, ChatAttachment } from "@/services/orderService";
 import { useOrderChat, useSendOrderChatMessageMutation } from "@/hooks/orders/useOrders";
 import { useOrderChatSocket } from "@/hooks/orders/useOrderChatSocket";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import {
     X,
     Sparkles,
     AlertCircle,
+    Mic,
 } from "lucide-react";
 
 interface OrderChatCardProps {
@@ -62,10 +63,54 @@ function formatChatDate(dateString?: string) {
     });
 }
 
-function AudioPlayer({ url, duration }: { url: string; duration?: number | null }) {
+function formatSeconds(sec?: number | null) {
+    if (!sec || isNaN(sec) || !isFinite(sec)) return "0:00";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
+/** Check if attachment is an audio/voice note. */
+function isVoiceAttachment(att: ChatAttachment): boolean {
+    const typeStr = String(att.type || "").toUpperCase();
+    const mime = String(att.mimeType || "").toLowerCase();
+    const url = String(att.url || "").toLowerCase();
+    return (
+        typeStr === "VOICE" ||
+        typeStr === "AUDIO" ||
+        mime.startsWith("audio/") ||
+        mime === "video/mp4" ||
+        url.endsWith(".m4a") ||
+        url.endsWith(".mp3") ||
+        url.endsWith(".aac") ||
+        url.endsWith(".wav") ||
+        url.endsWith(".ogg")
+    );
+}
+
+/** Check if attachment is an image. */
+function isImageAttachment(att: ChatAttachment): boolean {
+    const typeStr = String(att.type || "").toUpperCase();
+    const mime = String(att.mimeType || "").toLowerCase();
+    return typeStr === "IMAGE" || mime.startsWith("image/");
+}
+
+/** Interactive voice message player with seeking, time display, and waveform effect. */
+function AudioPlayer({
+    url,
+    duration,
+    isOutgoing,
+}: {
+    url: string;
+    duration?: number | null;
+    isOutgoing?: boolean;
+}) {
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const progressBarRef = useRef<HTMLDivElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [totalDuration, setTotalDuration] = useState<number>(duration || 0);
+    const [hasError, setHasError] = useState(false);
 
     const togglePlay = () => {
         if (!audioRef.current) return;
@@ -73,60 +118,120 @@ function AudioPlayer({ url, duration }: { url: string; duration?: number | null 
             audioRef.current.pause();
             setIsPlaying(false);
         } else {
-            audioRef.current.play().catch(() => {});
-            setIsPlaying(true);
+            audioRef.current
+                .play()
+                .then(() => setIsPlaying(true))
+                .catch((err) => {
+                    console.warn("Audio play error, falling back:", err);
+                    setHasError(true);
+                });
         }
     };
 
     const handleTimeUpdate = () => {
         if (!audioRef.current) return;
-        const current = audioRef.current.currentTime;
-        const total = audioRef.current.duration || duration || 1;
-        setProgress((current / total) * 100);
+        setCurrentTime(audioRef.current.currentTime);
+        if (audioRef.current.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
+            setTotalDuration(audioRef.current.duration);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (!audioRef.current) return;
+        if (audioRef.current.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
+            setTotalDuration(audioRef.current.duration);
+        }
     };
 
     const handleEnded = () => {
         setIsPlaying(false);
-        setProgress(0);
+        setCurrentTime(0);
     };
 
-    const formatSeconds = (sec?: number | null) => {
-        if (!sec) return "0:00";
-        const m = Math.floor(sec / 60);
-        const s = Math.floor(sec % 60);
-        return `${m}:${s < 10 ? "0" : ""}${s}`;
+    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!progressBarRef.current || !audioRef.current) return;
+        const rect = progressBarRef.current.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const percent = Math.max(0, Math.min(1, clickX / rect.width));
+        const total = totalDuration || audioRef.current.duration || 1;
+        audioRef.current.currentTime = percent * total;
+        setCurrentTime(percent * total);
     };
+
+    const progressPercent = totalDuration > 0 ? Math.min(100, (currentTime / totalDuration) * 100) : 0;
+
+    if (hasError) {
+        return (
+            <div className={`p-2 rounded-xl text-xs flex items-center gap-2 ${
+                isOutgoing ? "bg-white/20 text-white" : "bg-muted/70 text-muted-foreground"
+            }`}>
+                <Volume2 className="h-4 w-4 shrink-0" />
+                <audio controls src={url} className="h-8 max-w-full" preload="metadata" />
+            </div>
+        );
+    }
 
     return (
-        <div className="flex items-center gap-2 bg-background/50 dark:bg-background/20 p-2 rounded-xl border border-border/40 max-w-xs">
+        <div
+            className={`flex items-center gap-2.5 p-2 px-3 rounded-xl max-w-xs transition-colors ${
+                isOutgoing
+                    ? "bg-white/15 hover:bg-white/20 border border-white/25 text-white"
+                    : "bg-slate-100 hover:bg-slate-200/80 dark:bg-zinc-700/60 dark:hover:bg-zinc-700 border border-border/50 text-foreground"
+            }`}
+        >
             <audio
                 ref={audioRef}
                 src={url}
                 onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
                 onEnded={handleEnded}
+                onError={() => setHasError(true)}
                 preload="metadata"
             />
-            <Button
+            <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full shrink-0"
                 onClick={togglePlay}
+                className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-transform active:scale-95 ${
+                    isOutgoing
+                        ? "bg-white text-pink-600 hover:bg-white/90"
+                        : "bg-gradient-to-r from-pink-500 to-orange-500 text-white hover:opacity-90"
+                }`}
+                aria-label={isPlaying ? "Pause voice note" : "Play voice note"}
             >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-            <div className="flex-1 space-y-1">
-                <div className="w-full bg-muted-foreground/20 h-1.5 rounded-full overflow-hidden">
+                {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
+            </button>
+
+            <div className="flex-1 min-w-[130px] space-y-1">
+                {/* Seekable Progress Bar */}
+                <div
+                    ref={progressBarRef}
+                    onClick={handleProgressClick}
+                    className={`w-full h-2 rounded-full overflow-hidden cursor-pointer relative group ${
+                        isOutgoing ? "bg-white/30" : "bg-muted-foreground/20"
+                    }`}
+                    title="Click to seek"
+                >
                     <div
-                        className="bg-primary h-full transition-all duration-100"
-                        style={{ width: `${progress}%` }}
+                        className={`h-full transition-all duration-100 rounded-full ${
+                            isOutgoing ? "bg-white" : "bg-gradient-to-r from-pink-500 to-orange-500"
+                        }`}
+                        style={{ width: `${progressPercent}%` }}
                     />
                 </div>
-                <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+
+                <div
+                    className={`flex justify-between items-center text-[10px] font-medium ${
+                        isOutgoing ? "text-white/90" : "text-muted-foreground"
+                    }`}
+                >
                     <span className="flex items-center gap-1">
-                        <Volume2 className="h-3 w-3" /> Voice Note
+                        <Mic className="h-3 w-3" /> Voice Note
                     </span>
-                    <span>{formatSeconds(duration)}</span>
+                    <span>
+                        {isPlaying || currentTime > 0
+                            ? `${formatSeconds(currentTime)} / ${formatSeconds(totalDuration)}`
+                            : formatSeconds(totalDuration)}
+                    </span>
                 </div>
             </div>
         </div>
@@ -151,16 +256,34 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const messages = chatData?.messages ?? [];
 
-    // Scroll to bottom when new messages arrive
+    // Chronological order: oldest messages at top, latest messages at the very bottom (like Messenger)
+    const sortedMessages = useMemo(() => {
+        return [...messages].sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            if (timeA !== timeB) return timeA - timeB;
+            return (a.id || 0) - (b.id || 0);
+        });
+    }, [messages]);
+
+    // Auto-scroll to bottom like Messenger when messages load or a new message arrives
     useEffect(() => {
-        if (messages.length > 0) {
+        if (sortedMessages.length > 0) {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
-    }, [messages.length]);
+    }, [sortedMessages.length]);
+
+    // Initial scroll to bottom on mount
+    useEffect(() => {
+        if (!isLoading && sortedMessages.length > 0) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        }
+    }, [isLoading]);
 
     // Handle file attachments preview
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,7 +328,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                 <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                            <div className="p-2 rounded-lg bg-gradient-to-r from-pink-500/15 to-orange-500/15 text-pink-600 dark:text-pink-400">
                                 <MessageSquare className="h-5 w-5" />
                             </div>
                             <div>
@@ -246,7 +369,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
 
                         <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs font-medium">
-                                {messages.length} {messages.length === 1 ? "message" : "messages"}
+                                {sortedMessages.length} {sortedMessages.length === 1 ? "message" : "messages"}
                             </Badge>
                             <Button
                                 variant="ghost"
@@ -263,17 +386,20 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                 </CardHeader>
 
                 <CardContent className="p-0 flex flex-col">
-                    {/* Chat Messages List */}
-                    <div className="p-4 space-y-4 max-h-[460px] min-h-[260px] overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/30">
+                    {/* Chat Messages List (Latest at bottom like Messenger) */}
+                    <div
+                        ref={messagesContainerRef}
+                        className="p-4 space-y-4 max-h-[460px] min-h-[260px] overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/30 flex flex-col"
+                    >
                         {isLoading ? (
                             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2">
-                                <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                                <RefreshCw className="h-6 w-6 animate-spin text-pink-500" />
                                 <p className="text-sm">Loading order messages...</p>
                             </div>
-                        ) : messages.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                                    <Sparkles className="h-6 w-6 text-primary" />
+                        ) : sortedMessages.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center my-auto">
+                                <div className="h-12 w-12 rounded-full bg-gradient-to-r from-pink-500/15 to-orange-500/15 flex items-center justify-center mb-3">
+                                    <Sparkles className="h-6 w-6 text-pink-500" />
                                 </div>
                                 <h4 className="text-sm font-semibold text-foreground">No Chat Messages Yet</h4>
                                 <p className="text-xs text-muted-foreground max-w-sm mt-1">
@@ -281,19 +407,31 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                 </p>
                             </div>
                         ) : (
-                            messages.map((msg, index) => {
-                                const isCustomer = msg.senderType === "USER";
-                                const isAdminOrSystem = msg.senderType === "SYSTEM" || !!msg.senderAdmin;
+                            sortedMessages.map((msg, index) => {
+                                // Strictly distinguish Admin / System from Customer
+                                const isAdminOrSystem =
+                                    msg.senderType === "SYSTEM" ||
+                                    msg.senderType === "ADMIN" ||
+                                    Boolean(msg.senderAdminId) ||
+                                    Boolean(msg.senderAdmin);
+
+                                const isCustomer =
+                                    !isAdminOrSystem &&
+                                    (msg.senderType === "USER" ||
+                                        Boolean(msg.senderUserId && !msg.senderAdminId));
+
+                                const isShop = !isAdminOrSystem && !isCustomer;
+
                                 const isAutomatedNotice =
-                                    msg.type === "SYSTEM" &&
+                                    (msg.type === "SYSTEM" || msg.senderType === "SYSTEM") &&
                                     !msg.senderAdmin &&
+                                    !msg.senderAdminId &&
                                     (!msg.attachments || msg.attachments.length === 0);
-                                const isShop = !isCustomer && !isAdminOrSystem;
 
                                 const showDateDivider =
                                     index === 0 ||
                                     formatChatDate(msg.createdAt) !==
-                                        formatChatDate(messages[index - 1]?.createdAt);
+                                        formatChatDate(sortedMessages[index - 1]?.createdAt);
 
                                 if (isAutomatedNotice) {
                                     return (
@@ -317,6 +455,9 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                         </div>
                                     );
                                 }
+
+                                const voiceAttachments = (msg.attachments || []).filter(isVoiceAttachment);
+                                const imageAttachments = (msg.attachments || []).filter(isImageAttachment);
 
                                 return (
                                     <div key={msg.id || index} className="space-y-1">
@@ -345,7 +486,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
 
                                             {/* Message Bubble Body */}
                                             <div
-                                                className={`flex flex-col max-w-[80%] md:max-w-[70%] space-y-1 ${
+                                                className={`flex flex-col max-w-[85%] md:max-w-[70%] space-y-1 ${
                                                     isCustomer ? "items-start" : "items-end"
                                                 }`}
                                             >
@@ -354,7 +495,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                     {isCustomer ? (
                                                         <>
                                                             <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                <UserIcon className="h-3 w-3" />
+                                                                <UserIcon className="h-3 w-3 text-sky-500" />
                                                                 {msg.senderUser?.name || order.userFullName || "Customer"}
                                                             </span>
                                                             <span className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300 px-1.5 py-0.2 rounded font-medium">
@@ -363,12 +504,12 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                         </>
                                                     ) : isAdminOrSystem ? (
                                                         <>
-                                                            <span className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                                                <ShieldCheck className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                                            <span className="text-[10px] bg-gradient-to-r from-pink-500/15 to-orange-500/15 text-pink-600 dark:text-pink-400 border border-pink-500/30 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                                                <ShieldCheck className="h-3 w-3 text-pink-500" />
                                                                 System
                                                             </span>
                                                             <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                {msg.senderAdmin?.name ? `${msg.senderAdmin.name} (Admin)` : "System Support"}
+                                                                {msg.senderAdmin?.name ? `${msg.senderAdmin.name} (Admin)` : "System (Admin)"}
                                                             </span>
                                                         </>
                                                     ) : (
@@ -378,19 +519,19 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                             </span>
                                                             <span className="font-semibold text-foreground flex items-center gap-1">
                                                                 <Store className="h-3 w-3 text-amber-600" />
-                                                                {order.shopName}
+                                                                {order.shopName || "Shop"}
                                                             </span>
                                                         </>
                                                     )}
                                                 </div>
 
-                                                {/* Speech Bubble */}
+                                                {/* Speech Bubble: Admin messages use primary gradient */}
                                                 <div
                                                     className={`p-3 rounded-2xl shadow-sm text-sm break-words ${
                                                         isCustomer
                                                             ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm"
                                                             : isAdminOrSystem
-                                                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-sm shadow-sm"
+                                                            ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-br-sm shadow-md"
                                                             : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm shadow-sm"
                                                     }`}
                                                 >
@@ -401,7 +542,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                         </p>
                                                     )}
 
-                                                    {/* Attachments */}
+                                                    {/* Attachments Section */}
                                                     {msg.attachments && msg.attachments.length > 0 && (
                                                         <div
                                                             className={`space-y-2 ${
@@ -409,47 +550,44 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                             }`}
                                                         >
                                                             {/* Images Grid */}
-                                                            {msg.attachments
-                                                                .filter((att) => att.type === "IMAGE")
-                                                                .map((att) => (
-                                                                    <div
-                                                                        key={att.id}
-                                                                        className="relative group cursor-pointer overflow-hidden rounded-xl border border-black/10"
-                                                                        onClick={() => setLightboxImage(att.url)}
-                                                                    >
-                                                                        <img
-                                                                            src={att.url}
-                                                                            alt={att.fileName || "attachment"}
-                                                                            className="max-h-56 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200"
-                                                                            loading="lazy"
-                                                                        />
-                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
-                                                                            <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
-                                                                                Click to view
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-
-                                                            {/* Audio Attachments */}
-                                                            {msg.attachments
-                                                                .filter((att) => att.type === "AUDIO")
-                                                                .map((att) => (
-                                                                    <AudioPlayer
-                                                                        key={att.id}
-                                                                        url={att.url}
-                                                                        duration={att.duration}
+                                                            {imageAttachments.map((att) => (
+                                                                <div
+                                                                    key={att.id}
+                                                                    className="relative group cursor-pointer overflow-hidden rounded-xl border border-black/10"
+                                                                    onClick={() => setLightboxImage(att.url)}
+                                                                >
+                                                                    <img
+                                                                        src={att.url}
+                                                                        alt={att.fileName || "attachment"}
+                                                                        className="max-h-56 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200"
+                                                                        loading="lazy"
                                                                     />
-                                                                ))}
+                                                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                                                        <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
+                                                                            Click to view
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+
+                                                            {/* Audio/Voice Attachments (play & seek support) */}
+                                                            {voiceAttachments.map((att) => (
+                                                                <AudioPlayer
+                                                                    key={att.id}
+                                                                    url={att.url}
+                                                                    duration={att.duration}
+                                                                    isOutgoing={!isCustomer}
+                                                                />
+                                                            ))}
                                                         </div>
                                                     )}
 
-                                                    {/* Time & Read Receipts inside/bottom of bubble */}
+                                                    {/* Time & Read Receipts inside bottom of bubble */}
                                                     <div
                                                         className={`flex items-center justify-end gap-1 text-[10px] mt-1.5 ${
                                                             isCustomer
                                                                 ? "text-muted-foreground"
-                                                                : "text-white/80"
+                                                                : "text-white/90"
                                                         }`}
                                                     >
                                                         <span>{formatChatTime(msg.createdAt)}</span>
@@ -468,9 +606,9 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
 
                                             {/* Shop / Admin Avatar on the Right */}
                                             {!isCustomer && (
-                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0">
+                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0 shadow-sm">
                                                     {isAdminOrSystem ? (
-                                                        <div className="h-full w-full bg-purple-600 text-white flex items-center justify-center text-[11px] font-bold rounded-full">
+                                                        <div className="h-full w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white flex items-center justify-center text-[11px] font-bold rounded-full">
                                                             <ShieldCheck className="h-4 w-4" />
                                                         </div>
                                                     ) : (
@@ -531,7 +669,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:border-pink-500/50"
                             onClick={() => fileInputRef.current?.click()}
                             title="Attach images or audio"
                         >
@@ -542,14 +680,14 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                             placeholder="Type a message to customer or shop..."
                             value={messageText}
                             onChange={(e) => setMessageText(e.target.value)}
-                            className="flex-1 h-9 text-sm focus-visible:ring-1"
+                            className="flex-1 h-9 text-sm focus-visible:ring-pink-500"
                             disabled={sendMutation.isPending}
                         />
 
                         <Button
                             type="submit"
                             size="sm"
-                            className="h-9 px-4 gap-1.5 shrink-0"
+                            className="h-9 px-4 gap-1.5 shrink-0 bg-gradient-to-r from-pink-500 to-orange-500 hover:opacity-90 text-white border-0 shadow-sm transition-opacity"
                             disabled={
                                 (!messageText.trim() && selectedFiles.length === 0) ||
                                 sendMutation.isPending

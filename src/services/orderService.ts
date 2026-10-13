@@ -181,7 +181,7 @@ export interface ActiveOrderFilters {
 
 export type ChatSenderType = 'USER' | 'SHOP' | 'ADMIN' | 'SYSTEM';
 export type ChatMessageType = 'TEXT' | 'IMAGE' | 'VOICE' | 'MIXED' | 'SYSTEM';
-export type ChatAttachmentType = 'IMAGE' | 'AUDIO';
+export type ChatAttachmentType = 'IMAGE' | 'AUDIO' | 'VOICE' | 'VIDEO' | 'FILE';
 
 export interface ChatAttachment {
   id: number;
