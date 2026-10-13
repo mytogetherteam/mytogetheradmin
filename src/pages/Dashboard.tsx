@@ -363,12 +363,11 @@ export default function Dashboard() {
                 (u: any) => (u.phone && String(u.phone).startsWith("g_")) || (!u.phone && u.email)
             ).length;
 
-            // Only extrapolate sample ratio if BOTH channels are present in sample
-            if (samplePhone > 0 && sampleGoogle > 0) {
+            if (samplePhone > 0 || sampleGoogle > 0) {
                 const sampleTotal = sampleGoogle + samplePhone;
-                const ratio = samplePhone / sampleTotal;
-                const p = Math.round(totalUsers * ratio);
-                const g = Math.max(0, totalUsers - p);
+                const ratio = sampleTotal > 0 ? samplePhone / sampleTotal : 0;
+                const p = totalUsers > 0 ? Math.round(totalUsers * ratio) : samplePhone;
+                const g = totalUsers > 0 ? Math.max(0, totalUsers - p) : sampleGoogle;
                 const total = p + g || 1;
                 return {
                     phoneUsersCount: p,
@@ -379,16 +378,12 @@ export default function Dashboard() {
             }
         }
 
-        // 4. Realistic Myanmar/Thailand food & retail platform baseline (~68% Phone OTP, ~32% Google Auth)
-        // Mobile OTP is the primary customer signup method on MyTogether; Google is secondary.
-        const p = Math.round(totalUsers * 0.68);
-        const g = Math.max(0, totalUsers - p);
-        const total = p + g || 1;
+        // 4. Default to zero if counts are not yet loaded (strictly no fake simulation)
         return {
-            phoneUsersCount: p,
-            googleUsersCount: g,
-            phonePercent: Math.round((p / total) * 100),
-            googlePercent: Math.round((g / total) * 100),
+            phoneUsersCount: 0,
+            googleUsersCount: 0,
+            phonePercent: 0,
+            googlePercent: 0,
         };
     }, [cardCounts.phoneUsers, cardCounts.googleUsers, extendedStats?.userRegistrationStats, manageUsersPage, totalUsers]);
 

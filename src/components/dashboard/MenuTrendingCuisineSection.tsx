@@ -23,109 +23,15 @@ import {
     Heart,
 } from "lucide-react";
 import { menuService, MenuItem } from "@/services/menuService";
-import { analyticsService, CategoryStats } from "@/services/analyticsService";
+import { analyticsService, CategoryStats, ExtendedDashboardStats } from "@/services/analyticsService";
 import { cuisineService, CuisineDTO } from "@/services/cuisineService";
 import { orderService } from "@/services/orderService";
 
 interface Props {
-    extendedStats?: {
-        categorySales?: Array<{ category: string; count: number; total: number }>;
-    } | null;
+    extendedStats?: ExtendedDashboardStats | null;
 }
 
 type FilterTab = "viewed" | "ordered" | "liked";
-
-// Curated top-performing fallbacks if network or initial DB has few seeded items
-const FALLBACK_ITEMS: (Partial<MenuItem> & { orderCount: number; swipeLikes: number })[] = [
-    {
-        id: 101,
-        name: "Special Shan Noodles",
-        nameMm: "အထူး ရှမ်းခေါက်ဆွဲ",
-        price: 90,
-        currency: "THB",
-        shopName: "Shan Yoma Authentic Cuisine",
-        categoryName: "Noodles & Soups",
-        isPopular: true,
-        isRecommended: true,
-        viewCount: 420,
-        orderCount: 168,
-        swipeLikes: 89,
-    },
-    {
-        id: 102,
-        name: "Classic Yangon Mohinga",
-        nameMm: "ရန်ကုန် မုန့်ဟင်းခါး",
-        price: 85,
-        currency: "THB",
-        shopName: "Golden Mandalay House",
-        categoryName: "Traditional Burmese",
-        isPopular: true,
-        isHotDeal: true,
-        viewCount: 380,
-        orderCount: 145,
-        swipeLikes: 76,
-    },
-    {
-        id: 103,
-        name: "Crispy Roasted Pork & Rice",
-        nameMm: "ဝက်ကင်ထမင်းပေါင်း",
-        price: 130,
-        currency: "THB",
-        shopName: "Tong Pai Shan Restaurant",
-        categoryName: "Chinese & Roast",
-        isPopular: true,
-        viewCount: 310,
-        orderCount: 112,
-        swipeLikes: 68,
-    },
-    {
-        id: 104,
-        name: "Steamed Claypot Kyay Oh",
-        nameMm: "အိုးစည် မြေအိုးကြေးအိုး",
-        price: 110,
-        currency: "THB",
-        shopName: "Choice Chinese Grill House",
-        categoryName: "Noodles & Soups",
-        isRecommended: true,
-        viewCount: 295,
-        orderCount: 94,
-        swipeLikes: 54,
-    },
-    {
-        id: 105,
-        name: "Spicy Tom Yum Seafood Noodles",
-        nameMm: "ပင်လယ်စာ တုံယမ်းခေါက်ဆွဲ",
-        price: 140,
-        currency: "THB",
-        shopName: "Asian Taste Restaurant",
-        categoryName: "Thai Street Food",
-        isHotDeal: true,
-        viewCount: 260,
-        orderCount: 88,
-        swipeLikes: 49,
-    },
-    {
-        id: 106,
-        name: "Brown Sugar Boba Milk Tea",
-        nameMm: "ဘိုဘာ နို့လက်ဖက်ရည်",
-        price: 65,
-        currency: "THB",
-        shopName: "Mhway Mhway Tea & Desserts",
-        categoryName: "Beverages & Drinks",
-        isPopular: true,
-        viewCount: 240,
-        orderCount: 75,
-        swipeLikes: 42,
-    },
-];
-
-const DEFAULT_CUISINES = [
-    { name: "Traditional Burmese", share: 36, color: "bg-amber-500", count: 480 },
-    { name: "Thai Street & Curries", share: 24, color: "bg-emerald-500", count: 320 },
-    { name: "Chinese & BBQ Grill", share: 20, color: "bg-rose-500", count: 265 },
-    { name: "Beverages & Desserts", share: 12, color: "bg-sky-500", count: 160 },
-    { name: "Western & Fast Food", share: 8, color: "bg-violet-500", count: 105 },
-];
 
 const SEGMENT_DESCRIPTIONS: Record<FilterTab, string> = {
     viewed: "Ranked by customer discovery & page view telemetry across restaurants",
@@ -133,30 +39,20 @@ const SEGMENT_DESCRIPTIONS: Record<FilterTab, string> = {
     liked: "Ranked by customer swipe favorites & community likes across restaurants",
 };
 
+// Exact real values from database
 function getItemViews(item: MenuItem): number {
-    if (item.viewCount && item.viewCount > 0) return item.viewCount;
-    if (item.isPopular) return 280 + ((item.id || 1) % 150);
-    if (item.isRecommended) return 210 + ((item.id || 1) % 120);
-    return Math.max(25, ((item.id || 1) * 23) % 200);
+    return item.viewCount || 0;
 }
 
 function getItemOrders(item: MenuItem, orderMap: Record<number, number>): number {
-    if (item.id && orderMap[item.id]) {
+    if (item.id && orderMap[item.id] !== undefined) {
         return orderMap[item.id];
     }
-    if (item.orderCount && item.orderCount > 0) {
-        return item.orderCount;
-    }
-    const views = getItemViews(item);
-    const base = Math.max(12, Math.floor(views * 0.35));
-    return item.isPopular ? base + 35 : base;
+    return item.orderCount || 0;
 }
 
 function getItemLikes(item: MenuItem): number {
-    if (item.swipeLikes && item.swipeLikes > 0) return item.swipeLikes;
-    const views = getItemViews(item);
-    const base = Math.max(8, Math.floor(views * 0.22));
-    return item.isRecommended ? base + 20 : base;
+    return item.swipeLikes || 0;
 }
 
 export function MenuTrendingCuisineSection({ extendedStats }: Props) {
@@ -176,19 +72,19 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 setLoading(true);
                 const [page1Res, page2Res, catStats, cuisinesPage, activeOrdersRes, recentOrdersRes] = await Promise.all([
                     menuService
-                        .getAllMenuItems(1, 50, "", undefined, undefined, undefined, {
+                        .getAllMenuItems(1, 100, "", undefined, undefined, undefined, {
                             isAvailable: true,
                         })
                         .catch(() => null),
                     menuService
-                        .getAllMenuItems(2, 50, "", undefined, undefined, undefined, {
+                        .getAllMenuItems(2, 100, "", undefined, undefined, undefined, {
                             isAvailable: true,
                         })
                         .catch(() => null),
                     analyticsService.getCategoryStats().catch(() => []),
                     cuisineService.getCuisines({ size: 8 }).catch(() => null),
-                    orderService.getActiveOrders({ size: 50 }).catch(() => null),
-                    orderService.getOrders({ size: 50 }).catch(() => null),
+                    orderService.getActiveOrders({ size: 100 }).catch(() => null),
+                    orderService.getOrders({ size: 100 }).catch(() => null),
                 ]);
 
                 if (isMounted) {
@@ -206,7 +102,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         setMenuItems(unique);
                     }
 
-                    // Build order frequency map from active & recent orders
+                    // Build real order frequency map from confirmed order items
                     const orderMap: Record<number, number> = {};
                     const allOrders = [
                         ...(activeOrdersRes?.content || []),
@@ -245,29 +141,43 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
         };
     }, []);
 
-    // Filter and sort items based on active tab
+    // Filter and sort items based on active tab using 100% REAL data
     const displayedItems = useMemo(() => {
-        const source = menuItems.length > 0 ? [...menuItems] : ([...FALLBACK_ITEMS] as MenuItem[]);
-
         if (filter === "viewed") {
-            return source
+            if (extendedStats?.mostViewedMenus && extendedStats.mostViewedMenus.length > 0) {
+                return extendedStats.mostViewedMenus.slice(0, 6);
+            }
+            return [...menuItems]
                 .sort((a, b) => getItemViews(b) - getItemViews(a))
                 .slice(0, 6);
         }
         if (filter === "ordered") {
-            return source
+            if (extendedStats?.mostOrderedMenus && extendedStats.mostOrderedMenus.length > 0) {
+                return extendedStats.mostOrderedMenus.slice(0, 6);
+            }
+            return [...menuItems]
                 .sort((a, b) => getItemOrders(b, orderCountMap) - getItemOrders(a, orderCountMap))
                 .slice(0, 6);
         }
         if (filter === "liked") {
-            return source
+            if (extendedStats?.mostLikedMenus && extendedStats.mostLikedMenus.length > 0) {
+                return extendedStats.mostLikedMenus.slice(0, 6);
+            }
+            return [...menuItems]
                 .sort((a, b) => getItemLikes(b) - getItemLikes(a))
                 .slice(0, 6);
         }
-        return source.slice(0, 6);
-    }, [menuItems, filter, orderCountMap]);
+        return [...menuItems].slice(0, 6);
+    }, [
+        menuItems,
+        filter,
+        orderCountMap,
+        extendedStats?.mostViewedMenus,
+        extendedStats?.mostOrderedMenus,
+        extendedStats?.mostLikedMenus,
+    ]);
 
-    // Compute Cuisine / Category breakdown percentages
+    // Compute Cuisine / Category breakdown percentages from real DB data
     const cuisineDistribution = useMemo(() => {
         if (categoryStats && categoryStats.length > 0) {
             const totalViews = categoryStats.reduce((sum, c) => sum + (c.viewCount || 0), 0) || 1;
@@ -298,11 +208,11 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 name: c.nameEn || c.name || "Cuisine",
                 share: equalShare,
                 color: colors[i % colors.length],
-                count: (5 - i) * 80,
+                count: 0,
             }));
         }
 
-        return DEFAULT_CUISINES;
+        return [];
     }, [categoryStats, extendedStats, cuisines]);
 
     return (
@@ -325,7 +235,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         <button
                             type="button"
                             onClick={() => setFilter("viewed")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 cursor-pointer ${
                                 filter === "viewed"
                                     ? "bg-background text-sky-600 dark:text-sky-400 shadow-xs font-semibold"
                                     : "text-muted-foreground hover:text-foreground font-medium"
@@ -337,7 +247,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         <button
                             type="button"
                             onClick={() => setFilter("ordered")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 cursor-pointer ${
                                 filter === "ordered"
                                     ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs font-semibold"
                                     : "text-muted-foreground hover:text-foreground font-medium"
@@ -349,7 +259,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         <button
                             type="button"
                             onClick={() => setFilter("liked")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 cursor-pointer ${
                                 filter === "liked"
                                     ? "bg-background text-rose-600 dark:text-rose-400 shadow-xs font-semibold"
                                     : "text-muted-foreground hover:text-foreground font-medium"
@@ -378,6 +288,12 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                     <Skeleton className="h-5 w-14" />
                                 </div>
                             ))
+                        ) : displayedItems.length === 0 ? (
+                            <div className="col-span-full py-8 text-center text-muted-foreground border border-dashed border-border/70 rounded-xl bg-muted/10">
+                                <UtensilsCrossed className="h-8 w-8 mx-auto mb-2 opacity-40 text-muted-foreground" />
+                                <p className="text-xs font-semibold">No menu data available yet in database</p>
+                                <p className="text-[11px] opacity-75 mt-0.5">Dishes will rank automatically as customers view, like, and order in the app.</p>
+                            </div>
                         ) : (
                             displayedItems.map((item, index) => {
                                 const rankColors = [
@@ -390,19 +306,17 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                         ? rankColors[index]
                                         : "bg-muted text-muted-foreground border-border/50";
 
-                                const formattedPrice =
-                                    item.price != null
-                                        ? `฿${item.price.toLocaleString()}`
-                                        : item.mediumPrice != null
-                                        ? `฿${item.mediumPrice.toLocaleString()}`
-                                        : "฿90";
+                                const displayName = item.name || item.nameEn || item.nameMm || "Dish";
+                                const shopName = item.shopName || (item as any).shop?.nameEn || (item as any).shop?.nameMm || "Partner Restaurant";
+                                const rawPrice = item.price ?? (item as any).originalPrice ?? item.mediumPrice;
+                                const formattedPrice = rawPrice != null && rawPrice > 0 ? `฿${rawPrice.toLocaleString()}` : "—";
 
                                 return (
                                     <div
                                         key={item.id || index}
                                         onClick={() => {
-                                            if (item.name) {
-                                                navigate(`/menu/items?search=${encodeURIComponent(item.name)}`);
+                                            if (displayName) {
+                                                navigate(`/menu/items?search=${encodeURIComponent(displayName)}`);
                                             } else {
                                                 navigate("/menu/items");
                                             }
@@ -421,10 +335,9 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                             {item.imageUrl ? (
                                                 <img
                                                     src={item.imageUrl}
-                                                    alt={item.name}
+                                                    alt={displayName}
                                                     className="h-full w-full object-cover"
                                                     onError={(e) => {
-                                                        // Fallback icon on image load error
                                                         (e.currentTarget as HTMLElement).style.display = "none";
                                                     }}
                                                 />
@@ -437,7 +350,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1.5">
                                                 <h4 className="text-xs font-bold text-foreground truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                                                    {item.name}
+                                                    {displayName}
                                                 </h4>
                                                 {item.isHotDeal && (
                                                     <Badge
@@ -457,7 +370,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                                 )}
                                             </div>
 
-                                            {item.nameMm && (
+                                            {item.nameMm && item.nameMm !== displayName && (
                                                 <p className="text-[11px] text-muted-foreground truncate">
                                                     {item.nameMm}
                                                 </p>
@@ -466,12 +379,12 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                                             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground truncate">
                                                 <Store className="h-3 w-3 shrink-0" />
                                                 <span className="truncate">
-                                                    {item.shopName || "Popular Restaurant"}
+                                                    {shopName}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Price & Metric Badge */}
+                                        {/* Price & Metric Badge (100% Real DB Data) */}
                                         <div className="text-right shrink-0">
                                             <span className="text-xs font-bold font-mono text-foreground block">
                                                 {formattedPrice}
@@ -505,7 +418,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-muted-foreground border-t border-border/40">
                         <span className="flex items-center gap-1.5 text-xs font-medium">
                             <Sparkles className="h-3.5 w-3.5 text-orange-500" />
-                            Rankings update automatically based on customer search &amp; ordering velocity
+                            Rankings reflect 100% live database telemetry (views, confirmed orders &amp; likes)
                         </span>
 
                         <Button
@@ -545,59 +458,69 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 <CardContent className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                     {/* Category Distribution Progress List */}
                     <div className="space-y-3.5 mb-4">
-                        {cuisineDistribution.map((item, index) => (
-                            <div key={index} className="space-y-1.5">
-                                <div className="flex items-center justify-between text-xs">
-                                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${item.color}`} />
-                                        <span className="font-semibold text-foreground truncate">
-                                            {item.name}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
-                                        <span className="font-bold text-foreground">{item.share}%</span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            ({item.count} items)
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div className="w-full h-2 rounded-full bg-muted/70 overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-700 ${item.color}`}
-                                        style={{ width: `${Math.min(100, Math.max(5, item.share))}%` }}
-                                    />
-                                </div>
+                        {cuisineDistribution.length === 0 ? (
+                            <div className="py-6 text-center text-muted-foreground text-xs">
+                                No category distribution data available yet.
                             </div>
-                        ))}
+                        ) : (
+                            cuisineDistribution.map((item, index) => (
+                                <div key={index} className="space-y-1.5">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${item.color}`} />
+                                            <span className="font-semibold text-foreground truncate">
+                                                {item.name}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                                            <span className="font-bold text-foreground">{item.share}%</span>
+                                            {item.count > 0 && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    ({item.count} views)
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="w-full h-2 rounded-full bg-muted/70 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-700 ${item.color}`}
+                                            style={{ width: `${Math.min(100, Math.max(5, item.share))}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
 
                     {/* Spotlight Box: Top Trend */}
-                    <div className="p-3 rounded-xl border border-border/70 bg-gradient-to-br from-emerald-500/10 via-background to-background mb-3 shadow-xs">
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                <TrendingUp className="h-3.5 w-3.5" />
-                                Top Trend This Week
-                            </span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/15 px-1.5 py-0.2 rounded-md">
-                                ↑ +24.8%
-                            </span>
+                    {cuisineDistribution.length > 0 && (
+                        <div className="p-3 rounded-xl border border-border/70 bg-gradient-to-br from-emerald-500/10 via-background to-background mb-3 shadow-xs">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                    <TrendingUp className="h-3.5 w-3.5" />
+                                    Top Category Demand
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/15 px-1.5 py-0.2 rounded-md">
+                                    {cuisineDistribution[0]?.share}%
+                                </span>
+                            </div>
+                            <p className="text-xs font-bold text-foreground">
+                                {cuisineDistribution[0]?.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Highest customer engagement and search volume across all restaurants.
+                            </p>
                         </div>
-                        <p className="text-xs font-bold text-foreground">
-                            {cuisineDistribution[0]?.name || "Traditional Burmese Cuisine"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Highest repeat order rate and search volume across all districts.
-                        </p>
-                    </div>
+                    )}
 
                     {/* Bottom Action Footer */}
                     <div className="pt-2 border-t border-border/40">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="w-full h-8 text-xs font-medium justify-between hover:border-emerald-500/50 hover:text-emerald-600"
+                            className="w-full h-8 text-xs font-medium justify-between hover:border-emerald-500/50 hover:text-emerald-600 cursor-pointer"
                             onClick={() => navigate("/categories")}
                         >
                             <span>Explore Category Analytics</span>

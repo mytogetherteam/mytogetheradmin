@@ -4,7 +4,7 @@ import { ShopService } from "@/services/shopService";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
     CANCELED: "bg-red-100 text-red-800 border-red-200",
 };
 
-type PeriodPreset = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
+type PeriodPreset = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "all" | "custom";
 
 function formatDateLocal(date: Date): string {
     const y = date.getFullYear();
@@ -91,6 +91,8 @@ function getPresetDates(preset: PeriodPreset): { start: string; end: string } {
             const end = new Date(today.getFullYear(), today.getMonth(), 0);
             return { start: formatDateLocal(start), end: formatDateLocal(end) };
         }
+        case "all":
+            return { start: "", end: "" };
         default:
             return { start: todayStr, end: todayStr };
     }
@@ -103,12 +105,13 @@ const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
     { value: "last_week", label: "Last Week" },
     { value: "this_month", label: "This Month" },
     { value: "last_month", label: "Last Month" },
+    { value: "all", label: "All Time" },
     { value: "custom", label: "Custom" },
 ];
 
 export default function OrderHistory() {
     const navigate = useNavigate();
-    const todayStr = formatDateLocal(new Date());
+    const [searchParams, setSearchParams] = useSearchParams();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
     const [totalElements, setTotalElements] = useState(0);
@@ -116,13 +119,57 @@ export default function OrderHistory() {
     const [pageSize, setPageSize] = useState(20);
     const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
 
-    const [period, setPeriod] = useState<PeriodPreset>("today");
-    const [startDate, setStartDate] = useState(todayStr);
-    const [endDate, setEndDate] = useState(todayStr);
-    const [statusFilter, setStatusFilter] = useState<string>("ALL");
+    const [period, setPeriod] = useState<PeriodPreset>(() => {
+        const p = searchParams.get("period") as PeriodPreset | null;
+        if (p && PERIOD_OPTIONS.some(o => o.value === p)) return p;
+        return "today";
+    });
+    const [startDate, setStartDate] = useState(() => {
+        const start = searchParams.get("startDate");
+        if (start !== null) return start;
+        const p = (searchParams.get("period") as PeriodPreset) || "today";
+        const validP = PERIOD_OPTIONS.some(o => o.value === p) ? p : "today";
+        return getPresetDates(validP).start;
+    });
+    const [endDate, setEndDate] = useState(() => {
+        const end = searchParams.get("endDate");
+        if (end !== null) return end;
+        const p = (searchParams.get("period") as PeriodPreset) || "today";
+        const validP = PERIOD_OPTIONS.some(o => o.value === p) ? p : "today";
+        return getPresetDates(validP).end;
+    });
+    const [statusFilter, setStatusFilter] = useState<string>(() => {
+        const s = searchParams.get("status");
+        if (!s) return "ALL";
+        return s.toUpperCase() === "CANCELLED" ? "CANCELED" : s.toUpperCase();
+    });
     const [searchTerm, setSearchTerm] = useState("");
     const [shopId, setShopId] = useState("");
     const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+
+    // Sync state when URL search params change (e.g. from Dashboard deep-link or browser navigation)
+    useEffect(() => {
+        const s = searchParams.get("status");
+        const norm = s ? (s.toUpperCase() === "CANCELLED" ? "CANCELED" : s.toUpperCase()) : "ALL";
+        setStatusFilter(norm);
+
+        const p = searchParams.get("period") as PeriodPreset | null;
+        if (p && PERIOD_OPTIONS.some(o => o.value === p)) {
+            setPeriod(p);
+            if (p !== "custom") {
+                const { start, end } = getPresetDates(p);
+                setStartDate(start);
+                setEndDate(end);
+            }
+        }
+
+        const startParam = searchParams.get("startDate");
+        const endParam = searchParams.get("endDate");
+        if (startParam !== null) setStartDate(startParam);
+        if (endParam !== null) setEndDate(endParam);
+
+        setCurrentPage(1);
+    }, [searchParams]);
 
     const fetchShopData = useCallback(async (page: number, size: number, search: string) => {
         const res = await ShopService.getAllShops(page, size, search);
@@ -142,6 +189,27 @@ export default function OrderHistory() {
             setEndDate(end);
         }
         setCurrentPage(1);
+
+        const next = new URLSearchParams(searchParams);
+        next.set("period", preset);
+        if (preset !== "custom") {
+            next.delete("startDate");
+            next.delete("endDate");
+        }
+        setSearchParams(next, { replace: true });
+    };
+
+    const handleStatusChange = (newStatus: string) => {
+        setStatusFilter(newStatus);
+        setCurrentPage(1);
+
+        const next = new URLSearchParams(searchParams);
+        if (newStatus && newStatus !== "ALL") {
+            next.set("status", newStatus);
+        } else {
+            next.delete("status");
+        }
+        setSearchParams(next, { replace: true });
     };
 
     // Backend admin order list is 1-based (`Math.max(1, page)`). Sending
@@ -149,8 +217,8 @@ export default function OrderHistory() {
     const filters: OrderFilters = useMemo(() => ({
         page: currentPage,
         size: pageSize,
-        startDate,
-        endDate,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
         shopId: shopId || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter as OrderStatus,
         search: searchTerm || undefined,
@@ -271,7 +339,7 @@ export default function OrderHistory() {
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
                             <Select
                                 value={statusFilter}
-                                onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+                                onValueChange={handleStatusChange}
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="All Statuses" />

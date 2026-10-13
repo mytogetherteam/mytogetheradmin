@@ -193,6 +193,7 @@ function App() {
             {/* Legacy redirects */}
             <Route path="/manage-users" element={<LegacyRedirect to="/users/manage" />} />
             <Route path="/manage-shops" element={<LegacyRedirect to="/shops/manage" />} />
+            <Route path="/shops" element={<LegacyRedirect to="/shops/manage" />} />
             <Route path="/create-shop" element={<LegacyRedirect to="/shops/create" />} />
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

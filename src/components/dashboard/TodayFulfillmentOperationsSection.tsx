@@ -87,7 +87,7 @@ export function TodayFulfillmentOperationsSection({
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {/* 1. Today Delivered Total */}
                 <Card
-                    onClick={() => navigate("/orders/history")}
+                    onClick={() => navigate("/orders/history?status=DELIVERED&period=today")}
                     className="border-border/70 shadow-sm overflow-hidden bg-card/90 hover:border-emerald-500/40 hover:shadow-md transition-all cursor-pointer group"
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -116,12 +116,19 @@ export function TodayFulfillmentOperationsSection({
                                     <div className="text-2xl font-bold text-foreground">
                                         {todayDelivered.toLocaleString()}
                                     </div>
-                                    <span className="text-xs font-semibold text-emerald-500 flex items-center gap-0.5">
+                                    <span className="text-xs font-semibold text-emerald-500 flex items-center gap-0.5 group-hover:underline">
                                         Fulfillment done
                                         <ArrowUpRight className="h-3 w-3" />
                                     </span>
                                 </div>
-                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40">
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate("/orders/history?status=DELIVERED&period=all");
+                                    }}
+                                    className="flex items-center justify-between text-[11px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40 hover:text-emerald-500 transition-colors"
+                                    title="View all-time delivered orders"
+                                >
                                     <span>All-time delivered:</span>
                                     <strong className="text-foreground font-mono">
                                         {totalDeliveredAllTime.toLocaleString()}
@@ -134,7 +141,7 @@ export function TodayFulfillmentOperationsSection({
 
                 {/* 2. Today Canceled Total */}
                 <Card
-                    onClick={() => navigate("/orders/history")}
+                    onClick={() => navigate("/orders/history?status=CANCELED&period=today")}
                     className="border-border/70 shadow-sm overflow-hidden bg-card/90 hover:border-rose-500/40 hover:shadow-md transition-all cursor-pointer group"
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -163,12 +170,19 @@ export function TodayFulfillmentOperationsSection({
                                     <div className="text-2xl font-bold text-foreground">
                                         {todayCanceled.toLocaleString()}
                                     </div>
-                                    <span className="text-xs font-semibold text-rose-500 flex items-center gap-0.5">
+                                    <span className="text-xs font-semibold text-rose-500 flex items-center gap-0.5 group-hover:underline">
                                         Cancelled/void
                                         <ArrowUpRight className="h-3 w-3" />
                                     </span>
                                 </div>
-                                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40">
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate("/orders/history?status=CANCELED&period=all");
+                                    }}
+                                    className="flex items-center justify-between text-[11px] text-muted-foreground mt-1.5 pt-1.5 border-t border-border/40 hover:text-rose-500 transition-colors"
+                                    title="View all-time canceled orders"
+                                >
                                     <span>All-time canceled:</span>
                                     <strong className="text-foreground font-mono">
                                         {totalCanceledAllTime.toLocaleString()}

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   applyShopsManagePaginationToParams,
@@ -45,7 +45,16 @@ export function useManageShopRestaurant() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { page: currentPage, pageSize } = parseShopsManagePagination(searchParams);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(
+    () => searchParams.get('search') ?? searchParams.get('searchTerm') ?? '',
+  );
+
+  useEffect(() => {
+    const s = searchParams.get('search') ?? searchParams.get('searchTerm');
+    if (s !== null) {
+      setSearchTerm(s);
+    }
+  }, [searchParams]);
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [selectedShopId, setSelectedShopId] = useState<number | null>(null);

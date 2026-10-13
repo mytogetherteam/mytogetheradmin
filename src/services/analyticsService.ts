@@ -68,6 +68,8 @@ export interface DeviceStats {
   percentage: number;
 }
 
+import type { MenuItem } from './menuService';
+
 export interface ExtendedDashboardStats {
   dau: number;
   mau: number;
@@ -106,6 +108,9 @@ export interface ExtendedDashboardStats {
     phoneCount: number;
     googleCount: number;
   };
+  mostViewedMenus?: MenuItem[];
+  mostLikedMenus?: MenuItem[];
+  mostOrderedMenus?: (MenuItem & { orderCount?: number })[];
 }
 
 export interface FeatureUsageData {

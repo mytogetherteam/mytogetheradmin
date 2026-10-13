@@ -216,7 +216,11 @@ export function DeliveryOptionShopListModal({
                             return (
                                 <div
                                     key={shop.id}
-                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-colors group"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        navigate(`/shops/create?id=${shop.id}`);
+                                    }}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-primary/40 transition-colors group cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
                                         {/* Avatar / Logo */}
@@ -283,14 +287,15 @@ export function DeliveryOptionShopListModal({
                                         )}
 
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 onOpenChange(false);
-                                                navigate(`/shops?search=${encodeURIComponent(shop.nameEn)}`);
+                                                navigate(`/shops/create?id=${shop.id}`);
                                             }}
-                                            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 gap-1 cursor-pointer"
-                                            title={`Manage ${shop.nameEn} in Shops Directory`}
+                                            className="h-8 px-3 text-xs font-semibold text-foreground hover:text-primary hover:border-primary/50 gap-1.5 cursor-pointer shadow-xs"
+                                            title={`Manage & Edit ${shop.nameEn} (Delivery, Info, Hours)`}
                                         >
                                             <span>Manage</span>
                                             <ExternalLink className="h-3 w-3" />
@@ -308,14 +313,28 @@ export function DeliveryOptionShopListModal({
                         Showing <strong className="text-foreground">{filteredShops.length}</strong> of{" "}
                         <strong className="text-foreground">{allCount}</strong> shops
                     </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOpenChange(false)}
-                        className="h-7 text-xs"
-                    >
-                        Close
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                onOpenChange(false);
+                                navigate("/shops/manage");
+                            }}
+                            className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                        >
+                            <span>All Shops Directory</span>
+                            <ExternalLink className="h-3 w-3" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onOpenChange(false)}
+                            className="h-7 text-xs"
+                        >
+                            Close
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
