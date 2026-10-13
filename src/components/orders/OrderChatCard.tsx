@@ -15,7 +15,6 @@ import {
     RefreshCw,
     User as UserIcon,
     Store,
-    ShieldCheck,
     Check,
     CheckCheck,
     Volume2,
