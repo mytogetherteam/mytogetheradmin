@@ -17,6 +17,7 @@ import { DeliveryInfoCard } from "@/components/orders/DeliveryInfoCard";
 import { OrderTimelineCard } from "@/components/orders/OrderTimelineCard";
 import { OrderStatusActionCard } from "@/components/orders/OrderStatusActionCard";
 import { OrderChatCard } from "@/components/orders/OrderChatCard";
+import { OrderProcessStepper } from "@/components/orders/OrderProcessStepper";
 import type { OrderCanceledBy } from "@/services/orderService";
 
 /** Fallback text shown when a cancelled order has no free-text reason. */
@@ -97,6 +98,9 @@ export default function OrderDetail() {
                     </div>
                 </Card>
             )}
+
+            {/* Ordering Process Step Flow */}
+            <OrderProcessStepper order={order} history={history} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Main Content */}
