@@ -239,6 +239,59 @@ class AnalyticsService {
       return null;
     }
   }
+
+  async getActiveUserLocations(params?: {
+    timeframe?: string;
+    date?: string;
+    month?: string;
+  }): Promise<ActiveUserLocationsResponse> {
+    const query = new URLSearchParams();
+    if (params?.timeframe) query.append('timeframe', params.timeframe);
+    if (params?.date) query.append('date', params.date);
+    if (params?.month) query.append('month', params.month);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiClient.get<ActiveUserLocationsResponse>(
+      `${config.endpoints.admin.analytics.locations}${qs}`
+    );
+  }
+}
+
+export interface ActiveUserLocationRecord {
+  id: string;
+  userId: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  profilePicture?: string | null;
+  latitude: number;
+  longitude: number;
+  district: string;
+  address?: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  sessionDurationSeconds: number;
+  hits: number;
+  source: 'saved_location' | 'order_delivery' | 'district_cluster';
+}
+
+export interface ActiveUserLocationsResponse {
+  timeframe: string;
+  date?: string | null;
+  month?: string | null;
+  totalActiveUsers: number;
+  usersWithLocations: number;
+  locations: ActiveUserLocationRecord[];
+  districts: Array<{
+    district: string;
+    users: number;
+    sessions: number;
+    avgSessionSeconds: number;
+    percentOfMax: number;
+    percentOfTotal: number;
+    lat?: number;
+    lng?: number;
+  }>;
+  highestDistrictName?: string | null;
 }
 
 export const analyticsService = new AnalyticsService();

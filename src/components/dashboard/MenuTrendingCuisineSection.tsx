@@ -26,6 +26,7 @@ import { menuService, MenuItem } from "@/services/menuService";
 import { analyticsService, CategoryStats, ExtendedDashboardStats } from "@/services/analyticsService";
 import { cuisineService, CuisineDTO } from "@/services/cuisineService";
 import { orderService } from "@/services/orderService";
+import { TopTrendingDishesModal } from "./TopTrendingDishesModal";
 
 interface Props {
     extendedStats?: ExtendedDashboardStats | null;
@@ -75,6 +76,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
     const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
     const [cuisines, setCuisines] = useState<CuisineDTO[]>([]);
     const [loading, setLoading] = useState(true);
+    const [viewMoreOpen, setViewMoreOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -438,13 +440,14 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         </span>
 
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
-                            onClick={() => navigate("/menu/items")}
+                            className="h-7 text-xs font-semibold gap-1.5 border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/50 cursor-pointer shadow-xs"
+                            onClick={() => setViewMoreOpen(true)}
                         >
-                            <span>Manage Menu Catalog</span>
-                            <ArrowUpRight className="h-3.5 w-3.5" />
+                            <Flame className="h-3.5 w-3.5" />
+                            <span>View More</span>
+                            <ArrowUpRight className="h-3 w-3" />
                         </Button>
                     </div>
                 </CardContent>
@@ -545,6 +548,13 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Top Trending Dishes Full Popup with Top 20, Date Filter & Load More */}
+            <TopTrendingDishesModal
+                open={viewMoreOpen}
+                onOpenChange={setViewMoreOpen}
+                initialTab={filter}
+            />
         </div>
     );
 }

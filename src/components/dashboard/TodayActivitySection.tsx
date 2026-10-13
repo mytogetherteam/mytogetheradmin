@@ -1,30 +1,13 @@
 import { useState, useMemo } from "react";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-    ResponsiveContainer,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    Cell,
-} from "recharts";
-import {
     Clock,
     Flame,
     Users,
     Activity,
     Compass,
-    Sparkles,
 } from "lucide-react";
 import { TodayActiveUserLocationMap } from "./TodayActiveUserLocationMap";
+import { OrdersVelocityGraphCard } from "./OrdersVelocityGraphCard";
 
 import type { ActiveUsersSummary } from "@/services/activeUsersService";
 
@@ -443,149 +426,8 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
 
             {/* Graphs Grid: 2 Columns */}
             <div className="grid gap-4 md:grid-cols-3">
-                {/* Graph 1: Hourly Activity & Peak Rush Chart */}
-                <Card className="md:col-span-2 border-border/70 shadow-sm overflow-hidden bg-card/90">
-                    <CardHeader className="pb-2 border-b border-border/40 bg-muted/15 flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-pink-600 dark:text-pink-400" />
-                                Hourly Activity &amp; Rush Hours
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                {timeframe === "today"
-                                    ? "Customer activity distribution by hour today"
-                                    : timeframe === "7d"
-                                    ? "Hourly activity patterns aggregated across the last 7 days"
-                                    : "Hourly order volume & user traffic patterns across the last 30 days"}
-                            </CardDescription>
-                        </div>
-
-                        {peakHourInfo && (
-                            <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white gap-1 text-[11px] font-medium shadow-xs">
-                                <Flame className="h-3 w-3" />
-                                Peak: {peakHourInfo.label}
-                            </Badge>
-                        )}
-                    </CardHeader>
-
-                    <CardContent className="p-4 sm:p-5">
-                        {/* Interactive Recharts Bar Chart */}
-                        <div className="h-[240px] w-full pt-2">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={chartData}
-                                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                                >
-                                    <XAxis
-                                        dataKey="label"
-                                        stroke="#888888"
-                                        fontSize={11}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <YAxis
-                                        stroke="#888888"
-                                        fontSize={11}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        allowDecimals={false}
-                                    />
-                                    <Tooltip
-                                        cursor={{ fill: "rgba(100, 116, 139, 0.1)" }}
-                                        content={({ active, payload }) => {
-                                            if (!active || !payload || !payload.length) return null;
-                                            const data = payload[0].payload;
-                                            return (
-                                                <div className="rounded-xl border border-border/80 bg-background/95 backdrop-blur-md p-3 shadow-xl text-xs space-y-1.5 min-w-[170px]">
-                                                    <p className="font-semibold text-foreground flex items-center justify-between">
-                                                        <span>{data.fullRange}</span>
-                                                        {data.isRush && (
-                                                            <span className="text-[10px] text-orange-500 font-bold uppercase">
-                                                                Rush Hour
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                    <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
-                                                        <span>
-                                                            {timeframe === "today" ? "Active Users:" : timeframe === "7d" ? "7-Day Users:" : "30-Day Users:"}
-                                                        </span>
-                                                        <span className="font-bold text-foreground">
-                                                            {data.users.toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between text-muted-foreground">
-                                                        <span>
-                                                            {timeframe === "today" ? "Total Visits:" : timeframe === "7d" ? "7-Day Visits:" : "30-Day Visits:"}
-                                                        </span>
-                                                        <span className="font-medium text-foreground">
-                                                            {data.sessions.toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                    {data.orders > 0 && (
-                                                        <div className="flex items-center justify-between text-muted-foreground">
-                                                            <span>Orders:</span>
-                                                            <span className="font-medium text-emerald-500">
-                                                                {data.orders.toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        }}
-                                    />
-                                    <Bar
-                                        dataKey="users"
-                                        radius={[6, 6, 0, 0]}
-                                        maxBarSize={36}
-                                    >
-                                        {chartData.map((entry, index) => {
-                                            let barColor = "#6366f1"; // Default Indigo
-                                            if (entry.isLunchRush) {
-                                                barColor = "#f59e0b"; // Amber lunch rush
-                                            } else if (entry.isDinnerRush) {
-                                                barColor = "#ec4899"; // Pink dinner rush
-                                            }
-                                            return (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill={barColor}
-                                                    fillOpacity={0.9}
-                                                />
-                                            );
-                                        })}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        {/* Rush Period Legend Chips */}
-                        <div className="mt-4 pt-3.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                                    <span className="text-muted-foreground">Lunch Rush (11 AM – 1 PM)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-pink-500" />
-                                    <span className="text-muted-foreground">Dinner Rush (5 PM – 7 PM)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-                                    <span className="text-muted-foreground">Normal Hours</span>
-                                </div>
-                            </div>
-
-                            <span className="text-muted-foreground text-[11px] flex items-center gap-1 font-medium">
-                                <Sparkles className="h-3 w-3 text-pink-500" />
-                                {timeframe === "today"
-                                    ? `Total Visits Today: ${(appUsage?.sessions || chartData.reduce((s, r) => s + r.sessions, 0)).toLocaleString()}`
-                                    : timeframe === "7d"
-                                    ? `Total 7-Day Visits: ${chartData.reduce((s, r) => s + r.sessions, 0).toLocaleString()}`
-                                    : `Total 30-Day Visits: ${chartData.reduce((s, r) => s + r.sessions, 0).toLocaleString()}`}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Orders Velocity & Fulfillment Trends: Today Hourly / Date Filter / Month Filter / Status Filter */}
+                <OrdersVelocityGraphCard />
 
                 {/* Graph 2: Today Active User Locations (Interactive Map View with Fullscreen Expand) */}
                 <TodayActiveUserLocationMap
