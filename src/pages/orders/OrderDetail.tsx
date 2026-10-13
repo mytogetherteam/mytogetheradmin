@@ -16,6 +16,7 @@ import { CustomerCard } from "@/components/orders/CustomerCard";
 import { DeliveryInfoCard } from "@/components/orders/DeliveryInfoCard";
 import { OrderTimelineCard } from "@/components/orders/OrderTimelineCard";
 import { OrderStatusActionCard } from "@/components/orders/OrderStatusActionCard";
+import { OrderChatCard } from "@/components/orders/OrderChatCard";
 import type { OrderCanceledBy } from "@/services/orderService";
 
 /** Fallback text shown when a cancelled order has no free-text reason. */
@@ -102,6 +103,7 @@ export default function OrderDetail() {
                 <div className="md:col-span-2 space-y-6">
                     <ShopInfoCard order={order} />
                     <OrderItemsCard order={order} />
+                    <OrderChatCard order={order} />
                     <PaymentSlipCard order={order} />
                     <DeliveryProofCard order={order} />
                 </div>

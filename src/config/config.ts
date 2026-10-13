@@ -204,6 +204,8 @@ export const config = {
         health: '/api/admin/orders/health',
         history: (id: string) => `/api/admin/orders/${id}/history`,
         status: (id: string) => `/api/admin/orders/${id}/status`,
+        chat: (id: string | number) => `/api/admin/orders/${id}/chat`,
+        chatMessages: (id: string | number) => `/api/admin/orders/${id}/chat/messages`,
       },
       menu: {
         categories: '/api/admin/menu-categories',

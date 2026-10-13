@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { orderService, ActiveOrderFilters, UpdateOrderStatusPayload } from '@/services/orderService';
+import { orderService, ActiveOrderFilters, UpdateOrderStatusPayload, SendChatMessagePayload } from '@/services/orderService';
 import { driverService, CreateDriverPayload } from '@/services/driverService';
 import { toast } from 'sonner';
 import { handleApiError } from '@/lib/error-utils';
@@ -9,6 +9,7 @@ export const orderKeys = {
   detail: (id: string) => [...orderKeys.all, 'detail', id] as const,
   history: (id: string) => [...orderKeys.all, 'history', id] as const,
   active: () => [...orderKeys.all, 'active'] as const,
+  chat: (id: string) => [...orderKeys.all, 'chat', id] as const,
 };
 
 /** Live order board feed (server-side filtered + paginated). */
@@ -89,3 +90,43 @@ export function useCreateDriverMutation(shopId: number) {
     onError: (error) => handleApiError(error, 'Failed to create driver'),
   });
 }
+
+/** Order chat conversation with real-time polling (every 4s). */
+export function useOrderChat(orderId?: string | number, shopId?: string | number) {
+  return useQuery({
+    queryKey: orderKeys.chat(String(orderId ?? '')),
+    queryFn: async () => {
+      if (!orderId) return null;
+      try {
+        return await orderService.getOrderChat(orderId, shopId);
+      } catch (err) {
+        console.warn('Could not load order chat:', err);
+        return {
+          id: null,
+          orderId,
+          shopId: Number(shopId) || null,
+          messages: [],
+          shopUnreadCount: 0,
+          userUnreadCount: 0,
+        };
+      }
+    },
+    enabled: !!orderId,
+    refetchInterval: 4000,
+  });
+}
+
+/** Mutation to send a message in the order chat. */
+export function useSendOrderChatMessageMutation(orderId: string | number, shopId?: string | number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SendChatMessagePayload) =>
+      orderService.sendOrderChatMessage(orderId, payload, shopId),
+    onSuccess: () => {
+      toast.success('Message sent');
+      void queryClient.invalidateQueries({ queryKey: orderKeys.chat(String(orderId)) });
+    },
+    onError: (error) => handleApiError(error, 'Failed to send message'),
+  });
+}
+

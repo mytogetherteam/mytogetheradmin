@@ -344,7 +344,7 @@ class ApiClient {
     this.cachedTokenString = null;
   }
 
-  async get<T>(endpoint: string, options?: { params?: Record<string, any> }): Promise<T> {
+  async get<T>(endpoint: string, options?: { params?: Record<string, any>; headers?: Record<string, string> }): Promise<T> {
     let url = endpoint;
     if (options?.params) {
       const query = new URLSearchParams();
@@ -358,13 +358,14 @@ class ApiClient {
         url += (url.includes('?') ? '&' : '?') + queryString;
       }
     }
-    return this.request<T>(url, { method: 'GET' });
+    return this.request<T>(url, { method: 'GET', headers: options?.headers });
   }
 
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: { headers?: Record<string, string> }): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: isFormDataBody(data) ? data : data != null ? JSON.stringify(data) : undefined,
+      headers: options?.headers,
     });
   }
 

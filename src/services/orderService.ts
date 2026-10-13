@@ -179,6 +179,81 @@ export interface ActiveOrderFilters {
   size?: number;
 }
 
+export type ChatSenderType = 'USER' | 'SHOP' | 'ADMIN' | 'SYSTEM';
+export type ChatMessageType = 'TEXT' | 'IMAGE' | 'VOICE' | 'MIXED' | 'SYSTEM';
+export type ChatAttachmentType = 'IMAGE' | 'AUDIO';
+
+export interface ChatAttachment {
+  id: number;
+  messageId?: number;
+  type: ChatAttachmentType;
+  url: string;
+  thumbnailUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  duration?: number | null;
+  sortOrder?: number;
+  createdAt?: string;
+}
+
+export interface ChatMessageSender {
+  id: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  profileUrl?: string | null;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversationId?: number;
+  senderType: ChatSenderType;
+  senderUserId?: number | null;
+  senderAdminId?: number | null;
+  type: ChatMessageType;
+  content?: string | null;
+  isRead?: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  senderUser?: ChatMessageSender | null;
+  senderAdmin?: ChatMessageSender | null;
+  attachments?: ChatAttachment[];
+}
+
+export interface OrderChatConversation {
+  id: number | null;
+  orderId: number | string;
+  userId?: number | null;
+  shopId?: number | null;
+  userUnreadCount?: number;
+  shopUnreadCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  user?: {
+    id: number;
+    name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    profileUrl?: string | null;
+  } | null;
+  shop?: {
+    id: number;
+    nameEn?: string | null;
+    nameMm?: string | null;
+    nameTh?: string | null;
+    logoUrl?: string | null;
+  } | null;
+  messages: ChatMessage[];
+}
+
+export interface SendChatMessagePayload {
+  content?: string;
+  attachments?: File[];
+}
+
 class OrderService {
   /**
    * Live order board feed (SuperAdmin only) — in-flight orders across every
@@ -235,6 +310,64 @@ class OrderService {
   async updateOrderStatus(id: string, payload: UpdateOrderStatusPayload): Promise<Order> {
     return apiClient.patch<Order>(config.endpoints.admin.orders.status(id), payload);
   }
+
+  /**
+   * Retrieves chat conversation & messages for an order.
+   * Tries admin-specific endpoint first, falls back to shop-chat endpoint.
+   */
+  async getOrderChat(orderId: string | number, shopId?: number | string): Promise<OrderChatConversation> {
+    try {
+      return await apiClient.get<OrderChatConversation>(config.endpoints.admin.orders.chat(orderId));
+    } catch (err) {
+      if (shopId) {
+        try {
+          return await apiClient.get<OrderChatConversation>(`/api/shop/chat/orders/${orderId}`, {
+            headers: { 'x-shop-id': String(shopId) },
+          });
+        } catch {
+          // Both endpoints failed, let fallback handling manage it
+        }
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Send a chat message on an order as Admin / Shop.
+   */
+  async sendOrderChatMessage(
+    orderId: string | number,
+    payload: SendChatMessagePayload,
+    shopId?: number | string
+  ): Promise<ChatMessage> {
+    const hasFiles = payload.attachments && payload.attachments.length > 0;
+    let body: FormData | { content?: string };
+    if (hasFiles) {
+      const fd = new FormData();
+      if (payload.content) fd.append('content', payload.content);
+      payload.attachments!.forEach((f) => fd.append('attachments', f));
+      body = fd;
+    } else {
+      body = { content: payload.content };
+    }
+
+    try {
+      return await apiClient.post<ChatMessage>(
+        config.endpoints.admin.orders.chatMessages(orderId),
+        body
+      );
+    } catch (err) {
+      if (shopId) {
+        return await apiClient.post<ChatMessage>(
+          `/api/shop/chat/orders/${orderId}/messages`,
+          body,
+          { headers: { 'x-shop-id': String(shopId) } }
+        );
+      }
+      throw err;
+    }
+  }
 }
 
 export const orderService = new OrderService();
+
