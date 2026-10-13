@@ -24,32 +24,13 @@ import { Input } from "@/components/ui/input";
 import { analyticsService, RevenueData, PopularShop } from "@/services/analyticsService";
 import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
 import { orderService, OrderHealthData } from "@/services/orderService";
-import { authService } from "@/services/authService";
-import { Users, ShoppingCart, Store, AlertTriangle, Flag, Database, Wifi, WifiOff, X, Bell, ShoppingBag, Star, Clock, Ticket, Search, MapPin, Activity, Bike } from "lucide-react";
+import { Users, ShoppingCart, Store, AlertTriangle, Flag, Wifi, WifiOff, X, Bell, Star, Clock, Ticket, Search, MapPin, Activity, Bike } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
+import { TodayActivitySection } from "@/components/dashboard/TodayActivitySection";
+import { OperationalFulfillmentSection } from "@/components/dashboard/OperationalFulfillmentSection";
 // ─── Helpers ───────────────────────────────────────────────────────────────
-
-function formatHourRange(hour: number) {
-    const start = ((hour % 24) + 24) % 24;
-    const end = (start + 1) % 24;
-    const label = (value: number) => {
-        const suffix = value < 12 ? "AM" : "PM";
-        const clock = value % 12 === 0 ? 12 : value % 12;
-        return `${clock} ${suffix}`;
-    };
-    return `${label(start)} – ${label(end)}`;
-}
-
-function formatStay(seconds: number) {
-    const total = Math.max(0, Math.round(seconds));
-    const minutes = Math.round(total / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const remain = minutes % 60;
-    return remain ? `${hours}h ${remain}m` : `${hours}h`;
-}
 
 function getDefaultDates() {
     const end = new Date();
@@ -169,36 +150,7 @@ function AlertBanner({
     );
 }
 
-/** Small live-order ticker shown inside the Order Health card */
-function NewOrderTicker({ order }: { order: { message?: string; id?: string | number } | null }) {
-    const [visible, setVisible] = useState(false);
-    const [text, setText] = useState("");
 
-    useEffect(() => {
-        if (!order) return;
-        // Use timeout to avoid synchronous setState in effect warning
-        const timer = setTimeout(() => {
-            setText(order.message || (order.id ? `New order #${order.id} arrived` : "New order received"));
-            setVisible(true);
-        }, 0);
-
-        const t = setTimeout(() => setVisible(false), 6000);
-        return () => {
-            clearTimeout(timer);
-            clearTimeout(t);
-        };
-    }, [order]);
-
-    if (!visible) return null;
-
-    return (
-        <div className="flex items-center gap-2 px-3 py-1.5 mb-3 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 text-xs font-medium animate-in slide-in-from-left-2 duration-300">
-            <ShoppingBag className="h-3.5 w-3.5 shrink-0 animate-bounce" />
-            <span className="truncate">{text}</span>
-            <span className="ml-auto shrink-0 text-[10px] opacity-60">live</span>
-        </div>
-    );
-}
 
 // ─── Connection Status Indicator ────────────────────────────────────────────
 
@@ -226,80 +178,11 @@ function WsStatusBadge({ connected }: { connected: boolean }) {
     );
 }
 
-// ─── Order Pipeline Visualization ───────────────────────────────────────────
 
-function OrderPipeline({ orderHealth }: { orderHealth: Record<string, number> }) {
-    const pipeline = [
-        { label: "Pending", keys: ["PENDING"], color: "bg-yellow-500", text: "text-yellow-500" },
-        { label: "Preparing", keys: ["CONFIRMED", "ACCEPTED", "PREPARING"], color: "bg-orange-500", text: "text-orange-500" },
-        { label: "Delivering", keys: ["READY", "ON_THE_WAY", "DELIVERING"], color: "bg-blue-500", text: "text-blue-500" },
-    ];
-
-    const total = Object.values(orderHealth).reduce((a, b) => a + b, 0);
-
-    return (
-        <div className="w-full mt-4 space-y-4">
-            <div className="w-full h-2 rounded-full bg-muted flex overflow-hidden">
-                {total === 0 ? (
-                    <div className="w-full h-full bg-muted" />
-                ) : (
-                    pipeline.map((stage, i) => {
-                        const count = stage.keys.reduce((sum, key) => sum + (orderHealth[key] || 0), 0);
-                        const percent = (count / total) * 100;
-                        return <div key={i} style={{ width: `${percent}%` }} className={`${stage.color} transition-all duration-500`} />;
-                    })
-                )}
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center divide-x">
-                {pipeline.map((stage, i) => {
-                    const count = stage.keys.reduce((sum, key) => sum + (orderHealth[key] || 0), 0);
-                    return (
-                        <div key={i} className="flex flex-col">
-                            <span className={`text-xl font-bold ${stage.text}`}>{count}</span>
-                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{stage.label}</span>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-// ─── Live Activity Feed ─────────────────────────────────────────────────────
-
-function LiveActivityFeed({ activities }: { activities: any[] }) {
-    if (activities.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-                <Database className="h-8 w-8 mb-2 opacity-20" />
-                <p className="text-sm">No recent activity</p>
-            </div>
-        );
-    }
-    return (
-        <div className="space-y-4 pr-2 max-h-[250px] overflow-y-auto overflow-x-hidden">
-            {activities.map((act) => (
-                <div key={act.id} className="flex gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${act.bgColor} ${act.textColor}`}>
-                        <act.icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0 pb-3 border-b border-border/40 last:border-0">
-                        <p className="text-sm font-medium text-foreground/90">{act.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{act.message}</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">{act.time}</p>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-    const userData = authService.getUserData();
-    const isMasterAdmin = userData?.role === "MASTER_ADMIN" || userData?.authorities?.includes("MASTER_ADMIN");
-
     const defaults = getDefaultDates();
     const [startDate, setStartDate] = useState(defaults.start);
     const [endDate, setEndDate] = useState(defaults.end);
@@ -309,7 +192,6 @@ export default function Dashboard() {
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
     const [orderHealth, setOrderHealth] = useState<OrderHealthData>({});
-    const [systemHealth, setSystemHealth] = useState<{ dbLatency: number; status: string; performance?: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -323,68 +205,21 @@ export default function Dashboard() {
     const [reportDismissed, setReportDismissed] = useState<string | null>(null);
     const [shopRequestDismissed, setShopRequestDismissed] = useState<string | null>(null);
 
-    // Live Activity Feed State
-    const [activities, setActivities] = useState<any[]>([]);
-
-    useEffect(() => {
-        if (latestOrder) {
-            setActivities(prev => [{
-                id: `order-${latestOrder.id || Date.now()}`,
-                title: "New Order",
-                message: latestOrder.message || `Order #${latestOrder.id} received`,
-                time: new Date().toLocaleTimeString(),
-                icon: ShoppingBag,
-                bgColor: "bg-indigo-500/10",
-                textColor: "text-indigo-500"
-            }, ...prev].slice(0, 50));
-        }
-    }, [latestOrder]);
-
-    useEffect(() => {
-        if (latestReport) {
-            setActivities(prev => [{
-                id: `report-${latestReport.id || Date.now()}`,
-                title: "New Report",
-                message: (latestReport.message as string) || "Content reported",
-                time: new Date().toLocaleTimeString(),
-                icon: Flag,
-                bgColor: "bg-red-500/10",
-                textColor: "text-red-500"
-            }, ...prev].slice(0, 50));
-        }
-    }, [latestReport]);
-
-    useEffect(() => {
-        if (latestShopRequest) {
-            setActivities(prev => [{
-                id: `shop-${latestShopRequest.id || Date.now()}`,
-                title: "Shop Approval",
-                message: (latestShopRequest.message as string) || "New shop pending",
-                time: new Date().toLocaleTimeString(),
-                icon: Bell,
-                bgColor: "bg-yellow-500/10",
-                textColor: "text-yellow-500"
-            }, ...prev].slice(0, 50));
-        }
-    }, [latestShopRequest]);
-
     useEffect(() => {
         async function load() {
             try {
                 setLoading(true);
-                const [cardsData, revenueData, shopsData, healthData, sysHealth, extendedData] = await Promise.all([
+                const [cardsData, revenueData, shopsData, healthData, extendedData] = await Promise.all([
                     dashboardService.getCardCounts().catch(() => ({})),
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
                     orderService.getOrdersHealth().catch(() => ({})),
-                    isMasterAdmin ? analyticsService.getSystemHealth().catch(() => null) : Promise.resolve(null),
                     analyticsService.getExtendedDashboardStats().catch(() => null),
                 ]);
                 setCardCounts(cardsData);
                 setRevenue(revenueData);
                 setPopularShops(shopsData);
                 setOrderHealth(healthData);
-                setSystemHealth(sysHealth);
                 setExtendedStats(extendedData);
             } catch {
                 setError("Failed to load dashboard data.");
@@ -393,7 +228,7 @@ export default function Dashboard() {
             }
         }
         load();
-    }, [startDate, endDate, isMasterAdmin]);
+    }, [startDate, endDate]);
 
     // Derived: prefer live WS stats where available, fall back to REST baseline
     const liveStats: Partial<SystemStatsDTO> = useMemo(() => systemStats ?? {}, [systemStats]);
@@ -467,147 +302,18 @@ export default function Dashboard() {
                 <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} loading={loading} live={isLive} trend="↓ 2%" trendColor="text-red-500" />
             </div>
 
-            {extendedStats?.appUsage && (
-                <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Clock className="h-4 w-4" /> Time in the app
-                            </CardTitle>
-                            <CardDescription>Average visit, last 30 days</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">
-                                {formatStay(extendedStats.appUsage.avgSessionSeconds)}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                {extendedStats.appUsage.sessions.toLocaleString()} visits · {extendedStats.appUsage.users.toLocaleString()} people
-                            </p>
-                            {(extendedStats.appUsage.busyHours?.length ?? 0) > 0 ? (
-                                <div className="mt-4 space-y-2 border-t pt-4">
-                                    <p className="text-xs font-medium text-muted-foreground">When most people are in the app</p>
-                                    {extendedStats.appUsage.busyHours.slice(0, 4).map((row: {
-                                        hour: number;
-                                        users: number;
-                                        sessions: number;
-                                    }, index: number) => (
-                                        <div key={row.hour} className="flex items-center justify-between gap-3">
-                                            <p className={`text-sm truncate ${index === 0 ? "font-semibold" : ""}`}>
-                                                {formatHourRange(row.hour)}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground shrink-0">
-                                                {row.users.toLocaleString()} {row.users === 1 ? "person" : "people"}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : null}
-                        </CardContent>
-                    </Card>
-                    <Card className="md:col-span-2">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <MapPin className="h-4 w-4" /> Where people use the app
-                            </CardTitle>
-                            <CardDescription>Districts from the last 30 days</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {extendedStats.appUsage.districts.length > 0 ? (
-                                <div className="space-y-3">
-                                    {extendedStats.appUsage.districts.map((row: {
-                                        district: string;
-                                        users: number;
-                                        sessions: number;
-                                        avgSessionSeconds: number;
-                                    }) => (
-                                        <div key={row.district} className="flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium truncate">{row.district}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {row.users.toLocaleString()} {row.users === 1 ? "person" : "people"} · {row.sessions.toLocaleString()} visits
-                                                </p>
-                                            </div>
-                                            <Badge variant="secondary">{formatStay(row.avgSessionSeconds)} avg</Badge>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">
-                                    No visits yet. This fills in as people open the app and leave it.
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            {/* Row 2: Today's Live Demand & Activity Hub (Interactive Hourly Chart & District Demand) */}
+            <TodayActivitySection extendedStats={extendedStats} isLive={isLive} />
 
-            {/* Row 3: Order Pipeline & Activity Feed */}
-            <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 delay-300 duration-700 fill-mode-both">
-                <div className="col-span-2 space-y-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-base">Order Pipeline</CardTitle>
-                                    <CardDescription>Live order fulfillment stages</CardDescription>
-                                </div>
-                                {isLive && (
-                                    <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                        Real-time
-                                    </span>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <NewOrderTicker order={latestOrder} />
-                            {loading ? <Skeleton className="h-20 w-full" /> : <OrderPipeline orderHealth={orderHealth} />}
-                        </CardContent>
-                    </Card>
-
-                    {/* System Status under Pipeline */}
-                    <Card>
-                        <CardContent className="flex items-center gap-3 p-4">
-                            <Database className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Database</span>
-                            {loading ? (
-                                <Skeleton className="h-4 w-40" />
-                            ) : systemHealth ? (
-                                <>
-                                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                                    <span className="text-xs text-muted-foreground">
-                                        {systemHealth.status === 'connected' || systemHealth.status === 'UP' ? 'Connected' : 'Issue'} · {systemHealth.dbLatency}ms
-                                        {systemHealth.performance && ` · ${systemHealth.performance}`}
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400" />
-                                    <span className="text-xs text-muted-foreground">Unable to fetch status</span>
-                                </>
-                            )}
-                            {isLive && liveStats.systemHealth && (
-                                <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${liveStats.systemHealth === 'HEALTHY'
-                                    ? 'bg-green-500/10 text-green-500'
-                                    : 'bg-red-500/10 text-red-500'
-                                    }`}>
-                                    {liveStats.systemHealth}
-                                </span>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <Card className="col-span-1">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Live Activity Feed</CardTitle>
-                        <CardDescription>Real-time system events</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                        <LiveActivityFeed activities={activities} />
-                    </CardContent>
-                </Card>
-            </div>
+            {/* Row 3: Operational Fulfillment Intelligence & Live Orders Stream */}
+            <OperationalFulfillmentSection
+                orderHealth={orderHealth}
+                extendedStats={extendedStats}
+                latestOrder={latestOrder}
+                isLive={isLive}
+                startDate={startDate}
+                endDate={endDate}
+            />
 
             {/* Charts */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
