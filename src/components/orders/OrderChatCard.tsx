@@ -493,46 +493,24 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                 {/* Sender Tag Header */}
                                                 <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
                                                     {isCustomer ? (
-                                                        <>
-                                                            <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                <UserIcon className="h-3 w-3 text-sky-500" />
-                                                                {msg.senderUser?.name || order.userFullName || "Customer"}
-                                                            </span>
-                                                            <span className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300 px-1.5 py-0.2 rounded font-medium">
-                                                                Customer
-                                                            </span>
-                                                        </>
-                                                    ) : isAdminOrSystem ? (
-                                                        <>
-                                                            <span className="text-[10px] bg-gradient-to-r from-pink-500/15 to-orange-500/15 text-pink-600 dark:text-pink-400 border border-pink-500/30 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                                                <ShieldCheck className="h-3 w-3 text-pink-500" />
-                                                                System
-                                                            </span>
-                                                            <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                {msg.senderAdmin?.name ? `${msg.senderAdmin.name} (Admin)` : "System (Admin)"}
-                                                            </span>
-                                                        </>
+                                                        <span className="font-semibold text-foreground flex items-center gap-1">
+                                                            <UserIcon className="h-3 w-3 text-sky-500" />
+                                                            {msg.senderUser?.name || order.userFullName || "Customer"}
+                                                        </span>
                                                     ) : (
-                                                        <>
-                                                            <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">
-                                                                Shop
-                                                            </span>
-                                                            <span className="font-semibold text-foreground flex items-center gap-1">
-                                                                <Store className="h-3 w-3 text-amber-600" />
-                                                                {order.shopName || "Shop"}
-                                                            </span>
-                                                        </>
+                                                        <span className="font-semibold text-foreground flex items-center gap-1">
+                                                            <Store className="h-3 w-3 text-orange-500" />
+                                                            {order.shopName || msg.senderAdmin?.name || "Shop"}
+                                                        </span>
                                                     )}
                                                 </div>
 
-                                                {/* Speech Bubble: Admin messages use primary gradient */}
+                                                {/* Speech Bubble: Admin/Shop messages use primary gradient */}
                                                 <div
                                                     className={`p-3 rounded-2xl shadow-sm text-sm break-words ${
                                                         isCustomer
                                                             ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm"
-                                                            : isAdminOrSystem
-                                                            ? "bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-br-sm shadow-md"
-                                                            : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm shadow-sm"
+                                                            : "bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-br-sm shadow-md"
                                                     }`}
                                                 >
                                                     {/* Text Content */}
@@ -604,21 +582,17 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                 </div>
                                             </div>
 
-                                            {/* Shop / Admin Avatar on the Right */}
+                                            {/* Shop Profile Image Avatar on the Right */}
                                             {!isCustomer && (
-                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0 shadow-sm">
-                                                    {isAdminOrSystem ? (
-                                                        <div className="h-full w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white flex items-center justify-center text-[11px] font-bold rounded-full">
-                                                            <ShieldCheck className="h-4 w-4" />
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <AvatarImage src={order.shopImageUrl || undefined} />
-                                                            <AvatarFallback className="text-[11px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                                                {order.shopName?.charAt(0) || "S"}
-                                                            </AvatarFallback>
-                                                        </>
-                                                    )}
+                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0 shadow-sm overflow-hidden bg-muted">
+                                                    <AvatarImage
+                                                        src={order.shopImageUrl || chatData?.shop?.logoUrl || undefined}
+                                                        alt={order.shopName || "Shop"}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                    <AvatarFallback className="text-[11px] bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold">
+                                                        {order.shopName?.charAt(0) || "S"}
+                                                    </AvatarFallback>
                                                 </Avatar>
                                             )}
                                         </div>
