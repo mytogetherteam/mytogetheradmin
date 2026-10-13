@@ -15,6 +15,7 @@ import {
     RefreshCw,
     User as UserIcon,
     Store,
+    Shield,
     Check,
     CheckCheck,
     Volume2,
@@ -407,22 +408,22 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                             </div>
                         ) : (
                             sortedMessages.map((msg, index) => {
-                                // Strictly distinguish Admin / System from Customer
-                                const isAdminOrSystem =
+                                // Strictly distinguish Admin / System from Customer and Shop
+                                const isSystem =
                                     msg.senderType === "SYSTEM" ||
                                     msg.senderType === "ADMIN" ||
-                                    Boolean(msg.senderAdminId) ||
-                                    Boolean(msg.senderAdmin);
+                                    Boolean(msg.senderAdminId && msg.senderType !== "SHOP" && msg.senderType !== "USER") ||
+                                    Boolean(msg.senderAdmin && msg.senderType !== "SHOP" && msg.senderType !== "USER");
 
                                 const isCustomer =
-                                    !isAdminOrSystem &&
+                                    !isSystem &&
                                     (msg.senderType === "USER" ||
                                         Boolean(msg.senderUserId && !msg.senderAdminId));
 
-                                const isShop = !isAdminOrSystem && !isCustomer;
+                                const isShop = !isCustomer && !isSystem;
 
                                 const isAutomatedNotice =
-                                    (msg.type === "SYSTEM" || msg.senderType === "SYSTEM") &&
+                                    msg.type === "SYSTEM" &&
                                     !msg.senderAdmin &&
                                     !msg.senderAdminId &&
                                     (!msg.attachments || msg.attachments.length === 0);
@@ -468,133 +469,200 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                             </div>
                                         )}
 
-                                        <div
-                                            className={`flex items-end gap-2.5 ${
-                                                isCustomer ? "justify-start" : "justify-end"
-                                            }`}
-                                        >
-                                            {/* Customer Avatar on the Left */}
-                                            {isCustomer && (
-                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0">
-                                                    <AvatarImage src={msg.senderUser?.profileUrl || undefined} />
-                                                    <AvatarFallback className="text-[11px] bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                                                        {order.userFullName?.charAt(0) || "U"}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            )}
-
-                                            {/* Message Bubble Body */}
-                                            <div
-                                                className={`flex flex-col max-w-[85%] md:max-w-[70%] space-y-1 ${
-                                                    isCustomer ? "items-start" : "items-end"
-                                                }`}
-                                            >
-                                                {/* Sender Tag Header */}
-                                                <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-                                                    {isCustomer ? (
-                                                        <span className="font-semibold text-foreground flex items-center gap-1">
-                                                            <UserIcon className="h-3 w-3 text-sky-500" />
-                                                            {msg.senderUser?.name || order.userFullName || "Customer"}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="font-semibold text-foreground flex items-center gap-1">
-                                                            <Store className="h-3 w-3 text-orange-500" />
-                                                            {order.shopName || msg.senderAdmin?.name || "Shop"}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Speech Bubble: Admin/Shop messages use primary gradient */}
-                                                <div
-                                                    className={`p-3 rounded-2xl shadow-sm text-sm break-words ${
-                                                        isCustomer
-                                                            ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm"
-                                                            : "bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-br-sm shadow-md"
-                                                    }`}
-                                                >
-                                                    {/* Text Content */}
-                                                    {msg.content && (
-                                                        <p className="whitespace-pre-wrap leading-relaxed select-text">
-                                                            {msg.content}
-                                                        </p>
-                                                    )}
-
-                                                    {/* Attachments Section */}
-                                                    {msg.attachments && msg.attachments.length > 0 && (
-                                                        <div
-                                                            className={`space-y-2 ${
-                                                                msg.content ? "mt-2 pt-2 border-t border-white/20 dark:border-zinc-600" : ""
-                                                            }`}
-                                                        >
-                                                            {/* Images Grid */}
-                                                            {imageAttachments.map((att) => (
-                                                                <div
-                                                                    key={att.id}
-                                                                    className="relative group cursor-pointer overflow-hidden rounded-xl border border-black/10"
-                                                                    onClick={() => setLightboxImage(att.url)}
-                                                                >
-                                                                    <img
-                                                                        src={att.url}
-                                                                        alt={att.fileName || "attachment"}
-                                                                        className="max-h-56 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200"
-                                                                        loading="lazy"
-                                                                    />
-                                                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
-                                                                        <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
-                                                                            Click to view
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-
-                                                            {/* Audio/Voice Attachments (play & seek support) */}
-                                                            {voiceAttachments.map((att) => (
-                                                                <AudioPlayer
-                                                                    key={att.id}
-                                                                    url={att.url}
-                                                                    duration={att.duration}
-                                                                    isOutgoing={!isCustomer}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Time & Read Receipts inside bottom of bubble */}
-                                                    <div
-                                                        className={`flex items-center justify-end gap-1 text-[10px] mt-1.5 ${
-                                                            isCustomer
-                                                                ? "text-muted-foreground"
-                                                                : "text-white/90"
-                                                        }`}
-                                                    >
-                                                        <span>{formatChatTime(msg.createdAt)}</span>
-                                                        {isShop && (
-                                                            <span>
-                                                                {msg.isRead ? (
-                                                                    <CheckCheck className="h-3 w-3 text-blue-200" />
-                                                                ) : (
-                                                                    <Check className="h-3 w-3 opacity-80" />
-                                                                )}
+                                        {isSystem ? (
+                                            /* System Admin Message: Centered with System Admin style */
+                                            <div className="flex flex-col items-center my-3 px-2 w-full">
+                                                <div className="max-w-[85%] md:max-w-[70%] w-full flex flex-col items-center">
+                                                    {/* Header: System Admin Badge with Shield */}
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-xs font-semibold shadow-xs mb-2">
+                                                        <Shield className="h-3.5 w-3.5 fill-purple-700/20 text-purple-700 dark:text-purple-400 shrink-0" />
+                                                        <span>System Admin</span>
+                                                        {msg.senderAdmin?.name && (
+                                                            <span className="text-[11px] font-medium text-purple-600/80 dark:text-purple-300/80">
+                                                                • {msg.senderAdmin.name}
                                                             </span>
                                                         )}
                                                     </div>
+
+                                                    {/* Content Card */}
+                                                    <div className="w-full bg-gradient-to-b from-purple-50/90 via-purple-50/50 to-white dark:from-purple-950/40 dark:via-purple-950/20 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 rounded-2xl p-3.5 shadow-sm space-y-2">
+                                                        {msg.content && (
+                                                            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed select-text text-center sm:text-left">
+                                                                {msg.content}
+                                                            </p>
+                                                        )}
+
+                                                        {/* Attachments Section */}
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div className={`space-y-2 ${msg.content ? "pt-2 border-t border-purple-200/60 dark:border-purple-800/40" : ""}`}>
+                                                                {imageAttachments.map((att) => (
+                                                                    <div
+                                                                        key={att.id}
+                                                                        className="relative group cursor-pointer overflow-hidden rounded-xl border border-black/10 mx-auto max-w-sm"
+                                                                        onClick={() => setLightboxImage(att.url)}
+                                                                    >
+                                                                        <img
+                                                                            src={att.url}
+                                                                            alt={att.fileName || "attachment"}
+                                                                            className="max-h-56 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200 mx-auto"
+                                                                            loading="lazy"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                                                            <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
+                                                                                Click to view
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+
+                                                                {voiceAttachments.map((att) => (
+                                                                    <AudioPlayer
+                                                                        key={att.id}
+                                                                        url={att.url}
+                                                                        duration={att.duration}
+                                                                        isOutgoing={false}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Timestamp */}
+                                                        <div className="flex items-center justify-center sm:justify-end gap-1 text-[10px] text-muted-foreground pt-1">
+                                                            <span>{formatChatTime(msg.createdAt)}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        ) : (
+                                            /* Regular User (Left) vs Shop (Right) Message */
+                                            <div
+                                                className={`flex items-end gap-2.5 ${
+                                                    isCustomer ? "justify-start" : "justify-end"
+                                                }`}
+                                            >
+                                                {/* Customer Avatar on the Left */}
+                                                {isCustomer && (
+                                                    <Avatar className="h-7 w-7 ring-1 ring-border shrink-0">
+                                                        <AvatarImage src={msg.senderUser?.profileUrl || undefined} />
+                                                        <AvatarFallback className="text-[11px] bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                                            {order.userFullName?.charAt(0) || "U"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                )}
 
-                                            {/* Shop Profile Image Avatar on the Right */}
-                                            {!isCustomer && (
-                                                <Avatar className="h-7 w-7 ring-1 ring-border shrink-0 shadow-sm overflow-hidden bg-muted">
-                                                    <AvatarImage
-                                                        src={order.shopImageUrl || chatData?.shop?.logoUrl || undefined}
-                                                        alt={order.shopName || "Shop"}
-                                                        className="h-full w-full object-cover"
-                                                    />
-                                                    <AvatarFallback className="text-[11px] bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold">
-                                                        {order.shopName?.charAt(0) || "S"}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                        </div>
+                                                {/* Message Bubble Body */}
+                                                <div
+                                                    className={`flex flex-col max-w-[85%] md:max-w-[70%] space-y-1 ${
+                                                        isCustomer ? "items-start" : "items-end"
+                                                    }`}
+                                                >
+                                                    {/* Sender Tag Header */}
+                                                    <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+                                                        {isCustomer ? (
+                                                            <span className="font-semibold text-foreground flex items-center gap-1">
+                                                                <UserIcon className="h-3 w-3 text-sky-500" />
+                                                                {msg.senderUser?.name || order.userFullName || "Customer"}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="font-semibold text-foreground flex items-center gap-1">
+                                                                <Store className="h-3 w-3 text-orange-500" />
+                                                                {order.shopName || "Shop"}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Speech Bubble: Shop messages use shop blue, Customer uses white/slate */}
+                                                    <div
+                                                        className={`p-3 rounded-2xl text-sm break-words ${
+                                                            isCustomer
+                                                                ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm shadow-sm"
+                                                                : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm shadow-sm"
+                                                        }`}
+                                                    >
+                                                        {/* Text Content */}
+                                                        {msg.content && (
+                                                            <p className="whitespace-pre-wrap leading-relaxed select-text">
+                                                                {msg.content}
+                                                            </p>
+                                                        )}
+
+                                                        {/* Attachments Section */}
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div
+                                                                className={`space-y-2 ${
+                                                                    msg.content ? "mt-2 pt-2 border-t border-white/20 dark:border-zinc-600" : ""
+                                                                }`}
+                                                            >
+                                                                {/* Images Grid */}
+                                                                {imageAttachments.map((att) => (
+                                                                    <div
+                                                                        key={att.id}
+                                                                        className="relative group cursor-pointer overflow-hidden rounded-xl border border-black/10"
+                                                                        onClick={() => setLightboxImage(att.url)}
+                                                                    >
+                                                                        <img
+                                                                            src={att.url}
+                                                                            alt={att.fileName || "attachment"}
+                                                                            className="max-h-56 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200"
+                                                                            loading="lazy"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                                                                            <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded">
+                                                                                Click to view
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+
+                                                                {/* Audio/Voice Attachments (play & seek support) */}
+                                                                {voiceAttachments.map((att) => (
+                                                                    <AudioPlayer
+                                                                        key={att.id}
+                                                                        url={att.url}
+                                                                        duration={att.duration}
+                                                                        isOutgoing={!isCustomer}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Time & Read Receipts inside bottom of bubble */}
+                                                        <div
+                                                            className={`flex items-center justify-end gap-1 text-[10px] mt-1.5 ${
+                                                                isCustomer
+                                                                    ? "text-muted-foreground"
+                                                                    : "text-white/90"
+                                                            }`}
+                                                        >
+                                                            <span>{formatChatTime(msg.createdAt)}</span>
+                                                            {!isCustomer && (
+                                                                <span>
+                                                                    {msg.isRead ? (
+                                                                        <CheckCheck className="h-3 w-3 text-white/90" />
+                                                                    ) : (
+                                                                        <Check className="h-3 w-3 opacity-80" />
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Shop Profile Image Avatar on the Right */}
+                                                {isShop && (
+                                                    <Avatar className="h-7 w-7 ring-1 ring-border shrink-0 shadow-sm overflow-hidden bg-muted">
+                                                        <AvatarImage
+                                                            src={order.shopImageUrl || chatData?.shop?.logoUrl || undefined}
+                                                            alt={order.shopName || "Shop"}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                        <AvatarFallback className="text-[11px] bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-bold">
+                                                            {order.shopName?.charAt(0) || "S"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })
