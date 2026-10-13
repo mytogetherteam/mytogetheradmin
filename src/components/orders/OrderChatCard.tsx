@@ -15,7 +15,6 @@ import {
     RefreshCw,
     User as UserIcon,
     Store,
-    Shield,
     Check,
     CheckCheck,
     Volume2,
@@ -473,19 +472,23 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                             /* System Admin Message: Centered with System Admin style */
                                             <div className="flex flex-col items-center my-3 px-2 w-full">
                                                 <div className="max-w-[85%] md:max-w-[70%] w-full flex flex-col items-center">
-                                                    {/* Header: System Admin Badge with Shield */}
-                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-xs font-semibold shadow-xs mb-2">
-                                                        <Shield className="h-3.5 w-3.5 fill-purple-700/20 text-purple-700 dark:text-purple-400 shrink-0" />
+                                                    {/* Header: System Admin Badge with myTogether Icon */}
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-200/70 dark:bg-zinc-800/70 backdrop-blur-md text-foreground border border-slate-300/60 dark:border-zinc-700/60 text-xs font-semibold shadow-xs mb-2">
+                                                        <img
+                                                            src="/logo-mytogether.jpg"
+                                                            alt="myTogether"
+                                                            className="h-4 w-4 rounded-full object-cover shrink-0 ring-1 ring-border/50"
+                                                        />
                                                         <span>System Admin</span>
                                                         {msg.senderAdmin?.name && (
-                                                            <span className="text-[11px] font-medium text-purple-600/80 dark:text-purple-300/80">
+                                                            <span className="text-[11px] font-medium text-muted-foreground">
                                                                 • {msg.senderAdmin.name}
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    {/* Content Card */}
-                                                    <div className="w-full bg-gradient-to-b from-purple-50/90 via-purple-50/50 to-white dark:from-purple-950/40 dark:via-purple-950/20 dark:to-zinc-900 border border-purple-200 dark:border-purple-800/60 rounded-2xl p-3.5 shadow-sm space-y-2">
+                                                    {/* Content Card: Gray Glass Style */}
+                                                    <div className="w-full bg-slate-100/75 dark:bg-zinc-800/60 backdrop-blur-md border border-slate-200/90 dark:border-zinc-700/70 rounded-2xl p-3.5 shadow-sm space-y-2">
                                                         {msg.content && (
                                                             <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed select-text text-center sm:text-left">
                                                                 {msg.content}
@@ -494,7 +497,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
 
                                                         {/* Attachments Section */}
                                                         {msg.attachments && msg.attachments.length > 0 && (
-                                                            <div className={`space-y-2 ${msg.content ? "pt-2 border-t border-purple-200/60 dark:border-purple-800/40" : ""}`}>
+                                                            <div className={`space-y-2 ${msg.content ? "pt-2 border-t border-slate-200/80 dark:border-zinc-700/60" : ""}`}>
                                                                 {imageAttachments.map((att) => (
                                                                     <div
                                                                         key={att.id}
@@ -571,12 +574,12 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                         )}
                                                     </div>
 
-                                                    {/* Speech Bubble: Shop messages use shop blue, Customer uses white/slate */}
+                                                    {/* Speech Bubble: Shop messages use primary gradient, Customer uses white/slate */}
                                                     <div
                                                         className={`p-3 rounded-2xl text-sm break-words ${
                                                             isCustomer
                                                                 ? "bg-white dark:bg-zinc-800 text-foreground border border-slate-200 dark:border-zinc-700 rounded-bl-sm shadow-sm"
-                                                                : "bg-blue-600 text-white dark:bg-blue-600 rounded-br-sm shadow-sm"
+                                                                : "bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-br-sm shadow-md"
                                                         }`}
                                                     >
                                                         {/* Text Content */}
@@ -656,7 +659,7 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                                             alt={order.shopName || "Shop"}
                                                             className="h-full w-full object-cover"
                                                         />
-                                                        <AvatarFallback className="text-[11px] bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-bold">
+                                                        <AvatarFallback className="text-[11px] bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold">
                                                             {order.shopName?.charAt(0) || "S"}
                                                         </AvatarFallback>
                                                     </Avatar>
