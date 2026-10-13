@@ -18,14 +18,13 @@ import {
 } from "recharts";
 import {
     Clock,
-    MapPin,
     Flame,
     Users,
     Activity,
     Compass,
-    TrendingUp,
     Sparkles,
 } from "lucide-react";
+import { TodayActiveUserLocationMap } from "./TodayActiveUserLocationMap";
 
 import type { ActiveUsersSummary } from "@/services/activeUsersService";
 
@@ -588,89 +587,13 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                     </CardContent>
                 </Card>
 
-                {/* Graph 2: District Demand Horizontal Distribution Meters */}
-                <Card className="border-border/70 shadow-sm overflow-hidden bg-card/90">
-                    <CardHeader className="pb-2 border-b border-border/40 bg-muted/15 flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                District Demand
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                {timeframe === "today"
-                                    ? "Top locations by customer visits & orders today"
-                                    : timeframe === "7d"
-                                    ? "Top locations by weekly traffic & order frequency"
-                                    : "Top locations by monthly order volume & market share"}
-                            </CardDescription>
-                        </div>
-                        <Badge variant="outline" className="text-[11px]">
-                            {districtData.length} areas
-                        </Badge>
-                    </CardHeader>
-
-                    <CardContent className="p-4 sm:p-5">
-                        {districtData.length > 0 ? (
-                            <div className="space-y-3.5">
-                                {districtData.slice(0, 6).map((row, idx) => (
-                                    <div key={row.district} className="space-y-1.5 group">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="h-5 w-5 rounded-md bg-muted text-muted-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
-                                                    {idx + 1}
-                                                </span>
-                                                <span className="font-semibold text-foreground truncate group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">
-                                                    {row.district}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="text-muted-foreground font-mono text-[11px]">
-                                                    {row.users.toLocaleString()} people
-                                                </span>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="text-[10px] font-medium px-1.5 py-0 h-4.5 bg-muted/70"
-                                                >
-                                                    {formatStay(row.avgSessionSeconds)} avg
-                                                </Badge>
-                                            </div>
-                                        </div>
-
-                                        {/* Styled Horizontal Progress Bar */}
-                                        <div className="w-full h-2 rounded-full bg-muted/60 overflow-hidden relative">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
-                                                style={{ width: `${Math.max(row.percentOfMax, 6)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground text-xs text-center p-4">
-                                <Compass className="h-8 w-8 mb-2 opacity-30" />
-                                <p>No district visits recorded yet.</p>
-                                <p className="text-[11px] opacity-70 mt-1">
-                                    Location telemetry updates automatically as app users open sessions.
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1 font-medium">
-                                <TrendingUp className="h-3 w-3 text-emerald-500" />
-                                Highest: {districtData[0]?.district || "Khlong Tan"}
-                            </span>
-                            <span>
-                                {timeframe === "today"
-                                    ? `${(appUsage?.users || districtData.reduce((s, r) => s + r.users, 0)).toLocaleString()} total people today`
-                                    : timeframe === "7d"
-                                    ? `${districtData.reduce((s, r) => s + r.users, 0).toLocaleString()} people across 7 days`
-                                    : `${districtData.reduce((s, r) => s + r.users, 0).toLocaleString()} people across 30 days`}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Graph 2: Today Active User Locations (Interactive Map View with Fullscreen Expand) */}
+                <TodayActiveUserLocationMap
+                    districtData={districtData}
+                    timeframe={timeframe}
+                    totalVisitsCount={appUsage?.users || districtData.reduce((s, r) => s + r.users, 0)}
+                    highestDistrictName={districtData[0]?.district}
+                />
             </div>
         </div>
     );

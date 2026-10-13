@@ -287,6 +287,8 @@ export interface AdminShopProfileListItem {
   viewCount?: number;
   displayOrder?: number;
   slug?: string | null;
+  deliveryEnabled?: boolean;
+  isPickUp?: boolean;
 }
 
 export interface AdminShopProfileListResponse {
@@ -325,6 +327,8 @@ export function mapAdminShopProfileRowToShop(row: AdminShopProfileListItem): Sho
     viewCount: row.viewCount ?? 0,
     displayOrder: row.displayOrder,
     slug: row.slug ?? null,
+    deliveryEnabled: row.deliveryEnabled !== false,
+    isPickUp: row.isPickUp ?? true,
   };
 }
 export interface ShopFormDataDTO {

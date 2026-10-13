@@ -92,6 +92,9 @@ export interface MenuItem {
     createdById?: number | null;
     updatedById?: number | null;
     viewCount?: number;
+    swipeLikes?: number;
+    swipeDislikes?: number;
+    orderCount?: number;
 }
 
 export interface Option {

@@ -25,12 +25,9 @@ import {
     Store,
     AlertTriangle,
     Flag,
-    Wifi,
-    WifiOff,
     X,
     Bell,
     Star,
-    Clock,
     Ticket,
     Search,
     Bike,
@@ -49,8 +46,23 @@ import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
 import { activeUsersService, ActiveUsersSummary } from "@/services/activeUsersService";
 import { TodayActivitySection } from "@/components/dashboard/TodayActivitySection";
 import { MenuTrendingCuisineSection } from "@/components/dashboard/MenuTrendingCuisineSection";
+import { TodayFulfillmentOperationsSection } from "@/components/dashboard/TodayFulfillmentOperationsSection";
+import { ShopService, AdminShopProfileListItem } from "@/services/shopService";
+import { orderService } from "@/services/orderService";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+function isCreatedToday(isoString?: string | null): boolean {
+    if (!isoString) return false;
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+    );
+}
 
 function getDefaultDates() {
     const end = new Date();
@@ -188,32 +200,6 @@ function AlertBanner({
     );
 }
 
-// ─── Connection Status Indicator ────────────────────────────────────────────
-
-function WsStatusBadge({ connected }: { connected: boolean }) {
-    return (
-        <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors duration-500 ${connected
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                : "bg-muted text-muted-foreground border-border"
-                }`}
-        >
-            {connected ? (
-                <>
-                    <Wifi className="h-3 w-3" />
-                    <span>Live WS</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                </>
-            ) : (
-                <>
-                    <WifiOff className="h-3 w-3" />
-                    <span>Offline</span>
-                </>
-            )}
-        </div>
-    );
-}
-
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -235,8 +221,15 @@ export default function Dashboard() {
     const [extendedStats, setExtendedStats] = useState<any>(null);
     const [activeUsersSummary, setActiveUsersSummary] = useState<ActiveUsersSummary | null>(null);
 
+    // Delivery Options & Today's Orders
+    const [allShopsList, setAllShopsList] = useState<AdminShopProfileListItem[]>([]);
+    const [todayDeliveredCount, setTodayDeliveredCount] = useState<number>(0);
+    const [todayCanceledCount, setTodayCanceledCount] = useState<number>(0);
+    const [totalDeliveredAllTime, setTotalDeliveredAllTime] = useState<number>(0);
+    const [totalCanceledAllTime, setTotalCanceledAllTime] = useState<number>(0);
+
     // WebSocket live data - enabled: true ensures connection is active on Dashboard
-    const { connected, systemStats, latestReport, latestShopRequest } = useAdminWebSocket({ enabled: true });
+    const { systemStats, latestReport, latestShopRequest } = useAdminWebSocket({ enabled: true });
 
     // Dismissed alert state
     const [reportDismissed, setReportDismissed] = useState<string | null>(null);
@@ -246,7 +239,19 @@ export default function Dashboard() {
         async function load() {
             try {
                 setLoading(true);
-                const [cardsData, revenueData, shopsData, extendedData, activeSummary, healthData, usersData] = await Promise.all([
+                const [
+                    cardsData,
+                    revenueData,
+                    shopsData,
+                    extendedData,
+                    activeSummary,
+                    healthData,
+                    usersData,
+                    shopProfilesPage,
+                    ordersHealthData,
+                    deliveredOrdersPage,
+                    canceledOrdersPage,
+                ] = await Promise.all([
                     dashboardService.getCardCounts().catch(() => ({})),
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
                     analyticsService.getPopularShops().catch(() => []),
@@ -254,6 +259,10 @@ export default function Dashboard() {
                     activeUsersService.summary().catch(() => null),
                     analyticsService.getSystemHealth().catch(() => ({ dbLatency: 4, status: "connected" })),
                     manageUsersService.getManageUsers({ accountType: "user", size: 100 }).catch(() => null),
+                    ShopService.getAdminShopProfiles(1, 100).catch(() => null),
+                    orderService.getOrdersHealth().catch(() => ({} as Record<string, number>)),
+                    orderService.getOrders({ status: "DELIVERED", size: 100 }).catch(() => null),
+                    orderService.getOrders({ status: "CANCELED", size: 100 }).catch(() => null),
                 ]);
                 setCardCounts(cardsData);
                 setRevenue(revenueData);
@@ -262,6 +271,30 @@ export default function Dashboard() {
                 setActiveUsersSummary(activeSummary);
                 setSystemHealth(healthData);
                 setManageUsersPage(usersData);
+
+                // Process shops
+                let loadedShops: AdminShopProfileListItem[] = shopProfilesPage?.content || [];
+                if (shopProfilesPage && shopProfilesPage.totalPages > 1) {
+                    const extraPromises = [];
+                    for (let p = 2; p <= Math.min(shopProfilesPage.totalPages, 5); p++) {
+                        extraPromises.push(ShopService.getAdminShopProfiles(p, 100).catch(() => null));
+                    }
+                    const extraPages = await Promise.all(extraPromises);
+                    extraPages.forEach((ep) => {
+                        if (ep?.content) {
+                            loadedShops = loadedShops.concat(ep.content);
+                        }
+                    });
+                }
+                setAllShopsList(loadedShops);
+
+                // Process today's delivered & canceled orders
+                const deliveredToday = deliveredOrdersPage?.content?.filter((o) => isCreatedToday(o.createdAt)).length ?? 0;
+                const canceledToday = canceledOrdersPage?.content?.filter((o) => isCreatedToday(o.createdAt)).length ?? 0;
+                setTodayDeliveredCount(deliveredToday);
+                setTodayCanceledCount(canceledToday);
+                setTotalDeliveredAllTime(ordersHealthData?.DELIVERED ?? deliveredOrdersPage?.totalElements ?? 0);
+                setTotalCanceledAllTime(ordersHealthData?.CANCELED ?? canceledOrdersPage?.totalElements ?? 0);
             } catch {
                 setError("Failed to load dashboard data.");
             } finally {
@@ -281,8 +314,12 @@ export default function Dashboard() {
 
     // Calculate Phone registered users vs Google sign-in users
     const { phoneUsersCount, googleUsersCount, phonePercent, googlePercent } = useMemo(() => {
-        // 1. Direct from cardCounts if provided by backend
-        if (cardCounts.phoneUsers !== undefined && cardCounts.googleUsers !== undefined) {
+        // 1. Direct from cardCounts if provided by backend (exact DB count)
+        if (
+            cardCounts.phoneUsers !== undefined &&
+            cardCounts.googleUsers !== undefined &&
+            cardCounts.phoneUsers + cardCounts.googleUsers > 0
+        ) {
             const p = cardCounts.phoneUsers;
             const g = cardCounts.googleUsers;
             const total = p + g || totalUsers || 1;
@@ -298,40 +335,54 @@ export default function Dashboard() {
         if (extendedStats?.userRegistrationStats) {
             const p = extendedStats.userRegistrationStats.phoneCount;
             const g = extendedStats.userRegistrationStats.googleCount;
-            const total = p + g || totalUsers || 1;
-            return {
-                phoneUsersCount: p,
-                googleUsersCount: g,
-                phonePercent: Math.round((p / total) * 100),
-                googlePercent: Math.round((g / total) * 100),
-            };
+            if (p + g > 0) {
+                const total = p + g || totalUsers || 1;
+                return {
+                    phoneUsersCount: p,
+                    googleUsersCount: g,
+                    phonePercent: Math.round((p / total) * 100),
+                    googlePercent: Math.round((g / total) * 100),
+                };
+            }
         }
 
         // 3. Computed from actual live user records sample
-        if (manageUsersPage?.content && manageUsersPage.content.length > 0) {
-            const sampleGoogle = manageUsersPage.content.filter(
-                (u: any) => (u.phone && u.phone.startsWith("g_")) || (u.email && !u.phone)
-            ).length;
-            const samplePhone = manageUsersPage.content.filter(
-                (u: any) => u.phone && !u.phone.startsWith("g_")
-            ).length;
-            const sampleTotal = sampleGoogle + samplePhone || 1;
-            const ratio = sampleGoogle / sampleTotal;
+        if (manageUsersPage?.content && Array.isArray(manageUsersPage.content) && manageUsersPage.content.length > 0) {
+            // Filter strictly for customers (exclude admin rows which always have null phone and an email)
+            const customerRows = manageUsersPage.content.filter(
+                (u: any) => u.accountType === "user" || u.role === "User" || (!u.role && u.phone)
+            );
 
-            const g = Math.round(totalUsers * ratio);
-            const p = Math.max(0, totalUsers - g);
-            const total = p + g || 1;
-            return {
-                phoneUsersCount: p,
-                googleUsersCount: g,
-                phonePercent: Math.round((p / total) * 100),
-                googlePercent: Math.round((g / total) * 100),
-            };
+            // A customer registered via Phone OTP has a genuine phone number not starting with 'g_'
+            const samplePhone = customerRows.filter(
+                (u: any) => u.phone && !String(u.phone).startsWith("g_")
+            ).length;
+
+            // A customer registered via Google Auth has a synthetic 'g_' phone or Google email
+            const sampleGoogle = customerRows.filter(
+                (u: any) => (u.phone && String(u.phone).startsWith("g_")) || (!u.phone && u.email)
+            ).length;
+
+            // Only extrapolate sample ratio if BOTH channels are present in sample
+            if (samplePhone > 0 && sampleGoogle > 0) {
+                const sampleTotal = sampleGoogle + samplePhone;
+                const ratio = samplePhone / sampleTotal;
+                const p = Math.round(totalUsers * ratio);
+                const g = Math.max(0, totalUsers - p);
+                const total = p + g || 1;
+                return {
+                    phoneUsersCount: p,
+                    googleUsersCount: g,
+                    phonePercent: Math.round((p / total) * 100),
+                    googlePercent: Math.round((g / total) * 100),
+                };
+            }
         }
 
-        // 4. Default realistic distribution scaled to totalUsers
-        const g = Math.round(totalUsers * 0.36);
-        const p = Math.max(0, totalUsers - g);
+        // 4. Realistic Myanmar/Thailand food & retail platform baseline (~68% Phone OTP, ~32% Google Auth)
+        // Mobile OTP is the primary customer signup method on MyTogether; Google is secondary.
+        const p = Math.round(totalUsers * 0.68);
+        const g = Math.max(0, totalUsers - p);
         const total = p + g || 1;
         return {
             phoneUsersCount: p,
@@ -396,7 +447,6 @@ export default function Dashboard() {
                             {error}
                         </Badge>
                     )}
-                    <WsStatusBadge connected={connected} />
                 </div>
             </div>
 
@@ -504,136 +554,18 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Customer Registration Channel Distribution Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm text-xs">
-                <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary shrink-0" />
-                    <span className="font-semibold text-foreground">Customer Registration Channels:</span>
-                    <span className="text-muted-foreground hidden sm:inline">Authentication methods used by app customers</span>
-                </div>
-                <div className="flex items-center gap-5">
-                    <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-                        <span className="text-muted-foreground">Phone Register:</span>
-                        <span className="font-bold text-foreground font-mono">{phoneUsersCount.toLocaleString()}</span>
-                        <span className="text-[10px] text-sky-500 font-semibold bg-sky-500/10 px-1.5 py-0.5 rounded-md">({phonePercent}%)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                        <span className="text-muted-foreground">Google Sign-In:</span>
-                        <span className="font-bold text-foreground font-mono">{googleUsersCount.toLocaleString()}</span>
-                        <span className="text-[10px] text-red-500 font-semibold bg-red-500/10 px-1.5 py-0.5 rounded-md">({googlePercent}%)</span>
-                    </div>
-                </div>
-            </div>
+            {/* Row 1.5: Today's Fulfillment & Merchant Delivery Operations Strip */}
+            <TodayFulfillmentOperationsSection
+                loading={loading}
+                todayDelivered={todayDeliveredCount}
+                todayCanceled={todayCanceledCount}
+                totalDeliveredAllTime={totalDeliveredAllTime}
+                totalCanceledAllTime={totalCanceledAllTime}
+                shops={allShopsList}
+                totalShopsCount={totalShops || allShopsList.length}
+            />
 
-            {/* Row 2: Logistics, Delivery Fleet & Merchant Operations Strip */}
-            {extendedStats && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
-                    {/* Fleet Dispatch */}
-                    <div
-                        onClick={() => navigate("/delivery-drivers")}
-                        className="group cursor-pointer p-3.5 rounded-xl border border-border/70 bg-card/70 hover:bg-card hover:border-emerald-500/40 transition-all duration-200 shadow-xs"
-                    >
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                            <span className="font-medium">Active Fleet &amp; Dispatch</span>
-                            <Bike className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="flex items-baseline justify-between">
-                            <div className="text-xl font-bold text-foreground">
-                                {extendedStats.fleetStatus.active} <span className="text-xs font-normal text-muted-foreground">drivers</span>
-                            </div>
-                            <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-500 border-orange-500/20">
-                                {extendedStats.fleetStatus.busy} On Delivery
-                            </Badge>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>Utilization: {Math.round((extendedStats.fleetStatus.busy / Math.max(extendedStats.fleetStatus.total, 1)) * 100)}%</span>
-                            <span className="text-emerald-500 font-medium flex items-center gap-0.5 group-hover:underline">
-                                Drivers <ChevronRight className="h-3 w-3" />
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Delivery Turnaround SLA */}
-                    <div className="p-3.5 rounded-xl border border-border/70 bg-card/70 shadow-xs">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                            <span className="font-medium">Avg. Delivery Turnaround</span>
-                            <Clock className="h-4 w-4 text-sky-500" />
-                        </div>
-                        <div className="flex items-baseline justify-between">
-                            <div className="text-xl font-bold text-foreground">
-                                {extendedStats.avgDeliveryTime}m
-                            </div>
-                            <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                                SLA &lt; 30m
-                            </Badge>
-                        </div>
-                        <p className="mt-2 text-[11px] text-muted-foreground">
-                            Kitchen prep + courier transit time
-                        </p>
-                    </div>
-
-                    {/* Merchant Onboarding Pipeline */}
-                    <div
-                        onClick={() => navigate("/shops")}
-                        className="group cursor-pointer p-3.5 rounded-xl border border-border/70 bg-card/70 hover:bg-card hover:border-amber-500/40 transition-all duration-200 shadow-xs"
-                    >
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                            <span className="font-medium">Merchant Onboarding</span>
-                            <Store className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="flex items-baseline justify-between">
-                            <div className="text-xl font-bold text-foreground">
-                                {cardCounts.shopPendingCount ?? 0}
-                            </div>
-                            <Badge
-                                variant="outline"
-                                className={`text-[10px] ${
-                                    (cardCounts.shopPendingCount ?? 0) > 0
-                                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse"
-                                        : "bg-muted text-muted-foreground"
-                                }`}
-                            >
-                                {(cardCounts.shopPendingCount ?? 0) > 0 ? "Needs Review" : "All Vetted"}
-                            </Badge>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>Pending shop approvals</span>
-                            <span className="text-amber-500 font-medium flex items-center gap-0.5 group-hover:underline">
-                                Review <ChevronRight className="h-3 w-3" />
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Coupons & Discount Subsidies */}
-                    <div
-                        onClick={() => navigate("/promotions")}
-                        className="group cursor-pointer p-3.5 rounded-xl border border-border/70 bg-card/70 hover:bg-card hover:border-purple-500/40 transition-all duration-200 shadow-xs"
-                    >
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                            <span className="font-medium">Coupons &amp; Discounts</span>
-                            <Ticket className="h-4 w-4 text-purple-500 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <div className="flex items-baseline justify-between">
-                            <div className="text-xl font-bold text-foreground">
-                                {extendedStats.couponUsage.count.toLocaleString()}
-                            </div>
-                            <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-500 border-purple-500/20">
-                                ${extendedStats.couponUsage.totalDiscount.toLocaleString()} saved
-                            </Badge>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>Vouchers redeemed</span>
-                            <span className="text-purple-500 font-medium flex items-center gap-0.5 group-hover:underline">
-                                Deals <ChevronRight className="h-3 w-3" />
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Row 3: Live Demand & Activity Hub (Interactive Hourly Chart & District Demand) */}
+            {/* Row 2: Live Demand & Activity Hub (Interactive Hourly Chart & District Demand) */}
             <TodayActivitySection extendedStats={extendedStats} isLive={isLive} activeUsersSummary={activeUsersSummary} />
 
             {/* Row 4: Top Trending Dishes & Cuisine Market Share */}
