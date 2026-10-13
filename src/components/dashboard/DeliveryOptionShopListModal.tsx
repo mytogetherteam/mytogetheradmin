@@ -99,9 +99,6 @@ export function DeliveryOptionShopListModal({
                                 <Bike className="h-5 w-5 text-emerald-500" />
                                 Merchant Delivery Coverage &amp; Options
                             </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                                Complete directory of merchant partners with delivery service enabled vs disabled (pickup only)
-                            </DialogDescription>
                         </div>
 
                         {/* Top quick-metric counters */}

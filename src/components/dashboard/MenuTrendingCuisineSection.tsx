@@ -55,6 +55,17 @@ function getItemLikes(item: MenuItem): number {
     return item.swipeLikes || 0;
 }
 
+// Check if item belongs to test shop (e.g. mytogetherTesting)
+function isTestingShopItem(item: MenuItem): boolean {
+    const sName = (
+        item.shopName ||
+        (item as any).shop?.nameEn ||
+        (item as any).shop?.nameMm ||
+        ""
+    ).toLowerCase().replace(/\s+/g, "");
+    return sName.includes("mytogethertesting") || sName.includes("testingshop");
+}
+
 export function MenuTrendingCuisineSection({ extendedStats }: Props) {
     const navigate = useNavigate();
 
@@ -102,7 +113,17 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         setMenuItems(unique);
                     }
 
-                    // Build real order frequency map from confirmed order items
+                    // Build real order frequency map from confirmed order items (excluding testing shop)
+                    const isTestingOrder = (ord: any): boolean => {
+                        const sName = (
+                            ord.shopName ||
+                            ord.shop?.nameEn ||
+                            ord.shop?.nameMm ||
+                            ""
+                        ).toLowerCase().replace(/\s+/g, "");
+                        return sName.includes("mytogethertesting") || sName.includes("testingshop");
+                    };
+
                     const orderMap: Record<number, number> = {};
                     const allOrders = [
                         ...(activeOrdersRes?.content || []),
@@ -112,6 +133,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                     for (const ord of allOrders) {
                         if (ord.id && !seenOrders.has(ord.id)) {
                             seenOrders.add(ord.id);
+                            if (isTestingOrder(ord)) continue;
                             if (Array.isArray(ord.items)) {
                                 for (const it of ord.items) {
                                     const mId = it.menuItemId || (it as any).id;
@@ -141,33 +163,27 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
         };
     }, []);
 
-    // Filter and sort items based on active tab using 100% REAL data
+    // Filter and sort items based on active tab using 100% REAL data (strictly excluding mytogetherTesting)
     const displayedItems = useMemo(() => {
         if (filter === "viewed") {
-            if (extendedStats?.mostViewedMenus && extendedStats.mostViewedMenus.length > 0) {
-                return extendedStats.mostViewedMenus.slice(0, 6);
-            }
-            return [...menuItems]
-                .sort((a, b) => getItemViews(b) - getItemViews(a))
-                .slice(0, 6);
+            const list = (extendedStats?.mostViewedMenus && extendedStats.mostViewedMenus.length > 0)
+                ? extendedStats.mostViewedMenus
+                : [...menuItems].sort((a, b) => getItemViews(b) - getItemViews(a));
+            return list.filter((item) => !isTestingShopItem(item)).slice(0, 6);
         }
         if (filter === "ordered") {
-            if (extendedStats?.mostOrderedMenus && extendedStats.mostOrderedMenus.length > 0) {
-                return extendedStats.mostOrderedMenus.slice(0, 6);
-            }
-            return [...menuItems]
-                .sort((a, b) => getItemOrders(b, orderCountMap) - getItemOrders(a, orderCountMap))
-                .slice(0, 6);
+            const list = (extendedStats?.mostOrderedMenus && extendedStats.mostOrderedMenus.length > 0)
+                ? extendedStats.mostOrderedMenus
+                : [...menuItems].sort((a, b) => getItemOrders(b, orderCountMap) - getItemOrders(a, orderCountMap));
+            return list.filter((item) => !isTestingShopItem(item)).slice(0, 6);
         }
         if (filter === "liked") {
-            if (extendedStats?.mostLikedMenus && extendedStats.mostLikedMenus.length > 0) {
-                return extendedStats.mostLikedMenus.slice(0, 6);
-            }
-            return [...menuItems]
-                .sort((a, b) => getItemLikes(b) - getItemLikes(a))
-                .slice(0, 6);
+            const list = (extendedStats?.mostLikedMenus && extendedStats.mostLikedMenus.length > 0)
+                ? extendedStats.mostLikedMenus
+                : [...menuItems].sort((a, b) => getItemLikes(b) - getItemLikes(a));
+            return list.filter((item) => !isTestingShopItem(item)).slice(0, 6);
         }
-        return [...menuItems].slice(0, 6);
+        return [...menuItems].filter((item) => !isTestingShopItem(item)).slice(0, 6);
     }, [
         menuItems,
         filter,
