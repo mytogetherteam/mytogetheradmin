@@ -70,6 +70,11 @@ export default defineConfig(({ mode }) => {
           secure: true,
           ws: true,
         },
+        '/uploads': {
+          target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
+          changeOrigin: true,
+          secure: true,
+        },
         '/shop-photos': {
           target: env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app',
           changeOrigin: true,
