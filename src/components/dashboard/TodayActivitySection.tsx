@@ -6,7 +6,7 @@ import {
     Activity,
     Compass,
 } from "lucide-react";
-import { ActiveUserDistributionPieCard } from "./ActiveUserDistributionPieCard";
+import { ActiveUserDistributionPieCard, type DistrictDemandItem } from "./ActiveUserDistributionPieCard";
 import { OrdersVelocityGraphCard } from "./OrdersVelocityGraphCard";
 
 import type { ActiveUsersSummary } from "@/services/activeUsersService";
@@ -24,6 +24,14 @@ interface BusyHour {
     sessions: number;
 }
 
+export interface UsagePeriod {
+    avgSessionSeconds: number;
+    sessions: number;
+    users: number;
+    districts: DistrictUsage[];
+    busyHours?: BusyHour[];
+}
+
 interface ExtendedStatsProps {
     dau?: number;
     mau?: number;
@@ -33,12 +41,10 @@ interface ExtendedStatsProps {
         busy: number;
         total: number;
     };
-    appUsage?: {
-        avgSessionSeconds: number;
-        sessions: number;
-        users: number;
-        districts: DistrictUsage[];
-        busyHours?: BusyHour[];
+    appUsage?: UsagePeriod & {
+        today?: UsagePeriod;
+        last7Days?: UsagePeriod;
+        last30Days?: UsagePeriod;
     };
     peakHours?: Array<{ hour: number; count: number }>;
     geoHotspots?: Array<{ district: string; count: number }>;
@@ -85,16 +91,30 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
 
     const appUsage = extendedStats?.appUsage;
 
+    // Pick the usage stats corresponding to the selected timeframe
+    const currentUsage: UsagePeriod | null = useMemo(() => {
+        if (!appUsage) return null;
+        if (timeframe === "today") return appUsage.today ?? appUsage;
+        if (timeframe === "7d") return appUsage.last7Days ?? appUsage;
+        return appUsage.last30Days ?? appUsage;
+    }, [appUsage, timeframe]);
+
     // Responsive KPI 1: Active Users Count & Label (Strictly real DB counts)
     const activeUsersCount = useMemo(() => {
         if (timeframe === "today") {
-            return activeUsersSummary?.today?.customers ?? extendedStats?.dau ?? appUsage?.users ?? 0;
+            if (activeUsersSummary?.today?.customers != null && activeUsersSummary.today.customers > 0) {
+                return activeUsersSummary.today.customers;
+            }
+            if (currentUsage?.users != null) {
+                return currentUsage.users;
+            }
+            return extendedStats?.dau ?? 0;
         }
         if (timeframe === "7d") {
-            return activeUsersSummary?.last7Days?.customers ?? activeUsersSummary?.today?.customers ?? extendedStats?.dau ?? 0;
+            return activeUsersSummary?.last7Days?.customers ?? currentUsage?.users ?? 0;
         }
-        return activeUsersSummary?.last30Days?.customers ?? extendedStats?.mau ?? 0;
-    }, [timeframe, activeUsersSummary, extendedStats?.dau, extendedStats?.mau, appUsage?.users]);
+        return activeUsersSummary?.last30Days?.customers ?? extendedStats?.mau ?? currentUsage?.users ?? 0;
+    }, [timeframe, activeUsersSummary, currentUsage?.users, extendedStats?.dau, extendedStats?.mau]);
 
     const activeUsersLabel = useMemo(() => {
         if (timeframe === "today") return "Customers active today";
@@ -102,10 +122,10 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         return "Monthly active customers (MAU)";
     }, [timeframe]);
 
-    // Responsive KPI 2: Average Session Duration (Strictly real DB average)
+    // Responsive KPI 2: Average Session Duration (Strictly real DB average for selected timeframe)
     const avgSessionSeconds = useMemo(() => {
-        return appUsage?.avgSessionSeconds || 0;
-    }, [appUsage?.avgSessionSeconds]);
+        return currentUsage?.avgSessionSeconds || 0;
+    }, [currentUsage?.avgSessionSeconds]);
 
     const avgSessionLabel = useMemo(() => {
         if (timeframe === "today") return "Today's session duration";
@@ -113,9 +133,9 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         return "30-day average session";
     }, [timeframe]);
 
-    // Hourly activity chart data (Strictly unscaled real DB data)
+    // Hourly activity chart data (Strictly unscaled real DB data for selected timeframe)
     const chartData = useMemo(() => {
-        const busyHours = appUsage?.busyHours || [];
+        const busyHours = currentUsage?.busyHours || [];
         const peakHours = extendedStats?.peakHours || [];
 
         // If 30-day mode and we have real peakHours (from order history)
@@ -179,36 +199,41 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                 isRush,
             };
         });
-    }, [timeframe, appUsage?.busyHours, extendedStats?.peakHours]);
+    }, [timeframe, currentUsage?.busyHours, extendedStats?.peakHours]);
 
     // Calculate peak hour dynamically from chartData
     const peakHourInfo = useMemo(() => {
         if (!chartData || chartData.length === 0) return null;
-        let peak = chartData[0];
+        let peak: (typeof chartData)[0] | null = null;
         for (const item of chartData) {
-            if (item.users > peak.users) {
+            if (item.users > 0 && (!peak || item.users > peak.users)) {
                 peak = item;
             }
         }
-        return peak && peak.users > 0 ? peak : null;
+        return peak;
     }, [chartData]);
 
     // Responsive KPI 3: Peak Activity Text
     const peakActivityText = useMemo(() => {
-        if (!peakHourInfo) return "Lunch & Dinner peak";
+        if (!peakHourInfo) return timeframe === "today" ? "No activity yet today" : "No peak activity recorded";
         if (timeframe === "today") return `${peakHourInfo.users.toLocaleString()} users active`;
         if (timeframe === "7d") return `${peakHourInfo.users.toLocaleString()} peak users / hr`;
         return `${peakHourInfo.users.toLocaleString()} peak order hour`;
     }, [timeframe, peakHourInfo]);
 
-    // District demand list (Strictly real DB telemetry, no multiplier estimations)
-    const districtData = useMemo(() => {
-        const list = appUsage?.districts || [];
-        const hotspots = extendedStats?.geoHotspots || [];
+    // District demand list (Strictly real DB telemetry, dynamic per timeframe)
+    const districtData: DistrictDemandItem[] = useMemo(() => {
+        const list = currentUsage?.districts || [];
+        const hotspots = timeframe === "30d" ? (extendedStats?.geoHotspots || []) : [];
 
         if (list.length === 0 && hotspots.length === 0) return [];
 
-        const combined = list.map((d) => ({
+        const combined: Array<{
+            district: string;
+            users: number;
+            sessions: number;
+            avgSessionSeconds: number;
+        }> = list.map((d: DistrictUsage) => ({
             district: d.district,
             users: d.users,
             sessions: d.sessions,
@@ -216,7 +241,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         }));
 
         if (hotspots.length > 0) {
-            hotspots.forEach((h) => {
+            hotspots.forEach((h: { district: string; count: number }) => {
                 const existing = combined.find((c) => c.district.toLowerCase() === h.district?.toLowerCase());
                 if (existing) {
                     existing.sessions = Math.max(existing.sessions, h.count);
@@ -236,14 +261,14 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         combined.sort((a, b) => b.users - a.users || b.sessions - a.sessions);
 
         const maxVisits = Math.max(...combined.map((d) => d.users || d.sessions), 1);
-        const totalVisits = combined.reduce((sum, d) => sum + (d.users || d.sessions), 0) || 1;
+        const totalVisits = combined.reduce((sum: number, d) => sum + (d.users || d.sessions), 0) || 1;
 
         return combined.map((d) => ({
             ...d,
             percentOfMax: Math.round(((d.users || d.sessions) / maxVisits) * 100),
             percentOfTotal: Math.round(((d.users || d.sessions) / totalVisits) * 100),
         }));
-    }, [appUsage?.districts, extendedStats?.geoHotspots]);
+    }, [currentUsage?.districts, extendedStats?.geoHotspots, timeframe]);
 
     // Responsive KPI 4: Active Locations Count (Strictly real DB count)
     const activeLocationsCount = useMemo(() => {
@@ -305,41 +330,48 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                     </div>
                 </div>
 
-                {/* Timeframe Filter Pill */}
-                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/70 text-xs backdrop-blur-xs shadow-xs">
-                    <button
-                        type="button"
-                        onClick={() => setTimeframe("today")}
-                        className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
-                            timeframe === "today"
-                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
-                                : "text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                        Today
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setTimeframe("7d")}
-                        className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
-                            timeframe === "7d"
-                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
-                                : "text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                        7 Days
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setTimeframe("30d")}
-                        className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
-                            timeframe === "30d"
-                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
-                                : "text-muted-foreground hover:text-foreground"
-                        }`}
-                    >
-                        30 Days
-                    </button>
+                {/* Timeframe Filter Pill with Bangkok Time Indicator */}
+                <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-semibold border border-border/70 bg-card/80 text-muted-foreground shadow-2xs">
+                        <Clock className="h-3 w-3 text-indigo-500" />
+                        <span>Bangkok Time (ICT)</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/70 text-xs backdrop-blur-xs shadow-xs">
+                        <button
+                            type="button"
+                            onClick={() => setTimeframe("today")}
+                            className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                                timeframe === "today"
+                                    ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            Today
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTimeframe("7d")}
+                            className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                                timeframe === "7d"
+                                    ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            7 Days
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTimeframe("30d")}
+                            className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
+                                timeframe === "30d"
+                                    ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            30 Days
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -383,7 +415,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                         </div>
                     </div>
                     <div className="text-xl font-bold text-foreground truncate">
-                        {peakHourInfo ? formatHourShort(peakHourInfo.hour) : "12 PM"}
+                        {peakHourInfo ? formatHourShort(peakHourInfo.hour) : "—"}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
                         {peakActivityText}
@@ -415,7 +447,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                 <ActiveUserDistributionPieCard
                     districtData={districtData}
                     timeframe={timeframe}
-                    totalVisitsCount={appUsage?.users || districtData.reduce((s, r) => s + r.users, 0)}
+                    totalVisitsCount={currentUsage?.users || districtData.reduce((s: number, r: DistrictDemandItem) => s + r.users, 0)}
                     highestDistrictName={districtData[0]?.district}
                 />
             </div>

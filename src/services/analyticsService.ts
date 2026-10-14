@@ -101,6 +101,54 @@ export interface ExtendedDashboardStats {
       users: number;
       sessions: number;
     }>;
+    today?: {
+      avgSessionSeconds: number;
+      sessions: number;
+      users: number;
+      districts: Array<{
+        district: string;
+        users: number;
+        sessions: number;
+        avgSessionSeconds: number;
+      }>;
+      busyHours?: Array<{
+        hour: number;
+        users: number;
+        sessions: number;
+      }>;
+    };
+    last7Days?: {
+      avgSessionSeconds: number;
+      sessions: number;
+      users: number;
+      districts: Array<{
+        district: string;
+        users: number;
+        sessions: number;
+        avgSessionSeconds: number;
+      }>;
+      busyHours?: Array<{
+        hour: number;
+        users: number;
+        sessions: number;
+      }>;
+    };
+    last30Days?: {
+      avgSessionSeconds: number;
+      sessions: number;
+      users: number;
+      districts: Array<{
+        district: string;
+        users: number;
+        sessions: number;
+        avgSessionSeconds: number;
+      }>;
+      busyHours?: Array<{
+        hour: number;
+        users: number;
+        sessions: number;
+      }>;
+    };
   };
   topSearches: Array<{ term: string; count: number }>;
   userRegistrationStats?: {
@@ -270,6 +318,52 @@ class AnalyticsService {
       `${endpoint}${qs}`
     );
   }
+
+  async getTopTrendingShops(params?: {
+    segment?: 'viewed' | 'ordered' | 'liked' | 'all';
+    timeframe?: string;
+    search?: string;
+    categoryId?: number;
+    limit?: number;
+  }): Promise<TopTrendingShopsResponse> {
+    const query = new URLSearchParams();
+    if (params?.segment) query.append('segment', params.segment);
+    if (params?.timeframe) query.append('timeframe', params.timeframe);
+    if (params?.search) query.append('search', params.search);
+    if (params?.categoryId) query.append('categoryId', params.categoryId.toString());
+    if (params?.limit) query.append('limit', params.limit.toString());
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiClient.get<TopTrendingShopsResponse>(`/api/admin/analytics/top-shops${qs}`);
+  }
+}
+
+export interface TrendingShopItem {
+  id: number;
+  name: string;
+  nameEn: string;
+  nameMm?: string | null;
+  nameTh?: string | null;
+  coverUrl?: string | null;
+  logoUrl?: string | null;
+  category: string;
+  categoryId?: number | null;
+  district: string;
+  address?: string | null;
+  viewCount: number;
+  orderCount: number;
+  likeCount: number;
+  ratingAvg: number;
+  ratingCount: number;
+  currency: string;
+  isOpen: boolean;
+}
+
+export interface TopTrendingShopsResponse {
+  total: number;
+  mostViewed: TrendingShopItem[];
+  mostOrdered: TrendingShopItem[];
+  mostLiked: TrendingShopItem[];
+  all: TrendingShopItem[];
 }
 
 export interface ActiveUserLocationRecord {

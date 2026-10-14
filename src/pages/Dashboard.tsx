@@ -33,6 +33,7 @@ import {
     Smartphone,
     Globe,
     Layers,
+    Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,28 +46,25 @@ import { ShopService, AdminShopProfileListItem } from "@/services/shopService";
 import { orderService } from "@/services/orderService";
 import { CustomerReviewsDetailModal } from "@/components/dashboard/CustomerReviewsDetailModal";
 import { UserRegistrationChannelSection } from "@/components/dashboard/UserRegistrationChannelSection";
+import {
+    getBangkokDateString,
+    isTodayBangkok,
+    formatBangkokDate,
+    formatBangkokDateTime,
+} from "@/utils/bangkokTime";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function isCreatedToday(isoString?: string | null): boolean {
-    if (!isoString) return false;
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return false;
-    const now = new Date();
-    return (
-        d.getFullYear() === now.getFullYear() &&
-        d.getMonth() === now.getMonth() &&
-        d.getDate() === now.getDate()
-    );
+    return isTodayBangkok(isoString);
 }
 
 function getDefaultDates() {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
+    const todayBangkok = getBangkokDateString();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
     return {
-        start: start.toISOString().split("T")[0],
-        end: end.toISOString().split("T")[0],
+        start: getBangkokDateString(thirtyDaysAgo),
+        end: todayBangkok,
     };
 }
 
@@ -252,6 +250,15 @@ export default function Dashboard() {
     } | null>(null);
     const [userRegStats, setUserRegStats] = useState<UserRegistrationStatsResponse | null>(null);
 
+    // Live Bangkok time display
+    const [bangkokTimeStr, setBangkokTimeStr] = useState<string>(() => formatBangkokDateTime(new Date()));
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setBangkokTimeStr(formatBangkokDateTime(new Date()));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     useEffect(() => {
         async function load() {
             try {
@@ -428,7 +435,7 @@ export default function Dashboard() {
     const chartData = useMemo(() => {
         if (!revenue || revenue.length === 0) return [];
         return revenue.map((r) => ({
-            name: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            name: formatBangkokDate(r.date, { month: "short", day: "numeric" }),
             total: r.amount ?? 0,
             count: r.count ?? 0,
         }));
@@ -463,6 +470,13 @@ export default function Dashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2.5">
+                    {/* Live Bangkok Time Indicator */}
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-card/90 text-foreground border-border/80 shadow-xs">
+                        <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="text-muted-foreground text-[11px]">Bangkok Time (ICT):</span>
+                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{bangkokTimeStr}</span>
+                    </div>
+
                     {systemHealth && (
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-card/90 text-foreground border-border/80 shadow-xs">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

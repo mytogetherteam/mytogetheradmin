@@ -44,38 +44,27 @@ interface ChartBarPoint {
     value: number; // The active metric value based on status filter
 }
 
+import {
+    getBangkokDateString,
+    getBangkokMonthString,
+    getBangkokHour,
+    getBangkokDayOfMonth,
+} from "@/utils/bangkokTime";
+
 function getTodayString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return getBangkokDateString();
 }
 
 function getCurrentMonthString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+    return getBangkokMonthString();
 }
 
 function getLocalDateString(isoString?: string | null): string {
-    if (!isoString) return "";
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "";
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return getBangkokDateString(isoString || "");
 }
 
 function getLocalMonthString(isoString?: string | null): string {
-    if (!isoString) return "";
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "";
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+    return getBangkokMonthString(isoString || "");
 }
 
 function formatHourLabel(h: number): string {
@@ -213,9 +202,7 @@ export function OrdersVelocityGraphCard() {
 
             for (const ord of relevantOrders) {
                 if (!ord.createdAt) continue;
-                const dObj = new Date(ord.createdAt);
-                if (isNaN(dObj.getTime())) continue;
-                const dayNum = dObj.getDate();
+                const dayNum = getBangkokDayOfMonth(ord.createdAt);
                 if (dayBuckets[dayNum]) {
                     const st = String(ord.status || "").toUpperCase();
                     dayBuckets[dayNum].total += 1;
@@ -261,9 +248,7 @@ export function OrdersVelocityGraphCard() {
 
             for (const ord of relevantOrders) {
                 if (!ord.createdAt) continue;
-                const dObj = new Date(ord.createdAt);
-                if (isNaN(dObj.getTime())) continue;
-                const h = dObj.getHours();
+                const h = getBangkokHour(ord.createdAt);
                 if (hourBuckets[h]) {
                     const st = String(ord.status || "").toUpperCase();
                     hourBuckets[h].total += 1;

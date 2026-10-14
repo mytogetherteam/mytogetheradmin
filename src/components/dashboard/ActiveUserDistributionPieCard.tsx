@@ -79,19 +79,17 @@ const PIE_COLORS = [
     "#64748b", // Slate
 ];
 
+import {
+    getBangkokDateString,
+    getBangkokMonthString,
+} from "@/utils/bangkokTime";
+
 function getTodayString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return getBangkokDateString();
 }
 
 function getCurrentMonthString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+    return getBangkokMonthString();
 }
 
 function formatStay(seconds?: number | null) {
@@ -291,9 +289,9 @@ export function ActiveUserDistributionPieCard({
 
     // Description text
     const filterDescription = useMemo(() => {
-        if (filterMode === "TODAY") return "Active user locations & demand today";
-        if (filterMode === "DAY") return `Spatial demand for ${selectedDate}`;
-        return `Monthly distribution for ${selectedMonth}`;
+        if (filterMode === "TODAY") return "Active user demand by district today";
+        if (filterMode === "DAY") return `District demand for ${selectedDate}`;
+        return `Monthly district distribution for ${selectedMonth}`;
     }, [filterMode, selectedDate, selectedMonth]);
 
     return (
@@ -307,7 +305,7 @@ export function ActiveUserDistributionPieCard({
                                 <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                                     <PieChartIcon className="h-4 w-4" />
                                 </span>
-                                Active User Distribution
+                                Active Users by District
                             </CardTitle>
                             <CardDescription className="text-xs">
                                 {filterDescription}
@@ -515,7 +513,7 @@ export function ActiveUserDistributionPieCard({
                                                 Active Users
                                             </span>
                                             <span className="text-[9px] text-emerald-500 font-medium">
-                                                {districts.length} Locations
+                                                {districts.length} {districts.length === 1 ? "District" : "Districts"}
                                             </span>
                                         </div>
                                     </div>
@@ -645,10 +643,10 @@ export function ActiveUserDistributionPieCard({
                         <div>
                             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                                 <PieChartIcon className="h-5 w-5 text-emerald-500" />
-                                Active User Distribution &amp; District Demand
+                                Active Users by District &amp; Regional Demand
                             </DialogTitle>
                             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                                Real database telemetry for customers who opened the app • {filterDescription}
+                                Real database telemetry for customers mapped to districts by GPS coordinates • {filterDescription}
                             </DialogDescription>
                         </div>
 
@@ -760,7 +758,7 @@ export function ActiveUserDistributionPieCard({
                                                 Total Active Users
                                             </span>
                                             <span className="text-[10px] text-emerald-500 font-medium mt-0.5">
-                                                {districts.length} Locations Mapped
+                                                {districts.length} {districts.length === 1 ? "District" : "Districts"} Mapped
                                             </span>
                                         </div>
                                     </div>
@@ -814,7 +812,7 @@ export function ActiveUserDistributionPieCard({
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                         <Users className="h-3.5 w-3.5 text-emerald-500" />
-                                        Locations ({filteredModalDistricts.length})
+                                        Districts ({filteredModalDistricts.length})
                                     </span>
                                     <Badge variant="outline" className="text-[10px]">
                                         {totalActiveCount.toLocaleString()} users

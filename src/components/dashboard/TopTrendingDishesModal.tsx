@@ -30,6 +30,7 @@ import {
 import { menuService, MenuItem } from "@/services/menuService";
 import { orderService, Order } from "@/services/orderService";
 import { analyticsService, ExtendedDashboardStats } from "@/services/analyticsService";
+import { getBangkokDateString } from "@/utils/bangkokTime";
 
 interface Props {
     open: boolean;
@@ -101,25 +102,24 @@ export function TopTrendingDishesModal({
     // Handle Date Presets
     const handleSetPreset = (preset: DatePreset) => {
         setDatePreset(preset);
-        const now = new Date();
 
         if (preset === "ALL_TIME") {
             setStartDate("");
             setEndDate("");
         } else if (preset === "TODAY") {
-            const todayStr = now.toISOString().split("T")[0];
+            const todayStr = getBangkokDateString();
             setStartDate(todayStr);
             setEndDate(todayStr);
         } else if (preset === "WEEK") {
-            const weekAgo = new Date();
-            weekAgo.setDate(now.getDate() - 7);
-            setStartDate(weekAgo.toISOString().split("T")[0]);
-            setEndDate(now.toISOString().split("T")[0]);
+            const todayStr = getBangkokDateString();
+            const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+            setStartDate(getBangkokDateString(weekAgo));
+            setEndDate(todayStr);
         } else if (preset === "MONTH") {
-            const monthAgo = new Date();
-            monthAgo.setDate(now.getDate() - 30);
-            setStartDate(monthAgo.toISOString().split("T")[0]);
-            setEndDate(now.toISOString().split("T")[0]);
+            const todayStr = getBangkokDateString();
+            const monthAgo = new Date(Date.now() - 30 * 86_400_000);
+            setStartDate(getBangkokDateString(monthAgo));
+            setEndDate(todayStr);
         }
         setVisibleCount(PAGE_CHUNK);
     };
@@ -177,9 +177,9 @@ export function TopTrendingDishesModal({
                     seenOrderIds.add(ord.id);
                     if (isTestingOrder(ord)) continue;
 
-                    // If date range is active, check order date
+                    // If date range is active, check order date in Bangkok timezone
                     if (startDate || endDate) {
-                        const ordDate = ord.createdAt ? ord.createdAt.split("T")[0] : "";
+                        const ordDate = ord.createdAt ? getBangkokDateString(ord.createdAt) : "";
                         if (startDate && ordDate < startDate) continue;
                         if (endDate && ordDate > endDate) continue;
                     }

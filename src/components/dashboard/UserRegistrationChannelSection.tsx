@@ -39,36 +39,30 @@ import {
 } from "@/services/analyticsService";
 import { manageUsersService } from "@/services/manageUsersService";
 import { useNavigate } from "react-router-dom";
+import {
+    getBangkokDateString,
+    getBangkokMonthString,
+    getBangkokHour,
+    formatBangkokTime,
+} from "@/utils/bangkokTime";
 
 type FilterMode = "TODAY" | "DAY" | "MONTH" | "ALL";
 type TimeSlotFilter = "ALL" | "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT";
 
 function getTodayString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return getBangkokDateString();
 }
 
 function getCurrentMonthString(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+    return getBangkokMonthString();
 }
 
-function formatLocalDate(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+function formatLocalDate(d: Date | string): string {
+    return getBangkokDateString(d);
 }
 
-function formatLocalMonth(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+function formatLocalMonth(d: Date | string): string {
+    return getBangkokMonthString(d);
 }
 
 interface UserRegistrationChannelSectionProps {
@@ -185,8 +179,7 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
 
                 filtered.forEach((u) => {
                     const isGoogle = (u.phone && String(u.phone).startsWith("g_")) || (!u.phone && u.email);
-                    const d = new Date(u.createdAt);
-                    const h = d.getHours();
+                    const h = getBangkokHour(u.createdAt);
                     let slot: "morning" | "afternoon" | "evening" | "night" = "night";
                     if (h >= 6 && h < 12) slot = "morning";
                     else if (h >= 12 && h < 18) slot = "afternoon";
@@ -198,10 +191,10 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                     else timeBreakdown[slot].phone += 1;
                 });
 
-                // 24-hr series fallback
+                // 24-hr series fallback (Bangkok hours 0..23)
                 const series = Array.from({ length: 24 }).map((_, h) => {
                     const label = `${String(h).padStart(2, "0")}:00`;
-                    const hourUsers = filtered.filter((u) => new Date(u.createdAt).getHours() === h);
+                    const hourUsers = filtered.filter((u) => getBangkokHour(u.createdAt) === h);
                     const p = hourUsers.filter((u) => !u.phone || !String(u.phone).startsWith("g_")).length;
                     const g = hourUsers.length - p;
                     return {
@@ -413,7 +406,7 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                         {/* Refresh Button & Telemetry Timestamp */}
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                                Updated {lastRefreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                Updated {formatBangkokTime(lastRefreshedAt, { second: "2-digit" })} (ICT)
                             </span>
                             <Button
                                 variant="outline"
@@ -761,7 +754,7 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                                             {u.channel === "google" ? "Google SSO" : "Phone OTP"}
                                         </Badge>
                                         <div className="text-[9px] text-muted-foreground mt-0.5">
-                                            {new Date(u.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                            {formatBangkokTime(u.createdAt)}
                                         </div>
                                     </div>
                                 </div>

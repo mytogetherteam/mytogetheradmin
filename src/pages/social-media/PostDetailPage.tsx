@@ -233,6 +233,7 @@ export default function PostDetailPage() {
                                                     src={m.url}
                                                     poster={m.thumbnailUrl || undefined}
                                                     controls
+                                                    preload="metadata"
                                                     className="w-full max-h-[420px] object-contain bg-black"
                                                 />
                                             ) : (

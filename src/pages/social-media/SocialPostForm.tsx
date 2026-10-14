@@ -116,6 +116,14 @@ export default function SocialPostForm() {
         toast.error(`Unsupported file: ${file.name}`);
         continue;
       }
+      if (file.type.startsWith("video/") && file.size > 50 * 1024 * 1024) {
+        toast.error(`Video "${file.name}" is too large. Maximum size is 50 MB.`);
+        continue;
+      }
+      if (file.type.startsWith("image/") && file.size > 10 * 1024 * 1024) {
+        toast.error(`Image "${file.name}" is too large. Maximum size is 10 MB.`);
+        continue;
+      }
       if (totalMediaCount + next.length >= 10) {
         toast.error("A post may have at most 10 media items");
         break;
@@ -306,6 +314,7 @@ export default function SocialPostForm() {
                       <video
                         src={m.url}
                         poster={m.thumbnailUrl || undefined}
+                        preload="metadata"
                         className="h-36 w-full object-cover"
                         muted
                       />
@@ -334,7 +343,7 @@ export default function SocialPostForm() {
                 {localMedia.map((m, index) => (
                   <div key={`${m.file.name}-${index}`} className="relative rounded-md border overflow-hidden bg-muted">
                     {m.kind === "video" ? (
-                      <video src={m.previewUrl} className="h-36 w-full object-cover" muted />
+                      <video src={m.previewUrl} preload="metadata" className="h-36 w-full object-cover" muted />
                     ) : (
                       <img src={m.previewUrl} alt="" className="h-36 w-full object-cover" />
                     )}

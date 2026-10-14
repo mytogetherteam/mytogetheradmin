@@ -12,24 +12,25 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Flame,
-    UtensilsCrossed,
     Store,
     ArrowUpRight,
     Sparkles,
     Eye,
     ShoppingBag,
     Heart,
-    ChefHat,
-    Bike,
-    Clock,
-    CheckCircle2,
-    Activity,
-    ChevronRight,
+    Star,
+    MapPin,
+    UtensilsCrossed,
 } from "lucide-react";
 import { menuService, MenuItem } from "@/services/menuService";
-import { ExtendedDashboardStats } from "@/services/analyticsService";
-import { orderService, Order } from "@/services/orderService";
+import {
+    analyticsService,
+    ExtendedDashboardStats,
+    type TrendingShopItem,
+} from "@/services/analyticsService";
+import { orderService } from "@/services/orderService";
 import { TopTrendingDishesModal } from "./TopTrendingDishesModal";
+import { TopTrendingShopsModal } from "./TopTrendingShopsModal";
 
 interface Props {
     extendedStats?: ExtendedDashboardStats | null;
@@ -41,6 +42,12 @@ const SEGMENT_DESCRIPTIONS: Record<FilterTab, string> = {
     viewed: "Ranked by customer discovery & page view telemetry across restaurants",
     ordered: "Ranked by confirmed order volume & purchase velocity across restaurants",
     liked: "Ranked by customer swipe favorites & community likes across restaurants",
+};
+
+const SHOP_SEGMENT_DESCRIPTIONS: Record<FilterTab, string> = {
+    viewed: "Ranked by customer discovery & page visits across verified shops",
+    ordered: "Ranked by confirmed order volume & checkout velocity",
+    liked: "Ranked by customer favorites & community wishlists",
 };
 
 // Exact real values from database
@@ -70,49 +77,37 @@ function isTestingShopItem(item: MenuItem): boolean {
     return sName.includes("mytogethertesting") || sName.includes("testingshop");
 }
 
-function formatOrderTimeAgo(dateStr?: string): string {
-    if (!dateStr) return "Just now";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "Recently";
-    const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
-}
-
-function getStatusBadgeStyle(status?: string) {
-    const s = String(status || "").toUpperCase();
-    if (s.includes("DELIVER")) {
-        return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20";
-    }
-    if (s.includes("PREPAR") || s.includes("COOK") || s.includes("ACCEPT")) {
-        return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20";
-    }
-    if (s.includes("PENDING")) {
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-    }
-    return "bg-muted text-muted-foreground border-border/50";
-}
-
 export function MenuTrendingCuisineSection({ extendedStats }: Props) {
     const navigate = useNavigate();
 
+    // Dishes state
     const [filter, setFilter] = useState<FilterTab>("viewed");
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [orderCountMap, setOrderCountMap] = useState<Record<number, number>>({});
-    const [activeOrders, setActiveOrders] = useState<Order[]>([]);
-    const [ordersHealth, setOrdersHealth] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [viewMoreOpen, setViewMoreOpen] = useState(false);
+
+    // Trending shops state
+    const [shopFilter, setShopFilter] = useState<FilterTab>("viewed");
+    const [trendingShops, setTrendingShops] = useState<{
+        mostViewed: TrendingShopItem[];
+        mostOrdered: TrendingShopItem[];
+        mostLiked: TrendingShopItem[];
+    }>({
+        mostViewed: [],
+        mostOrdered: [],
+        mostLiked: [],
+    });
+    const [shopsLoading, setShopsLoading] = useState(true);
+    const [viewMoreShopsOpen, setViewMoreShopsOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
         async function loadData() {
             try {
                 setLoading(true);
-                const [page1Res, page2Res, activeOrdersRes, recentOrdersRes, healthRes] = await Promise.all([
+                setShopsLoading(true);
+                const [page1Res, page2Res, recentOrdersRes, topShopsRes] = await Promise.all([
                     menuService
                         .getAllMenuItems(1, 100, "", undefined, undefined, undefined, {
                             isAvailable: true,
@@ -123,9 +118,8 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                             isAvailable: true,
                         })
                         .catch(() => null),
-                    orderService.getActiveOrders({ size: 10 }).catch(() => null),
                     orderService.getOrders({ size: 100 }).catch(() => null),
-                    orderService.getOrdersHealth().catch(() => ({} as Record<string, number>)),
+                    analyticsService.getTopTrendingShops({ limit: 30 }).catch(() => null),
                 ]);
 
                 if (isMounted) {
@@ -143,11 +137,12 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                         setMenuItems(unique);
                     }
 
-                    if (activeOrdersRes?.content) {
-                        setActiveOrders(activeOrdersRes.content);
-                    }
-                    if (healthRes) {
-                        setOrdersHealth(healthRes);
+                    if (topShopsRes) {
+                        setTrendingShops({
+                            mostViewed: topShopsRes.mostViewed || [],
+                            mostOrdered: topShopsRes.mostOrdered || [],
+                            mostLiked: topShopsRes.mostLiked || [],
+                        });
                     }
 
                     // Build real order frequency map from confirmed order items (excluding testing shop)
@@ -162,10 +157,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                     };
 
                     const orderMap: Record<number, number> = {};
-                    const allOrders = [
-                        ...(activeOrdersRes?.content || []),
-                        ...(recentOrdersRes?.content || []),
-                    ];
+                    const allOrders = recentOrdersRes?.content || [];
                     const seenOrders = new Set<string | number>();
                     for (const ord of allOrders) {
                         if (ord.id && !seenOrders.has(ord.id)) {
@@ -185,10 +177,11 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                     setOrderCountMap(orderMap);
                 }
             } catch (err) {
-                console.error("Failed to load dishes and kitchen telemetry", err);
+                console.error("Failed to load dishes and shops telemetry", err);
             } finally {
                 if (isMounted) {
                     setLoading(false);
+                    setShopsLoading(false);
                 }
             }
         }
@@ -233,46 +226,16 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
         return validItems.slice(0, 6);
     }, [menuItems, filter, orderCountMap]);
 
-    // Live kitchen pipeline metrics
-    const pendingCount = useMemo(() => {
-        return (
-            ordersHealth["PENDING"] ??
-            ordersHealth["PAYMENT_SLIP_SUBMITTED"] ??
-            activeOrders.filter((o) => String(o.status).toUpperCase() === "PENDING").length ??
-            0
-        );
-    }, [ordersHealth, activeOrders]);
-
-    const preparingCount = useMemo(() => {
-        return (
-            ordersHealth["PREPARING"] ??
-            ordersHealth["ACCEPTED"] ??
-            activeOrders.filter((o) => {
-                const s = String(o.status).toUpperCase();
-                return s === "PREPARING" || s === "ACCEPTED";
-            }).length ??
-            0
-        );
-    }, [ordersHealth, activeOrders]);
-
-    const deliveringCount = useMemo(() => {
-        return (
-            ordersHealth["DELIVERING"] ??
-            ordersHealth["READY_FOR_PICKUP"] ??
-            activeOrders.filter((o) => {
-                const s = String(o.status).toUpperCase();
-                return s === "DELIVERING" || s === "READY_FOR_PICKUP";
-            }).length ??
-            0
-        );
-    }, [ordersHealth, activeOrders]);
-
-    const cleanActiveOrders = useMemo(() => {
-        return activeOrders.filter((ord) => {
-            const sName = (ord.shopName || (ord as any).shop?.nameEn || "").toLowerCase().replace(/\s+/g, "");
-            return !sName.includes("mytogethertesting") && !sName.includes("testingshop");
-        });
-    }, [activeOrders]);
+    // Real top trending shops slice for currently selected tab
+    const displayedShops = useMemo(() => {
+        const list =
+            shopFilter === "viewed"
+                ? trendingShops.mostViewed
+                : shopFilter === "ordered"
+                ? trendingShops.mostOrdered
+                : trendingShops.mostLiked;
+        return list.slice(0, 5);
+    }, [shopFilter, trendingShops]);
 
     return (
         <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
@@ -494,179 +457,206 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 </CardContent>
             </Card>
 
-            {/* Right 1 Column: Live Kitchen & Order Fulfillment Pipeline (Replaced Cuisine & Category Share) */}
+            {/* Right 1 Column: Top Trending Restaurants & Shops */}
             <Card className="border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between">
-                <CardHeader className="pb-3 border-b border-border/40 bg-muted/15 flex flex-row items-center justify-between space-y-0">
-                    <div>
+                <CardHeader className="pb-3 border-b border-border/40 bg-muted/15 flex flex-col gap-2.5 space-y-0">
+                    <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
                             <span className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                <ChefHat className="h-4 w-4" />
+                                <Store className="h-4 w-4" />
                             </span>
-                            Kitchen Fulfillment Pipeline
+                            Top Trending Shops
                         </CardTitle>
-                        <CardDescription className="text-xs">
-                            Live preparation, cooking queue &amp; dispatch SLA
-                        </CardDescription>
+                        <Badge
+                            variant="outline"
+                            className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1 shadow-2xs"
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Live DB
+                        </Badge>
                     </div>
+                    <CardDescription className="text-xs">
+                        {SHOP_SEGMENT_DESCRIPTIONS[shopFilter]}
+                    </CardDescription>
 
-                    <Badge
-                        variant="outline"
-                        className={`text-[10px] font-semibold border flex items-center gap-1 shadow-2xs ${
-                            pendingCount > 0
-                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse font-bold"
-                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                        }`}
-                    >
-                        <span className={`w-1.5 h-1.5 rounded-full ${pendingCount > 0 ? "bg-rose-500 animate-ping" : "bg-emerald-500"}`} />
-                        {pendingCount > 0 ? `${pendingCount} Pending` : "Live Operations"}
-                    </Badge>
+                    {/* Filter Pills: Most Viewed, Most Ordered, Most Liked */}
+                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 text-xs w-full sm:w-fit overflow-x-auto">
+                        <button
+                            type="button"
+                            onClick={() => setShopFilter("viewed")}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-200 cursor-pointer shrink-0 ${
+                                shopFilter === "viewed"
+                                    ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground font-medium"
+                            }`}
+                        >
+                            <Eye className="h-3 w-3" />
+                            <span>Most Viewed</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShopFilter("ordered")}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-200 cursor-pointer shrink-0 ${
+                                shopFilter === "ordered"
+                                    ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground font-medium"
+                            }`}
+                        >
+                            <ShoppingBag className="h-3 w-3" />
+                            <span>Most Ordered</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShopFilter("liked")}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-200 cursor-pointer shrink-0 ${
+                                shopFilter === "liked"
+                                    ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground font-medium"
+                            }`}
+                        >
+                            <Heart className="h-3 w-3" />
+                            <span>Most Liked</span>
+                        </button>
+                    </div>
                 </CardHeader>
 
                 <CardContent className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                    {/* Fulfillment Pipeline Stage Indicators */}
-                    <div className="grid grid-cols-3 gap-2 mb-3.5">
-                        <div
-                            onClick={() => navigate("/orders?status=PENDING")}
-                            className="p-2.5 rounded-xl border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer group"
-                        >
-                            <div className="flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400 font-medium mb-0.5">
-                                <span className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Pending
-                                </span>
-                            </div>
-                            <div className="text-lg font-bold font-mono text-amber-600 dark:text-amber-400">
-                                {pendingCount}
-                            </div>
-                            <span className="text-[9px] text-muted-foreground group-hover:text-amber-600 transition-colors flex items-center gap-0.5">
-                                Awaiting shop <ChevronRight className="h-2.5 w-2.5" />
-                            </span>
-                        </div>
-
-                        <div
-                            onClick={() => navigate("/orders/board")}
-                            className="p-2.5 rounded-xl border border-orange-500/25 bg-orange-500/5 hover:bg-orange-500/10 transition-colors cursor-pointer group"
-                        >
-                            <div className="flex items-center justify-between text-[10px] text-orange-600 dark:text-orange-400 font-medium mb-0.5">
-                                <span className="flex items-center gap-1">
-                                    <ChefHat className="h-3 w-3" />
-                                    In Kitchen
-                                </span>
-                            </div>
-                            <div className="text-lg font-bold font-mono text-orange-600 dark:text-orange-400">
-                                {preparingCount}
-                            </div>
-                            <span className="text-[9px] text-muted-foreground group-hover:text-orange-600 transition-colors flex items-center gap-0.5">
-                                Cooking queue <ChevronRight className="h-2.5 w-2.5" />
-                            </span>
-                        </div>
-
-                        <div
-                            onClick={() => navigate("/orders?status=DELIVERING")}
-                            className="p-2.5 rounded-xl border border-sky-500/25 bg-sky-500/5 hover:bg-sky-500/10 transition-colors cursor-pointer group"
-                        >
-                            <div className="flex items-center justify-between text-[10px] text-sky-600 dark:text-sky-400 font-medium mb-0.5">
-                                <span className="flex items-center gap-1">
-                                    <Bike className="h-3 w-3" />
-                                    On Road
-                                </span>
-                            </div>
-                            <div className="text-lg font-bold font-mono text-sky-600 dark:text-sky-400">
-                                {deliveringCount}
-                            </div>
-                            <span className="text-[9px] text-muted-foreground group-hover:text-sky-600 transition-colors flex items-center gap-0.5">
-                                Driver transit <ChevronRight className="h-2.5 w-2.5" />
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Active Dispatch Orders Queue */}
-                    <div className="space-y-2 mb-3">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-foreground px-0.5">
-                            <span className="flex items-center gap-1.5">
-                                <Activity className="h-3.5 w-3.5 text-rose-500" />
-                                Active Dispatch Queue
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                                {cleanActiveOrders.length} active in flight
-                            </span>
-                        </div>
-
-                        {cleanActiveOrders.length === 0 ? (
-                            <div className="p-3.5 rounded-xl border border-border/60 bg-muted/20 text-center space-y-1">
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
-                                <p className="text-xs font-semibold text-foreground">Kitchen Orders Up to Date</p>
-                                <p className="text-[10px] text-muted-foreground">All pending diner tickets have been accepted or dispatched.</p>
-                            </div>
-                        ) : (
-                            cleanActiveOrders.slice(0, 3).map((ord) => (
+                    {/* Shops List */}
+                    <div className="space-y-2.5 mb-4">
+                        {shopsLoading && displayedShops.length === 0 ? (
+                            [...Array(5)].map((_, i) => (
                                 <div
-                                    key={ord.id}
-                                    onClick={() => navigate("/orders/board")}
-                                    className="p-2.5 rounded-xl border border-border/60 hover:border-rose-500/40 bg-background/80 hover:bg-muted/40 transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs group"
+                                    key={i}
+                                    className="p-2.5 rounded-xl border border-border/40 flex items-center gap-3 bg-muted/20"
                                 >
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="font-mono font-bold text-xs text-foreground group-hover:text-rose-500 transition-colors">
-                                                #{ord.queueNo ? `Q-${ord.queueNo}` : (ord.lastOrderNo || ord.id)}
-                                            </span>
-                                            <Badge className={`text-[9px] px-1.5 py-0 h-3.5 font-medium border ${getStatusBadgeStyle(ord.status)}`}>
-                                                {ord.status || "IN KITCHEN"}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
-                                            <Store className="h-3 w-3 text-amber-500 shrink-0" />
-                                            <span className="truncate">{ord.shopName || (ord as any).shop?.nameEn || "Restaurant Partner"}</span>
-                                        </p>
+                                    <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                                    <div className="flex-1 space-y-1.5">
+                                        <Skeleton className="h-3.5 w-28" />
+                                        <Skeleton className="h-3 w-20" />
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <span className="text-xs font-mono font-bold text-foreground block">
-                                            ฿{(ord.totalAmount || 0).toLocaleString()}
-                                        </span>
-                                        <span className="text-[9px] text-muted-foreground">
-                                            {formatOrderTimeAgo(ord.createdAt)}
-                                        </span>
-                                    </div>
+                                    <Skeleton className="h-5 w-14" />
                                 </div>
                             ))
+                        ) : displayedShops.length === 0 ? (
+                            <div className="p-6 rounded-xl border border-border/60 bg-muted/20 text-center space-y-1.5 my-auto">
+                                <Store className="h-6 w-6 text-muted-foreground mx-auto" />
+                                <p className="text-xs font-semibold text-foreground">No Shop Telemetry Found</p>
+                                <p className="text-[10px] text-muted-foreground">Shop engagement metrics will populate automatically from real activity.</p>
+                            </div>
+                        ) : (
+                            displayedShops.map((shop, index) => {
+                                const rank = index + 1;
+                                const rankBadgeStyle =
+                                    rank === 1
+                                        ? "bg-amber-500 text-slate-950 font-black shadow-xs ring-1 ring-amber-400"
+                                        : rank === 2
+                                        ? "bg-slate-300 text-slate-900 font-bold"
+                                        : rank === 3
+                                        ? "bg-amber-700/80 text-amber-100 font-bold"
+                                        : "bg-muted text-muted-foreground font-semibold";
+
+                                const shopImg = shop.logoUrl || shop.coverUrl;
+                                const displayName = shop.nameEn || shop.nameMm || shop.name || `Shop #${shop.id}`;
+
+                                return (
+                                    <div
+                                        key={shop.id}
+                                        onClick={() => navigate(`/shops/${shop.id}`)}
+                                        className="p-2.5 rounded-xl border border-border/60 hover:border-rose-500/40 bg-background/80 hover:bg-muted/40 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                            {/* Rank Badge */}
+                                            <div
+                                                className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] shrink-0 ${rankBadgeStyle}`}
+                                            >
+                                                {rank}
+                                            </div>
+
+                                            {/* Shop Avatar / Thumbnail */}
+                                            <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden shrink-0 border border-border/50 flex items-center justify-center relative">
+                                                {shopImg ? (
+                                                    <img
+                                                        src={shopImg}
+                                                        alt={displayName}
+                                                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLElement).style.display = "none";
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <Store className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                            </div>
+
+                                            {/* Shop Details */}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-semibold text-foreground truncate group-hover:text-rose-500 transition-colors">
+                                                    {displayName}
+                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[9px] px-1.5 py-0 h-3.5 font-medium border-border/60 text-muted-foreground truncate max-w-[80px]"
+                                                    >
+                                                        {shop.category || "Restaurant"}
+                                                    </Badge>
+                                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-amber-500">
+                                                        <Star className="h-2.5 w-2.5 fill-amber-500" />
+                                                        {shop.ratingAvg ? shop.ratingAvg.toFixed(1) : "New"}
+                                                    </span>
+                                                    {shop.district && (
+                                                        <span className="hidden sm:inline-flex items-center gap-0.5 text-[9px] text-muted-foreground truncate max-w-[75px]">
+                                                            <MapPin className="h-2.5 w-2.5" />
+                                                            {shop.district}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Metric Counter */}
+                                        <div className="text-right shrink-0">
+                                            {shopFilter === "viewed" && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-md">
+                                                    <Eye className="h-2.5 w-2.5" />
+                                                    {shop.viewCount.toLocaleString()}
+                                                </span>
+                                            )}
+                                            {shopFilter === "ordered" && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                                    <ShoppingBag className="h-2.5 w-2.5" />
+                                                    {shop.orderCount.toLocaleString()}
+                                                </span>
+                                            )}
+                                            {shopFilter === "liked" && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md">
+                                                    <Heart className="h-2.5 w-2.5 fill-rose-500" />
+                                                    {shop.likeCount.toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
 
-                    {/* Operational Health & SLA Banner */}
-                    <div className="p-2.5 rounded-xl border border-border/60 bg-muted/15 flex items-center justify-between text-xs mb-3">
-                        <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
-                                <CheckCircle2 className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-bold text-foreground block">98.4% On-Time SLA</span>
-                                <span className="text-[10px] text-muted-foreground">Avg. kitchen preparation: ~18 mins</span>
-                            </div>
-                        </div>
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                            Healthy
-                        </span>
-                    </div>
-
                     {/* Bottom Action Footer */}
-                    <div className="pt-2 border-t border-border/40 flex items-center gap-2">
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-xs font-semibold gap-1.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-xs"
-                            onClick={() => navigate("/orders/board")}
-                        >
-                            <ChefHat className="h-3.5 w-3.5" />
-                            <span>Live Kitchen Board</span>
-                            <ArrowUpRight className="h-3 w-3" />
-                        </Button>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-muted-foreground border-t border-border/40">
+                        <span className="flex items-center gap-1.5 text-xs font-medium">
+                            <Sparkles className="h-3.5 w-3.5 text-rose-500" />
+                            100% live database telemetry
+                        </span>
+
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 text-xs font-medium border-border/70 hover:border-border hover:bg-muted/40 cursor-pointer"
-                            onClick={() => navigate("/orders")}
+                            className="h-7 text-xs font-semibold gap-1.5 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50 cursor-pointer shadow-xs"
+                            onClick={() => setViewMoreShopsOpen(true)}
                         >
-                            All Orders
+                            <Store className="h-3.5 w-3.5" />
+                            <span>View More</span>
+                            <ArrowUpRight className="h-3 w-3" />
                         </Button>
                     </div>
                 </CardContent>
@@ -678,6 +668,13 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 onOpenChange={setViewMoreOpen}
                 initialTab={filter}
                 extendedStats={extendedStats}
+            />
+
+            {/* Top Trending Shops Full Popup Modal with Filter, Search, Pagination */}
+            <TopTrendingShopsModal
+                open={viewMoreShopsOpen}
+                onOpenChange={setViewMoreShopsOpen}
+                initialTab={shopFilter}
             />
         </div>
     );
