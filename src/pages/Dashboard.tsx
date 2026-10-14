@@ -426,9 +426,6 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-border/50">
                 <div>
                     <h1 className="text-xl font-extrabold md:text-2xl text-foreground tracking-tight flex items-center gap-2.5">
-                        <span className="p-1.5 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white shadow-xs">
-                            <Layers className="h-5 w-5" />
-                        </span>
                         Platform Executive Dashboard
                     </h1>
                     <p className="text-xs text-muted-foreground mt-1">

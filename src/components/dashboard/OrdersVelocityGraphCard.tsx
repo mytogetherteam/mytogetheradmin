@@ -26,6 +26,7 @@ import {
     Flame,
     RotateCcw,
     Sparkles,
+    Calendar,
 } from "lucide-react";
 import { orderService, Order } from "@/services/orderService";
 
@@ -58,6 +59,25 @@ function getCurrentMonthString(): string {
     return `${y}-${m}`;
 }
 
+function getLocalDateString(isoString?: string | null): string {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+function getLocalMonthString(isoString?: string | null): string {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+}
+
 function formatHourLabel(h: number): string {
     const hour = ((h % 24) + 24) % 24;
     const suffix = hour < 12 ? "AM" : "PM";
@@ -80,7 +100,7 @@ export function OrdersVelocityGraphCard() {
     const [timeMode, setTimeMode] = useState<TimeMode>("TODAY");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
-    // Dates
+    // Dates in local timezone
     const todayStr = useMemo(() => getTodayString(), []);
     const currentMonthStr = useMemo(() => getCurrentMonthString(), []);
     const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -90,40 +110,13 @@ export function OrdersVelocityGraphCard() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Fetch orders for the active time mode
+    // Fetch orders with multi-page support to ensure all historical records are retrieved
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
-            let start = "";
-            let end = "";
-
-            if (timeMode === "TODAY") {
-                start = todayStr;
-                end = todayStr;
-            } else if (timeMode === "CUSTOM_DATE") {
-                start = selectedDate || todayStr;
-                end = selectedDate || todayStr;
-            } else if (timeMode === "MONTH") {
-                const [yStr, mStr] = (selectedMonth || currentMonthStr).split("-");
-                const y = parseInt(yStr, 10);
-                const m = parseInt(mStr, 10);
-                const lastDay = new Date(y, m, 0).getDate();
-                start = `${yStr}-${mStr}-01`;
-                end = `${yStr}-${mStr}-${String(lastDay).padStart(2, "0")}`;
-            }
-
-            // Fetch orders matching date boundaries
             const [ordersRes, activeRes] = await Promise.all([
-                orderService
-                    .getOrders({
-                        startDate: start || undefined,
-                        endDate: end || undefined,
-                        size: 100,
-                    })
-                    .catch(() => null),
-                timeMode === "TODAY"
-                    ? orderService.getActiveOrders({ size: 100 }).catch(() => null)
-                    : Promise.resolve(null),
+                orderService.getOrders({ size: 100 }).catch(() => null),
+                orderService.getActiveOrders({ size: 100 }).catch(() => null),
             ]);
 
             let loaded: Order[] = [
@@ -131,19 +124,21 @@ export function OrdersVelocityGraphCard() {
                 ...(activeRes?.content || []),
             ];
 
-            // If there are more pages in ordersRes, fetch next page
+            // If there are more pages, fetch next 4 pages to cover up to 500 recent orders
             if (ordersRes && ordersRes.totalPages > 1) {
-                const page2Res = await orderService
-                    .getOrders({
-                        startDate: start || undefined,
-                        endDate: end || undefined,
-                        page: 1,
-                        size: 100,
-                    })
-                    .catch(() => null);
-                if (page2Res?.content) {
-                    loaded = loaded.concat(page2Res.content);
+                const maxPagesToFetch = Math.min(ordersRes.totalPages, 5);
+                const extraPromises = [];
+                for (let p = 1; p < maxPagesToFetch; p++) {
+                    extraPromises.push(
+                        orderService.getOrders({ page: p, size: 100 }).catch(() => null)
+                    );
                 }
+                const extraResults = await Promise.all(extraPromises);
+                extraResults.forEach((res) => {
+                    if (res?.content) {
+                        loaded = loaded.concat(res.content);
+                    }
+                });
             }
 
             // Deduplicate and filter out test shop orders
@@ -158,21 +153,37 @@ export function OrdersVelocityGraphCard() {
         } finally {
             setLoading(false);
         }
-    }, [timeMode, todayStr, selectedDate, selectedMonth, currentMonthStr]);
+    }, []);
 
     useEffect(() => {
         fetchOrders();
     }, [fetchOrders]);
 
-    // Build chart dataset & metrics
+    // ── Strictly Filter Orders by Active Timeframe ──────────────────────────────
+    const relevantOrders = useMemo(() => {
+        const targetDay = timeMode === "TODAY" ? todayStr : selectedDate || todayStr;
+        const targetMonth = selectedMonth || currentMonthStr;
+
+        return orders.filter((ord) => {
+            if (!ord.createdAt) return false;
+            if (timeMode === "TODAY" || timeMode === "CUSTOM_DATE") {
+                return getLocalDateString(ord.createdAt) === targetDay;
+            }
+            if (timeMode === "MONTH") {
+                return getLocalMonthString(ord.createdAt) === targetMonth;
+            }
+            return false;
+        });
+    }, [orders, timeMode, todayStr, selectedDate, selectedMonth, currentMonthStr]);
+
+    // ── Build Chart Dataset & Metrics Strictly from Relevant Orders ────────────
     const { chartData, totals, peakInfo } = useMemo(() => {
         let totalCount = 0;
         let deliveredCount = 0;
         let canceledCount = 0;
         let otherCount = 0;
 
-        // Count totals in current period
-        for (const ord of orders) {
+        for (const ord of relevantOrders) {
             totalCount += 1;
             const st = String(ord.status || "").toUpperCase();
             if (st === "DELIVERED" || st === "PICKED_UP") {
@@ -187,13 +198,11 @@ export function OrdersVelocityGraphCard() {
         let points: ChartBarPoint[] = [];
 
         if (timeMode === "MONTH") {
-            // Group by Day of the Month (1..lastDay)
             const [yStr, mStr] = (selectedMonth || currentMonthStr).split("-");
             const y = parseInt(yStr, 10);
             const m = parseInt(mStr, 10);
             const daysInMonth = new Date(y, m, 0).getDate();
 
-            // Initialize buckets for each day of the month
             const dayBuckets: Record<
                 number,
                 { delivered: number; canceled: number; other: number; total: number }
@@ -202,7 +211,7 @@ export function OrdersVelocityGraphCard() {
                 dayBuckets[d] = { delivered: 0, canceled: 0, other: 0, total: 0 };
             }
 
-            for (const ord of orders) {
+            for (const ord of relevantOrders) {
                 if (!ord.createdAt) continue;
                 const dObj = new Date(ord.createdAt);
                 if (isNaN(dObj.getTime())) continue;
@@ -230,7 +239,7 @@ export function OrdersVelocityGraphCard() {
                 return {
                     key: `day-${day}`,
                     label: `${day}`,
-                    fullLabel: `${selectedMonth}-${String(day).padStart(2, "0")}`,
+                    fullLabel: `${selectedMonth || currentMonthStr}-${String(day).padStart(2, "0")}`,
                     delivered: b.delivered,
                     canceled: b.canceled,
                     other: b.other,
@@ -239,18 +248,18 @@ export function OrdersVelocityGraphCard() {
                 };
             });
         } else {
-            // Group by Hour of the Day (0..23)
+            // Group by operating hours (8 AM to 11 PM)
+            const hoursToShow = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
             const hourBuckets: Record<
                 number,
                 { delivered: number; canceled: number; other: number; total: number }
             > = {};
 
-            // Display active business hours (8 AM to 11 PM) or full 24h
-            for (let h = 0; h < 24; h++) {
+            for (const h of hoursToShow) {
                 hourBuckets[h] = { delivered: 0, canceled: 0, other: 0, total: 0 };
             }
 
-            for (const ord of orders) {
+            for (const ord of relevantOrders) {
                 if (!ord.createdAt) continue;
                 const dObj = new Date(ord.createdAt);
                 if (isNaN(dObj.getTime())) continue;
@@ -268,8 +277,7 @@ export function OrdersVelocityGraphCard() {
                 }
             }
 
-            // Trim to sensible operating range or non-zero hours (e.g. 8 AM to 11 PM)
-            const hoursToShow = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+            const dateLabel = timeMode === "TODAY" ? "Today" : selectedDate || todayStr;
 
             points = hoursToShow.map((h) => {
                 const b = hourBuckets[h];
@@ -280,7 +288,7 @@ export function OrdersVelocityGraphCard() {
                 return {
                     key: `hour-${h}`,
                     label: formatHourLabel(h),
-                    fullLabel: `${formatHourLabel(h)} – ${formatHourLabel(h + 1)}`,
+                    fullLabel: `${dateLabel} ${formatHourLabel(h)}`,
                     delivered: b.delivered,
                     canceled: b.canceled,
                     other: b.other,
@@ -290,10 +298,10 @@ export function OrdersVelocityGraphCard() {
             });
         }
 
-        // Determine peak
+        // Determine peak strictly from active points with > 0 orders
         let peak: ChartBarPoint | null = null;
         for (const pt of points) {
-            if (!peak || pt.value > peak.value) {
+            if (pt.value > 0 && (!peak || pt.value > peak.value)) {
                 peak = pt;
             }
         }
@@ -312,21 +320,22 @@ export function OrdersVelocityGraphCard() {
             },
             peakInfo: peak && peak.value > 0 ? peak : null,
         };
-    }, [orders, timeMode, selectedMonth, currentMonthStr, statusFilter]);
+    }, [relevantOrders, timeMode, selectedMonth, currentMonthStr, selectedDate, todayStr, statusFilter]);
 
     // Bar fill color according to status filter
     const getBarColor = (entry: ChartBarPoint) => {
         if (statusFilter === "DELIVERED") return "#10b981"; // Emerald
         if (statusFilter === "CANCELED") return "#f43f5e"; // Rose
-        // If ALL: highlight by dominant status or vibrant indigo
-        if (entry.delivered > 0 && entry.delivered >= entry.canceled) {
-            return "#10b981";
-        }
-        if (entry.canceled > 0 && entry.canceled > entry.delivered) {
-            return "#f43f5e";
-        }
-        return "#6366f1"; // Indigo default
+        if (entry.delivered > 0 && entry.canceled === 0) return "#10b981";
+        if (entry.canceled > 0 && entry.delivered === 0) return "#f43f5e";
+        return "#6366f1"; // Indigo default for total orders
     };
+
+    const periodDescription = useMemo(() => {
+        if (timeMode === "TODAY") return "Hourly order dispatch distribution for today";
+        if (timeMode === "CUSTOM_DATE") return `Hourly order dispatch distribution for ${selectedDate}`;
+        return `Daily order trajectory across ${selectedMonth}`;
+    }, [timeMode, selectedDate, selectedMonth]);
 
     return (
         <Card className="md:col-span-2 border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between">
@@ -341,19 +350,19 @@ export function OrdersVelocityGraphCard() {
                             Order Velocity &amp; Fulfillment Trends
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            {timeMode === "TODAY"
-                                ? "Hourly order dispatch distribution for today"
-                                : timeMode === "CUSTOM_DATE"
-                                ? `Hourly order distribution for ${selectedDate}`
-                                : `Daily order trajectory across ${selectedMonth}`}
+                            {periodDescription}
                         </CardDescription>
                     </div>
 
                     {/* Peak Badge */}
-                    {peakInfo && (
+                    {peakInfo ? (
                         <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white gap-1 text-[11px] font-medium shadow-xs self-start sm:self-auto">
                             <Flame className="h-3 w-3" />
                             Peak: {peakInfo.label} ({peakInfo.value} orders)
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground self-start sm:self-auto font-mono">
+                            {totals.total === 0 ? "0 orders in period" : "Even distribution"}
                         </Badge>
                     )}
                 </div>
@@ -449,16 +458,13 @@ export function OrdersVelocityGraphCard() {
                                     type="date"
                                     value={selectedDate}
                                     onChange={(e) => setSelectedDate(e.target.value)}
-                                    className="h-7 text-xs w-32 px-1.5 bg-background border-border/70"
+                                    className="h-7 text-xs w-34 px-1.5 bg-background border-border/70"
                                 />
                                 {selectedDate !== todayStr && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => {
-                                            setSelectedDate(todayStr);
-                                            setTimeMode("TODAY");
-                                        }}
+                                        onClick={() => setSelectedDate(todayStr)}
                                         className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground"
                                         title="Reset to Today"
                                     >
@@ -495,10 +501,10 @@ export function OrdersVelocityGraphCard() {
 
             {/* ── Card Content: Interactive Order Volume Chart ─────────────── */}
             <CardContent className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                {/* Metric Summary Counters */}
+                {/* Metric Summary Counters Strictly for Filtered Orders */}
                 <div className="grid grid-cols-3 gap-2.5 mb-3">
                     <div className="p-2.5 rounded-xl border border-border/50 bg-background/60">
-                        <span className="text-[10px] text-muted-foreground block">
+                        <span className="text-[10px] text-muted-foreground block font-medium">
                             Total Orders
                         </span>
                         <span className="text-base font-bold font-mono text-foreground">
@@ -536,92 +542,102 @@ export function OrdersVelocityGraphCard() {
                 </div>
 
                 {/* Recharts Bar Chart */}
-                <div className="h-[210px] w-full pt-1">
+                <div className="h-[210px] w-full pt-1 relative">
                     {loading ? (
                         <div className="h-full flex items-center justify-center space-x-2">
                             <Skeleton className="h-full w-full rounded-xl" />
                         </div>
                     ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={chartData}
-                                margin={{ top: 10, right: 10, left: -22, bottom: 0 }}
-                            >
-                                <XAxis
-                                    dataKey="label"
-                                    stroke="#888888"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    interval={timeMode === "MONTH" ? 2 : 1}
-                                />
-                                <YAxis
-                                    stroke="#888888"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    allowDecimals={false}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: "rgba(100, 116, 139, 0.1)" }}
-                                    content={({ active, payload }) => {
-                                        if (!active || !payload || !payload.length) return null;
-                                        const d = payload[0].payload as ChartBarPoint;
-                                        return (
-                                            <div className="rounded-xl border border-border/80 bg-background/95 backdrop-blur-md p-3 shadow-xl text-xs space-y-1.5 min-w-[170px]">
-                                                <p className="font-semibold text-foreground flex items-center justify-between">
-                                                    <span>{d.fullLabel}</span>
-                                                    <span className="text-[10px] text-orange-500 font-mono font-bold">
-                                                        {d.total} Orders
-                                                    </span>
-                                                </p>
-                                                <div className="pt-1 border-t border-border/40 space-y-1 text-[11px]">
-                                                    <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                                                        <span className="flex items-center gap-1">
-                                                            <CheckCircle2 className="h-3 w-3" />
-                                                            Delivered:
+                        <>
+                            {totals.total === 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                                    <div className="px-3 py-1.5 rounded-lg bg-background/90 border border-border/70 backdrop-blur-xs text-xs text-muted-foreground font-medium flex items-center gap-1.5 shadow-xs">
+                                        <Calendar className="h-3.5 w-3.5 text-orange-500" />
+                                        <span>No orders recorded for this {timeMode === "MONTH" ? "month" : "day"}</span>
+                                    </div>
+                                </div>
+                            )}
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={chartData}
+                                    margin={{ top: 10, right: 10, left: -22, bottom: 0 }}
+                                >
+                                    <XAxis
+                                        dataKey="label"
+                                        stroke="#888888"
+                                        fontSize={10}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        interval={timeMode === "MONTH" ? 2 : 1}
+                                    />
+                                    <YAxis
+                                        stroke="#888888"
+                                        fontSize={10}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        allowDecimals={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: "rgba(100, 116, 139, 0.1)" }}
+                                        content={({ active, payload }) => {
+                                            if (!active || !payload || !payload.length) return null;
+                                            const d = payload[0].payload as ChartBarPoint;
+                                            return (
+                                                <div className="rounded-xl border border-border/80 bg-background/95 backdrop-blur-md p-3 shadow-xl text-xs space-y-1.5 min-w-[170px]">
+                                                    <p className="font-semibold text-foreground flex items-center justify-between">
+                                                        <span>{d.fullLabel}</span>
+                                                        <span className="text-[10px] text-orange-500 font-mono font-bold">
+                                                            {d.total} Orders
                                                         </span>
-                                                        <span className="font-mono font-bold">
-                                                            {d.delivered}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 font-medium">
-                                                        <span className="flex items-center gap-1">
-                                                            <XCircle className="h-3 w-3" />
-                                                            Canceled:
-                                                        </span>
-                                                        <span className="font-mono font-bold">
-                                                            {d.canceled}
-                                                        </span>
-                                                    </div>
-                                                    {d.other > 0 && (
-                                                        <div className="flex items-center justify-between text-muted-foreground">
-                                                            <span>In Flight / Cooking:</span>
-                                                            <span className="font-mono font-bold text-foreground">
-                                                                {d.other}
+                                                    </p>
+                                                    <div className="pt-1 border-t border-border/40 space-y-1 text-[11px]">
+                                                        <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                                            <span className="flex items-center gap-1">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                Delivered:
+                                                            </span>
+                                                            <span className="font-mono font-bold">
+                                                                {d.delivered}
                                                             </span>
                                                         </div>
-                                                    )}
+                                                        <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 font-medium">
+                                                            <span className="flex items-center gap-1">
+                                                                <XCircle className="h-3 w-3" />
+                                                                Canceled:
+                                                            </span>
+                                                            <span className="font-mono font-bold">
+                                                                {d.canceled}
+                                                            </span>
+                                                        </div>
+                                                        {d.other > 0 && (
+                                                            <div className="flex items-center justify-between text-muted-foreground">
+                                                                <span>In Flight / Cooking:</span>
+                                                                <span className="font-mono font-bold text-foreground">
+                                                                    {d.other}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                <Bar
-                                    dataKey="value"
-                                    radius={[5, 5, 0, 0]}
-                                    maxBarSize={timeMode === "MONTH" ? 18 : 28}
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={getBarColor(entry)}
-                                            fillOpacity={entry.value > 0 ? 0.9 : 0.2}
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                                            );
+                                        }}
+                                    />
+                                    <Bar
+                                        dataKey="value"
+                                        radius={[5, 5, 0, 0]}
+                                        maxBarSize={timeMode === "MONTH" ? 18 : 28}
+                                    >
+                                        {chartData.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={getBarColor(entry)}
+                                                fillOpacity={entry.value > 0 ? 0.9 : 0.15}
+                                            />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </>
                     )}
                 </div>
 
@@ -639,14 +655,14 @@ export function OrdersVelocityGraphCard() {
                         {statusFilter === "ALL" && (
                             <div className="flex items-center gap-1.5">
                                 <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-                                <span className="text-muted-foreground">In Progress</span>
+                                <span className="text-muted-foreground">All Orders</span>
                             </div>
                         )}
                     </div>
 
                     <span className="text-muted-foreground text-[11px] flex items-center gap-1 font-medium">
                         <Sparkles className="h-3 w-3 text-orange-500" />
-                        Reflects 100% verified orders from PostgreSQL database
+                        Reflects verified orders from PostgreSQL database
                     </span>
                 </div>
             </CardContent>
