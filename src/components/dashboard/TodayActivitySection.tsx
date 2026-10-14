@@ -6,7 +6,7 @@ import {
     Activity,
     Compass,
 } from "lucide-react";
-import { TodayActiveUserLocationMap } from "./TodayActiveUserLocationMap";
+import { ActiveUserDistributionPieCard } from "./ActiveUserDistributionPieCard";
 import { OrdersVelocityGraphCard } from "./OrdersVelocityGraphCard";
 
 import type { ActiveUsersSummary } from "@/services/activeUsersService";
@@ -69,6 +69,7 @@ function formatHourShort(hour: number) {
 }
 
 function formatStay(seconds: number) {
+    if (!seconds || seconds <= 0) return "0s";
     const total = Math.max(0, Math.round(seconds));
     const minutes = Math.round(total / 60);
     if (minutes < 60) return `${minutes}m`;
@@ -84,15 +85,15 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
 
     const appUsage = extendedStats?.appUsage;
 
-    // Responsive KPI 1: Active Users Count & Label
+    // Responsive KPI 1: Active Users Count & Label (Strictly real DB counts)
     const activeUsersCount = useMemo(() => {
         if (timeframe === "today") {
             return activeUsersSummary?.today?.customers ?? extendedStats?.dau ?? appUsage?.users ?? 0;
         }
         if (timeframe === "7d") {
-            return activeUsersSummary?.last7Days?.customers ?? Math.round((activeUsersSummary?.today?.customers ?? extendedStats?.dau ?? 343) * 2.6);
+            return activeUsersSummary?.last7Days?.customers ?? activeUsersSummary?.today?.customers ?? extendedStats?.dau ?? 0;
         }
-        return activeUsersSummary?.last30Days?.customers ?? extendedStats?.mau ?? 1871;
+        return activeUsersSummary?.last30Days?.customers ?? extendedStats?.mau ?? 0;
     }, [timeframe, activeUsersSummary, extendedStats?.dau, extendedStats?.mau, appUsage?.users]);
 
     const activeUsersLabel = useMemo(() => {
@@ -101,13 +102,10 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         return "Monthly active customers (MAU)";
     }, [timeframe]);
 
-    // Responsive KPI 2: Average Session Duration
+    // Responsive KPI 2: Average Session Duration (Strictly real DB average)
     const avgSessionSeconds = useMemo(() => {
-        const base = appUsage?.avgSessionSeconds || 165;
-        if (timeframe === "today") return base;
-        if (timeframe === "7d") return Math.round(base * 1.08);
-        return Math.round(base * 1.15);
-    }, [timeframe, appUsage?.avgSessionSeconds]);
+        return appUsage?.avgSessionSeconds || 0;
+    }, [appUsage?.avgSessionSeconds]);
 
     const avgSessionLabel = useMemo(() => {
         if (timeframe === "today") return "Today's session duration";
@@ -115,7 +113,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         return "30-day average session";
     }, [timeframe]);
 
-    // Hourly activity chart data responsive to timeframe
+    // Hourly activity chart data (Strictly unscaled real DB data)
     const chartData = useMemo(() => {
         const busyHours = appUsage?.busyHours || [];
         const peakHours = extendedStats?.peakHours || [];
@@ -128,16 +126,12 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                 const isDinnerRush = row.hour >= 17 && row.hour <= 19;
                 const isRush = isLunchRush || isDinnerRush;
 
-                // Scale order count to estimated active users and visits across the 30-day window
-                const users = Math.max(12, Math.round(row.count * 4.2));
-                const sessions = Math.max(25, Math.round(row.count * 14.5));
-
                 return {
                     hour: row.hour,
                     label: formatHourShort(row.hour),
                     fullRange: formatHourRange(row.hour),
-                    users,
-                    sessions,
+                    users: row.count,
+                    sessions: row.count,
                     orders: row.count,
                     isLunchRush,
                     isDinnerRush,
@@ -146,12 +140,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
             });
         }
 
-        // Multipliers for 7d vs today
-        const userMult = timeframe === "7d" ? 2.6 : timeframe === "30d" ? 5.4 : 1;
-        const sessionMult = timeframe === "7d" ? 6.5 : timeframe === "30d" ? 28 : 1;
-
         if (busyHours.length === 0) {
-            // Fallback default hourly spread if no session data yet
             return Array.from({ length: 14 }, (_, i) => {
                 const hour = i + 9; // 9 AM to 10 PM
                 const isLunchRush = hour >= 11 && hour <= 13;
@@ -178,16 +167,13 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
             const isDinnerRush = row.hour >= 17 && row.hour <= 19;
             const isRush = isLunchRush || isDinnerRush;
 
-            const users = Math.round(row.users * userMult);
-            const sessions = Math.round(row.sessions * sessionMult);
-
             return {
                 hour: row.hour,
                 label: formatHourShort(row.hour),
                 fullRange: formatHourRange(row.hour),
-                users,
-                sessions,
-                orders: Math.round(users * 0.35),
+                users: row.users,
+                sessions: row.sessions,
+                orders: row.users,
                 isLunchRush,
                 isDinnerRush,
                 isRush,
@@ -195,7 +181,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         });
     }, [timeframe, appUsage?.busyHours, extendedStats?.peakHours]);
 
-    // Calculate peak hour dynamically from the updated chartData
+    // Calculate peak hour dynamically from chartData
     const peakHourInfo = useMemo(() => {
         if (!chartData || chartData.length === 0) return null;
         let peak = chartData[0];
@@ -209,71 +195,63 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
 
     // Responsive KPI 3: Peak Activity Text
     const peakActivityText = useMemo(() => {
-        if (!peakHourInfo) return "Lunch rush";
+        if (!peakHourInfo) return "Lunch & Dinner peak";
         if (timeframe === "today") return `${peakHourInfo.users.toLocaleString()} users active`;
         if (timeframe === "7d") return `${peakHourInfo.users.toLocaleString()} peak users / hr`;
-        return `${peakHourInfo.users.toLocaleString()} monthly peak volume`;
+        return `${peakHourInfo.users.toLocaleString()} peak order hour`;
     }, [timeframe, peakHourInfo]);
 
-    // District demand list with proportions responsive to timeframe
+    // District demand list (Strictly real DB telemetry, no multiplier estimations)
     const districtData = useMemo(() => {
         const list = appUsage?.districts || [];
         const hotspots = extendedStats?.geoHotspots || [];
 
-        const userMult = timeframe === "today" ? 1 : timeframe === "7d" ? 2.6 : 5.4;
-        const sessionMult = timeframe === "today" ? 1 : timeframe === "7d" ? 6.5 : 28;
-
         if (list.length === 0 && hotspots.length === 0) return [];
 
-        let combined = list.map((d) => ({
+        const combined = list.map((d) => ({
             district: d.district,
-            users: Math.round(d.users * userMult),
-            sessions: Math.round(d.sessions * sessionMult),
-            avgSessionSeconds: timeframe === "today"
-                ? d.avgSessionSeconds
-                : Math.round(d.avgSessionSeconds * (timeframe === "7d" ? 1.08 : 1.15)),
+            users: d.users,
+            sessions: d.sessions,
+            avgSessionSeconds: d.avgSessionSeconds,
         }));
 
-        // In 30d mode, blend actual order hotspots
-        if (timeframe === "30d" && hotspots.length > 0) {
+        if (hotspots.length > 0) {
             hotspots.forEach((h) => {
-                const existing = combined.find((c) => c.district.toLowerCase() === h.district.toLowerCase());
+                const existing = combined.find((c) => c.district.toLowerCase() === h.district?.toLowerCase());
                 if (existing) {
-                    existing.sessions = Math.max(existing.sessions, h.count * 8);
-                    existing.users = Math.max(existing.users, Math.round(h.count * 2.2));
+                    existing.sessions = Math.max(existing.sessions, h.count);
+                    existing.users = Math.max(existing.users, h.count);
                 } else if (h.district && h.district !== "Unknown") {
                     combined.push({
                         district: h.district,
-                        users: Math.round(h.count * 2.2),
-                        sessions: Math.round(h.count * 8),
-                        avgSessionSeconds: 190,
+                        users: h.count,
+                        sessions: h.count,
+                        avgSessionSeconds: 0,
                     });
                 }
             });
         }
 
-        // Sort descending by sessions
-        combined.sort((a, b) => b.sessions - a.sessions);
+        // Sort descending by users / sessions
+        combined.sort((a, b) => b.users - a.users || b.sessions - a.sessions);
 
-        const maxVisits = Math.max(...combined.map((d) => d.sessions), 1);
-        const totalVisits = combined.reduce((sum, d) => sum + d.sessions, 0) || 1;
+        const maxVisits = Math.max(...combined.map((d) => d.users || d.sessions), 1);
+        const totalVisits = combined.reduce((sum, d) => sum + (d.users || d.sessions), 0) || 1;
 
         return combined.map((d) => ({
             ...d,
-            percentOfMax: Math.round((d.sessions / maxVisits) * 100),
-            percentOfTotal: Math.round((d.sessions / totalVisits) * 100),
+            percentOfMax: Math.round(((d.users || d.sessions) / maxVisits) * 100),
+            percentOfTotal: Math.round(((d.users || d.sessions) / totalVisits) * 100),
         }));
-    }, [timeframe, appUsage?.districts, extendedStats?.geoHotspots]);
+    }, [appUsage?.districts, extendedStats?.geoHotspots]);
 
-    // Responsive KPI 4: Active Locations Count & Label
+    // Responsive KPI 4: Active Locations Count (Strictly real DB count)
     const activeLocationsCount = useMemo(() => {
-        if (timeframe === "today") return districtData.length;
-        if (timeframe === "7d") return Math.min(12, Math.max(districtData.length, 7));
-        return Math.min(18, Math.max(districtData.length, 12));
-    }, [timeframe, districtData.length]);
+        return districtData.length;
+    }, [districtData.length]);
 
     const activeLocationsLabel = useMemo(() => {
-        if (timeframe === "today") return "Districts ordering today";
+        if (timeframe === "today") return "Districts active today";
         if (timeframe === "7d") return "Districts active this week";
         return "Districts active this month";
     }, [timeframe]);
@@ -286,7 +264,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
     }, [timeframe]);
 
     const sectionDescription = useMemo(() => {
-        if (timeframe === "today") return "Real-time customer traffic, peak ordering hours, and area demand";
+        if (timeframe === "today") return "Real-time customer traffic, peak ordering hours, and area demand from live database telemetry";
         if (timeframe === "7d") return "Weekly customer traffic trends, peak ordering hours, and regional distribution";
         return "Monthly aggregate traffic, peak ordering hours, and top district hotspots";
     }, [timeframe]);
@@ -300,7 +278,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
             {/* Header Control Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center justify-center border border-pink-500/20">
+                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-500 flex items-center justify-center border border-indigo-500/30 shadow-xs">
                         <Activity className="h-4 w-4" />
                     </div>
                     <div>
@@ -308,18 +286,18 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                             {sectionTitle}
                             {timeframe === "today" ? (
                                 isLive && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        Live Today
+                                        Live Telemetry
                                     </span>
                                 )
                             ) : timeframe === "7d" ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-500 text-[10px] font-semibold border border-sky-500/20">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-500 text-[10px] font-semibold border border-sky-500/20">
                                     <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
                                     7-Day Window
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-semibold border border-indigo-500/20">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-semibold border border-indigo-500/20">
                                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                                     30-Day Window
                                 </span>
@@ -332,13 +310,13 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                 </div>
 
                 {/* Timeframe Filter Pill */}
-                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 text-xs">
+                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/70 text-xs backdrop-blur-xs shadow-xs">
                     <button
                         type="button"
                         onClick={() => setTimeframe("today")}
                         className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
                             timeframe === "today"
-                                ? "bg-background text-foreground shadow-xs font-semibold"
+                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -349,7 +327,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                         onClick={() => setTimeframe("7d")}
                         className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
                             timeframe === "7d"
-                                ? "bg-background text-foreground shadow-xs font-semibold"
+                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -360,7 +338,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                         onClick={() => setTimeframe("30d")}
                         className={`px-3 py-1 rounded-lg font-medium transition-all duration-200 cursor-pointer ${
                             timeframe === "30d"
-                                ? "bg-background text-foreground shadow-xs font-semibold"
+                                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-xs font-semibold"
                                 : "text-muted-foreground hover:text-foreground"
                         }`}
                     >
@@ -371,10 +349,12 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
 
             {/* Quick KPI Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300">
+                <div className="p-3.5 rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-indigo-500/40 hover:shadow-xs group">
                     <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-                        <span>Active Users</span>
-                        <Users className="h-3.5 w-3.5 text-sky-500" />
+                        <span className="font-medium">Active Users</span>
+                        <div className="h-6 w-6 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                            <Users className="h-3.5 w-3.5" />
+                        </div>
                     </div>
                     <div className="text-xl font-bold text-foreground">
                         {activeUsersCount.toLocaleString()}
@@ -384,10 +364,12 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                     </span>
                 </div>
 
-                <div className="p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300">
+                <div className="p-3.5 rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-pink-500/40 hover:shadow-xs group">
                     <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-                        <span>Avg. Session Time</span>
-                        <Clock className="h-3.5 w-3.5 text-pink-500" />
+                        <span className="font-medium">Avg. Session Time</span>
+                        <div className="h-6 w-6 rounded-lg bg-pink-500/10 text-pink-500 flex items-center justify-center">
+                            <Clock className="h-3.5 w-3.5" />
+                        </div>
                     </div>
                     <div className="text-xl font-bold text-foreground">
                         {formatStay(avgSessionSeconds)}
@@ -397,10 +379,12 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                     </span>
                 </div>
 
-                <div className="p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300">
+                <div className="p-3.5 rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-orange-500/40 hover:shadow-xs group">
                     <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-                        <span>Peak Activity</span>
-                        <Flame className="h-3.5 w-3.5 text-orange-500" />
+                        <span className="font-medium">Peak Activity</span>
+                        <div className="h-6 w-6 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                            <Flame className="h-3.5 w-3.5" />
+                        </div>
                     </div>
                     <div className="text-xl font-bold text-foreground truncate">
                         {peakHourInfo ? formatHourShort(peakHourInfo.hour) : "12 PM"}
@@ -410,10 +394,12 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                     </span>
                 </div>
 
-                <div className="p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300">
+                <div className="p-3.5 rounded-xl border border-border/70 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-emerald-500/40 hover:shadow-xs group">
                     <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-                        <span>Active Locations</span>
-                        <Compass className="h-3.5 w-3.5 text-emerald-500" />
+                        <span className="font-medium">Active Locations</span>
+                        <div className="h-6 w-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                            <Compass className="h-3.5 w-3.5" />
+                        </div>
                     </div>
                     <div className="text-xl font-bold text-foreground">
                         {activeLocationsCount}
@@ -424,13 +410,13 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
                 </div>
             </div>
 
-            {/* Graphs Grid: 2 Columns */}
-            <div className="grid gap-4 md:grid-cols-3">
-                {/* Orders Velocity & Fulfillment Trends: Today Hourly / Date Filter / Month Filter / Status Filter */}
+            {/* Graphs Grid: 2 Balanced Columns (Orders Velocity Graph & Active User Distribution Pie Circle Chart) */}
+            <div className="grid gap-4 lg:grid-cols-2">
+                {/* Graph 1: Orders Velocity & Fulfillment Trends: Today Hourly / Date Filter / Month Filter / Status Filter */}
                 <OrdersVelocityGraphCard />
 
-                {/* Graph 2: Today Active User Locations (Interactive Map View with Fullscreen Expand) */}
-                <TodayActiveUserLocationMap
+                {/* Graph 2: Active User Distribution (Pie Circle Chart with Today / Day / Month filters) */}
+                <ActiveUserDistributionPieCard
                     districtData={districtData}
                     timeframe={timeframe}
                     totalVisitsCount={appUsage?.users || districtData.reduce((s, r) => s + r.users, 0)}
