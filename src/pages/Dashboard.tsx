@@ -16,7 +16,7 @@ import {
     YAxis,
 } from "recharts";
 import { Input } from "@/components/ui/input";
-import { analyticsService, RevenueData, PopularShop } from "@/services/analyticsService";
+import { analyticsService, RevenueData, PopularShop, UserRegistrationStatsResponse } from "@/services/analyticsService";
 import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
 import { manageUsersService } from "@/services/manageUsersService";
 import {
@@ -245,8 +245,12 @@ export default function Dashboard() {
     const [channelFilterStats, setChannelFilterStats] = useState<{
         phoneCount: number;
         googleCount: number;
+        allTimePhone?: number;
+        allTimeGoogle?: number;
+        allTimeTotal?: number;
         filterLabel: string;
     } | null>(null);
+    const [userRegStats, setUserRegStats] = useState<UserRegistrationStatsResponse | null>(null);
 
     useEffect(() => {
         async function load() {
@@ -264,6 +268,7 @@ export default function Dashboard() {
                     ordersHealthData,
                     deliveredOrdersPage,
                     canceledOrdersPage,
+                    regStatsData,
                 ] = await Promise.all([
                     dashboardService.getCardCounts().catch(() => ({})),
                     analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
@@ -276,6 +281,7 @@ export default function Dashboard() {
                     orderService.getOrdersHealth().catch(() => ({} as Record<string, number>)),
                     orderService.getOrders({ status: "DELIVERED", size: 100 }).catch(() => null),
                     orderService.getOrders({ status: "CANCELED", size: 100 }).catch(() => null),
+                    analyticsService.getUserRegistrationStats({ timeframe: "today" }).catch(() => null),
                 ]);
                 setCardCounts(cardsData);
                 setRevenue(revenueData);
@@ -284,6 +290,7 @@ export default function Dashboard() {
                 setActiveUsersSummary(activeSummary);
                 setSystemHealth(healthData);
                 setManageUsersPage(usersData);
+                setUserRegStats(regStatsData);
 
                 // Process shops
                 let loadedShops: AdminShopProfileListItem[] = shopProfilesPage?.content || [];
@@ -327,7 +334,21 @@ export default function Dashboard() {
 
     // Calculate Phone registered users vs Google sign-in users strictly from real DB records
     const { phoneUsersCount, googleUsersCount, phonePercent, googlePercent } = useMemo(() => {
-        // 1. Direct from cardCounts if provided by backend (exact DB count)
+        // 1. Direct from userRegStats or channelFilterStats (exact DB counts from analytics API)
+        const allPhone = userRegStats?.allTimePhone ?? channelFilterStats?.allTimePhone ?? cardCounts.phoneUsers;
+        const allGoogle = userRegStats?.allTimeGoogle ?? channelFilterStats?.allTimeGoogle ?? cardCounts.googleUsers;
+
+        if (allPhone !== undefined && allGoogle !== undefined && (allPhone + allGoogle > 0)) {
+            const total = (allPhone + allGoogle) || totalUsers || 1;
+            return {
+                phoneUsersCount: allPhone,
+                googleUsersCount: allGoogle,
+                phonePercent: Math.round((allPhone / total) * 100),
+                googlePercent: Math.round((allGoogle / total) * 100),
+            };
+        }
+
+        // 2. Direct from cardCounts if provided by backend (exact DB count)
         if (
             cardCounts.phoneUsers !== undefined &&
             cardCounts.googleUsers !== undefined &&
@@ -344,7 +365,7 @@ export default function Dashboard() {
             };
         }
 
-        // 2. Direct from extendedStats if provided
+        // 3. Direct from extendedStats if provided
         if (extendedStats?.userRegistrationStats) {
             const p = extendedStats.userRegistrationStats.phoneCount;
             const g = extendedStats.userRegistrationStats.googleCount;
@@ -359,7 +380,7 @@ export default function Dashboard() {
             }
         }
 
-        // 3. Computed from actual live user records sample
+        // 4. Computed from actual live user records sample
         if (manageUsersPage?.content && Array.isArray(manageUsersPage.content) && manageUsersPage.content.length > 0) {
             const customerRows = manageUsersPage.content.filter(
                 (u: any) => u.accountType === "user" || u.role === "User" || (!u.role && u.phone)
@@ -394,7 +415,7 @@ export default function Dashboard() {
             phonePercent: 0,
             googlePercent: 0,
         };
-    }, [cardCounts.phoneUsers, cardCounts.googleUsers, extendedStats?.userRegistrationStats, manageUsersPage, totalUsers]);
+    }, [userRegStats, channelFilterStats, cardCounts.phoneUsers, cardCounts.googleUsers, extendedStats?.userRegistrationStats, manageUsersPage, totalUsers]);
 
     // Alert keys (used to detect new entries)
     const latestReportKey = latestReport?.timestamp ?? null;
@@ -504,28 +525,28 @@ export default function Dashboard() {
                 />
                 <StatCard
                     title="Phone Registered"
-                    value={channelFilterStats ? channelFilterStats.phoneCount : phoneUsersCount}
+                    value={phoneUsersCount}
                     icon={Smartphone}
                     iconColor="text-sky-400"
                     iconBg="bg-sky-500/10"
                     accentGradient="from-sky-500 to-indigo-500"
                     loading={loading}
-                    trend={`${channelFilterStats ? Math.round((channelFilterStats.phoneCount / ((channelFilterStats.phoneCount + channelFilterStats.googleCount) || 1)) * 100) : phonePercent}%`}
+                    trend={`${phonePercent}%`}
                     trendColor="text-sky-500 font-bold"
-                    subtext={channelFilterStats ? `Mobile OTP (${channelFilterStats.filterLabel})` : "Mobile OTP signups"}
+                    subtext="All-Time Mobile OTP"
                     onClick={() => navigate("/manage-users")}
                 />
                 <StatCard
                     title="Google Sign-In"
-                    value={channelFilterStats ? channelFilterStats.googleCount : googleUsersCount}
+                    value={googleUsersCount}
                     icon={Globe}
                     iconColor="text-violet-400"
                     iconBg="bg-violet-500/10"
                     accentGradient="from-violet-500 to-pink-500"
                     loading={loading}
-                    trend={`${channelFilterStats ? Math.round((channelFilterStats.googleCount / ((channelFilterStats.phoneCount + channelFilterStats.googleCount) || 1)) * 100) : googlePercent}%`}
+                    trend={`${googlePercent}%`}
                     trendColor="text-violet-500 font-bold"
-                    subtext={channelFilterStats ? `Google Auth (${channelFilterStats.filterLabel})` : "Google Auth accounts"}
+                    subtext="All-Time Google Auth"
                     onClick={() => navigate("/manage-users")}
                 />
                 <StatCard

@@ -265,8 +265,9 @@ class AnalyticsService {
     if (params?.date) query.append('date', params.date);
     if (params?.month) query.append('month', params.month);
     const qs = query.toString() ? `?${query.toString()}` : '';
+    const endpoint = config.endpoints.admin.analytics?.userRegistrationStats || '/api/admin/analytics/users/registration-stats';
     return apiClient.get<UserRegistrationStatsResponse>(
-      `${config.endpoints.admin.analytics.userRegistrationStats}${qs}`
+      `${endpoint}${qs}`
     );
   }
 }

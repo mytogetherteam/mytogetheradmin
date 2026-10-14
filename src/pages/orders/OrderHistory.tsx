@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { orderService, Order, OrderStatus, OrderFilters, ORDER_STATUSES } from "@/services/orderService";
 import { ShopService } from "@/services/shopService";
 import {
@@ -143,30 +143,37 @@ export default function OrderHistory() {
         if (!s) return "ALL";
         return s.toUpperCase() === "CANCELLED" ? "CANCELED" : s.toUpperCase();
     });
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchInput, setSearchInput] = useState("");
+    const [appliedSearch, setAppliedSearch] = useState("");
     const [shopId, setShopId] = useState("");
     const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
+    const isFirstMount = useRef(true);
 
     // Sync state when URL search params change (e.g. from Dashboard deep-link or browser navigation)
     useEffect(() => {
+        if (isFirstMount.current) {
+            isFirstMount.current = false;
+            return;
+        }
+
         const s = searchParams.get("status");
         const norm = s ? (s.toUpperCase() === "CANCELLED" ? "CANCELED" : s.toUpperCase()) : "ALL";
-        setStatusFilter(norm);
+        setStatusFilter((prev) => (prev !== norm ? norm : prev));
 
         const p = searchParams.get("period") as PeriodPreset | null;
         if (p && PERIOD_OPTIONS.some(o => o.value === p)) {
-            setPeriod(p);
+            setPeriod((prev) => (prev !== p ? p : prev));
             if (p !== "custom") {
                 const { start, end } = getPresetDates(p);
-                setStartDate(start);
-                setEndDate(end);
+                setStartDate((prev) => (prev !== start ? start : prev));
+                setEndDate((prev) => (prev !== end ? end : prev));
             }
         }
 
         const startParam = searchParams.get("startDate");
         const endParam = searchParams.get("endDate");
-        if (startParam !== null) setStartDate(startParam);
-        if (endParam !== null) setEndDate(endParam);
+        if (startParam !== null) setStartDate((prev) => (prev !== startParam ? startParam : prev));
+        if (endParam !== null) setEndDate((prev) => (prev !== endParam ? endParam : prev));
 
         setCurrentPage(1);
     }, [searchParams]);
@@ -221,8 +228,18 @@ export default function OrderHistory() {
         endDate: endDate || undefined,
         shopId: shopId || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter as OrderStatus,
-        search: searchTerm || undefined,
-    }), [currentPage, pageSize, startDate, endDate, shopId, statusFilter, searchTerm]);
+        search: appliedSearch || undefined,
+    }), [currentPage, pageSize, startDate, endDate, shopId, statusFilter, appliedSearch]);
+
+    const handleSearchSubmit = () => {
+        const trimmed = searchInput.trim();
+        setCurrentPage(1);
+        if (trimmed === appliedSearch) {
+            fetchOrders();
+        } else {
+            setAppliedSearch(trimmed);
+        }
+    };
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
@@ -330,9 +347,21 @@ export default function OrderHistory() {
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Order ID</label>
                             <Input
                                 placeholder="Search..."
-                                value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                onKeyDown={(e) => e.key === 'Enter' && fetchOrders()}
+                                value={searchInput}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSearchInput(val);
+                                    if (!val.trim() && appliedSearch) {
+                                        setAppliedSearch("");
+                                        setCurrentPage(1);
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSearchSubmit();
+                                    }
+                                }}
                             />
                         </div>
                         <div>
@@ -353,7 +382,7 @@ export default function OrderHistory() {
                             </Select>
                         </div>
                         <div className="flex items-end">
-                            <Button className="w-full" onClick={() => { setCurrentPage(1); fetchOrders(); }}>
+                            <Button className="w-full" onClick={handleSearchSubmit}>
                                 <Search className="h-4 w-4 mr-2" /> Search
                             </Button>
                         </div>
