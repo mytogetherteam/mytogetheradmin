@@ -269,10 +269,6 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
         return "Monthly aggregate traffic, peak ordering hours, and top district hotspots";
     }, [timeframe]);
 
-    if (!appUsage && !extendedStats && !activeUsersSummary) {
-        return null;
-    }
-
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
             {/* Header Control Toolbar */}

@@ -186,7 +186,7 @@ export const config = {
         detail: (id: number) => `/api/admin/delivery-drivers/${id}`,
       },
       reviews: {
-        shops: '/api/admin/reviews/shops',
+        shops: '/api/admin/analytics/reviews',
         shopVisibility: (id: string) => `/api/admin/reviews/shops/${id}/visibility`,
         shopDetail: (id: string) => `/api/admin/reviews/shops/${id}`,
         items: '/api/admin/reviews/items',
@@ -308,6 +308,7 @@ export const config = {
         ordersCancellationRate: '/api/admin/analytics/orders/cancellation-rate',
         sessions: '/api/admin/analytics/sessions',
         locations: '/api/admin/analytics/locations',
+        reviews: '/api/admin/analytics/reviews',
         popularShops: '/api/admin/analytics/shops/popular',
         shopRevenue: (shopId: number) => `/api/admin/analytics/shops/${shopId}/revenue`,
         shopOrders: (shopId: number) => `/api/admin/analytics/shops/${shopId}/orders`,
@@ -321,6 +322,7 @@ export const config = {
         activeUsers: '/api/admin/analytics/active-users',
         activeUsersSummary: '/api/admin/analytics/active-users/summary',
         activeUsersDay: '/api/admin/analytics/active-users/day',
+        userRegistrationStats: '/api/admin/analytics/users/registration-stats',
       },
       system: {
         latency: '/api/admin/system/latency',

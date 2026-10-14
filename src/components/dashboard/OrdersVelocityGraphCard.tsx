@@ -338,7 +338,7 @@ export function OrdersVelocityGraphCard() {
     }, [timeMode, selectedDate, selectedMonth]);
 
     return (
-        <Card className="md:col-span-2 border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between">
+        <Card className="border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between h-full">
             {/* ── Card Header ─────────────────────────────────────────────── */}
             <CardHeader className="pb-3 border-b border-border/40 bg-muted/15 flex flex-col gap-3 space-y-0">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

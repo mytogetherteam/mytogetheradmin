@@ -254,6 +254,21 @@ class AnalyticsService {
       `${config.endpoints.admin.analytics.locations}${qs}`
     );
   }
+
+  async getUserRegistrationStats(params?: {
+    timeframe?: 'today' | 'day' | 'month' | 'all';
+    date?: string;
+    month?: string;
+  }): Promise<UserRegistrationStatsResponse> {
+    const query = new URLSearchParams();
+    if (params?.timeframe) query.append('timeframe', params.timeframe);
+    if (params?.date) query.append('date', params.date);
+    if (params?.month) query.append('month', params.month);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiClient.get<UserRegistrationStatsResponse>(
+      `${config.endpoints.admin.analytics.userRegistrationStats}${qs}`
+    );
+  }
 }
 
 export interface ActiveUserLocationRecord {
@@ -294,4 +309,43 @@ export interface ActiveUserLocationsResponse {
   highestDistrictName?: string | null;
 }
 
+export interface UserRegistrationStatsResponse {
+  timeframe: 'today' | 'day' | 'month' | 'all';
+  date?: string | null;
+  month?: string | null;
+  phoneUsers: number;
+  googleUsers: number;
+  totalUsers: number;
+  phonePercent: number;
+  googlePercent: number;
+  allTimePhone: number;
+  allTimeGoogle: number;
+  allTimeTotal: number;
+  timeBreakdown?: {
+    morning: { phone: number; google: number; total: number };
+    afternoon: { phone: number; google: number; total: number };
+    evening: { phone: number; google: number; total: number };
+    night: { phone: number; google: number; total: number };
+  };
+  series: Array<{
+    label: string;
+    time?: string;
+    hour?: number;
+    date?: string;
+    day?: number;
+    phoneUsers: number;
+    googleUsers: number;
+    total: number;
+  }>;
+  recentUsers?: Array<{
+    id: number;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+    channel: 'phone' | 'google';
+    createdAt: string;
+  }>;
+}
+
 export const analyticsService = new AnalyticsService();
+

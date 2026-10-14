@@ -44,6 +44,7 @@ import { TodayFulfillmentOperationsSection } from "@/components/dashboard/TodayF
 import { ShopService, AdminShopProfileListItem } from "@/services/shopService";
 import { orderService } from "@/services/orderService";
 import { CustomerReviewsDetailModal } from "@/components/dashboard/CustomerReviewsDetailModal";
+import { UserRegistrationChannelSection } from "@/components/dashboard/UserRegistrationChannelSection";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -241,6 +242,11 @@ export default function Dashboard() {
     const [reportDismissed, setReportDismissed] = useState<string | null>(null);
     const [shopRequestDismissed, setShopRequestDismissed] = useState<string | null>(null);
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [channelFilterStats, setChannelFilterStats] = useState<{
+        phoneCount: number;
+        googleCount: number;
+        filterLabel: string;
+    } | null>(null);
 
     useEffect(() => {
         async function load() {
@@ -498,28 +504,28 @@ export default function Dashboard() {
                 />
                 <StatCard
                     title="Phone Registered"
-                    value={phoneUsersCount}
+                    value={channelFilterStats ? channelFilterStats.phoneCount : phoneUsersCount}
                     icon={Smartphone}
                     iconColor="text-sky-400"
                     iconBg="bg-sky-500/10"
                     accentGradient="from-sky-500 to-indigo-500"
                     loading={loading}
-                    trend={`${phonePercent}%`}
+                    trend={`${channelFilterStats ? Math.round((channelFilterStats.phoneCount / ((channelFilterStats.phoneCount + channelFilterStats.googleCount) || 1)) * 100) : phonePercent}%`}
                     trendColor="text-sky-500 font-bold"
-                    subtext="Mobile OTP signups"
+                    subtext={channelFilterStats ? `Mobile OTP (${channelFilterStats.filterLabel})` : "Mobile OTP signups"}
                     onClick={() => navigate("/manage-users")}
                 />
                 <StatCard
                     title="Google Sign-In"
-                    value={googleUsersCount}
+                    value={channelFilterStats ? channelFilterStats.googleCount : googleUsersCount}
                     icon={Globe}
                     iconColor="text-violet-400"
                     iconBg="bg-violet-500/10"
                     accentGradient="from-violet-500 to-pink-500"
                     loading={loading}
-                    trend={`${googlePercent}%`}
+                    trend={`${channelFilterStats ? Math.round((channelFilterStats.googleCount / ((channelFilterStats.phoneCount + channelFilterStats.googleCount) || 1)) * 100) : googlePercent}%`}
                     trendColor="text-violet-500 font-bold"
-                    subtext="Google Auth accounts"
+                    subtext={channelFilterStats ? `Google Auth (${channelFilterStats.filterLabel})` : "Google Auth accounts"}
                     onClick={() => navigate("/manage-users")}
                 />
                 <StatCard
@@ -561,6 +567,9 @@ export default function Dashboard() {
                     onClick={() => setReviewModalOpen(true)}
                 />
             </div>
+
+            {/* Row 1.2: Real-time User Registration Channels & Telemetry with Time, Day & Month Filters */}
+            <UserRegistrationChannelSection onStatsUpdate={setChannelFilterStats} />
 
             {/* Row 1.5: Today's Fulfillment & Merchant Delivery Operations Strip */}
             <TodayFulfillmentOperationsSection
@@ -759,6 +768,7 @@ export default function Dashboard() {
                 open={reviewModalOpen}
                 onOpenChange={setReviewModalOpen}
                 totalReviewsCount={totalReviews}
+                shops={allShopsList}
             />
         </div>
     );

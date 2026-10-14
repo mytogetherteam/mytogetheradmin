@@ -29,19 +29,26 @@ export interface Review {
   userPhone?: string | null;
 }
 
+export interface ReviewStats {
+  counts: Record<number, number>;
+  avg: string;
+  total: number;
+}
+
 export interface ReviewPage {
   content: Review[];
   totalElements: number;
   totalPages: number;
   number: number;
+  stats?: ReviewStats;
 }
 
 class ReviewService {
   async getReviews(
-    type: ReviewType, 
+    type: ReviewType = 'SHOPS', 
     page = 0, 
     size = 10, 
-    filters?: { search?: string; rating?: number | string; startDate?: string; endDate?: string }
+    filters?: { search?: string; rating?: number | string; startDate?: string; endDate?: string; shopId?: number }
   ): Promise<ReviewPage> {
     const endpoint = type === 'SHOPS' 
       ? config.endpoints.admin.reviews.shops 
@@ -52,18 +59,23 @@ class ReviewService {
     if (filters?.rating && filters.rating !== 'ALL') params.append('rating', String(filters.rating));
     if (filters?.startDate) params.append('startDate', filters.startDate);
     if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.shopId) params.append('shopId', String(filters.shopId));
 
-    const response = await apiClient.get<ReviewPage>(`${endpoint}?${params.toString()}`);
-    
-    // Map shopName/itemName to targetName for consistent UI rendering
-    if (response.content) {
-      response.content = response.content.map(r => ({
-        ...r,
-        targetName: r.targetName || r.shopName || r.itemName || 'N/A'
-      }));
+    try {
+      const response = await apiClient.get<ReviewPage>(`${endpoint}?${params.toString()}`);
+      
+      // Map shopName/itemName to targetName for consistent UI rendering
+      if (response && response.content) {
+        response.content = response.content.map(r => ({
+          ...r,
+          targetName: r.targetName || r.shopName || r.itemName || 'Restaurant Partner'
+        }));
+      }
+      
+      return response || { content: [], totalElements: 0, totalPages: 0, number: page };
+    } catch {
+      return { content: [], totalElements: 0, totalPages: 0, number: page };
     }
-    
-    return response;
   }
 
   async toggleVisibility(type: ReviewType, id: string, visible: boolean): Promise<Review> {

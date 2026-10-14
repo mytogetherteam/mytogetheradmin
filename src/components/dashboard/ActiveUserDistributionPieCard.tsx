@@ -298,7 +298,7 @@ export function ActiveUserDistributionPieCard({
 
     return (
         <>
-            <Card className="border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between relative group hover:border-indigo-500/30 transition-all duration-300">
+            <Card className="border-border/70 shadow-sm overflow-hidden bg-card/90 flex flex-col justify-between h-full relative group hover:border-indigo-500/30 transition-all duration-300">
                 {/* ── Card Header ─────────────────────────────────────────────── */}
                 <CardHeader className="pb-2.5 border-b border-border/40 bg-muted/15 space-y-2.5">
                     <div className="flex flex-row items-center justify-between space-y-0">
