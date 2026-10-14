@@ -28,12 +28,14 @@ import {
     Sparkles,
 } from "lucide-react";
 import { menuService, MenuItem } from "@/services/menuService";
-import { orderService } from "@/services/orderService";
+import { orderService, Order } from "@/services/orderService";
+import { analyticsService, ExtendedDashboardStats } from "@/services/analyticsService";
 
 interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     initialTab?: "viewed" | "ordered" | "liked";
+    extendedStats?: ExtendedDashboardStats | null;
 }
 
 type TabType = "viewed" | "ordered" | "liked";
@@ -68,6 +70,7 @@ export function TopTrendingDishesModal({
     open,
     onOpenChange,
     initialTab = "viewed",
+    extendedStats,
 }: Props) {
     const navigate = useNavigate();
 
@@ -126,8 +129,8 @@ export function TopTrendingDishesModal({
         if (!open) return;
         setLoading(true);
         try {
-            // Fetch comprehensive menu items pool (up to 300 items across shops)
-            const [page1Res, page2Res, page3Res, ordersRes, activeOrdersRes] = await Promise.all([
+            // Fetch comprehensive menu items pool (up to 300 items across shops), orders, and extended DB telemetry
+            const [page1Res, page2Res, page3Res, ordersRes, activeOrdersRes, extStatsRes] = await Promise.all([
                 menuService.getAllMenuItems(1, 100, "", undefined, undefined, undefined, {
                     isAvailable: true,
                 }).catch(() => null),
@@ -143,21 +146,10 @@ export function TopTrendingDishesModal({
                     size: 100,
                 }).catch(() => null),
                 orderService.getActiveOrders({ size: 100 }).catch(() => null),
+                analyticsService.getExtendedDashboardStats().catch(() => null),
             ]);
 
-            // Unique menu items excluding test shop
-            const raw = [
-                ...(page1Res?.content || []),
-                ...(page2Res?.content || []),
-                ...(page3Res?.content || []),
-            ];
-            const seen = new Set<number>();
-            const uniqueItems = raw.filter((it) => {
-                if (!it.id || seen.has(it.id)) return false;
-                seen.add(it.id);
-                return !isTestingShopItem(it);
-            });
-            setRawMenuItems(uniqueItems);
+            const extStats = extendedStats || extStatsRes;
 
             // Compute order counts for dishes from orders within date filter
             const countMap: Record<number, number> = {};
@@ -176,7 +168,10 @@ export function TopTrendingDishesModal({
                 ...(activeOrdersRes?.content || []),
             ];
 
+            // 1. Gather all unique orders matching date filter
             const seenOrderIds = new Set<string | number>();
+            const relevantOrders: Order[] = [];
+
             for (const ord of allOrders) {
                 if (ord.id && !seenOrderIds.has(ord.id)) {
                     seenOrderIds.add(ord.id);
@@ -189,8 +184,43 @@ export function TopTrendingDishesModal({
                         if (endDate && ordDate > endDate) continue;
                     }
 
-                    if (Array.isArray(ord.items)) {
-                        for (const it of ord.items) {
+                    relevantOrders.push(ord);
+                }
+            }
+
+            // 2. Extract item quantities from orders that already have items populated
+            const ordersNeedingDetails: Order[] = [];
+            for (const ord of relevantOrders) {
+                if (Array.isArray(ord.items) && ord.items.length > 0) {
+                    for (const it of ord.items) {
+                        const mId = it.menuItemId || (it as any).id;
+                        if (mId && typeof mId === "number") {
+                            countMap[mId] = (countMap[mId] || 0) + (it.quantity || 1);
+                        }
+                    }
+                } else {
+                    ordersNeedingDetails.push(ord);
+                }
+            }
+
+            // 3. For orders where items were not embedded in the list endpoint, fetch order details in parallel
+            // Prioritize non-canceled / delivered orders first, then recent ones (up to 30 orders)
+            if (ordersNeedingDetails.length > 0) {
+                const toFetch = ordersNeedingDetails
+                    .sort((a, b) => {
+                        const aGood = a.status === "DELIVERED" || a.status === "PICKED_UP" ? 1 : 0;
+                        const bGood = b.status === "DELIVERED" || b.status === "PICKED_UP" ? 1 : 0;
+                        return bGood - aGood;
+                    })
+                    .slice(0, 30);
+
+                const orderDetails = await Promise.all(
+                    toFetch.map((o) => orderService.getOrderDetail(String(o.id)).catch(() => null))
+                );
+
+                for (const detail of orderDetails) {
+                    if (detail && Array.isArray(detail.items)) {
+                        for (const it of detail.items) {
                             const mId = it.menuItemId || (it as any).id;
                             if (mId && typeof mId === "number") {
                                 countMap[mId] = (countMap[mId] || 0) + (it.quantity || 1);
@@ -199,11 +229,52 @@ export function TopTrendingDishesModal({
                     }
                 }
             }
+
+            // 4. Seed / merge from backend's live PostgreSQL orderItem.groupBy telemetry
+            // When date filter is ALL_TIME (default), incorporate all confirmed orders from DB
+            if (extStats?.mostOrderedMenus && !startDate && !endDate) {
+                for (const it of extStats.mostOrderedMenus) {
+                    if (it.id && (it as any).orderCount) {
+                        countMap[it.id] = Math.max(countMap[it.id] || 0, (it as any).orderCount);
+                    }
+                }
+            }
+
+            // 5. Unique menu items excluding test shop, ensuring all top-ordered dishes are included
+            const raw = [
+                ...(page1Res?.content || []),
+                ...(page2Res?.content || []),
+                ...(page3Res?.content || []),
+            ];
+            const seen = new Set<number>();
+            const uniqueItems: MenuItem[] = [];
+
+            // First include any dishes from mostOrderedMenus, mostViewedMenus, mostLikedMenus
+            const extLists = [
+                ...(extStats?.mostOrderedMenus || []),
+                ...(extStats?.mostViewedMenus || []),
+                ...(extStats?.mostLikedMenus || []),
+            ];
+            for (const it of extLists) {
+                if (it.id && !seen.has(it.id) && !isTestingShopItem(it)) {
+                    seen.add(it.id);
+                    uniqueItems.push(it);
+                }
+            }
+
+            for (const it of raw) {
+                if (it.id && !seen.has(it.id) && !isTestingShopItem(it)) {
+                    seen.add(it.id);
+                    uniqueItems.push(it);
+                }
+            }
+
+            setRawMenuItems(uniqueItems);
             setOrderMap(countMap);
         } finally {
             setLoading(false);
         }
-    }, [open, startDate, endDate]);
+    }, [open, startDate, endDate, extendedStats]);
 
     useEffect(() => {
         loadData();
@@ -241,6 +312,10 @@ export function TopTrendingDishesModal({
     }, [allRankedItems, visibleCount]);
 
     const hasMore = visibleCount < allRankedItems.length;
+
+    const totalOrdersInFilter = useMemo(() => {
+        return Object.values(orderMap).reduce((sum, v) => sum + v, 0);
+    }, [orderMap]);
 
     const handleLoadMore = () => {
         setLoadingMore(true);
@@ -459,125 +534,167 @@ export function TopTrendingDishesModal({
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {displayedItems.map((item, index) => {
-                                const rankColors = [
-                                    "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 font-black",
-                                    "bg-slate-400/20 text-slate-600 dark:text-slate-300 border-slate-400/40 font-black",
-                                    "bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/40 font-black",
-                                ];
-                                const rankBadge =
-                                    index < 3
-                                        ? rankColors[index]
-                                        : "bg-muted text-muted-foreground border-border/60 font-semibold";
-
-                                const displayName = item.name || item.nameEn || item.nameMm || "Dish";
-                                const shopName =
-                                    item.shopName ||
-                                    (item as any).shop?.nameEn ||
-                                    (item as any).shop?.nameMm ||
-                                    "Partner Restaurant";
-                                const rawPrice = item.price ?? (item as any).originalPrice ?? item.mediumPrice;
-                                const formattedPrice =
-                                    rawPrice != null && rawPrice > 0 ? `฿${rawPrice.toLocaleString()}` : "—";
-
-                                return (
-                                    <div
-                                        key={item.id || index}
-                                        onClick={() => {
-                                            onOpenChange(false);
-                                            navigate(`/menu/items?search=${encodeURIComponent(displayName)}`);
-                                        }}
-                                        className="group relative p-3 rounded-xl border border-border/70 hover:border-orange-500/50 bg-background/90 hover:bg-muted/30 transition-all duration-200 cursor-pointer shadow-xs flex items-center gap-3"
-                                    >
-                                        {/* Rank Badge */}
-                                        <div
-                                            className={`h-6 w-6 rounded-full flex items-center justify-center text-xs border shrink-0 ${rankBadge}`}
+                        <>
+                            {/* Contextual notice if 0 orders found for the active date filter */}
+                            {activeTab === "ordered" && !loading && totalOrdersInFilter === 0 && (
+                                <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-amber-700 dark:text-amber-400 mb-3">
+                                    <span className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                        <span>
+                                            No confirmed orders found for{" "}
+                                            <strong>
+                                                {datePreset === "TODAY"
+                                                    ? "Today"
+                                                    : datePreset === "WEEK"
+                                                    ? "Last 7 Days"
+                                                    : datePreset === "MONTH"
+                                                    ? "Last 30 Days"
+                                                    : `${startDate || ""} to ${endDate || ""}`}
+                                            </strong>
+                                            .
+                                        </span>
+                                    </span>
+                                    {datePreset !== "ALL_TIME" && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleSetPreset("ALL_TIME")}
+                                            className="h-7 text-xs font-bold border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 self-start sm:self-auto cursor-pointer"
                                         >
-                                            {index + 1}
-                                        </div>
+                                            View All Time Best Sellers
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
 
-                                        {/* Thumbnail */}
-                                        <div className="h-14 w-14 rounded-xl bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                            {item.imageUrl ? (
-                                                <img
-                                                    src={item.imageUrl}
-                                                    alt={displayName}
-                                                    className="h-full w-full object-cover"
-                                                    onError={(e) => {
-                                                        (e.currentTarget as HTMLElement).style.display = "none";
-                                                    }}
-                                                />
-                                            ) : (
-                                                <UtensilsCrossed className="h-6 w-6 text-muted-foreground/50" />
-                                            )}
-                                        </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {displayedItems.map((item, index) => {
+                                    const rankColors = [
+                                        "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 font-black",
+                                        "bg-slate-400/20 text-slate-600 dark:text-slate-300 border-slate-400/40 font-black",
+                                        "bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/40 font-black",
+                                    ];
+                                    const rankBadge =
+                                        index < 3
+                                            ? rankColors[index]
+                                            : "bg-muted text-muted-foreground border-border/60 font-semibold";
 
-                                        {/* Info */}
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5">
-                                                <h4 className="text-xs font-bold text-foreground truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                                                    {displayName}
-                                                </h4>
-                                                {item.isHotDeal && (
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className="px-1 py-0 h-4 text-[9px] bg-rose-500/10 text-rose-500 border-rose-500/20 font-bold"
-                                                    >
-                                                        Hot
-                                                    </Badge>
-                                                )}
-                                                {item.isRecommended && (
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className="px-1 py-0 h-4 text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-bold"
-                                                    >
-                                                        Pick
-                                                    </Badge>
+                                    const displayName = item.name || item.nameEn || item.nameMm || "Dish";
+                                    const shopName =
+                                        item.shopName ||
+                                        (item as any).shop?.nameEn ||
+                                        (item as any).shop?.nameMm ||
+                                        "Partner Restaurant";
+                                    const rawPrice = item.price ?? (item as any).originalPrice ?? item.mediumPrice;
+                                    const formattedPrice =
+                                        rawPrice != null && rawPrice > 0 ? `฿${rawPrice.toLocaleString()}` : "—";
+                                    const itemOrdersCount = getItemOrders(item, orderMap);
+
+                                    return (
+                                        <div
+                                            key={item.id || index}
+                                            onClick={() => {
+                                                onOpenChange(false);
+                                                navigate(`/menu/items?search=${encodeURIComponent(displayName)}`);
+                                            }}
+                                            className="group relative p-3 rounded-xl border border-border/70 hover:border-orange-500/50 bg-background/90 hover:bg-muted/30 transition-all duration-200 cursor-pointer shadow-xs flex items-center gap-3"
+                                        >
+                                            {/* Rank Badge */}
+                                            <div
+                                                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs border shrink-0 ${rankBadge}`}
+                                            >
+                                                {index + 1}
+                                            </div>
+
+                                            {/* Thumbnail */}
+                                            <div className="h-14 w-14 rounded-xl bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                {item.imageUrl ? (
+                                                    <img
+                                                        src={item.imageUrl}
+                                                        alt={displayName}
+                                                        className="h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.currentTarget as HTMLElement).style.display = "none";
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <UtensilsCrossed className="h-6 w-6 text-muted-foreground/50" />
                                                 )}
                                             </div>
 
-                                            {item.nameMm && item.nameMm !== displayName && (
-                                                <p className="text-[11px] text-muted-foreground truncate">
-                                                    {item.nameMm}
-                                                </p>
-                                            )}
+                                            {/* Info */}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <h4 className="text-xs font-bold text-foreground truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                                                        {displayName}
+                                                    </h4>
+                                                    {item.isHotDeal && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="px-1 py-0 h-4 text-[9px] bg-rose-500/10 text-rose-500 border-rose-500/20 font-bold"
+                                                        >
+                                                            Hot
+                                                        </Badge>
+                                                    )}
+                                                    {item.isRecommended && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="px-1 py-0 h-4 text-[9px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-bold"
+                                                        >
+                                                            Pick
+                                                        </Badge>
+                                                    )}
+                                                </div>
 
-                                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground truncate">
-                                                <Store className="h-3 w-3 shrink-0" />
-                                                <span className="truncate">{shopName}</span>
+                                                {item.nameMm && item.nameMm !== displayName && (
+                                                    <p className="text-[11px] text-muted-foreground truncate">
+                                                        {item.nameMm}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground truncate">
+                                                    <Store className="h-3 w-3 shrink-0" />
+                                                    <span className="truncate">{shopName}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Price & Metric Badge */}
+                                            <div className="text-right shrink-0">
+                                                <span className="text-xs font-bold font-mono text-foreground block">
+                                                    {formattedPrice}
+                                                </span>
+
+                                                {activeTab === "viewed" && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded-md mt-1">
+                                                        <Eye className="h-2.5 w-2.5" />
+                                                        {getItemViews(item).toLocaleString()} views
+                                                    </span>
+                                                )}
+                                                {activeTab === "ordered" && (
+                                                    <span
+                                                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md mt-1 ${
+                                                            itemOrdersCount > 0
+                                                                ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                                                                : "text-muted-foreground/60 bg-muted/40 border border-border/40"
+                                                        }`}
+                                                    >
+                                                        <ShoppingBag className={`h-2.5 w-2.5 ${itemOrdersCount === 0 ? "opacity-40" : ""}`} />
+                                                        {itemOrdersCount.toLocaleString()} orders
+                                                    </span>
+                                                )}
+                                                {activeTab === "liked" && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded-md mt-1">
+                                                        <Heart className="h-2.5 w-2.5 fill-rose-500" />
+                                                        {getItemLikes(item).toLocaleString()} likes
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
-
-                                        {/* Price & Metric Badge */}
-                                        <div className="text-right shrink-0">
-                                            <span className="text-xs font-bold font-mono text-foreground block">
-                                                {formattedPrice}
-                                            </span>
-
-                                            {activeTab === "viewed" && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded-md mt-1">
-                                                    <Eye className="h-2.5 w-2.5" />
-                                                    {getItemViews(item).toLocaleString()} views
-                                                </span>
-                                            )}
-                                            {activeTab === "ordered" && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md mt-1">
-                                                    <ShoppingBag className="h-2.5 w-2.5" />
-                                                    {getItemOrders(item, orderMap).toLocaleString()} orders
-                                                </span>
-                                            )}
-                                            {activeTab === "liked" && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded-md mt-1">
-                                                    <Heart className="h-2.5 w-2.5 fill-rose-500" />
-                                                    {getItemLikes(item).toLocaleString()} likes
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
                     )}
 
                     {/* ── Pagination Load More Button ───────────────────────── */}

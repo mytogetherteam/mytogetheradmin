@@ -146,6 +146,14 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                             }
                         }
                     }
+                    // Seed orderMap from real DB aggregation in extendedStats
+                    if (extendedStats?.mostOrderedMenus) {
+                        for (const it of extendedStats.mostOrderedMenus) {
+                            if (it.id && (it as any).orderCount) {
+                                orderMap[it.id] = (it as any).orderCount;
+                            }
+                        }
+                    }
                     setOrderCountMap(orderMap);
 
                     if (catStats && catStats.length > 0) {
@@ -554,6 +562,7 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
                 open={viewMoreOpen}
                 onOpenChange={setViewMoreOpen}
                 initialTab={filter}
+                extendedStats={extendedStats}
             />
         </div>
     );
