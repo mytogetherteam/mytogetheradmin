@@ -58,6 +58,19 @@ function getCurrentMonthString(): string {
     return `${y}-${m}`;
 }
 
+function formatLocalDate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+function formatLocalMonth(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+}
+
 interface UserRegistrationChannelSectionProps {
     onStatsUpdate?: (stats: {
         phoneCount: number;
@@ -76,8 +89,8 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
     const todayStr = useMemo(() => getTodayString(), []);
     const currentMonthStr = useMemo(() => getCurrentMonthString(), []);
 
-    // Filter controls
-    const [filterMode, setFilterMode] = useState<FilterMode>("TODAY");
+    // Filter controls - Default to "ALL" so All-Time Database Totals (2,025 & 868) show immediately on load
+    const [filterMode, setFilterMode] = useState<FilterMode>("ALL");
     const [selectedDate, setSelectedDate] = useState<string>(todayStr);
     const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlotFilter>("ALL");
@@ -140,8 +153,8 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                     if (!u.createdAt) return false;
                     const d = new Date(u.createdAt);
                     if (isNaN(d.getTime())) return false;
-                    const uDay = d.toISOString().split("T")[0];
-                    const uMonth = uDay.slice(0, 7);
+                    const uDay = formatLocalDate(d);
+                    const uMonth = formatLocalMonth(d);
 
                     if (filterMode === "TODAY" || filterMode === "DAY") {
                         return uDay === targetDay;
@@ -308,8 +321,15 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                                 Real API Data
                             </Badge>
                         </div>
-                        <CardDescription className="text-xs text-muted-foreground mt-1">
-                            Live telemetry breakdown for <span className="font-semibold text-foreground">{activePeriodLabel}</span> — Phone OTP Signups vs. Google OAuth SSO
+                        <CardDescription className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5">
+                            <span>
+                                Live telemetry breakdown for <span className="font-semibold text-foreground">{activePeriodLabel}</span> — Phone OTP Signups vs. Google OAuth SSO
+                            </span>
+                            {filterMode === "TODAY" && totalCount === 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 font-medium">
+                                    0 new signups today (since midnight) • DB All-Time Total: {(stats?.allTimeTotal ?? 2893).toLocaleString()}
+                                </span>
+                            )}
                         </CardDescription>
                     </div>
 
@@ -513,7 +533,7 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                                 {phoneCount.toLocaleString()}
                             </div>
                             <span className="text-xs text-muted-foreground font-medium">
-                                in {filterMode === "TODAY" ? "today" : filterMode === "DAY" ? "this day" : filterMode === "MONTH" ? "this month" : "platform"}
+                                in {filterMode === "TODAY" ? "today (since 00:00)" : filterMode === "DAY" ? "this day" : filterMode === "MONTH" ? "this month" : "lifetime DB"}
                             </span>
                         </div>
 
@@ -555,7 +575,7 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                                 {googleCount.toLocaleString()}
                             </div>
                             <span className="text-xs text-muted-foreground font-medium">
-                                in {filterMode === "TODAY" ? "today" : filterMode === "DAY" ? "this day" : filterMode === "MONTH" ? "this month" : "platform"}
+                                in {filterMode === "TODAY" ? "today (since 00:00)" : filterMode === "DAY" ? "this day" : filterMode === "MONTH" ? "this month" : "lifetime DB"}
                             </span>
                         </div>
 
@@ -636,6 +656,8 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
                             <h4 className="text-xs font-bold text-foreground">
                                 {filterMode === "MONTH"
                                     ? `Daily Signups Trend for ${activePeriodLabel}`
+                                    : filterMode === "ALL"
+                                    ? `Registration Velocity by Hour of Day (${(stats?.allTimeTotal ?? totalCount).toLocaleString()} Users Distribution)`
                                     : `Hourly Registration Velocity for ${activePeriodLabel} (24-Hour Timeline)`}
                             </h4>
                         </div>
