@@ -145,8 +145,8 @@ export function TopTrendingShopsModal({
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="space-y-0.5">
                             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
-                                <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                    <Store className="h-4.5 w-4.5" />
+                                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                    <Store className="h-4 w-4" />
                                 </span>
                                 <span>Top Trending Restaurants &amp; Shops</span>
                             </DialogTitle>
@@ -228,7 +228,7 @@ export function TopTrendingShopsModal({
                         </div>
 
                         {/* Category Selector & Reset */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                             <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[11px]">
                                 <button
                                     type="button"
@@ -274,7 +274,7 @@ export function TopTrendingShopsModal({
                 </DialogHeader>
 
                 {/* ── Dialog Body: Ranked Shops Grid ────────────────────────── */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 min-h-[380px] max-h-[60vh]">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 min-h-[380px] max-h-[65vh]">
                     {loading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {[...Array(6)].map((_, i) => (
@@ -282,7 +282,7 @@ export function TopTrendingShopsModal({
                                     key={i}
                                     className="p-3.5 rounded-xl border border-border/50 flex items-center gap-3 bg-muted/20"
                                 >
-                                    <Skeleton className="h-14 w-14 rounded-xl shrink-0" />
+                                    <Skeleton className="size-14 rounded-xl shrink-0" />
                                     <div className="flex-1 space-y-2">
                                         <Skeleton className="h-4 w-32" />
                                         <Skeleton className="h-3 w-20" />
@@ -316,6 +316,9 @@ export function TopTrendingShopsModal({
                                         ? "bg-amber-700/80 text-amber-100 font-bold"
                                         : "bg-muted text-muted-foreground font-semibold";
 
+                                const shopImg = shop.logoUrl || shop.coverUrl;
+                                const displayName = shop.name || shop.nameEn || `Shop #${shop.id}`;
+
                                 return (
                                     <div
                                         key={shop.id}
@@ -323,9 +326,9 @@ export function TopTrendingShopsModal({
                                             onOpenChange(false);
                                             navigate(`/shops/${shop.id}`);
                                         }}
-                                        className="group relative p-3.5 rounded-2xl border border-border/70 bg-card/80 hover:bg-muted/30 hover:border-emerald-500/40 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-md"
+                                        className="group relative p-3.5 rounded-2xl border border-border/70 bg-card/80 hover:bg-muted/30 hover:border-emerald-500/40 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-md overflow-hidden"
                                     >
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-3 min-w-0">
                                             {/* Rank Badge */}
                                             <div
                                                 className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 font-mono ${rankBadgeStyle}`}
@@ -333,36 +336,38 @@ export function TopTrendingShopsModal({
                                                 #{rank}
                                             </div>
 
-                                            {/* Logo / Thumbnail */}
-                                            <div className="relative h-13 w-13 rounded-xl overflow-hidden bg-muted/60 shrink-0 border border-border/50">
-                                                {shop.logoUrl || shop.coverUrl ? (
+                                            {/* Logo / Thumbnail (Fixed strictly to 56x56) */}
+                                            <div className="relative w-14 h-14 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] size-14 rounded-xl overflow-hidden bg-muted/60 shrink-0 border border-border/50 flex items-center justify-center">
+                                                <Store className="h-5 w-5 text-muted-foreground/40 absolute" />
+                                                {shopImg ? (
                                                     <img
-                                                        src={shop.logoUrl || shop.coverUrl!}
-                                                        alt={shop.name}
-                                                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        src={shopImg}
+                                                        alt={displayName}
+                                                        className="relative z-10 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 block"
                                                         onError={(e) => {
-                                                            (e.target as HTMLElement).style.display = "none";
+                                                            (e.currentTarget as HTMLElement).style.display = "none";
                                                         }}
                                                     />
-                                                ) : (
-                                                    <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-muted/40">
-                                                        <Store className="h-5 w-5" />
-                                                    </div>
-                                                )}
+                                                ) : null}
                                             </div>
 
                                             {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-emerald-500 transition-colors">
-                                                    {shop.name}
+                                            <div className="flex-1 min-w-0 space-y-1">
+                                                <h4
+                                                    className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-emerald-500 transition-colors"
+                                                    title={displayName}
+                                                >
+                                                    {displayName}
                                                 </h4>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className="text-[9px] px-1.5 py-0 h-4 bg-muted/70 text-muted-foreground font-medium truncate max-w-[110px]"
-                                                    >
-                                                        {shop.category}
-                                                    </Badge>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {shop.category && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="text-[9px] px-1.5 py-0 h-4 bg-muted/70 text-muted-foreground font-medium truncate max-w-[100px]"
+                                                        >
+                                                            {shop.category}
+                                                        </Badge>
+                                                    )}
                                                     {shop.ratingAvg > 0 && (
                                                         <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-0.5">
                                                             <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
@@ -370,8 +375,8 @@ export function TopTrendingShopsModal({
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1 truncate">
-                                                    <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
+                                                    <MapPin className="h-2.5 w-2.5 shrink-0 text-muted-foreground/70" />
                                                     <span className="truncate">{shop.district || "Bangkok"}</span>
                                                 </p>
                                             </div>
