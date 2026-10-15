@@ -238,6 +238,7 @@ export async function fetchShopRestaurantEditBundle(
     descriptionMm: shop.descriptionMm || '',
     descriptionTh: shop.descriptionTh || '',
     deliveryEnabled: shop.deliveryEnabled ?? false,
+    orderCallEnabled: (shop as any).orderCallEnabled ?? true,
     freeDeliveryEnabled: shop.freeDeliveryEnabled ?? false,
     freeDeliveryStartsAt: shop.freeDeliveryStartsAt
       ? new Date(shop.freeDeliveryStartsAt)

@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { DateTimePickerField } from "@/components/common/DateTimePickerField"
-import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Pencil, Eye, EyeOff, Shield, User, Loader2, Users } from "lucide-react"
+import { Upload, X, Car, Wifi, Utensils, Leaf, Trash2, Pencil, Eye, EyeOff, Shield, User, Loader2, Users, PhoneCall } from "lucide-react"
 import type { PaymentMethodDTO } from "@/services/shopService"
 import { useUnassignAdminMutation } from "@/hooks/shops/profiles/useUnassignAdminMutation"
 import { EditShopAdminDialog, type EditableShopAdmin } from "@/components/shop/manage/EditShopAdminDialog"
@@ -1316,6 +1316,27 @@ export default function CreateShopRestaurant() {
                                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
                                                     <div className="space-y-0.5">
                                                         <FormLabel>Delivery Enabled</FormLabel>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="orderCallEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel className="flex items-center gap-2">
+                                                            <PhoneCall className="h-4 w-4 text-primary" />
+                                                            Twilio Phone Call on Order
+                                                        </FormLabel>
+                                                        <FormDescription>
+                                                            Automatically call the restaurant's phone number when a new customer order is placed.
+                                                        </FormDescription>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />

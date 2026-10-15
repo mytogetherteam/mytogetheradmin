@@ -31,6 +31,7 @@ export const defaultShopFormValues: ShopFormValues = {
   descriptionMm: '',
   descriptionTh: '',
   deliveryEnabled: false,
+  orderCallEnabled: true,
   freeDeliveryEnabled: false,
   freeDeliveryStartsAt: null,
   freeDeliveryEndsAt: null,

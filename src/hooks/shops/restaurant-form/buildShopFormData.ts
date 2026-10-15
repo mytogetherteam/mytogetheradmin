@@ -18,6 +18,7 @@ export type AdminShopProfileFormFields = {
   descriptionMm: string;
   descriptionTh: string;
   deliveryEnabled: boolean;
+  orderCallEnabled: boolean;
   freeDeliveryEnabled: boolean;
   freeDeliveryStartsAt: Date | null;
   freeDeliveryEndsAt: Date | null;
@@ -80,6 +81,7 @@ export function appendCreateAdminShopProfileFields(
   fd.append('descriptionMm', p.descriptionMm);
   fd.append('descriptionTh', p.descriptionTh);
   fd.append('deliveryEnabled', String(p.deliveryEnabled));
+  fd.append('orderCallEnabled', String(p.orderCallEnabled));
   fd.append('freeDeliveryEnabled', String(p.freeDeliveryEnabled));
   // Empty string clears the window on the API when the admin leaves dates blank.
   fd.append(
@@ -164,6 +166,7 @@ export function shopFormValuesToAdminProfileFields(
     descriptionMm: data.descriptionMm || '',
     descriptionTh: data.descriptionTh || '',
     deliveryEnabled: data.deliveryEnabled ?? false,
+    orderCallEnabled: data.orderCallEnabled ?? true,
     freeDeliveryEnabled: data.freeDeliveryEnabled ?? false,
     freeDeliveryStartsAt: data.freeDeliveryStartsAt ?? null,
     freeDeliveryEndsAt: data.freeDeliveryEndsAt ?? null,

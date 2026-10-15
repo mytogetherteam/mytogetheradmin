@@ -350,6 +350,9 @@ export const config = {
           platform: (platform: string) => `/api/admin/app-version/${platform}`,
         },
         languagePolicy: '/api/admin/app/language-policy',
+        twilio: {
+          config: '/api/admin/twilio/config',
+        },
         appManagement: {
           onboarding: '/api/admin/app-management/onboarding',
           onboardingDetail: (id: number) => `/api/admin/app-management/onboarding/${id}`,

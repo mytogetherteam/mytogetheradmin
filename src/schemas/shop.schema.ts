@@ -36,6 +36,7 @@ export const shopFormSchema = z.object({
     descriptionMm: z.string().optional().or(z.literal("")),
     descriptionTh: z.string().optional().or(z.literal("")),
     deliveryEnabled: z.boolean().default(false),
+    orderCallEnabled: z.boolean().default(true),
     freeDeliveryEnabled: z.boolean().default(false),
     freeDeliveryStartsAt: z.date().nullable().optional(),
     freeDeliveryEndsAt: z.date().nullable().optional(),

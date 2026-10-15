@@ -129,6 +129,7 @@ const AppVersionManagement = lazy(() => import("@/pages/system/AppVersionManagem
 const OnboardingManagement = lazy(() => import("@/pages/system/OnboardingManagement"));
 const FeatureFlags = lazy(() => import("@/pages/system/FeatureFlags"));
 const SystemHealth = lazy(() => import("@/pages/system/SystemHealth"));
+const TwilioManagement = lazy(() => import("@/pages/system/TwilioManagement"));
 
 // Payment
 const PaymentMethods = lazy(() => import("@/pages/payment-methods/PaymentMethods"));
@@ -313,6 +314,7 @@ function App() {
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
+                <Route path="/system/twilio" element={<TwilioManagement />} />
                 {/* News */}
                 <Route path="/news/manage" element={<ManageNews />} />
                 <Route path="/news/create" element={<CreateNews />} />
