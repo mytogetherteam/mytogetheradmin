@@ -14,6 +14,7 @@ import { PaymentSlipCard } from "@/components/orders/PaymentSlipCard";
 import { DeliveryProofCard } from "@/components/orders/DeliveryProofCard";
 import { CustomerCard } from "@/components/orders/CustomerCard";
 import { DeliveryInfoCard } from "@/components/orders/DeliveryInfoCard";
+import { DeliveryManCard } from "@/components/orders/DeliveryManCard";
 import { OrderTimelineCard } from "@/components/orders/OrderTimelineCard";
 import { OrderStatusActionCard } from "@/components/orders/OrderStatusActionCard";
 import { OrderChatCard } from "@/components/orders/OrderChatCard";
@@ -117,6 +118,7 @@ export default function OrderDetail() {
                     {isSuperAdmin && <OrderStatusActionCard order={order} />}
                     <CustomerCard order={order} />
                     <DeliveryInfoCard order={order} />
+                    <DeliveryManCard order={order} />
                     <OrderTimelineCard order={order} history={history} />
                 </div>
             </div>

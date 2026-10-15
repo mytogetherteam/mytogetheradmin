@@ -34,6 +34,14 @@ function LoadingSkeleton() {
     return <Skeleton className="w-full h-[300px]" />;
 }
 
+function ChartEmpty({ label }: { label: string }) {
+    return (
+        <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+            {label}
+        </div>
+    );
+}
+
 function getDefaultDates() {
     const end = new Date();
     const start = new Date();
@@ -43,6 +51,26 @@ function getDefaultDates() {
         end: end.toISOString().split("T")[0],
     };
 }
+
+/** `YYYY-MM-DD` is a Bangkok calendar day, so parse it as a local date. */
+function formatDayLabel(value: string) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (!match) return value;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatBaht(value: number) {
+    return `฿${Math.round(value).toLocaleString()}`;
+}
+
+const CANCEL_COLORS: Record<string, string> = {
+    USER: "#f59e0b",
+    SHOP: "#6366f1",
+    ADMIN: "#ec4899",
+    SYSTEM: "#14b8a6",
+    UNSPECIFIED: "#94a3b8",
+};
 
 export default function AnalyticalDashboard() {
     const defaults = getDefaultDates();
@@ -59,7 +87,6 @@ export default function AnalyticalDashboard() {
     const [deviceStats, setDeviceStats] = useState<DeviceStats[]>([]);
     const [overallCtr, setOverallCtr] = useState<number | null>(null);
     const [userGrowth, setUserGrowth] = useState<UserGrowthData[]>([]);
-    const [orderVolume, setOrderVolume] = useState<RevenueData[]>([]);
     const [cancellationRate, setCancellationRate] = useState<CancellationRateData | null>(null);
     const [featureUsage, setFeatureUsage] = useState<FeatureUsageData[]>([]);
     const [shops, setShops] = useState<Shop[]>([]);
@@ -74,13 +101,11 @@ export default function AnalyticalDashboard() {
         try {
             switch (tab) {
                 case "revenue": {
-                    const [rev, orders, cancel] = await Promise.all([
+                    const [rev, cancel] = await Promise.all([
                         analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
-                        analyticsService.getOrderVolumeChart(startDate, endDate).catch(() => []),
                         analyticsService.getCancellationRate(startDate, endDate).catch(() => null),
                     ]);
-                    setRevenue(rev);
-                    setOrderVolume(orders);
+                    setRevenue(Array.isArray(rev) ? rev : []);
                     setCancellationRate(cancel);
                     break;
                 }
@@ -151,19 +176,24 @@ export default function AnalyticalDashboard() {
         if (selectedShopId) loadShopAnalytics(selectedShopId);
     }, [selectedShopId, loadShopAnalytics]);
 
-    const revenueChartData = revenue.map((r) => ({
-        date: new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        Revenue: r.amount ?? 0,
-    }));
+    const cancelBars = (cancellationRate?.byActor ?? []).filter(
+        (row) => row.count > 0 || row.actor !== "UNSPECIFIED",
+    );
+
+    const revenueChartData = revenue.map((r) => {
+        const orders = r.count ?? 0;
+        const amount = r.amount ?? 0;
+        return {
+            date: formatDayLabel(r.date),
+            Revenue: amount,
+            Orders: orders,
+            Aov: orders > 0 ? Math.round(amount / orders) : 0,
+        };
+    });
 
     const userGrowthData = userGrowth.map((g) => ({
         date: new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         Signups: g.newUsers ?? 0,
-    }));
-
-    const orderVolumeData = orderVolume.map((o) => ({
-        date: new Date(o.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        Orders: o.count ?? 0,
     }));
 
     const shopRevenueData = shopRevenue.map((r) => ({
@@ -219,67 +249,130 @@ export default function AnalyticalDashboard() {
                 </TabsContent>
 
                 <TabsContent value="revenue" className="mt-6 space-y-4">
-                    {cancellationRate && (
+                    {loading ? (
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <Skeleton className="h-[76px]" />
+                            <Skeleton className="h-[76px]" />
+                            <Skeleton className="h-[76px]" />
+                        </div>
+                    ) : cancellationRate ? (
                         <div className="grid gap-4 md:grid-cols-3">
                             <Card className="bg-primary/5 border-primary/20">
                                 <CardContent className="p-4">
                                     <p className="text-xs text-muted-foreground uppercase font-bold">Total Orders</p>
-                                    <p className="text-2xl font-bold">{cancellationRate.totalOrders.toLocaleString()}</p>
+                                    <p className="text-2xl font-bold">{(cancellationRate.totalOrders ?? 0).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-destructive/5 border-destructive/20">
                                 <CardContent className="p-4">
                                     <p className="text-xs text-muted-foreground uppercase font-bold">Cancelled</p>
-                                    <p className="text-2xl font-bold text-destructive">{cancellationRate.cancelledOrders.toLocaleString()}</p>
+                                    <p className="text-2xl font-bold text-destructive">{(cancellationRate.cancelledOrders ?? 0).toLocaleString()}</p>
                                 </CardContent>
                             </Card>
                             <Card className="bg-amber-500/5 border-amber-500/20">
                                 <CardContent className="p-4">
                                     <p className="text-xs text-muted-foreground uppercase font-bold">Cancellation Rate</p>
-                                    <p className="text-2xl font-bold text-amber-600">{cancellationRate.cancellationRatePercent.toFixed(2)}%</p>
+                                    <p className="text-2xl font-bold text-amber-600">{Number(cancellationRate.cancellationRatePercent ?? 0).toFixed(2)}%</p>
                                 </CardContent>
                             </Card>
                         </div>
+                    ) : (
+                        <ChartEmpty label="Cancellation data is unavailable for this range." />
                     )}
+
+                    {(loading || cancellationRate) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Cancellations by who</CardTitle>
+                            <CardDescription>Customer, shop, admin, and system cancellations in this range.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? <LoadingSkeleton /> : cancellationRate && cancellationRate.cancelledOrders > 0 ? (
+                                <ResponsiveContainer width="100%" height={220}>
+                                    <BarChart data={cancelBars} layout="vertical" margin={{ left: 8, right: 16 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                                        <XAxis type="number" allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis type="category" dataKey="label" fontSize={12} tickLine={false} axisLine={false} width={90} />
+                                        <Tooltip formatter={(value: number) => [value.toLocaleString(), "Cancelled orders"]} />
+                                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={18}>
+                                            {cancelBars.map((row) => (
+                                                <Cell key={row.actor} fill={CANCEL_COLORS[row.actor] ?? "#94a3b8"} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <ChartEmpty label="No canceled orders in this range." />
+                            )}
+                        </CardContent>
+                    </Card>
+                    )}
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card>
                             <CardHeader>
                                 <div className="flex items-center justify-between">
-                                    <div><CardTitle>Platform Revenue</CardTitle><CardDescription>Revenue generated across the platform.</CardDescription></div>
+                                    <div>
+                                        <CardTitle>Platform Revenue</CardTitle>
+                                        <CardDescription>Sales from orders that were not canceled.</CardDescription>
+                                    </div>
                                     <Button variant="outline" size="sm" className="gap-2" onClick={() => exportService.exportRevenue(startDate, endDate)}><FileSpreadsheet className="h-4 w-4" /> Export</Button>
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : (
+                                {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
                                         <AreaChart data={revenueChartData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                            <XAxis dataKey="date" fontSize={10} tickLine={false} />
-                                            <YAxis fontSize={10} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                                            <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]} />
-                                            <Area type="monotone" dataKey="Revenue" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} strokeWidth={2} />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                            <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `฿${v}`} />
+                                            <Tooltip formatter={(v: number) => [formatBaht(v), "Revenue"]} />
+                                            <Area type="monotone" dataKey="Revenue" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} strokeWidth={2} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                )}
+                                ) : <ChartEmpty label="No sales in this range." />}
                             </CardContent>
                         </Card>
                         <Card>
-                            <CardHeader><CardTitle>Platform Order Volume</CardTitle><CardDescription>Orders placed over time.</CardDescription></CardHeader>
+                            <CardHeader>
+                                <CardTitle>Average Order Value</CardTitle>
+                                <CardDescription>Daily sales divided by orders included in revenue.</CardDescription>
+                            </CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : (
+                                {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
-                                        <AreaChart data={orderVolumeData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                            <XAxis dataKey="date" fontSize={10} tickLine={false} />
-                                            <YAxis fontSize={10} tickLine={false} />
-                                            <Tooltip />
-                                            <Area type="monotone" dataKey="Orders" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={2} />
+                                        <AreaChart data={revenueChartData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                            <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `฿${v}`} />
+                                            <Tooltip formatter={(v: number) => [formatBaht(v), "Average order"]} />
+                                            <Area type="monotone" dataKey="Aov" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                )}
+                                ) : <ChartEmpty label="No sales in this range." />}
                             </CardContent>
                         </Card>
                     </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Platform Order Volume</CardTitle>
+                            <CardDescription>Orders included in revenue for the selected dates.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={260}>
+                                    <AreaChart data={revenueChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                        <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
+                                        <Tooltip formatter={(v: number) => [v.toLocaleString(), "Orders"]} />
+                                        <Area type="monotone" dataKey="Orders" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : <ChartEmpty label="No orders in this range." />}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="users" className="mt-6 space-y-4">

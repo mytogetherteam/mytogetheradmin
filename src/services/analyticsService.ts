@@ -167,10 +167,17 @@ export interface FeatureUsageData {
   cancellationRatePercent: number;
 }
 
+export interface CancellationByActor {
+  actor: 'USER' | 'SHOP' | 'ADMIN' | 'SYSTEM' | 'UNSPECIFIED';
+  label: string;
+  count: number;
+}
+
 export interface CancellationRateData {
   totalOrders: number;
   cancelledOrders: number;
   cancellationRatePercent: number;
+  byActor?: CancellationByActor[];
 }
 
 export interface UserGrowthData {

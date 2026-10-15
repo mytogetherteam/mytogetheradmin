@@ -166,8 +166,9 @@ export function AppSidebar() {
                         <SidebarMenu>
                             {group.items.map((item, itemIdx) => {
                                 if (item.items && item.items.length > 0) {
-                                    // Collapsible item
-                                    const hasActiveChild = item.items.some((sub) => isActive(sub.url));
+                                    const hasActiveChild = item.items.some(
+                                        (sub) => isActive(sub.url) || (sub.url !== "/" && location.pathname.startsWith(sub.url.split("?")[0]))
+                                    );
                                     return (
                                         <Collapsible
                                             key={(query ? 'search-' : 'normal-') + itemIdx + (hasActiveChild ? '-open' : '')}

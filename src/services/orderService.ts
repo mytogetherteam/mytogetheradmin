@@ -58,12 +58,23 @@ export interface OrderItem {
   totalPrice?: number;
 }
 
+export interface OrderDriver {
+  id: number;
+  name: string;
+  phone: string;
+  vehicleNo: string;
+  profileUrl?: string | null;
+  isBusy?: boolean;
+}
+
 export interface Order {
   id: number | string;
   shopId: number;
   shopName: string;
   shopNameMm?: string;
   shopImageUrl?: string;
+  shopLatitude?: number | null;
+  shopLongitude?: number | null;
   userId?: number | null;
   userFullName?: string | null;
   userPhone?: string | null;
@@ -92,6 +103,7 @@ export interface Order {
   paymentSlipUrl?: string | null;
   proofPhotoUrl?: string | null;
   trackingUrl?: string | null;
+  driver?: OrderDriver | null;
   createdAt: string;
   updatedAt: string;
   queueNo?: number;
