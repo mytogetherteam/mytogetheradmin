@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import {
     ArrowUpRight,
     ListFilter,
 } from "lucide-react";
-import type { AdminShopProfileListItem } from "@/services/shopService";
+import { ShopService, type AdminShopProfileListItem } from "@/services/shopService";
 import { DeliveryOptionShopListModal } from "./DeliveryOptionShopListModal";
 
 interface Props {
@@ -21,7 +21,9 @@ interface Props {
     todayCanceled: number;
     totalDeliveredAllTime: number;
     totalCanceledAllTime: number;
-    shops: AdminShopProfileListItem[];
+    deliveryOptionOn?: number;
+    deliveryOptionOff?: number;
+    shops?: AdminShopProfileListItem[];
     totalShopsCount?: number;
 }
 
@@ -31,19 +33,30 @@ export function TodayFulfillmentOperationsSection({
     todayCanceled,
     totalDeliveredAllTime,
     totalCanceledAllTime,
-    shops,
+    deliveryOptionOn,
+    deliveryOptionOff,
+    shops = [],
     totalShopsCount,
 }: Props) {
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState<"ALL" | "ON" | "OFF">("ALL");
+    const [localShops, setLocalShops] = useState<AdminShopProfileListItem[]>(shops);
+    const [, setFetchingShops] = useState(false);
 
-    const effectiveTotalShops = totalShopsCount || shops.length || 0;
-    const deliveryOnShops = shops.filter((s) => s.deliveryEnabled !== false);
-    const deliveryOffShops = shops.filter((s) => s.deliveryEnabled === false);
+    useEffect(() => {
+        if (shops && shops.length > 0) {
+            setLocalShops(shops);
+        }
+    }, [shops]);
 
-    const deliveryOnCount = deliveryOnShops.length;
-    const deliveryOffCount = deliveryOffShops.length;
+    const deliveryOnCount = deliveryOptionOn !== undefined
+        ? deliveryOptionOn
+        : localShops.filter((s) => s.deliveryEnabled !== false).length;
+    const deliveryOffCount = deliveryOptionOff !== undefined
+        ? deliveryOptionOff
+        : localShops.filter((s) => s.deliveryEnabled === false).length;
+    const effectiveTotalShops = totalShopsCount || (deliveryOnCount + deliveryOffCount) || localShops.length || 0;
 
     const onPercent = effectiveTotalShops > 0
         ? Math.round((deliveryOnCount / (effectiveTotalShops || 1)) * 100)
@@ -52,8 +65,21 @@ export function TodayFulfillmentOperationsSection({
         ? Math.max(0, 100 - onPercent)
         : 0;
 
-    const handleOpenModal = (tab: "ALL" | "ON" | "OFF") => {
+    const handleOpenModal = async (tab: "ALL" | "ON" | "OFF") => {
         setModalTab(tab);
+        if (localShops.length === 0) {
+            setFetchingShops(true);
+            try {
+                const res = await ShopService.getAdminShopProfiles(1, 100);
+                if (res?.content) {
+                    setLocalShops(res.content);
+                }
+            } catch (err) {
+                console.error("Failed to load shops for delivery modal", err);
+            } finally {
+                setFetchingShops(false);
+            }
+        }
         setModalOpen(true);
     };
 

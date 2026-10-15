@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
     Card,
     CardContent,
@@ -66,6 +66,7 @@ function formatLocalMonth(d: Date | string): string {
 }
 
 interface UserRegistrationChannelSectionProps {
+    initialStats?: UserRegistrationStatsResponse | null;
     onStatsUpdate?: (stats: {
         phoneCount: number;
         googleCount: number;
@@ -77,6 +78,7 @@ interface UserRegistrationChannelSectionProps {
 }
 
 export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSectionProps> = ({
+    initialStats,
     onStatsUpdate,
 }) => {
     const navigate = useNavigate();
@@ -90,10 +92,17 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlotFilter>("ALL");
 
     // Real API State
-    const [stats, setStats] = useState<UserRegistrationStatsResponse | null>(null);
+    const [stats, setStats] = useState<UserRegistrationStatsResponse | null>(initialStats || null);
     const [loading, setLoading] = useState(false);
     const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
     const [showUserList, setShowUserList] = useState(false);
+
+    // Sync initialStats when prop updates
+    useEffect(() => {
+        if (initialStats && !stats) {
+            setStats(initialStats);
+        }
+    }, [initialStats]);
 
     // Primary fetch function calling real API
     const fetchStats = useCallback(async () => {
@@ -257,9 +266,14 @@ export const UserRegistrationChannelSection: React.FC<UserRegistrationChannelSec
         }
     }, [filterMode, selectedDate, selectedMonth, todayStr, currentMonthStr, onStatsUpdate]);
 
+    const initialSkippedRef = useRef(false);
     useEffect(() => {
+        if (!initialSkippedRef.current && initialStats && filterMode === "ALL") {
+            initialSkippedRef.current = true;
+            return;
+        }
         fetchStats();
-    }, [fetchStats]);
+    }, [fetchStats, initialStats, filterMode]);
 
     // Active filtered series based on time slot
     const chartSeries = useMemo(() => {

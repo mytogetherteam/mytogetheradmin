@@ -54,6 +54,13 @@ interface Props {
     extendedStats?: ExtendedStatsProps | null;
     isLive?: boolean;
     activeUsersSummary?: ActiveUsersSummary | null;
+    initialOrderVelocity?: Array<{
+        hour: number;
+        label: string;
+        total: number;
+        delivered: number;
+        canceled: number;
+    }>;
 }
 
 function formatHourRange(hour: number) {
@@ -86,7 +93,7 @@ function formatStay(seconds: number) {
 
 type Timeframe = "today" | "7d" | "30d";
 
-export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary }: Props) {
+export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary, initialOrderVelocity }: Props) {
     const [timeframe, setTimeframe] = useState<Timeframe>("today");
 
     const appUsage = extendedStats?.appUsage;
@@ -441,7 +448,7 @@ export function TodayActivitySection({ extendedStats, isLive, activeUsersSummary
             {/* Graphs Grid: 2 Balanced Columns (Orders Velocity Graph & Active User Distribution Pie Circle Chart) */}
             <div className="grid gap-4 lg:grid-cols-2">
                 {/* Graph 1: Orders Velocity & Fulfillment Trends: Today Hourly / Date Filter / Month Filter / Status Filter */}
-                <OrdersVelocityGraphCard />
+                <OrdersVelocityGraphCard initialVelocity={initialOrderVelocity} />
 
                 {/* Graph 2: Active User Distribution (Pie Circle Chart with Today / Day / Month filters) */}
                 <ActiveUserDistributionPieCard

@@ -335,6 +335,50 @@ class AnalyticsService {
     const qs = query.toString() ? `?${query.toString()}` : '';
     return apiClient.get<TopTrendingShopsResponse>(`/api/admin/analytics/top-shops${qs}`);
   }
+
+  async getDashboardSummary(start?: string, end?: string): Promise<DashboardSummaryData> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const endpoint = (config.endpoints.admin.analytics as any)?.dashboardSummary || '/api/admin/analytics/dashboard-summary';
+    return apiClient.get<DashboardSummaryData>(`${endpoint}${query}`);
+  }
+}
+
+export interface DashboardSummaryData {
+  cardCounts: {
+    totalUsers: number;
+    phoneUsers: number;
+    googleUsers: number;
+    totalShops: number;
+    pendingOrders: number;
+    totalReviews: number;
+  };
+  fulfillment: {
+    todayDelivered: number;
+    todayCanceled: number;
+    totalDeliveredAllTime: number;
+    totalCanceledAllTime: number;
+    deliveryOptionOn: number;
+    deliveryOptionOff: number;
+    totalShops: number;
+  };
+  todayOrderVelocity: Array<{
+    hour: number;
+    label: string;
+    total: number;
+    delivered: number;
+    canceled: number;
+  }>;
+  revenue: RevenueData[];
+  popularShops: PopularShop[];
+  extendedStats: ExtendedDashboardStats | null;
+  userRegistrationStats: UserRegistrationStatsResponse | null;
+  systemHealth: {
+    dbLatency: number;
+    status: string;
+  };
 }
 
 export interface TrendingShopItem {

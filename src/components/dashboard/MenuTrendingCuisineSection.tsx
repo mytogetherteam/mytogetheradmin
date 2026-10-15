@@ -105,76 +105,66 @@ export function MenuTrendingCuisineSection({ extendedStats }: Props) {
         let isMounted = true;
         async function loadData() {
             try {
-                setLoading(true);
-                setShopsLoading(true);
-                const [page1Res, page2Res, recentOrdersRes, topShopsRes] = await Promise.all([
-                    menuService
-                        .getAllMenuItems(1, 100, "", undefined, undefined, undefined, {
-                            isAvailable: true,
-                        })
-                        .catch(() => null),
-                    menuService
-                        .getAllMenuItems(2, 100, "", undefined, undefined, undefined, {
-                            isAvailable: true,
-                        })
-                        .catch(() => null),
-                    orderService.getOrders({ size: 100 }).catch(() => null),
-                    analyticsService.getTopTrendingShops({ limit: 30 }).catch(() => null),
-                ]);
-
-                if (isMounted) {
-                    const rawItems = [
-                        ...(page1Res?.content || []),
-                        ...(page2Res?.content || []),
+                // If parent dashboard passed extendedStats with top menus, use them directly
+                if (extendedStats?.mostViewedMenus && extendedStats.mostViewedMenus.length > 0) {
+                    const combined = [
+                        ...(extendedStats.mostViewedMenus || []),
+                        ...(extendedStats.mostOrderedMenus || []),
+                        ...(extendedStats.mostLikedMenus || []),
                     ];
-                    if (rawItems.length > 0) {
-                        const seen = new Set<number>();
-                        const unique = rawItems.filter((it) => {
-                            if (it.id && seen.has(it.id)) return false;
-                            if (it.id) seen.add(it.id);
-                            return true;
-                        });
+                    const seen = new Set<number>();
+                    const unique = combined.filter((it: any) => {
+                        if (it.id && seen.has(it.id)) return false;
+                        if (it.id) seen.add(it.id);
+                        return true;
+                    });
+                    if (unique.length > 0) {
                         setMenuItems(unique);
+                        setLoading(false);
+                    }
+                }
+
+                setShopsLoading(true);
+                // Fetch top trending shops ranking
+                const topShopsRes = await analyticsService.getTopTrendingShops({ limit: 30 }).catch(() => null);
+
+                // Only fetch raw menus if extendedStats did not have them
+                if (!extendedStats?.mostViewedMenus || extendedStats.mostViewedMenus.length === 0) {
+                    setLoading(true);
+                    const [page1Res, recentOrdersRes] = await Promise.all([
+                        menuService
+                            .getAllMenuItems(1, 100, "", undefined, undefined, undefined, {
+                                isAvailable: true,
+                            })
+                            .catch(() => null),
+                        orderService.getOrders({ size: 100 }).catch(() => null),
+                    ]);
+
+                    if (isMounted && page1Res?.content) {
+                        setMenuItems(page1Res.content);
                     }
 
-                    if (topShopsRes) {
-                        setTrendingShops({
-                            mostViewed: topShopsRes.mostViewed || [],
-                            mostOrdered: topShopsRes.mostOrdered || [],
-                            mostLiked: topShopsRes.mostLiked || [],
-                        });
-                    }
-
-                    // Build real order frequency map from confirmed order items (excluding testing shop)
-                    const isTestingOrder = (ord: any): boolean => {
-                        const sName = (
-                            ord.shopName ||
-                            ord.shop?.nameEn ||
-                            ord.shop?.nameMm ||
-                            ""
-                        ).toLowerCase().replace(/\s+/g, "");
-                        return sName.includes("mytogethertesting") || sName.includes("testingshop");
-                    };
-
-                    const orderMap: Record<number, number> = {};
-                    const allOrders = recentOrdersRes?.content || [];
-                    const seenOrders = new Set<string | number>();
-                    for (const ord of allOrders) {
-                        if (ord.id && !seenOrders.has(ord.id)) {
-                            seenOrders.add(ord.id);
-                            if (isTestingOrder(ord)) continue;
+                    if (isMounted && recentOrdersRes?.content) {
+                        const orderMap: Record<number, number> = {};
+                        for (const ord of recentOrdersRes.content) {
                             if (Array.isArray(ord.items)) {
                                 for (const it of ord.items) {
-                                    const mId = it.menuItemId;
-                                    const qty = it.quantity || 1;
-                                    if (mId) {
-                                        orderMap[mId] = (orderMap[mId] || 0) + qty;
+                                    if (it.menuItemId) {
+                                        orderMap[it.menuItemId] = (orderMap[it.menuItemId] || 0) + (it.quantity || 1);
                                     }
                                 }
                             }
                         }
+                        setOrderCountMap(orderMap);
                     }
-                    setOrderCountMap(orderMap);
+                }
+
+                if (isMounted && topShopsRes) {
+                    setTrendingShops({
+                        mostViewed: topShopsRes.mostViewed || [],
+                        mostOrdered: topShopsRes.mostOrdered || [],
+                        mostLiked: topShopsRes.mostLiked || [],
+                    });
                 }
             } catch (err) {
                 console.error("Failed to load dishes and shops telemetry", err);

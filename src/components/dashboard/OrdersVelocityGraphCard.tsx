@@ -84,7 +84,17 @@ function isTestingOrder(ord: Order): boolean {
     return sName.includes("mytogethertesting") || sName.includes("testingshop");
 }
 
-export function OrdersVelocityGraphCard() {
+interface OrdersVelocityGraphCardProps {
+    initialVelocity?: Array<{
+        hour: number;
+        label: string;
+        total: number;
+        delivered: number;
+        canceled: number;
+    }>;
+}
+
+export function OrdersVelocityGraphCard({ initialVelocity }: OrdersVelocityGraphCardProps = {}) {
     // Mode & Filters
     const [timeMode, setTimeMode] = useState<TimeMode>("TODAY");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -99,7 +109,7 @@ export function OrdersVelocityGraphCard() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Fetch orders with multi-page support to ensure all historical records are retrieved
+    // Fetch orders for custom date or month filter
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
@@ -108,27 +118,10 @@ export function OrdersVelocityGraphCard() {
                 orderService.getActiveOrders({ size: 100 }).catch(() => null),
             ]);
 
-            let loaded: Order[] = [
+            const loaded: Order[] = [
                 ...(ordersRes?.content || []),
                 ...(activeRes?.content || []),
             ];
-
-            // If there are more pages, fetch next 4 pages to cover up to 500 recent orders
-            if (ordersRes && ordersRes.totalPages > 1) {
-                const maxPagesToFetch = Math.min(ordersRes.totalPages, 5);
-                const extraPromises = [];
-                for (let p = 1; p < maxPagesToFetch; p++) {
-                    extraPromises.push(
-                        orderService.getOrders({ page: p, size: 100 }).catch(() => null)
-                    );
-                }
-                const extraResults = await Promise.all(extraPromises);
-                extraResults.forEach((res) => {
-                    if (res?.content) {
-                        loaded = loaded.concat(res.content);
-                    }
-                });
-            }
 
             // Deduplicate and filter out test shop orders
             const seen = new Set<string | number>();
@@ -145,8 +138,12 @@ export function OrdersVelocityGraphCard() {
     }, []);
 
     useEffect(() => {
+        // Skip redundant fetch on mount if server provided today's velocity
+        if (timeMode === "TODAY" && initialVelocity && initialVelocity.length > 0) {
+            return;
+        }
         fetchOrders();
-    }, [fetchOrders]);
+    }, [fetchOrders, timeMode, initialVelocity]);
 
     // ── Strictly Filter Orders by Active Timeframe ──────────────────────────────
     const relevantOrders = useMemo(() => {
@@ -182,6 +179,55 @@ export function OrdersVelocityGraphCard() {
             } else {
                 otherCount += 1;
             }
+        }
+
+        if (timeMode === "TODAY" && orders.length === 0 && initialVelocity && initialVelocity.length > 0) {
+            const hoursToShow = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+            const vMap = new Map(initialVelocity.map((v) => [v.hour, v]));
+            for (const v of initialVelocity) {
+                totalCount += v.total;
+                deliveredCount += v.delivered;
+                canceledCount += v.canceled;
+                otherCount += Math.max(0, v.total - (v.delivered + v.canceled));
+            }
+
+            const pts = hoursToShow.map((h) => {
+                const item = vMap.get(h) || { total: 0, delivered: 0, canceled: 0 };
+                let val = item.total;
+                if (statusFilter === "DELIVERED") val = item.delivered;
+                if (statusFilter === "CANCELED") val = item.canceled;
+
+                return {
+                    key: `hour-${h}`,
+                    label: formatHourLabel(h),
+                    fullLabel: `Today ${formatHourLabel(h)}`,
+                    delivered: item.delivered,
+                    canceled: item.canceled,
+                    other: Math.max(0, item.total - (item.delivered + item.canceled)),
+                    total: item.total,
+                    value: val,
+                };
+            });
+
+            let peak: ChartBarPoint | null = null;
+            for (const pt of pts) {
+                if (pt.value > 0 && (!peak || pt.value > peak.value)) {
+                    peak = pt;
+                }
+            }
+
+            return {
+                chartData: pts,
+                totals: {
+                    total: totalCount,
+                    delivered: deliveredCount,
+                    canceled: canceledCount,
+                    other: otherCount,
+                    deliveredPercent: totalCount > 0 ? Math.round((deliveredCount / totalCount) * 100) : 0,
+                    canceledPercent: totalCount > 0 ? Math.round((canceledCount / totalCount) * 100) : 0,
+                },
+                peakInfo: peak && peak.value > 0 ? peak : null,
+            };
         }
 
         let points: ChartBarPoint[] = [];

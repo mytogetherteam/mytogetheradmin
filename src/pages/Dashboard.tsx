@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Card,
@@ -16,9 +16,10 @@ import {
     YAxis,
 } from "recharts";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { analyticsService, RevenueData, PopularShop, UserRegistrationStatsResponse } from "@/services/analyticsService";
 import { dashboardService, DashboardCardCounts } from "@/services/dashboardService";
-import { manageUsersService } from "@/services/manageUsersService";
 import {
     Users,
     ShoppingCart,
@@ -34,30 +35,28 @@ import {
     Globe,
     Layers,
     Clock,
+    BarChart3,
+    Truck,
+    UtensilsCrossed,
+    RefreshCw,
+    Activity,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminWebSocket, SystemStatsDTO } from "@/hooks/useAdminWebSocket";
-import { activeUsersService, ActiveUsersSummary } from "@/services/activeUsersService";
 import { TodayActivitySection } from "@/components/dashboard/TodayActivitySection";
 import { MenuTrendingCuisineSection } from "@/components/dashboard/MenuTrendingCuisineSection";
 import { TodayFulfillmentOperationsSection } from "@/components/dashboard/TodayFulfillmentOperationsSection";
-import { ShopService, AdminShopProfileListItem } from "@/services/shopService";
-import { orderService } from "@/services/orderService";
+import { OrdersVelocityGraphCard } from "@/components/dashboard/OrdersVelocityGraphCard";
 import { CustomerReviewsDetailModal } from "@/components/dashboard/CustomerReviewsDetailModal";
 import { UserRegistrationChannelSection } from "@/components/dashboard/UserRegistrationChannelSection";
 import {
     getBangkokDateString,
-    isTodayBangkok,
     formatBangkokDate,
     formatBangkokDateTime,
 } from "@/utils/bangkokTime";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-
-function isCreatedToday(isoString?: string | null): boolean {
-    return isTodayBangkok(isoString);
-}
 
 function getDefaultDates() {
     const todayBangkok = getBangkokDateString();
@@ -101,70 +100,59 @@ const StatCard = React.memo(({
     live,
     onClick,
 }: StatCardProps) => {
-    const [flash, setFlash] = useState(false);
-    const prevVal = useRef(value);
-
-    useEffect(() => {
-        if (live && prevVal.current !== value) {
-            const timer = setTimeout(() => setFlash(true), 0);
-            const t = setTimeout(() => setFlash(false), 1200);
-            prevVal.current = value;
-            return () => {
-                clearTimeout(timer);
-                clearTimeout(t);
-            };
-        }
-    }, [value, live]);
-
     return (
         <Card
             onClick={onClick}
-            className={`relative overflow-hidden bg-card/85 backdrop-blur-sm border border-border/70 transition-all duration-300 group ${
-                onClick ? "cursor-pointer hover:border-indigo-500/50 hover:shadow-md hover:-translate-y-0.5" : ""
-            } ${flash ? "ring-2 ring-emerald-500/50" : ""}`}
+            className={`relative overflow-hidden transition-all duration-300 bg-card/85 backdrop-blur-sm border-border/70 hover:border-border hover:shadow-lg hover:-translate-y-0.5 group ${
+                onClick ? "cursor-pointer" : ""
+            }`}
         >
-            {/* Top primary gradient accent indicator */}
-            <div className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${accentGradient} opacity-70 group-hover:opacity-100 transition-opacity`} />
+            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accentGradient} opacity-90`} />
 
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4">
-                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
-                <div className="flex items-center gap-1.5">
-                    {live && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-semibold tracking-wide border border-emerald-500/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            LIVE
-                        </span>
-                    )}
-                    <div className={`h-7 w-7 rounded-lg ${iconBg || "bg-indigo-500/10"} flex items-center justify-center ${iconColor || "text-indigo-500"} group-hover:scale-110 transition-transform`}>
+            <CardContent className="p-4 sm:p-5">
+                <div className="flex items-center justify-between space-y-0 pb-2">
+                    <p className="text-xs font-semibold text-muted-foreground truncate">{title}</p>
+                    <div
+                        className={`h-9 w-9 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-xs ${
+                            iconBg || "bg-primary/10"
+                        } ${iconColor || "text-primary"}`}
+                    >
                         <Icon className="h-4 w-4" />
                     </div>
                 </div>
-            </CardHeader>
-            <CardContent className="pb-3.5">
-                {loading ? (
-                    <>
-                        <Skeleton className="h-7 w-24 mb-1.5" />
-                        <Skeleton className="h-3 w-32" />
-                    </>
-                ) : (
-                    <div>
-                        <div className="flex items-baseline justify-between mt-0.5">
-                            <div className="text-2xl font-extrabold tracking-tight text-foreground">
-                                {prefix}{typeof value === "number" ? value.toLocaleString() : (value ?? 0)}
-                            </div>
-                            {trend && (
-                                <span className={`text-[11px] font-bold ${trendColor || "text-emerald-500"}`}>
-                                    {trend}
+
+                <div className="space-y-1">
+                    {loading ? (
+                        <Skeleton className="h-8 w-24" />
+                    ) : (
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-extrabold tracking-tight text-foreground">
+                                {prefix}
+                                {typeof value === "number" ? value.toLocaleString() : value}
+                            </span>
+                            {live && (
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500 dark:text-emerald-400">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    LIVE
                                 </span>
                             )}
                         </div>
-                        {subtext && (
-                            <p className="text-[11px] text-muted-foreground mt-1 truncate font-medium">
-                                {subtext}
-                            </p>
+                    )}
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                        {trend ? (
+                            <span className={`font-semibold ${trendColor || "text-emerald-500"}`}>{trend}</span>
+                        ) : subtext ? (
+                            <span className="text-muted-foreground text-[11px] font-medium">{subtext}</span>
+                        ) : null}
+
+                        {onClick && (
+                            <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </span>
                         )}
                     </div>
-                )}
+                </div>
             </CardContent>
         </Card>
     );
@@ -212,22 +200,40 @@ export default function Dashboard() {
     const defaults = getDefaultDates();
     const [startDate, setStartDate] = useState(defaults.start);
     const [endDate, setEndDate] = useState(defaults.end);
+    const [activeTab, setActiveTab] = useState<string>("overview");
 
-    // REST baseline data
+    // Unified baseline data
     const [cardCounts, setCardCounts] = useState<Partial<DashboardCardCounts>>({});
     const [revenue, setRevenue] = useState<RevenueData[]>([]);
     const [popularShops, setPopularShops] = useState<PopularShop[]>([]);
     const [systemHealth, setSystemHealth] = useState<{ dbLatency: number; status: string } | null>(null);
-    const [manageUsersPage, setManageUsersPage] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Extended Stats
+    // Extended Stats & Telemetry
     const [extendedStats, setExtendedStats] = useState<any>(null);
-    const [activeUsersSummary, setActiveUsersSummary] = useState<ActiveUsersSummary | null>(null);
+    const [userRegStats, setUserRegStats] = useState<UserRegistrationStatsResponse | null>(null);
+    const [todayOrderVelocity, setTodayOrderVelocity] = useState<any[]>([]);
 
-    // Delivery Options & Today's Orders
-    const [allShopsList, setAllShopsList] = useState<AdminShopProfileListItem[]>([]);
+    // Fulfillment counts
+    const [fulfillment, setFulfillment] = useState<{
+        todayDelivered: number;
+        todayCanceled: number;
+        totalDeliveredAllTime: number;
+        totalCanceledAllTime: number;
+        deliveryOptionOn: number;
+        deliveryOptionOff: number;
+        totalShops: number;
+    }>({
+        todayDelivered: 0,
+        todayCanceled: 0,
+        totalDeliveredAllTime: 0,
+        totalCanceledAllTime: 0,
+        deliveryOptionOn: 0,
+        deliveryOptionOff: 0,
+        totalShops: 0,
+    });
     const [todayDeliveredCount, setTodayDeliveredCount] = useState<number>(0);
     const [todayCanceledCount, setTodayCanceledCount] = useState<number>(0);
     const [totalDeliveredAllTime, setTotalDeliveredAllTime] = useState<number>(0);
@@ -248,7 +254,6 @@ export default function Dashboard() {
         allTimeTotal?: number;
         filterLabel: string;
     } | null>(null);
-    const [userRegStats, setUserRegStats] = useState<UserRegistrationStatsResponse | null>(null);
 
     // Live Bangkok time display
     const [bangkokTimeStr, setBangkokTimeStr] = useState<string>(() => formatBangkokDateTime(new Date()));
@@ -259,89 +264,58 @@ export default function Dashboard() {
         return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        async function load() {
-            try {
-                setLoading(true);
-                const [
-                    cardsData,
-                    revenueData,
-                    shopsData,
-                    extendedData,
-                    activeSummary,
-                    healthData,
-                    usersData,
-                    shopProfilesPage,
-                    ordersHealthData,
-                    deliveredOrdersPage,
-                    canceledOrdersPage,
-                    regStatsData,
-                ] = await Promise.all([
-                    dashboardService.getCardCounts().catch(() => ({})),
-                    analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
-                    analyticsService.getPopularShops().catch(() => []),
-                    analyticsService.getExtendedDashboardStats().catch(() => null),
-                    activeUsersService.summary().catch(() => null),
-                    analyticsService.getSystemHealth().catch(() => ({ dbLatency: 4, status: "connected" })),
-                    manageUsersService.getManageUsers({ accountType: "user", size: 100 }).catch(() => null),
-                    ShopService.getAdminShopProfiles(1, 100).catch(() => null),
-                    orderService.getOrdersHealth().catch(() => ({} as Record<string, number>)),
-                    orderService.getOrders({ status: "DELIVERED", size: 100 }).catch(() => null),
-                    orderService.getOrders({ status: "CANCELED", size: 100 }).catch(() => null),
-                    analyticsService.getUserRegistrationStats({ timeframe: "today" }).catch(() => null),
-                ]);
-                setCardCounts(cardsData);
-                setRevenue(revenueData);
-                setPopularShops(shopsData);
-                setExtendedStats(extendedData);
-                setActiveUsersSummary(activeSummary);
-                setSystemHealth(healthData);
-                setManageUsersPage(usersData);
-                setUserRegStats(regStatsData);
+    // ── Single Aggregated Call for entire Dashboard ──
+    const loadDashboardData = useCallback(async (isRefresh = false) => {
+        try {
+            if (isRefresh) setRefreshing(true);
+            else setLoading(true);
+            setError(null);
 
-                // Process shops
-                let loadedShops: AdminShopProfileListItem[] = shopProfilesPage?.content || [];
-                if (shopProfilesPage && shopProfilesPage.totalPages > 1) {
-                    const extraPromises = [];
-                    for (let p = 2; p <= Math.min(shopProfilesPage.totalPages, 5); p++) {
-                        extraPromises.push(ShopService.getAdminShopProfiles(p, 100).catch(() => null));
-                    }
-                    const extraPages = await Promise.all(extraPromises);
-                    extraPages.forEach((ep) => {
-                        if (ep?.content) {
-                            loadedShops = loadedShops.concat(ep.content);
-                        }
-                    });
+            const summary = await analyticsService.getDashboardSummary(startDate, endDate);
+            if (summary) {
+                if (summary.cardCounts) setCardCounts(summary.cardCounts);
+                if (summary.revenue) setRevenue(summary.revenue);
+                if (summary.popularShops) setPopularShops(summary.popularShops);
+                if (summary.extendedStats) setExtendedStats(summary.extendedStats);
+                if (summary.systemHealth) setSystemHealth(summary.systemHealth);
+                if (summary.userRegistrationStats) setUserRegStats(summary.userRegistrationStats);
+                if (summary.fulfillment) {
+                    setFulfillment(summary.fulfillment);
+                    setTodayDeliveredCount(summary.fulfillment.todayDelivered || 0);
+                    setTodayCanceledCount(summary.fulfillment.todayCanceled || 0);
+                    setTotalDeliveredAllTime(summary.fulfillment.totalDeliveredAllTime || 0);
+                    setTotalCanceledAllTime(summary.fulfillment.totalCanceledAllTime || 0);
                 }
-                setAllShopsList(loadedShops);
-
-                // Process today's delivered & canceled orders
-                const deliveredToday = deliveredOrdersPage?.content?.filter((o) => isCreatedToday(o.createdAt)).length ?? 0;
-                const canceledToday = canceledOrdersPage?.content?.filter((o) => isCreatedToday(o.createdAt)).length ?? 0;
-                setTodayDeliveredCount(deliveredToday);
-                setTodayCanceledCount(canceledToday);
-                setTotalDeliveredAllTime(ordersHealthData?.DELIVERED ?? deliveredOrdersPage?.totalElements ?? 0);
-                setTotalCanceledAllTime(ordersHealthData?.CANCELED ?? canceledOrdersPage?.totalElements ?? 0);
-            } catch {
-                setError("Failed to load dashboard data.");
-            } finally {
-                setLoading(false);
+                if (summary.todayOrderVelocity) setTodayOrderVelocity(summary.todayOrderVelocity);
             }
+        } catch (err) {
+            console.error("Dashboard unified summary fetch failed, fallback to baseline:", err);
+            const [cardsData, healthData] = await Promise.all([
+                dashboardService.getCardCounts().catch(() => ({})),
+                analyticsService.getSystemHealth().catch(() => ({ dbLatency: 4, status: "connected" })),
+            ]);
+            setCardCounts(cardsData);
+            setSystemHealth(healthData);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
         }
-        load();
     }, [startDate, endDate]);
 
-    // Derived: prefer live WS stats where available, fall back to REST baseline
+    useEffect(() => {
+        loadDashboardData();
+    }, [loadDashboardData]);
+
+    // Derived: prefer live WS stats where available, fall back to baseline
     const liveStats: Partial<SystemStatsDTO> = useMemo(() => systemStats ?? {}, [systemStats]);
     const totalUsers = liveStats.totalUsers ?? cardCounts.totalUsers ?? 0;
     const isLive = !!systemStats;
-    const totalShops = liveStats.activeShops ?? liveStats.totalShops ?? cardCounts.totalShops ?? 0;
+    const totalShops = liveStats.activeShops ?? liveStats.totalShops ?? cardCounts.totalShops ?? fulfillment.totalShops ?? 0;
     const totalReviews = liveStats.totalReviews ?? cardCounts.totalReviews ?? 0;
     const pendingOrders = liveStats.pendingOrders ?? cardCounts.pendingOrders ?? 0;
 
     // Calculate Phone registered users vs Google sign-in users strictly from real DB records
     const { phoneUsersCount, googleUsersCount, phonePercent, googlePercent } = useMemo(() => {
-        // 1. Direct from userRegStats or channelFilterStats (exact DB counts from analytics API)
         const allPhone = userRegStats?.allTimePhone ?? channelFilterStats?.allTimePhone ?? cardCounts.phoneUsers;
         const allGoogle = userRegStats?.allTimeGoogle ?? channelFilterStats?.allTimeGoogle ?? cardCounts.googleUsers;
 
@@ -355,7 +329,6 @@ export default function Dashboard() {
             };
         }
 
-        // 2. Direct from cardCounts if provided by backend (exact DB count)
         if (
             cardCounts.phoneUsers !== undefined &&
             cardCounts.googleUsers !== undefined &&
@@ -372,41 +345,11 @@ export default function Dashboard() {
             };
         }
 
-        // 3. Direct from extendedStats if provided
         if (extendedStats?.userRegistrationStats) {
             const p = extendedStats.userRegistrationStats.phoneCount;
             const g = extendedStats.userRegistrationStats.googleCount;
             if (p + g > 0) {
                 const total = p + g || totalUsers || 1;
-                return {
-                    phoneUsersCount: p,
-                    googleUsersCount: g,
-                    phonePercent: Math.round((p / total) * 100),
-                    googlePercent: Math.round((g / total) * 100),
-                };
-            }
-        }
-
-        // 4. Computed from actual live user records sample
-        if (manageUsersPage?.content && Array.isArray(manageUsersPage.content) && manageUsersPage.content.length > 0) {
-            const customerRows = manageUsersPage.content.filter(
-                (u: any) => u.accountType === "user" || u.role === "User" || (!u.role && u.phone)
-            );
-
-            const samplePhone = customerRows.filter(
-                (u: any) => u.phone && !String(u.phone).startsWith("g_")
-            ).length;
-
-            const sampleGoogle = customerRows.filter(
-                (u: any) => (u.phone && String(u.phone).startsWith("g_")) || (!u.phone && u.email)
-            ).length;
-
-            if (samplePhone > 0 || sampleGoogle > 0) {
-                const sampleTotal = sampleGoogle + samplePhone;
-                const ratio = sampleTotal > 0 ? samplePhone / sampleTotal : 0;
-                const p = totalUsers > 0 ? Math.round(totalUsers * ratio) : samplePhone;
-                const g = totalUsers > 0 ? Math.max(0, totalUsers - p) : sampleGoogle;
-                const total = p + g || 1;
                 return {
                     phoneUsersCount: p,
                     googleUsersCount: g,
@@ -422,12 +365,11 @@ export default function Dashboard() {
             phonePercent: 0,
             googlePercent: 0,
         };
-    }, [userRegStats, channelFilterStats, cardCounts.phoneUsers, cardCounts.googleUsers, extendedStats?.userRegistrationStats, manageUsersPage, totalUsers]);
+    }, [userRegStats, channelFilterStats, cardCounts.phoneUsers, cardCounts.googleUsers, extendedStats?.userRegistrationStats, totalUsers]);
 
-    // Alert keys (used to detect new entries)
+    // Alert keys
     const latestReportKey = latestReport?.timestamp ?? null;
     const latestShopKey = latestShopRequest?.timestamp ?? null;
-
     const showReportBanner = latestReportKey && latestReportKey !== reportDismissed;
     const showShopRequestBanner = latestShopKey && latestShopKey !== shopRequestDismissed;
 
@@ -454,8 +396,185 @@ export default function Dashboard() {
         [totalRevenueInRange, totalOrdersInRange]
     );
 
+    // Reusable Revenue & Popular Shops Grid
+    const renderRevenueAndShops = () => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
+            {/* Revenue Overview Area Chart */}
+            <Card className="col-span-4 border-border/70 shadow-sm overflow-hidden bg-card/85 backdrop-blur-sm">
+                <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-4 border-b border-border/40 bg-muted/20">
+                    <div>
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                            <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                <DollarSign className="h-4 w-4" />
+                            </span>
+                            Revenue Overview
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Platform gross sales volume &amp; daily trends from confirmed orders
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2 bg-background/90 p-1.5 rounded-xl border border-border/70 shadow-2xs">
+                        <Input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-32 h-7 text-[11px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
+                        />
+                        <span className="text-muted-foreground text-[10px] font-bold px-0.5">TO</span>
+                        <Input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-32 h-7 text-[11px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
+                        />
+                    </div>
+                </CardHeader>
+
+                {/* Revenue Period KPI Strip */}
+                <div className="grid grid-cols-3 gap-2 p-3 sm:px-5 bg-muted/10 border-b border-border/40 text-xs">
+                    <div>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Period Revenue</span>
+                        <span className="text-base font-extrabold text-foreground">
+                            ${totalRevenueInRange.toLocaleString()}
+                        </span>
+                    </div>
+                    <div>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Completed Orders</span>
+                        <span className="text-base font-extrabold text-foreground">
+                            {totalOrdersInRange.toLocaleString()} orders
+                        </span>
+                    </div>
+                    <div>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Average Order Value</span>
+                        <span className="text-base font-extrabold text-foreground">
+                            ${avgOrderValue.toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+
+                <CardContent className="p-4 sm:p-5 pt-4">
+                    {loading ? (
+                        <Skeleton className="w-full h-[280px]" />
+                    ) : chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                                <Tooltip
+                                    formatter={(v: number, name: string) => [
+                                        name === "total" ? `$${v.toLocaleString()}` : v.toLocaleString(),
+                                        name === "total" ? "Gross Sales" : "Orders",
+                                    ]}
+                                />
+                                <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
+                            No revenue recorded for the selected period
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Popular Shops Leaderboard */}
+            <Card className="col-span-3 border-border/70 shadow-sm overflow-hidden bg-card/85 backdrop-blur-sm">
+                <CardHeader className="pb-3 border-b border-border/40 bg-muted/20 flex flex-row items-center justify-between space-y-0">
+                    <div>
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                            <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                <Store className="h-4 w-4" />
+                            </span>
+                            Top Performing Shops
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Highest customer reach &amp; order fulfillment volume
+                        </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-semibold border-border/70">
+                        {popularShops.length} shops
+                    </Badge>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5">
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <Skeleton className="h-8 w-8 rounded-full" />
+                                    <div className="flex-1 space-y-1">
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-3 w-20" />
+                                    </div>
+                                    <Skeleton className="h-4 w-16" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : popularShops.length > 0 ? (
+                        <div className="space-y-3.5">
+                            {popularShops.slice(0, 5).map((shop, i) => {
+                                const shopId = shop.shopId || `shop_${i}`;
+                                const shopName = shop.shopName || "Unknown Shop";
+                                const views = shop.viewCount || 0;
+                                const unique = shop.uniqueViewers || 0;
+                                return (
+                                    <div
+                                        key={shopId}
+                                        onClick={() => navigate("/shops")}
+                                        className="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-muted/40 transition-colors cursor-pointer group border border-transparent hover:border-border/60"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/20 group-hover:scale-105 transition-transform">
+                                                {i + 1}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold truncate text-foreground group-hover:text-emerald-500 transition-colors">
+                                                    {shopName}
+                                                </p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Users className="h-3 w-3 text-muted-foreground" />
+                                                    <span className="text-[11px] text-muted-foreground font-medium">
+                                                        {unique.toLocaleString()} unique customers
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            <Badge variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-muted/80 font-semibold border border-border/50">
+                                                {views.toLocaleString()} orders
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+                            No shop data available
+                        </div>
+                    )}
+
+                    <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>Ranked by real customer transactions &amp; volume</span>
+                        <span
+                            onClick={() => navigate("/shops")}
+                            className="text-emerald-500 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+                        >
+                            All Shops <ChevronRight className="h-3 w-3" />
+                        </span>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
             {/* Executive Header with Modern Primary Gradient Accent */}
             <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-border/50">
                 <div>
@@ -469,7 +588,7 @@ export default function Dashboard() {
                         Real-time operations, customer activity telemetry, logistics pipeline &amp; financial analytics
                     </p>
                 </div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 flex-wrap">
                     {/* Live Bangkok Time Indicator */}
                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-card/90 text-foreground border-border/80 shadow-xs">
                         <Clock className="w-3.5 h-3.5 text-indigo-500" />
@@ -484,6 +603,18 @@ export default function Dashboard() {
                             <span className="font-mono font-bold text-emerald-500">{systemHealth.dbLatency}ms</span>
                         </div>
                     )}
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadDashboardData(true)}
+                        disabled={loading || refreshing}
+                        className="h-7 px-3 text-xs gap-1.5 rounded-full border-border/80 shadow-xs cursor-pointer hover:bg-muted/80"
+                    >
+                        <RefreshCw className={`h-3 w-3 text-muted-foreground ${refreshing ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline">{refreshing ? "Updating..." : "Refresh"}</span>
+                    </Button>
+
                     {error && (
                         <Badge variant="destructive" className="flex items-center gap-1 shadow-xs">
                             <AlertTriangle className="h-3 w-3" />
@@ -523,7 +654,7 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* Row 1: Core Platform Volume Metrics & User Authentication Breakdown */}
+            {/* Row 1: Core Platform Volume Metrics & User Authentication Breakdown (Persistent Header HUD) */}
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
                 <StatCard
                     title="Total Customers"
@@ -603,207 +734,132 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Row 1.2: Real-time User Registration Channels & Telemetry with Time, Day & Month Filters */}
-            <UserRegistrationChannelSection onStatsUpdate={setChannelFilterStats} />
+            {/* Dashboard Tabs Organization */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border/50 pb-2.5">
+                    <TabsList className="bg-muted/40 p-1 border border-border/60 rounded-xl h-auto flex flex-wrap gap-1 shadow-2xs">
+                        <TabsTrigger
+                            value="overview"
+                            className="gap-2 px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-400 data-[state=active]:border-indigo-500/30 border border-transparent rounded-lg transition-all"
+                        >
+                            <BarChart3 className="h-3.5 w-3.5" />
+                            Executive Overview
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="operations"
+                            className="gap-2 px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/30 border border-transparent rounded-lg transition-all"
+                        >
+                            <Truck className="h-3.5 w-3.5" />
+                            Fulfillment &amp; Orders
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="telemetry"
+                            className="gap-2 px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-400 data-[state=active]:border-sky-500/30 border border-transparent rounded-lg transition-all"
+                        >
+                            <Activity className="h-3.5 w-3.5" />
+                            Customers &amp; Telemetry
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="trending"
+                            className="gap-2 px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-400 data-[state=active]:border-amber-500/30 border border-transparent rounded-lg transition-all"
+                        >
+                            <UtensilsCrossed className="h-3.5 w-3.5" />
+                            Trending &amp; Market
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="all"
+                            className="gap-2 px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-purple-500/15 data-[state=active]:text-purple-400 data-[state=active]:border-purple-500/30 border border-transparent rounded-lg transition-all"
+                        >
+                            <Layers className="h-3.5 w-3.5" />
+                            All Views
+                        </TabsTrigger>
+                    </TabsList>
 
-            {/* Row 1.5: Today's Fulfillment & Merchant Delivery Operations Strip */}
-            <TodayFulfillmentOperationsSection
-                loading={loading}
-                todayDelivered={todayDeliveredCount}
-                todayCanceled={todayCanceledCount}
-                totalDeliveredAllTime={totalDeliveredAllTime}
-                totalCanceledAllTime={totalCanceledAllTime}
-                shops={allShopsList}
-                totalShopsCount={totalShops || allShopsList.length}
-            />
-
-            {/* Row 2: Live Demand & Activity Hub (Orders Velocity & Active User Distribution Pie Circle Chart) */}
-            <TodayActivitySection extendedStats={extendedStats} isLive={isLive} activeUsersSummary={activeUsersSummary} />
-
-            {/* Row 3: Top Trending Dishes & Cuisine Market Share */}
-            <MenuTrendingCuisineSection extendedStats={extendedStats} />
-
-            {/* Row 4: Financial Revenue & Popular Shops Leaderboard */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
-                {/* Revenue Overview Area Chart */}
-                <Card className="col-span-4 border-border/70 shadow-sm overflow-hidden bg-card/85 backdrop-blur-sm">
-                    <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-4 border-b border-border/40 bg-muted/20">
-                        <div>
-                            <CardTitle className="text-base font-bold flex items-center gap-2">
-                                <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                                    <DollarSign className="h-4 w-4" />
-                                </span>
-                                Revenue Overview
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Platform gross sales volume &amp; daily trends from confirmed orders
-                            </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2 bg-background/90 p-1.5 rounded-xl border border-border/70 shadow-2xs">
-                            <Input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-32 h-7 text-[11px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
-                            />
-                            <span className="text-muted-foreground text-[10px] font-bold px-0.5">TO</span>
-                            <Input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="w-32 h-7 text-[11px] border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
-                            />
-                        </div>
-                    </CardHeader>
-
-                    {/* Revenue Period KPI Strip */}
-                    <div className="grid grid-cols-3 gap-2 p-3 sm:px-5 bg-muted/10 border-b border-border/40 text-xs">
-                        <div>
-                            <span className="text-[10px] text-muted-foreground block font-medium">Period Revenue</span>
-                            <span className="text-base font-extrabold text-foreground">
-                                ${totalRevenueInRange.toLocaleString()}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-muted-foreground block font-medium">Completed Orders</span>
-                            <span className="text-base font-extrabold text-foreground">
-                                {totalOrdersInRange.toLocaleString()} orders
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-muted-foreground block font-medium">Average Order Value</span>
-                            <span className="text-base font-extrabold text-foreground">
-                                ${avgOrderValue.toLocaleString()}
-                            </span>
-                        </div>
+                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <span>Live Telemetry</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping" />
                     </div>
+                </div>
 
-                    <CardContent className="p-4 sm:p-5 pt-4">
-                        {loading ? (
-                            <Skeleton className="w-full h-[280px]" />
-                        ) : chartData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={280}>
-                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                                    <Tooltip
-                                        formatter={(v: number, name: string) => [
-                                            name === "total" ? `$${v.toLocaleString()}` : v.toLocaleString(),
-                                            name === "total" ? "Gross Sales" : "Orders",
-                                        ]}
-                                    />
-                                    <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
-                                No revenue recorded for the selected period
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                {/* TAB 1: EXECUTIVE OVERVIEW */}
+                <TabsContent value="overview" className="space-y-4 focus-visible:outline-none animate-in fade-in duration-300">
+                    <TodayFulfillmentOperationsSection
+                        loading={loading}
+                        todayDelivered={todayDeliveredCount}
+                        todayCanceled={todayCanceledCount}
+                        totalDeliveredAllTime={totalDeliveredAllTime}
+                        totalCanceledAllTime={totalCanceledAllTime}
+                        deliveryOptionOn={fulfillment.deliveryOptionOn}
+                        deliveryOptionOff={fulfillment.deliveryOptionOff}
+                        totalShopsCount={totalShops}
+                    />
+                    {renderRevenueAndShops()}
+                </TabsContent>
 
-                {/* Popular Shops Leaderboard */}
-                <Card className="col-span-3 border-border/70 shadow-sm overflow-hidden bg-card/85 backdrop-blur-sm">
-                    <CardHeader className="pb-3 border-b border-border/40 bg-muted/20 flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="text-base font-bold flex items-center gap-2">
-                                <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                    <Store className="h-4 w-4" />
-                                </span>
-                                Top Performing Shops
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Highest customer reach &amp; order fulfillment volume
-                            </CardDescription>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] font-semibold border-border/70">
-                            {popularShops.length} shops
-                        </Badge>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-5">
-                        {loading ? (
-                            <div className="space-y-4">
-                                {[...Array(5)].map((_, i) => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <Skeleton className="h-8 w-8 rounded-full" />
-                                        <div className="flex-1 space-y-1">
-                                            <Skeleton className="h-4 w-32" />
-                                            <Skeleton className="h-3 w-20" />
-                                        </div>
-                                        <Skeleton className="h-4 w-16" />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : popularShops.length > 0 ? (
-                            <div className="space-y-3.5">
-                                {popularShops.slice(0, 5).map((shop, i) => {
-                                    const shopId = shop.shopId || `shop_${i}`;
-                                    const shopName = shop.shopName || "Unknown Shop";
-                                    const views = shop.viewCount || 0;
-                                    const unique = shop.uniqueViewers || 0;
-                                    return (
-                                        <div
-                                            key={shopId}
-                                            onClick={() => navigate("/shops")}
-                                            className="flex items-center justify-between gap-4 p-2.5 rounded-xl hover:bg-muted/40 transition-colors cursor-pointer group border border-transparent hover:border-border/60"
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/20 group-hover:scale-105 transition-transform">
-                                                    {i + 1}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold truncate text-foreground group-hover:text-emerald-500 transition-colors">
-                                                        {shopName}
-                                                    </p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Users className="h-3 w-3 text-muted-foreground" />
-                                                        <span className="text-[11px] text-muted-foreground font-medium">
-                                                            {unique.toLocaleString()} unique customers
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="shrink-0 text-right">
-                                                <Badge variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-muted/80 font-semibold border border-border/50">
-                                                    {views.toLocaleString()} orders
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-                                No shop data available
-                            </div>
-                        )}
+                {/* TAB 2: FULFILLMENT & ORDERS */}
+                <TabsContent value="operations" className="space-y-4 focus-visible:outline-none animate-in fade-in duration-300">
+                    <TodayFulfillmentOperationsSection
+                        loading={loading}
+                        todayDelivered={todayDeliveredCount}
+                        todayCanceled={todayCanceledCount}
+                        totalDeliveredAllTime={totalDeliveredAllTime}
+                        totalCanceledAllTime={totalCanceledAllTime}
+                        deliveryOptionOn={fulfillment.deliveryOptionOn}
+                        deliveryOptionOff={fulfillment.deliveryOptionOff}
+                        totalShopsCount={totalShops}
+                    />
+                    <OrdersVelocityGraphCard initialVelocity={todayOrderVelocity} />
+                </TabsContent>
 
-                        <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-                            <span>Ranked by real customer transactions &amp; volume</span>
-                            <span
-                                onClick={() => navigate("/shops")}
-                                className="text-emerald-500 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
-                            >
-                                All Shops <ChevronRight className="h-3 w-3" />
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                {/* TAB 3: CUSTOMERS & TELEMETRY */}
+                <TabsContent value="telemetry" className="space-y-4 focus-visible:outline-none animate-in fade-in duration-300">
+                    <UserRegistrationChannelSection
+                        initialStats={userRegStats}
+                        onStatsUpdate={setChannelFilterStats}
+                    />
+                    <TodayActivitySection
+                        extendedStats={extendedStats}
+                        isLive={isLive}
+                        initialOrderVelocity={todayOrderVelocity}
+                    />
+                </TabsContent>
 
-            {/* Customer Reviews Detail Popup with Load More Pagination */}
+                {/* TAB 4: TRENDING & MARKET */}
+                <TabsContent value="trending" className="space-y-4 focus-visible:outline-none animate-in fade-in duration-300">
+                    <MenuTrendingCuisineSection extendedStats={extendedStats} />
+                </TabsContent>
+
+                {/* TAB 5: ALL VIEWS */}
+                <TabsContent value="all" className="space-y-4 focus-visible:outline-none animate-in fade-in duration-300">
+                    <UserRegistrationChannelSection
+                        initialStats={userRegStats}
+                        onStatsUpdate={setChannelFilterStats}
+                    />
+                    <TodayFulfillmentOperationsSection
+                        loading={loading}
+                        todayDelivered={todayDeliveredCount}
+                        todayCanceled={todayCanceledCount}
+                        totalDeliveredAllTime={totalDeliveredAllTime}
+                        totalCanceledAllTime={totalCanceledAllTime}
+                        deliveryOptionOn={fulfillment.deliveryOptionOn}
+                        deliveryOptionOff={fulfillment.deliveryOptionOff}
+                        totalShopsCount={totalShops}
+                    />
+                    <TodayActivitySection
+                        extendedStats={extendedStats}
+                        isLive={isLive}
+                        initialOrderVelocity={todayOrderVelocity}
+                    />
+                    <MenuTrendingCuisineSection extendedStats={extendedStats} />
+                    {renderRevenueAndShops()}
+                </TabsContent>
+            </Tabs>
+
+            {/* Customer Reviews Detail Popup */}
             <CustomerReviewsDetailModal
                 open={reviewModalOpen}
                 onOpenChange={setReviewModalOpen}
                 totalReviewsCount={totalReviews}
-                shops={allShopsList}
             />
         </div>
     );

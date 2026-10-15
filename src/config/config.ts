@@ -323,6 +323,7 @@ export const config = {
         activeUsersSummary: '/api/admin/analytics/active-users/summary',
         activeUsersDay: '/api/admin/analytics/active-users/day',
         userRegistrationStats: '/api/admin/analytics/users/registration-stats',
+        dashboardSummary: '/api/admin/analytics/dashboard-summary',
       },
       system: {
         latency: '/api/admin/system/latency',
