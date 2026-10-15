@@ -5,7 +5,6 @@ import {
     UtensilsCrossed,
     Tags,
     FileSpreadsheet,
-    Settings,
     User,
     Users,
     Shield,
@@ -42,6 +41,8 @@ import {
     Gift,
     Languages,
     PhoneCall,
+    Store,
+    CreditCard,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -70,397 +71,325 @@ export type NavGroup = {
 }
 
 export const navigationConfig: NavGroup[] = [
+    // ── 1. Overview ────────────────────────────────────────────────────────────
     {
         items: [
             { title: "Dashboard", url: "/", icon: LayoutDashboard, tooltip: "Dashboard" },
-            { title: "Analytics", url: "/analytics", icon: BarChart2, tooltip: "Analytics", roles: AdminRole.ADMIN_FINANCE }
+            { title: "Analytics", url: "/analytics", icon: BarChart2, tooltip: "Analytics & Reports", roles: AdminRole.ADMIN_FINANCE }
         ]
     },
+
+    // ── 2. Daily Operations ────────────────────────────────────────────────────
     {
-        title: "Orders",
-        roles: [AdminRole.ADMIN, AdminRole.ADMIN_FINANCE],
+        title: "Operations",
         items: [
-            { title: "Live Order Board", url: "/orders/board", icon: ClipboardList, tooltip: "Order Board (SuperAdmin)", roles: AdminRole.ADMIN },
-            { title: "Order History", url: "/orders/history", icon: History, tooltip: "Order History", roles: AdminRole.ADMIN_FINANCE }
+            {
+                title: "Orders",
+                icon: ClipboardList,
+                tooltip: "Orders Management",
+                roles: [AdminRole.ADMIN, AdminRole.ADMIN_FINANCE],
+                items: [
+                    { title: "Live Order Board", url: "/orders/board", icon: ClipboardList, roles: AdminRole.ADMIN },
+                    { title: "Order History", url: "/orders/history", icon: History, roles: AdminRole.ADMIN_FINANCE }
+                ]
+            },
+            { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Shop, Menu & Payment Approvals", roles: AdminRole.ADMIN_OPS },
+            { title: "Manage Users", url: "/users/manage", icon: Users, tooltip: "Manage Platform Users", roles: AdminRole.ADMIN_OPS },
+            { title: "Delivery Drivers", url: "/delivery-drivers/manage", icon: Bike, tooltip: "Shop Delivery Drivers", roles: AdminRole.ADMIN }
         ]
     },
+
+    // ── 3. Shops & Menus ───────────────────────────────────────────────────────
     {
-        title: "Shop / Restaurant",
+        title: "Shops & Menus",
         roles: AdminRole.ADMIN_OPS,
         items: [
-            { title: "Create Shop/Restaurant", url: "/shops/create", icon: Plus, tooltip: "Create Shop/Restaurant" },
-            { title: "Manage Shop/Restaurant", url: "/shops/manage", icon: Settings2, tooltip: "Manage Shop/Restaurant" },
-            { title: "Shop Operating Hours", url: "/shops/operating-hours", icon: Clock, tooltip: "Shop Operating Hours" },
-            { title: "Free Delivery", url: "/shops/free-delivery", icon: Truck, tooltip: "Platform free delivery campaign", roles: AdminRole.ADMIN },
-        ]
-    },
-    {
-        title: "Menu Management",
-        roles: AdminRole.ADMIN_OPS,
-        items: [
             {
-                title: "Menu Items",
-                icon: UtensilsCrossed,
-                tooltip: "Menu Items",
+                title: "Shops / Restaurants",
+                icon: Store,
+                tooltip: "Shop & Restaurant Management",
                 items: [
-                    { title: "Create Menu Item", url: "/menus/items/create", icon: Plus },
-                    { title: "Manage Menu Items", url: "/menus/items/manage", icon: List }
-                ]
-            }
-        ]
-    },
-    {
-        title: "Approvals",
-        roles: AdminRole.ADMIN_OPS,
-        items: [
-            { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Admin Approvals" }
-        ]
-    },
-    {
-        title: "Collections",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Collections",
-                icon: Layers,
-                tooltip: "Collections",
-                items: [
-                    { title: "Create Collection", url: "/collections/create", icon: Plus },
-                    { title: "Manage Collections", url: "/collections/manage", icon: Settings2 }
-                ]
-            }
-        ]
-    },
-    {
-        title: "Flash Events",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Flash Events",
-                icon: Zap,
-                tooltip: "Flash Events",
-                items: [
-                    { title: "Create Flash Event", url: "/flash-events/create", icon: Plus },
-                    { title: "Manage Flash Events", url: "/flash-events/manage", icon: Settings2 }
-                ]
-            }
-        ]
-    },
-    {
-        title: "Shop Coupons",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Shop Coupons",
-                icon: TicketPercent,
-                tooltip: "Per-shop QR scan promotions",
-                items: [
-                    { title: "Create Coupon", url: "/shop-coupons/create", icon: Plus },
-                    { title: "Manage Coupons", url: "/shop-coupons/manage", icon: Settings2 }
-                ]
-            }
-        ]
-    },
-    {
-        title: "Subscription Plans",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Plans",
-                icon: Package,
-                tooltip: "Pricing page subscription tiers",
-                items: [
-                    { title: "Create Plan", url: "/plans/create", icon: Plus },
-                    { title: "Manage Plans", url: "/plans/manage", icon: Settings2 },
-                    { title: "Create Feature", url: "/plan-features/create", icon: Plus },
-                    { title: "Manage Features", url: "/plan-features/manage", icon: List },
+                    { title: "Manage Shops", url: "/shops/manage", icon: Settings2 },
+                    { title: "Create Shop", url: "/shops/create", icon: Plus },
+                    { title: "Operating Hours", url: "/shops/operating-hours", icon: Clock },
+                    { title: "Free Delivery", url: "/shops/free-delivery", icon: Truck, roles: AdminRole.ADMIN }
                 ]
             },
             {
-                title: "Subscriptions",
-                icon: Receipt,
-                tooltip: "Shop plan purchases and approvals",
+                title: "Menu Items",
+                icon: UtensilsCrossed,
+                tooltip: "Menu Items Management",
                 items: [
-                    { title: "Manage Subscriptions", url: "/subscriptions/manage", icon: List },
+                    { title: "Manage Menu Items", url: "/menus/items/manage", icon: List },
+                    { title: "Create Menu Item", url: "/menus/items/create", icon: Plus }
+                ]
+            }
+        ]
+    },
+
+    // ── 4. Marketing & Promotions ──────────────────────────────────────────────
+    {
+        title: "Marketing & Promotions",
+        items: [
+            {
+                title: "Banners & Media",
+                icon: ImageIcon,
+                tooltip: "Banners, Splash & Themes",
+                roles: AdminRole.ADMIN,
+                items: [
+                    { title: "Main Banners", url: "/marketing/banners?tab=banners", icon: ImageIcon },
+                    { title: "Order Waiting", url: "/marketing/banners?tab=order", icon: ShoppingBag },
+                    { title: "Splash Screens", url: "/marketing/banners?tab=splash", icon: Smartphone },
+                    { title: "Featured Shops", url: "/marketing/banners?tab=featured", icon: Star },
+                    { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon }
+                ]
+            },
+            {
+                title: "Campaigns & Discounts",
+                icon: TicketPercent,
+                tooltip: "Discounts, Flash Events & Coupons",
+                items: [
+                    { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, roles: AdminRole.ADMIN },
+                    { title: "Flash Events", url: "/flash-events/manage", icon: Zap, roles: AdminRole.ADMIN },
+                    { title: "Collections", url: "/collections/manage", icon: Layers, roles: AdminRole.ADMIN },
+                    { title: "Shop Coupons", url: "/shop-coupons/manage", icon: TicketPercent, roles: AdminRole.ADMIN },
+                    { title: "Home Discount Sections", url: "/home-discount-sections/manage", icon: TicketPercent, roles: AdminRole.ADMIN_SETUP }
+                ]
+            },
+            { title: "Referrals & Promo Codes", url: "/referrals/manage", icon: Gift, tooltip: "Referral & Promo Codes", roles: AdminRole.ADMIN },
+            { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Push Notifications Broadcast", roles: AdminRole.ADMIN_SETUP }
+        ]
+    },
+
+    // ── 5. Finance & Subscriptions ─────────────────────────────────────────────
+    {
+        title: "Finance & Subscriptions",
+        roles: AdminRole.ADMIN,
+        items: [
+            {
+                title: "Subscription Plans",
+                icon: Package,
+                tooltip: "Shop Subscription Plans",
+                items: [
+                    { title: "Manage Plans", url: "/plans/manage", icon: Settings2 },
+                    { title: "Create Plan", url: "/plans/create", icon: Plus },
+                    { title: "Manage Features", url: "/plan-features/manage", icon: List },
+                    { title: "Create Feature", url: "/plan-features/create", icon: Plus },
+                    { title: "Shop Subscriptions", url: "/subscriptions/manage", icon: Receipt }
                 ]
             },
             {
                 title: "Payment Accounts",
                 icon: Wallet,
-                tooltip: "Your accounts that shops transfer plan payments into",
+                tooltip: "Platform Accounts for Shop Plan Payments",
                 items: [
-                    { title: "Add Account", url: "/platform-payment-accounts/create", icon: Plus },
                     { title: "Manage Accounts", url: "/platform-payment-accounts/manage", icon: List },
+                    { title: "Add Account", url: "/platform-payment-accounts/create", icon: Plus }
+                ]
+            },
+            {
+                title: "Payment Methods",
+                icon: CreditCard,
+                tooltip: "Payment Methods & Shop Payment Types",
+                items: [
+                    { title: "Payment Methods", url: "/payment/methods", icon: Settings2 },
+                    { title: "Create Payment Method", url: "/payment/methods/create", icon: Plus },
+                    { title: "Shop Payment Types", url: "/shop-payment-types/manage", icon: Settings2 },
+                    { title: "Create Payment Type", url: "/shop-payment-types/create", icon: Plus }
                 ]
             }
         ]
     },
+
+    // ── 6. Community & Content ─────────────────────────────────────────────────
     {
-        title: "Shop Tags",
-        roles: AdminRole.ADMIN_SETUP,
+        title: "Community & Content",
+        items: [
+            {
+                title: "Social Media",
+                icon: Share2,
+                tooltip: "Social Media Feed & Posts",
+                roles: AdminRole.ADMIN_SETUP,
+                items: [
+                    { title: "Posts & Feed", url: "/social-media/posts", icon: Share2 },
+                    { title: "Create Post", url: "/social-media/posts/create", icon: Plus }
+                ]
+            },
+            {
+                title: "Community",
+                icon: Users,
+                tooltip: "Community Forum & Lost & Found",
+                roles: AdminRole.ADMIN_SETUP,
+                items: [
+                    { title: "Community Posts", url: "/community/posts", icon: FileText },
+                    { title: "Comment Board", url: "/community/comments", icon: MessageSquare },
+                    { title: "Lost & Found", url: "/lostfound", icon: Package }
+                ]
+            },
+            {
+                title: "Places & Activities",
+                icon: MapPin,
+                tooltip: "Points of Interest & Places",
+                roles: AdminRole.ADMIN,
+                items: [
+                    { title: "Manage Places", url: "/places/manage", icon: List },
+                    { title: "Create Place", url: "/places/create", icon: Plus }
+                ]
+            },
+            {
+                title: "News",
+                icon: Newspaper,
+                tooltip: "Platform News & Announcements",
+                roles: AdminRole.ADMIN,
+                items: [
+                    { title: "Manage News", url: "/news/manage", icon: List },
+                    { title: "Create News", url: "/news/create", icon: Plus }
+                ]
+            },
+            {
+                title: "Visa Services",
+                icon: FileText,
+                tooltip: "Visa Types & Categories",
+                roles: AdminRole.ADMIN_SETUP,
+                items: [
+                    { title: "Manage Visas", url: "/visa/manage", icon: List },
+                    { title: "Create Visa", url: "/visa/create", icon: Plus },
+                    { title: "Visa Categories", url: "/visa/categories/manage", icon: List },
+                    { title: "Create Category", url: "/visa/categories/create", icon: Plus }
+                ]
+            }
+        ]
+    },
+
+    // ── 7. Moderation & Feedback ───────────────────────────────────────────────
+    {
+        title: "Moderation & Feedback",
+        items: [
+            {
+                title: "Moderation",
+                icon: ShieldAlert,
+                tooltip: "Content & User Reports",
+                roles: AdminRole.ADMIN_OPS,
+                items: [
+                    { title: "Content Moderation", url: "/moderation/content", icon: ShieldAlert },
+                    { title: "User/Shop Reports", url: "/moderation/user-shop", icon: ShieldAlert },
+                    { title: "Review Moderation", url: "/review/reviews", icon: ClipboardList }
+                ]
+            },
+            { title: "Shop Feedback", url: "/shop-feedback/manage", icon: MessageSquare, tooltip: "Shop Feedback from Owners", roles: AdminRole.ADMIN }
+        ]
+    },
+
+    // ── 8. Master Data & Setup ─────────────────────────────────────────────────
+    {
+        title: "Master Data & Setup",
         items: [
             {
                 title: "Shop Categories",
                 icon: Tags,
-                tooltip: "Shop Categories",
+                tooltip: "Shop Categories & Sub-Categories",
+                roles: AdminRole.ADMIN_SETUP,
                 items: [
-                    { title: "Create Shop Category", url: "/shop-categories/create", icon: Plus },
-                    { title: "Manage Shop Categories", url: "/shop-categories/manage", icon: Settings2 }
+                    { title: "Manage Categories", url: "/shop-categories/manage", icon: Settings2 },
+                    { title: "Create Category", url: "/shop-categories/create", icon: Plus },
+                    { title: "Manage Sub-Categories", url: "/shop-sub-categories/manage", icon: List },
+                    { title: "Create Sub-Category", url: "/shop-sub-categories/create", icon: Plus }
                 ]
             },
             {
-                title: "Shop Sub-Categories",
+                title: "Menu Categories & Tags",
                 icon: Tags,
-                tooltip: "Shop Sub-Categories",
+                tooltip: "Master Categories, Categories & Item Tags",
+                roles: AdminRole.ADMIN_SETUP,
                 items: [
-                    { title: "Create Sub-Category", url: "/shop-sub-categories/create", icon: Plus },
-                    { title: "Manage Sub-Categories", url: "/shop-sub-categories/manage", icon: List }
-                ]
-            }
-        ]
-    },
-    {
-        title: "Payment Methods",
-        roles: AdminRole.ADMIN,
-        items: [
-            { title: "Create Payment Method", url: "/payment/methods/create", icon: Plus, tooltip: "Create Payment Method" },
-            { title: "Manage PaymentMethods", url: "/payment/methods", icon: Settings2, tooltip: "Manage Payment Methods" }
-        ]
-    },
-    {
-        title: "Shop Payment Types",
-        roles: AdminRole.ADMIN,
-        items: [
-            { title: "Create Payment Type", url: "/shop-payment-types/create", icon: Plus, tooltip: "Create Shop Payment Type" },
-            { title: "Manage PaymentTypes", url: "/shop-payment-types/manage", icon: Settings2, tooltip: "Manage Shop Payment Types" }
-        ]
-    },
-    {
-        title: "News",
-        roles: AdminRole.ADMIN,
-        items: [
-            { title: "Create News", url: "/news/create", icon: Plus, tooltip: "Create News" },
-            { title: "Manage News", url: "/news/manage", icon: Newspaper, tooltip: "Manage News" }
-        ]
-    },
-    {
-        title: "Menu Category & Tag Type",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
-            {
-                title: "Master Menu Categories",
-                icon: Tags,
-                tooltip: "Master Menu Categories",
-                items: [
+                    { title: "Master Categories", url: "/master-menu-categories/manage", icon: List },
                     { title: "Create Master Category", url: "/master-menu-categories/create", icon: Plus },
-                    { title: "Manage Master Categories", url: "/master-menu-categories/manage", icon: List }
-                ]
-            },
-            {
-                title: "Menu Category",
-                icon: Tags,
-                tooltip: "Menu Category",
-                items: [
+                    { title: "Menu Categories", url: "/categories/manage", icon: Settings2 },
                     { title: "Create Menu Category", url: "/categories/create", icon: Plus },
-                    { title: "Manage Menu Categories", url: "/categories/manage", icon: Settings2 }
+                    { title: "Item Discovery Tags", url: "/item-tags/manage", icon: List },
+                    { title: "Create Item Tag", url: "/item-tags/create", icon: Plus }
                 ]
             },
-
             {
-                title: "Item Discovery Tags",
-                icon: Tags,
-                tooltip: "Item Discovery Tags",
+                title: "Cuisines",
+                icon: UtensilsCrossed,
+                tooltip: "Cuisine Types",
+                roles: AdminRole.ADMIN_SETUP,
                 items: [
-                    { title: "Create Item Tag", url: "/item-tags/create", icon: Plus },
-                    { title: "Manage Item Tags", url: "/item-tags/manage", icon: List }
+                    { title: "Manage Cuisines", url: "/cuisines/manage", icon: List },
+                    { title: "Create Cuisine", url: "/cuisines/create", icon: Plus }
                 ]
             },
-        ]
-    },
-    {
-        title: "Visa",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
             {
-                title: "Visa Category",
-                icon: FileText,
-                tooltip: "Visa category groups (Short-Term, Long-Term, etc.)",
-                items: [
-                    { title: "Create Category", url: "/visa/categories/create", icon: Plus },
-                    { title: "Manage Categories", url: "/visa/categories/manage", icon: List },
-                ],
-            },
-            {
-                title: "Visa",
-                icon: FileText,
-                tooltip: "Thailand visa types & immigration services",
-                items: [
-                    { title: "Create Visa", url: "/visa/create", icon: Plus },
-                    { title: "Manage Visas", url: "/visa/manage", icon: List },
-                ],
-            },
-        ]
-    },
-    {
-        title: "Places",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Places",
+                title: "Locations",
                 icon: MapPin,
-                tooltip: "Points of interest for the mobile app",
+                tooltip: "Regions, Cities & Districts",
+                roles: AdminRole.ADMIN_SETUP,
                 items: [
-                    { title: "Create Place", url: "/places/create", icon: Plus },
-                    { title: "Manage Places", url: "/places/manage", icon: List },
-                ],
-            },
-        ],
-    },
-    {
-        title: "Review & Moderation",
-        roles: AdminRole.ADMIN_OPS,
-        items: [
-            { title: "Content Moderation", url: "/moderation/content", icon: ShieldAlert, tooltip: "Content Moderation" },
-            { title: "User/Shop Reports", url: "/moderation/user-shop", icon: ShieldAlert, tooltip: "User/Shop Reports" },
-            { title: "Review Moderation", url: "/review/reviews", icon: ClipboardList, tooltip: "Reviews" }
-        ]
-    },
-    {
-        title: "Shop Feedback",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Shop Feedback",
-                url: "/shop-feedback/manage",
-                icon: MessageSquare,
-                tooltip: "Shop Feedback from shop admins",
-            }
-        ],
-    },
-    {
-        title: "Delivery Drivers",
-        roles: AdminRole.ADMIN,
-        items: [
-            {
-                title: "Delivery Drivers",
-                url: "/delivery-drivers/manage",
-                icon: Bike,
-                tooltip: "Shop delivery drivers (view and hard delete)",
-            }
-        ],
-    },
-    {
-        title: "Community",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
-            { title: "Places & Activities", url: "/places", icon: MapPin, tooltip: "Chill Spots & Activities" },
-            { title: "Lost & Found", url: "/lostfound", icon: Package, tooltip: "Lost & Found" }
-        ]
-    },
-    {
-        title: "Social Media",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
-            { title: "Posts & Comments", url: "/social-media/posts", icon: Share2, tooltip: "Social Media Posts" },
-            { title: "Create Post", url: "/social-media/posts/create", icon: Plus, tooltip: "Create Social Post" }
-        ]
-    },
-    {
-        title: "Marketing & Comms",
-        roles: [AdminRole.ADMIN, AdminRole.ADMIN_SETUP],
-        items: [
-            { title: "Banner", url: "/marketing/banners?tab=banners", icon: ImageIcon, tooltip: "Banner", roles: AdminRole.ADMIN },
-            { title: "Order Waiting", url: "/marketing/banners?tab=order", icon: ShoppingBag, tooltip: "Order Waiting", roles: AdminRole.ADMIN },
-            { title: "Splash", url: "/marketing/banners?tab=splash", icon: Smartphone, tooltip: "Splash", roles: AdminRole.ADMIN },
-            { title: "Featured", url: "/marketing/banners?tab=featured", icon: Star, tooltip: "Featured", roles: AdminRole.ADMIN },
-            { title: "Background Themes", url: "/background-themes/manage", icon: ImageIcon, tooltip: "Background Themes", roles: AdminRole.ADMIN },
-            { title: "Promotions", url: "/promotions/manage", icon: TicketPercent, tooltip: "Promotions", roles: AdminRole.ADMIN },
-            { title: "Home Discount Sections", url: "/home-discount-sections/manage", icon: TicketPercent, tooltip: "Home discount carousel config", roles: AdminRole.ADMIN_SETUP },
-            { title: "Referral & Promote Codes", url: "/referrals/manage", icon: Gift, tooltip: "Referral Program", roles: AdminRole.ADMIN },
-            { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Broadcast", roles: AdminRole.ADMIN_SETUP }
-        ]
-    },
-    {
-        title: "Users",
-        roles: AdminRole.ADMIN_OPS,
-        items: [
-            { title: "Manage Users", url: "/users/manage", icon: Users, tooltip: "Manage Users" }
-        ]
-    },
-    {
-        title: "Cuisines",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
-            { title: "Create Cuisine", url: "/cuisines/create", icon: Plus, tooltip: "Create Cuisine" },
-            { title: "Manage Cuisines", url: "/cuisines/manage", icon: List, tooltip: "Manage Cuisines" }
-        ]
-    },
-    {
-        title: "Location",
-        roles: AdminRole.ADMIN_SETUP,
-        items: [
-            {
-                title: "Region",
-                icon: MapPin,
-                tooltip: "Region",
-                items: [
+                    { title: "Manage Regions", url: "/regions/manage", icon: List },
                     { title: "Create Region", url: "/regions/create", icon: Plus },
-                    { title: "Manage Regions", url: "/regions/manage", icon: List }
-                ]
-            },
-            {
-                title: "City",
-                icon: Building2,
-                tooltip: "City",
-                items: [
+                    { title: "Manage Cities", url: "/cities/manage", icon: Building2 },
                     { title: "Create City", url: "/cities/create", icon: Plus },
-                    { title: "Manage Cities", url: "/cities/manage", icon: List }
+                    { title: "Manage Districts", url: "/districts/manage", icon: MapPin },
+                    { title: "Create District", url: "/districts/create", icon: Plus }
                 ]
             },
             {
-                title: "District",
-                icon: MapPin,
-                tooltip: "District",
+                title: "Data Import (Excel)",
+                icon: FileSpreadsheet,
+                tooltip: "Excel Import Tools",
+                roles: AdminRole.ADMIN,
                 items: [
-                    { title: "Create District", url: "/districts/create", icon: Plus },
-                    { title: "Manage Districts", url: "/districts/manage", icon: List }
+                    { title: "Single Shop Import", url: "/import/single-shop-excel", icon: FileSpreadsheet },
+                    { title: "Bulk Shops Import", url: "/import/shops-excel", icon: FileSpreadsheet },
+                    { title: "Activity Import", url: "/import/activity-excel", icon: FileSpreadsheet }
                 ]
             }
         ]
     },
+
+    // ── 9. System & Administration ─────────────────────────────────────────────
     {
-        title: "Data Import",
-        roles: AdminRole.ADMIN,
-        items: [
-            { title: "Import Single Shop (Excel)", url: "/import/single-shop-excel", icon: FileSpreadsheet, tooltip: "Excel onboarding API (dry run + create shop)" },
-        ]
-    },
-    {
-        title: "Administration",
+        title: "System & Administration",
         items: [
             {
                 title: "Admin Management",
                 icon: Shield,
-                tooltip: "Super Admin & Operation Admin accounts",
+                tooltip: "Admin Accounts & Permissions",
                 roles: AdminRole.ADMIN,
                 items: [
-                    { title: "Create Admin", url: "/admins/create", icon: Plus },
                     { title: "Manage Admins", url: "/admins/manage", icon: List },
-                    { title: "Marketing access", url: "/admins/marketing-access", icon: Shield },
-                ],
+                    { title: "Create Admin", url: "/admins/create", icon: Plus },
+                    { title: "Marketing Access", url: "/admins/marketing-access", icon: Shield }
+                ]
             },
-            { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList, tooltip: "Audit Logs", roles: AdminRole.ADMIN },
-            { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone, tooltip: "Active admin sessions & force logout", roles: AdminRole.ADMIN },
-            { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, tooltip: "Order Timeouts", roles: AdminRole.ADMIN_FINANCE },
-            { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, tooltip: "Onboarding", roles: AdminRole.ADMIN_SETUP },
-            { title: "App Language", url: "/system/language", icon: Languages, tooltip: "Set MyTogether, MyShop, or the website to Thai", roles: AdminRole.ADMIN },
-            { title: "Twilio Order Calls", url: "/system/twilio", icon: PhoneCall, tooltip: "Twilio automated order voice calls", roles: AdminRole.ADMIN },
-            { title: "Configurations", url: "/system/configs", icon: Settings2, tooltip: "Configurations", roles: AdminRole.ADMIN_SETUP },
-            { title: "Feature Flags", url: "/system/feature-flags", icon: Flag, tooltip: "Feature Flags", roles: AdminRole.ADMIN_SETUP },
-            { title: "App Content", url: "/system/app-content", icon: FileText, tooltip: "App Content", roles: AdminRole.ADMIN_SETUP },
-            { title: "App Versions", url: "/system/app-versions", icon: Smartphone, tooltip: "App Versions", roles: AdminRole.ADMIN_SETUP },
-            { title: "Admin Profile", url: "/admin/profile", icon: User, tooltip: "Admin Profile" },
-            { title: "Settings", url: "#", icon: Settings, tooltip: "Settings", roles: AdminRole.ADMIN }
+            {
+                title: "Security & Logs",
+                icon: ShieldAlert,
+                tooltip: "Audit Logs & Active Sessions",
+                roles: AdminRole.ADMIN,
+                items: [
+                    { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList },
+                    { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone },
+                    { title: "System Health", url: "/system/health", icon: Zap }
+                ]
+            },
+            {
+                title: "Platform Settings",
+                icon: Settings2,
+                tooltip: "Configurations, Languages, Timeouts & Flags",
+                items: [
+                    { title: "Configurations", url: "/system/configs", icon: Settings2, roles: AdminRole.ADMIN_SETUP },
+                    { title: "Feature Flags", url: "/system/feature-flags", icon: Flag, roles: AdminRole.ADMIN_SETUP },
+                    { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, roles: AdminRole.ADMIN_FINANCE },
+                    { title: "App Language", url: "/system/language", icon: Languages, roles: AdminRole.ADMIN },
+                    { title: "Twilio Order Calls", url: "/system/twilio", icon: PhoneCall, roles: AdminRole.ADMIN },
+                    { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, roles: AdminRole.ADMIN_SETUP },
+                    { title: "App Content", url: "/system/app-content", icon: FileText, roles: AdminRole.ADMIN_SETUP },
+                    { title: "App Versions", url: "/system/app-versions", icon: Smartphone, roles: AdminRole.ADMIN_SETUP }
+                ]
+            },
+            { title: "Admin Profile", url: "/admin/profile", icon: User, tooltip: "Admin Profile" }
         ]
     }
 ];

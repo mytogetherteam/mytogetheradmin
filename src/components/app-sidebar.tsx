@@ -167,12 +167,13 @@ export function AppSidebar() {
                             {group.items.map((item, itemIdx) => {
                                 if (item.items && item.items.length > 0) {
                                     // Collapsible item
+                                    const hasActiveChild = item.items.some((sub) => isActive(sub.url));
                                     return (
                                         <Collapsible
-                                            key={(query ? 'search-' : 'normal-') + itemIdx}
+                                            key={(query ? 'search-' : 'normal-') + itemIdx + (hasActiveChild ? '-open' : '')}
                                             asChild
                                             className="group/collapsible"
-                                            defaultOpen={!!query}
+                                            defaultOpen={!!query || hasActiveChild}
                                         >
                                             <SidebarMenuItem>
                                                 <CollapsibleTrigger asChild>
