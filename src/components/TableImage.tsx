@@ -33,6 +33,8 @@ export function TableImage({ src, alt, className, size = "md", fallbackIcon }: T
         <img
           src={src || ""}
           alt={alt || "Image"}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover transition-opacity duration-300"
           onError={() => setError(true)}
         />
