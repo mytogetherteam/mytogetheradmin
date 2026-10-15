@@ -73,7 +73,16 @@ export const navigationConfig: NavGroup[] = [
     {
         items: [
             { title: "Dashboard", url: "/", icon: LayoutDashboard, tooltip: "Dashboard" },
-            { title: "Analytics", url: "/analytics", icon: BarChart2, tooltip: "Analytics", roles: AdminRole.ADMIN_FINANCE }
+            {
+                title: "Analytics",
+                icon: BarChart2,
+                tooltip: "Analytics",
+                roles: AdminRole.ADMIN_FINANCE,
+                items: [
+                    { title: "Analytics", url: "/analytics", icon: BarChart2, roles: AdminRole.ADMIN_FINANCE },
+                    { title: "Reports", url: "/analytics/reports", icon: FileSpreadsheet, roles: AdminRole.ADMIN_FINANCE },
+                ],
+            }
         ]
     },
     {

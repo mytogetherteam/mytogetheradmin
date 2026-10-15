@@ -64,6 +64,8 @@ export interface Order {
   shopName: string;
   shopNameMm?: string;
   shopImageUrl?: string;
+  shopLatitude?: number | null;
+  shopLongitude?: number | null;
   userId?: number | null;
   userFullName?: string | null;
   userPhone?: string | null;

@@ -324,6 +324,15 @@ export const config = {
         activeUsersDay: '/api/admin/analytics/active-users/day',
         userRegistrationStats: '/api/admin/analytics/users/registration-stats',
         dashboardSummary: '/api/admin/analytics/dashboard-summary',
+        reports: {
+          operations: '/api/admin/analytics/reports/operations',
+          shops: '/api/admin/analytics/reports/shops',
+          cancellations: '/api/admin/analytics/reports/cancellations',
+          money: '/api/admin/analytics/reports/money',
+          menus: '/api/admin/analytics/reports/menus',
+          promotions: '/api/admin/analytics/reports/promotions',
+          reviews: '/api/admin/analytics/reports/reviews',
+        },
       },
       system: {
         latency: '/api/admin/system/latency',

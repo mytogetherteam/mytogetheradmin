@@ -22,6 +22,42 @@ export const ORDER_DELIVERY_TYPE_LABELS: Record<string, string> = {
     FLEXIBLE: "Flexible",
 };
 
+function usableCoord(lat?: number | null, lon?: number | null): boolean {
+    if (lat == null || lon == null) return false;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+    if (lat === 0 || lon === 0) return false;
+    return Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const earthKm = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return earthKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Whole kilometers from the shop to the address the customer entered. */
+export function shopToCustomerKmLabel(order: {
+    orderType?: string | null;
+    lat?: number | null;
+    lon?: number | null;
+    shopLatitude?: number | null;
+    shopLongitude?: number | null;
+}): string | null {
+    const type = (order.orderType ?? "").toUpperCase();
+    if (type === "PICK_UP" || type === "PICKUP") return null;
+    if (!usableCoord(order.shopLatitude, order.shopLongitude)) return null;
+    if (!usableCoord(order.lat, order.lon)) return null;
+    const km = haversineKm(order.shopLatitude!, order.shopLongitude!, order.lat!, order.lon!);
+    if (!(km > 0)) return null;
+    if (km < 0.5) return "< 1 Km";
+    return `${Math.round(km)} Km`;
+}
+
 export interface Address {
     buildingName?: string;
     floor?: string;

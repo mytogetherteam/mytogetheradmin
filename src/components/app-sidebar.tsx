@@ -172,7 +172,7 @@ export function AppSidebar() {
                                             key={(query ? 'search-' : 'normal-') + itemIdx}
                                             asChild
                                             className="group/collapsible"
-                                            defaultOpen={!!query}
+                                            defaultOpen={!!query || (!!item.items?.some((sub) => sub.url.startsWith("/analytics")) && location.pathname.startsWith("/analytics"))}
                                         >
                                             <SidebarMenuItem>
                                                 <CollapsibleTrigger asChild>

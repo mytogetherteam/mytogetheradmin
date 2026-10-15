@@ -118,6 +118,7 @@ const ManageSubscriptions = lazy(() => import("@/pages/subscriptions/ManageSubsc
 
 // Analytics
 const AnalyticalDashboard = lazy(() => import("@/pages/analytics/AnalyticalDashboard"));
+const ReportsPage = lazy(() => import("@/pages/analytics/ReportsPage"));
 
 // System
 const AuditLogs = lazy(() => import("@/pages/system/AuditLogs"));
@@ -281,6 +282,7 @@ function App() {
               {/* FINANCE Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN_FINANCE}><Outlet /></ProtectedRoute>}>
                 <Route path="/analytics" element={<AnalyticalDashboard />} />
+                <Route path="/analytics/reports" element={<ReportsPage />} />
                 <Route path="/orders/history" element={<OrderHistory />} />
                 <Route path="/system/order-timeouts" element={<OrderTimeoutManagement />} />
               </Route>

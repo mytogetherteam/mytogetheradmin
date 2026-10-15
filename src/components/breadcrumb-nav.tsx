@@ -2,7 +2,8 @@ import { useLocation, Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, Home } from "lucide-react";
 
 const routeLabels: Record<string, string> = {
-    "analytics": "Dashboard",
+    "analytics": "Analytics",
+    "reports": "Reports",
     "users": "Users",
     "manage": "Manage",
     "shops": "Shops",
@@ -53,6 +54,7 @@ const routeLabels: Record<string, string> = {
 const navigableIntermediatePaths = new Set<string>([
     "/menus/approvals",
     "/community/posts",
+    "/analytics",
 ]);
 
 // Tab labels: maps ?tab= values to human-readable names

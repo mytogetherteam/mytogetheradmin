@@ -2,9 +2,10 @@ import { Order } from "@/services/orderService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Clock, Calendar } from "lucide-react";
-import { ORDER_DELIVERY_TYPE_LABELS } from "./order-format";
+import { ORDER_DELIVERY_TYPE_LABELS, shopToCustomerKmLabel } from "./order-format";
 
 export function DeliveryInfoCard({ order }: { order: Order }) {
+    const distanceLabel = shopToCustomerKmLabel(order);
     return (
         <Card>
             <CardHeader>
@@ -22,6 +23,12 @@ export function DeliveryInfoCard({ order }: { order: Order }) {
                             : (order.deliveryType || "N/A")}
                     </Badge>
                 </div>
+                {distanceLabel && (
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Distance</span>
+                        <span className="font-medium">{distanceLabel}</span>
+                    </div>
+                )}
                 {order.orderType !== "PICK_UP" && (
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Delivery Type</span>
