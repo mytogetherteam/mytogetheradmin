@@ -22,6 +22,53 @@ export const ORDER_DELIVERY_TYPE_LABELS: Record<string, string> = {
     FLEXIBLE: "Flexible",
 };
 
+/** Brand colors used by the shop app’s Bolt and Grab buttons. */
+export const DELIVERY_COURIER_COLORS = {
+    bolt: "#32BB78",
+    grab: "#00B14F",
+} as const;
+
+export type DeliveryCourier = keyof typeof DELIVERY_COURIER_COLORS;
+
+const COURIER_HOSTS: Record<DeliveryCourier, readonly string[]> = {
+    bolt: ["bolt.eu"],
+    grab: ["grab.com", "grab.co", "grabtaxi.com", "grab.onelink.me"],
+};
+
+function hostIs(host: string, root: string): boolean {
+    return host === root || host.endsWith(`.${root}`);
+}
+
+/**
+ * Bolt or Grab link saved on the order. Shops often paste a whole share
+ * message, so this takes the first http(s) URL inside the text.
+ */
+export function deliveryTrackingTarget(
+    url?: string | null,
+): { courier: DeliveryCourier; href: string } | null {
+    const raw = url?.trim();
+    if (!raw) return null;
+    const embedded = raw.match(/https?:\/\/[^\s<>"']+/i);
+    const candidate = (embedded?.[0] ?? (raw.includes("://") ? raw : "")).replace(/[),.;]+$/, "");
+    if (!candidate) return null;
+    let parsed: URL;
+    try {
+        parsed = new URL(candidate);
+    } catch {
+        return null;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    parsed.username = "";
+    parsed.password = "";
+    const host = parsed.hostname.toLowerCase();
+    for (const courier of ["bolt", "grab"] as const) {
+        if (COURIER_HOSTS[courier].some((root) => hostIs(host, root))) {
+            return { courier, href: parsed.toString() };
+        }
+    }
+    return null;
+}
+
 function usableCoord(lat?: number | null, lon?: number | null): boolean {
     if (lat == null || lon == null) return false;
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
@@ -40,22 +87,26 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
     return earthKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** Straight-line distance above this is called out on the order details page. */
+export const FAR_SHOP_DISTANCE_KM = 20;
+
 /** Whole kilometers from the shop to the address the customer entered. */
-export function shopToCustomerKmLabel(order: {
+export function shopToCustomerDistance(order: {
     orderType?: string | null;
     lat?: number | null;
     lon?: number | null;
     shopLatitude?: number | null;
     shopLongitude?: number | null;
-}): string | null {
+}): { label: string; far: boolean } | null {
     const type = (order.orderType ?? "").toUpperCase();
     if (type === "PICK_UP" || type === "PICKUP") return null;
     if (!usableCoord(order.shopLatitude, order.shopLongitude)) return null;
     if (!usableCoord(order.lat, order.lon)) return null;
     const km = haversineKm(order.shopLatitude!, order.shopLongitude!, order.lat!, order.lon!);
     if (!(km > 0)) return null;
-    if (km < 0.5) return "< 1 Km";
-    return `${Math.round(km)} Km`;
+    if (km < 0.5) return { label: "< 1 Km", far: false };
+    const rounded = Math.round(km);
+    return { label: `${rounded} Km`, far: rounded > FAR_SHOP_DISTANCE_KM };
 }
 
 export interface Address {
