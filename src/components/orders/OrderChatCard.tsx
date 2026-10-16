@@ -612,27 +612,46 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                                     msg.senderType === "USER" ||
                                     Boolean(msg.senderUserId && !msg.senderAdminId && !msg.senderAdmin);
 
-                                // Check if sender is Shop or ShopAdmin
+                                // Check if sender is a Platform Admin (System Support / Super Admin)
                                 const adminName = (msg.senderAdmin?.name || "").toLowerCase().trim();
                                 const adminRole = (msg.senderAdmin?.role?.name || "").toLowerCase().trim();
                                 const shopName = (order.shopName || "").toLowerCase().trim();
 
+                                const isPlatformAdmin = Boolean(
+                                    adminRole === "superadmin" ||
+                                    adminRole === "marketingadmin" ||
+                                    adminName === "super admin" ||
+                                    adminName === "superadmin" ||
+                                    adminName === "marketing admin" ||
+                                    adminName === "marketingadmin" ||
+                                    adminName === "system admin" ||
+                                    adminName === "system"
+                                );
+
+                                // Check if sender is Shop or Shop Admin (e.g. Kalayana Admin, Kalyana Admin, Shop Admin)
                                 const isShopByRole = adminRole.includes("shop");
-                                const isGenericShopAdmin =
-                                    adminName === "shop admin" || adminName.startsWith("shop admin");
+                                const isShopAdminByKeyword =
+                                    adminName.endsWith("admin") && !isPlatformAdmin;
+                                const isShopPrefixMatch = Boolean(
+                                    adminName &&
+                                    shopName &&
+                                    adminName.slice(0, 3) === shopName.slice(0, 3)
+                                );
                                 const isShopNameMatch = Boolean(
                                     adminName &&
                                     shopName &&
                                     (adminName.includes(shopName) ||
-                                     shopName.split(/\s+/).some((token) => token.length >= 3 && adminName.includes(token)))
+                                     shopName.split(/\s+/).some((token) => token.length >= 3 && adminName.includes(token)) ||
+                                     isShopPrefixMatch)
                                 );
 
                                 const isShop =
                                     !isCustomer &&
                                     (msg.senderType === "SHOP" ||
                                      isShopByRole ||
-                                     isGenericShopAdmin ||
-                                     isShopNameMatch);
+                                     isShopAdminByKeyword ||
+                                     isShopNameMatch ||
+                                     (!isPlatformAdmin && Boolean(msg.senderAdmin || msg.senderAdminId)));
 
                                 const isSystem = !isCustomer && !isShop;
 
