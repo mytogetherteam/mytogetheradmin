@@ -607,19 +607,34 @@ export function OrderChatCard({ order }: OrderChatCardProps) {
                             </div>
                         ) : (
                             sortedMessages.map((msg, index) => {
-                                // Strictly distinguish Admin / System from Customer and Shop
-                                const isSystem =
-                                    msg.senderType === "SYSTEM" ||
-                                    msg.senderType === "ADMIN" ||
-                                    Boolean(msg.senderAdminId && msg.senderType !== "SHOP" && msg.senderType !== "USER") ||
-                                    Boolean(msg.senderAdmin && msg.senderType !== "SHOP" && msg.senderType !== "USER");
-
+                                // Distinguish Customer first
                                 const isCustomer =
-                                    !isSystem &&
-                                    (msg.senderType === "USER" ||
-                                        Boolean(msg.senderUserId && !msg.senderAdminId));
+                                    msg.senderType === "USER" ||
+                                    Boolean(msg.senderUserId && !msg.senderAdminId && !msg.senderAdmin);
 
-                                const isShop = !isCustomer && !isSystem;
+                                // Check if sender is Shop or ShopAdmin
+                                const adminName = (msg.senderAdmin?.name || "").toLowerCase().trim();
+                                const adminRole = (msg.senderAdmin?.role?.name || "").toLowerCase().trim();
+                                const shopName = (order.shopName || "").toLowerCase().trim();
+
+                                const isShopByRole = adminRole.includes("shop");
+                                const isGenericShopAdmin =
+                                    adminName === "shop admin" || adminName.startsWith("shop admin");
+                                const isShopNameMatch = Boolean(
+                                    adminName &&
+                                    shopName &&
+                                    (adminName.includes(shopName) ||
+                                     shopName.split(/\s+/).some((token) => token.length >= 3 && adminName.includes(token)))
+                                );
+
+                                const isShop =
+                                    !isCustomer &&
+                                    (msg.senderType === "SHOP" ||
+                                     isShopByRole ||
+                                     isGenericShopAdmin ||
+                                     isShopNameMatch);
+
+                                const isSystem = !isCustomer && !isShop;
 
                                 const isAutomatedNotice =
                                     msg.type === "SYSTEM" &&

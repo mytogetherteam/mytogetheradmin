@@ -217,6 +217,10 @@ export interface ChatMessageSender {
   phone?: string | null;
   email?: string | null;
   profileUrl?: string | null;
+  role?: {
+    id?: number;
+    name?: string;
+  } | null;
 }
 
 export interface ChatMessage {
