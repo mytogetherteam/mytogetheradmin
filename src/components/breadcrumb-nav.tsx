@@ -39,6 +39,7 @@ const routeLabels: Record<string, string> = {
     "broadcast": "Broadcast",
     "system": "System",
     "free-delivery": "Free Delivery",
+    "delivery-range": "Delivery Range",
     "audit-logs": "Audit Logs",
     "cities": "Cities",
     "districts": "Districts",

@@ -344,6 +344,7 @@ export const config = {
         freeDelivery: {
           config: '/api/admin/free-delivery/config',
         },
+        deliveryRange: '/api/admin/delivery-range',
         configs: {
           base: '/api/admin/configs',
           key: (key: string) => `/api/admin/configs/${key}`,

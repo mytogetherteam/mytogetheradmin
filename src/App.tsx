@@ -124,6 +124,7 @@ const ReportsPage = lazy(() => import("@/pages/analytics/ReportsPage"));
 const AuditLogs = lazy(() => import("@/pages/system/AuditLogs"));
 const OrderTimeoutManagement = lazy(() => import("@/pages/system/OrderTimeoutManagement"));
 const FreeDeliveryManagement = lazy(() => import("@/pages/system/FreeDeliveryManagement"));
+const DeliveryRangeManagement = lazy(() => import("@/pages/system/DeliveryRangeManagement"));
 const SystemConfigManagement = lazy(() => import("@/pages/system/SystemConfigManagement"));
 const AppContentManagement = lazy(() => import("@/pages/system/AppContentManagement"));
 const AppVersionManagement = lazy(() => import("@/pages/system/AppVersionManagement"));
@@ -290,6 +291,7 @@ function App() {
               {/* SUPER ADMIN Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
                 <Route path="/shops/free-delivery" element={<FreeDeliveryManagement />} />
+                <Route path="/orders/delivery-range" element={<DeliveryRangeManagement />} />
                 <Route path="/system/free-delivery" element={<Navigate to="/shops/free-delivery" replace />} />
                 <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                 <Route path="/import/activity-excel" element={<ActivityExcelImport />} />

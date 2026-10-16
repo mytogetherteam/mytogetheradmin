@@ -99,7 +99,8 @@ export const navigationConfig: NavGroup[] = [
                 roles: [AdminRole.ADMIN, AdminRole.ADMIN_FINANCE],
                 items: [
                     { title: "Live Order Board", url: "/orders/board", icon: ClipboardList, roles: AdminRole.ADMIN },
-                    { title: "Order History", url: "/orders/history", icon: History, roles: AdminRole.ADMIN_FINANCE }
+                    { title: "Order History", url: "/orders/history", icon: History, roles: AdminRole.ADMIN_FINANCE },
+                    { title: "Delivery Range", url: "/orders/delivery-range", icon: MapPin, roles: AdminRole.ADMIN }
                 ]
             },
             { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Shop, Menu & Payment Approvals", roles: AdminRole.ADMIN_OPS },
