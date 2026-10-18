@@ -98,6 +98,7 @@ const ManageDeliveryDrivers = lazy(
 const SocialMediaMgt = lazy(() => import("@/pages/social-media/SocialMediaMgt"));
 const SocialPostDetailPage = lazy(() => import("@/pages/social-media/PostDetailPage"));
 const SocialPostForm = lazy(() => import("@/pages/social-media/SocialPostForm"));
+const SocialReactionsPage = lazy(() => import("@/pages/social-media/SocialReactionsPage"));
 
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
@@ -290,6 +291,7 @@ function App() {
 
               {/* SUPER ADMIN Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
+                <Route path="/social-media/reactions" element={<SocialReactionsPage />} />
                 <Route path="/shops/free-delivery" element={<FreeDeliveryManagement />} />
                 <Route path="/orders/delivery-range" element={<DeliveryRangeManagement />} />
                 <Route path="/system/free-delivery" element={<Navigate to="/shops/free-delivery" replace />} />

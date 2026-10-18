@@ -100,6 +100,42 @@ export interface PromotionLedger {
   }>;
 }
 
+export interface CustomerOrdersReport {
+  total: number;
+  shown: number;
+  repeatCustomers: number;
+  firstTimeCustomers: number;
+  rows: Array<{
+    userId: number;
+    name: string;
+    phone: string;
+    ordersInRange: number;
+    spentInRange: number;
+    ordersSoFar: number;
+    spentSoFar: number;
+    favoriteShop: string | null;
+    favoriteOrders: number;
+    goneQuiet: boolean;
+    lastOrderAt: string;
+  }>;
+}
+
+export interface CustomerOrderHistory {
+  userId: number;
+  name: string;
+  phone: string;
+  total: number;
+  shown: number;
+  rows: Array<{
+    orderId: number;
+    orderNo: string;
+    shopName: string;
+    createdAt: string;
+    amount: number;
+    status: string;
+  }>;
+}
+
 export interface ReviewRecord {
   threshold: number;
   delivered: number;
@@ -151,4 +187,8 @@ export const reportsService = {
     apiClient.get<PromotionLedger>(`${reports.promotions}?${rangeQuery(start, end)}`),
   reviews: (start: string, end: string, maxRating: string) =>
     apiClient.get<ReviewRecord>(`${reports.reviews}?${rangeQuery(start, end, { maxRating })}`),
+  customers: (start: string, end: string, limit: string) =>
+    apiClient.get<CustomerOrdersReport>(`${reports.customers}?${rangeQuery(start, end, { limit })}`),
+  customerOrders: (userId: number) =>
+    apiClient.get<CustomerOrderHistory>(reports.customerOrders(userId)),
 };

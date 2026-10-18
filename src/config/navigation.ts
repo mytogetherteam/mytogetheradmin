@@ -38,6 +38,7 @@ import {
     ShoppingBag,
     Star,
     Share2,
+    Smile,
     Gift,
     Languages,
     PhoneCall,
@@ -222,7 +223,8 @@ export const navigationConfig: NavGroup[] = [
                 roles: AdminRole.ADMIN_SETUP,
                 items: [
                     { title: "Posts & Feed", url: "/social-media/posts", icon: Share2 },
-                    { title: "Create Post", url: "/social-media/posts/create", icon: Plus }
+                    { title: "Create Post", url: "/social-media/posts/create", icon: Plus },
+                    { title: "Reactions", url: "/social-media/reactions", icon: Smile, roles: AdminRole.ADMIN }
                 ]
             },
             {

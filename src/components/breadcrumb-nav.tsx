@@ -30,6 +30,7 @@ const routeLabels: Record<string, string> = {
     "places": "Places & Activities",
     "community": "Community",
     "social-media": "Social Media",
+    "reactions": "Reactions",
     "posts": "Posts",
     "comments": "Comments",
     "lostfound": "Lost & Found",

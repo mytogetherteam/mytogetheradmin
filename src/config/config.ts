@@ -54,6 +54,10 @@ export const config = {
         base: '/api/admin/shop-coupons',
         detail: (id: number) => `/api/admin/shop-coupons/${id}`,
       },
+      socialReactions: {
+        base: '/api/admin/social-reactions',
+        detail: (id: number) => `/api/admin/social-reactions/${id}`,
+      },
       plans: {
         base: '/api/admin/plans',
         detail: (id: number) => `/api/admin/plans/${id}`,
@@ -332,6 +336,8 @@ export const config = {
           menus: '/api/admin/analytics/reports/menus',
           promotions: '/api/admin/analytics/reports/promotions',
           reviews: '/api/admin/analytics/reports/reviews',
+          customers: '/api/admin/analytics/reports/customers',
+          customerOrders: (userId: number) => `/api/admin/analytics/reports/customers/${userId}/orders`,
         },
       },
       system: {

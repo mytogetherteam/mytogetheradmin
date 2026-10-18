@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileSpreadsheet } from "lucide-react";
+import {
+    Ban, Banknote, ClipboardList, FileSpreadsheet, ScrollText, Star, Store, Ticket, Users, Utensils,
+    type LucideIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -21,6 +29,8 @@ import {
     MenuPerformanceReport,
     PromotionLedger,
     ReviewRecord,
+    CustomerOrdersReport,
+    CustomerOrderHistory,
 } from "@/services/reportsService";
 import { ApiError } from "@/services/apiClient";
 import { formatBangkokDateTime, getBangkokDateString } from "@/utils/bangkokTime";
@@ -33,47 +43,71 @@ type ReportId =
     | "menus"
     | "promotions"
     | "reviews"
+    | "customers"
     | "staff";
 
-const REPORTS: Array<{ id: ReportId; title: string; hint: string }> = [
+const REPORTS: Array<{ id: ReportId; tab: string; title: string; hint: string; icon: LucideIcon }> = [
     {
         id: "operations",
+        tab: "Operations",
         title: "Operations summary",
+        icon: ClipboardList,
         hint: "One row per day. Placed is every order created that day. Delivered, picked up, and canceled are the current status. Escalated orders can also appear in those columns. Kitchen wait averages only completed orders that have a wait recorded.",
     },
     {
         id: "shops",
+        tab: "Shops",
         title: "Shop scorecard",
+        icon: Store,
         hint: "Testing shops are omitted. Needs attention means open with no orders, a cancel rate of 20% or more on at least 3 orders, or a rating under 3 with at least 3 orders.",
     },
     {
         id: "cancellations",
+        tab: "Cancellations",
         title: "Cancellation ledger",
+        icon: Ban,
         hint: "Each canceled order in the range. The newest 500 are listed when there are more.",
     },
     {
         id: "money",
+        tab: "Money",
         title: "Shop money",
+        icon: Banknote,
         hint: "Sales from orders that were not canceled. Customers paid is the stored order total.",
     },
     {
         id: "menus",
+        tab: "Menus",
         title: "Menu performance",
+        icon: Utensils,
         hint: "Dishes ordered in this range. Orders means separate orders, and sales is the line total. Views and likes are all-time totals. Testing shops are omitted. The top 200 by orders are listed.",
     },
     {
         id: "promotions",
+        tab: "Promotions",
         title: "Promotion ledger",
+        icon: Ticket,
         hint: "Coupons redeemed or used on a non-canceled order in this range. Testing shops are omitted.",
     },
     {
+        id: "customers",
+        tab: "Customers",
+        title: "Customers",
+        icon: Users,
+        hint: "People who placed an order in this range. The table is the top customers by completed orders so far. Spent so far sits beside that count and is what they paid on completed orders. Favorite restaurant is the shop those orders came from most often. Gone quiet means the last completed order was more than 30 days ago. Click a name to open that person's orders. Canceled and rejected orders are left out of the counts, the spend, and the favorite shop. Testing shops are omitted.",
+    },
+    {
         id: "reviews",
+        tab: "Reviews",
         title: "Review record",
+        icon: Star,
         hint: "Reviews are order reviews on delivered orders created in this range. Shop ratings are the shop's current rating.",
     },
     {
         id: "staff",
+        tab: "Staff",
         title: "Staff log",
+        icon: ScrollText,
         hint: "Shop staff and admins active on the To date.",
     },
 ];
@@ -126,6 +160,30 @@ function promoTargetLabel(value: string) {
     return value;
 }
 
+function orderHistory(count: number) {
+    if (count <= 0) return "No completed orders yet";
+    if (count === 1) return "Ordered once";
+    return `Ordered ${count.toLocaleString()} times already`;
+}
+
+function orderStatusLabel(status: string) {
+    const labels: Record<string, string> = {
+        PENDING: "Pending",
+        CANCELED: "Canceled",
+        REJECTED: "Rejected",
+        PAYMENT_SLIP_REQUESTED: "Waiting for payment",
+        AWAITING_APPROVAL: "Awaiting approval",
+        PAYMENT_VERIFIED: "Payment verified",
+        COOKING: "Cooking",
+        READY_FOR_PICKUP: "Ready for pickup",
+        ON_THE_WAY: "On the way",
+        DELIVERED: "Delivered",
+        PICKED_UP: "Picked up",
+        REVISED: "Revised",
+    };
+    return labels[status] ?? status;
+}
+
 function roleLabel(role: string | null) {
     if (role === "SuperAdmin") return "Super admin";
     if (role === "ShopAdmin") return "Shop admin";
@@ -160,6 +218,7 @@ export default function ReportsPage() {
     const [endDate, setEndDate] = useState(defaults.end);
     const [actor, setActor] = useState("ALL");
     const [maxRating, setMaxRating] = useState("3");
+    const [customerLimit, setCustomerLimit] = useState("10");
     const [attentionOnly, setAttentionOnly] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -170,12 +229,36 @@ export default function ReportsPage() {
     const [menus, setMenus] = useState<MenuPerformanceReport | null>(null);
     const [promotions, setPromotions] = useState<PromotionLedger | null>(null);
     const [reviews, setReviews] = useState<ReviewRecord | null>(null);
+    const [customers, setCustomers] = useState<CustomerOrdersReport | null>(null);
     const [staff, setStaff] = useState<{ total: number; actors: ActiveActor[] } | null>(null);
+    const [openedCustomer, setOpenedCustomer] = useState<CustomerOrdersReport["rows"][number] | null>(null);
+    const [history, setHistory] = useState<CustomerOrderHistory | null>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState<string | null>(null);
 
     const selected = REPORTS.find((item) => item.id === reportId) ?? REPORTS[0];
     const dateProblem = rangeError(startDate, endDate);
 
     const requestId = useRef(0);
+    const historyRequest = useRef(0);
+
+    const openCustomerOrders = useCallback(async (row: CustomerOrdersReport["rows"][number]) => {
+        const id = ++historyRequest.current;
+        setOpenedCustomer(row);
+        setHistory(null);
+        setHistoryError(null);
+        setHistoryLoading(true);
+        try {
+            const result = await reportsService.customerOrders(row.userId);
+            if (historyRequest.current !== id) return;
+            setHistory(result);
+        } catch (loadError: unknown) {
+            if (historyRequest.current !== id) return;
+            setHistoryError(errorMessage(loadError));
+        } finally {
+            if (historyRequest.current === id) setHistoryLoading(false);
+        }
+    }, []);
 
     const loadReport = useCallback(async () => {
         const id = ++requestId.current;
@@ -204,6 +287,9 @@ export default function ReportsPage() {
             } else if (reportId === "reviews") {
                 const result = await reportsService.reviews(startDate, endDate, maxRating);
                 if (current()) setReviews(result);
+            } else if (reportId === "customers") {
+                const result = await reportsService.customers(startDate, endDate, customerLimit);
+                if (current()) setCustomers(result);
             } else {
                 const actors: ActiveActor[] = [];
                 let page = 1;
@@ -223,7 +309,7 @@ export default function ReportsPage() {
         } finally {
             if (current()) setLoading(false);
         }
-    }, [reportId, startDate, endDate, actor, maxRating]);
+    }, [reportId, startDate, endDate, actor, maxRating, customerLimit]);
 
     useEffect(() => {
         if (dateProblem) return;
@@ -247,15 +333,22 @@ export default function ReportsPage() {
                 </div>
             </div>
 
+            <Tabs value={reportId} onValueChange={(value) => setReportId(value as ReportId)}>
+                <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-5 xl:grid-cols-9">
+                    {REPORTS.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <TabsTrigger key={item.id} value={item.id} className="h-auto gap-2 whitespace-normal px-2 py-2">
+                                <Icon className="h-4 w-4" />
+                                {item.tab}
+                            </TabsTrigger>
+                        );
+                    })}
+                </TabsList>
+            </Tabs>
+
+            {(reportId === "shops" || reportId === "cancellations" || reportId === "customers" || reportId === "reviews") && (
             <div className="flex flex-wrap items-center gap-2">
-                <Select value={reportId} onValueChange={(value) => setReportId(value as ReportId)}>
-                    <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        {REPORTS.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
                 {reportId === "shops" && (
                     <Button size="sm" variant={attentionOnly ? "secondary" : "outline"} onClick={() => setAttentionOnly((value) => !value)}>
                         {attentionOnly ? "Showing needs attention" : "Needs attention"}
@@ -271,6 +364,17 @@ export default function ReportsPage() {
                         </SelectContent>
                     </Select>
                 )}
+                {reportId === "customers" && (
+                    <Select value={customerLimit} onValueChange={setCustomerLimit}>
+                        <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">Top 10</SelectItem>
+                            <SelectItem value="25">Top 25</SelectItem>
+                            <SelectItem value="50">Top 50</SelectItem>
+                            <SelectItem value="100">Top 100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                )}
                 {reportId === "reviews" && (
                     <Select value={maxRating} onValueChange={setMaxRating}>
                         <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
@@ -282,6 +386,7 @@ export default function ReportsPage() {
                     </Select>
                 )}
             </div>
+            )}
 
             <Card>
                 <CardHeader>
@@ -565,6 +670,67 @@ export default function ReportsPage() {
                                 </Table>
                             </div>
                         </div>
+                    ) : reportId === "customers" && customers ? (
+                        <div className="space-y-4">
+                            <div className="grid gap-3 md:grid-cols-3">
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Customers in this range</p><p className="text-2xl font-semibold tabular-nums">{customers.total.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Ordered more than once</p><p className="text-2xl font-semibold tabular-nums">{customers.repeatCustomers.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">First completed order</p><p className="text-2xl font-semibold tabular-nums">{customers.firstTimeCustomers.toLocaleString()}</p></CardContent></Card>
+                            </div>
+                            <ShownNote shown={customers.shown} total={customers.total} />
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Customer</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead className="text-right">Orders in range</TableHead>
+                                        <TableHead className="text-right">Spent in range</TableHead>
+                                        <TableHead className="text-right">Orders so far</TableHead>
+                                        <TableHead className="text-right">Spent so far</TableHead>
+                                        <TableHead>Favorite restaurant</TableHead>
+                                        <TableHead>History</TableHead>
+                                        <TableHead>Last order</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {customers.rows.length === 0 ? <EmptyRow cols={9} label="No customers ordered in this range." /> : customers.rows.map((row) => (
+                                        <TableRow key={row.userId}>
+                                            <TableCell>
+                                                <button
+                                                    type="button"
+                                                    className="text-left font-medium text-primary underline-offset-4 hover:underline"
+                                                    onClick={() => void openCustomerOrders(row)}
+                                                >
+                                                    {row.name}
+                                                </button>
+                                            </TableCell>
+                                            <TableCell>{row.phone}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{row.ordersInRange.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(row.spentInRange)}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{row.ordersSoFar.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(row.spentSoFar)}</TableCell>
+                                            <TableCell>
+                                                {row.favoriteShop ? (
+                                                    <div>
+                                                        <div>{row.favoriteShop}</div>
+                                                        <div className="text-xs text-muted-foreground">{row.favoriteOrders.toLocaleString()} orders</div>
+                                                    </div>
+                                                ) : "—"}
+                                            </TableCell>
+                                            <TableCell>{orderHistory(row.ordersSoFar)}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <span>{formatBangkokDateTime(row.lastOrderAt)}</span>
+                                                    {row.goneQuiet ? (
+                                                        <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Gone quiet</Badge>
+                                                    ) : null}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     ) : reportId === "staff" && staff ? (
                         <div className="space-y-3">
                             <ShownNote shown={staff.actors.length} total={staff.total} />
@@ -592,6 +758,60 @@ export default function ReportsPage() {
                     ) : null}
                 </CardContent>
             </Card>
+
+            <Dialog
+                open={openedCustomer != null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        historyRequest.current += 1;
+                        setOpenedCustomer(null);
+                        setHistory(null);
+                        setHistoryError(null);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{openedCustomer?.name}</DialogTitle>
+                        <DialogDescription>
+                            {openedCustomer ? `${openedCustomer.phone}. Newest orders first, including canceled ones.` : ""}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {historyLoading ? <Skeleton className="h-40 w-full" /> : historyError ? (
+                        <p className="py-8 text-center text-sm text-muted-foreground">{historyError}</p>
+                    ) : history ? (
+                        <div className="space-y-2">
+                            <ShownNote shown={history.shown} total={history.total} />
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Shop</TableHead>
+                                        <TableHead>Time</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {history.rows.length === 0 ? <EmptyRow cols={4} label="No orders to show." /> : history.rows.map((order) => (
+                                        <TableRow key={order.orderId}>
+                                            <TableCell className="font-medium">{order.shopName}</TableCell>
+                                            <TableCell>{formatBangkokDateTime(order.createdAt)}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(order.amount)}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={order.status === "CANCELED" || order.status === "REJECTED" ? "destructive" : "outline"}
+                                                >
+                                                    {orderStatusLabel(order.status)}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
