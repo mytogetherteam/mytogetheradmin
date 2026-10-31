@@ -9,16 +9,17 @@ interface SortableTableHeadProps {
     sortConfig: SortConfig | null;
     onSort: (key: string) => void;
     className?: string;
+    align?: "left" | "right";
 }
 
-export function SortableTableHead({ label, sortKey, sortConfig, onSort, className }: SortableTableHeadProps) {
+export function SortableTableHead({ label, sortKey, sortConfig, onSort, className, align = "left" }: SortableTableHeadProps) {
     const isActive = sortConfig?.key === sortKey;
     return (
         <TableHead
             className={`cursor-pointer select-none hover:bg-muted/50 ${className ?? ""}`}
             onClick={() => onSort(sortKey)}
         >
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
                 {label}
                 {isActive ? (
                     sortConfig.direction === "asc" ? (

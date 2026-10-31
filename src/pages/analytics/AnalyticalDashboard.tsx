@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -8,6 +8,8 @@ import {
     XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { analyticsService, RevenueData, SessionSummary, LocationData, PopularShop, CategoryStats, FeedSectionStats, DeviceStats, UserGrowthData, CancellationRateData, FeatureUsageData } from "@/services/analyticsService";
+import { ApiError } from "@/services/apiClient";
+import { getBangkokDateString } from "@/utils/bangkokTime";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,30 +36,45 @@ function LoadingSkeleton() {
     return <Skeleton className="w-full h-[300px]" />;
 }
 
-function ChartEmpty({ label }: { label: string }) {
+function ChartMessage({ label, failed = false }: { label: string; failed?: boolean }) {
     return (
-        <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+        <div className={`flex h-[260px] items-center justify-center px-6 text-center text-sm ${failed ? "text-destructive" : "text-muted-foreground"}`}>
             {label}
         </div>
     );
 }
 
+function loadError(error: unknown) {
+    if (error instanceof ApiError && error.message) return error.message;
+    if (error instanceof Error && error.message) return error.message;
+    return "Could not load this data.";
+}
+
+async function readRequest<T>(request: Promise<T>) {
+    try {
+        return { value: await request, error: null as string | null };
+    } catch (error) {
+        return { value: null as T | null, error: loadError(error) };
+    }
+}
+
 function getDefaultDates() {
     const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
+    const start = new Date(end.getTime() - 30 * 86_400_000);
     return {
-        start: start.toISOString().split("T")[0],
-        end: end.toISOString().split("T")[0],
+        start: getBangkokDateString(start),
+        end: getBangkokDateString(end),
     };
 }
 
 /** `YYYY-MM-DD` is a Bangkok calendar day, so parse it as a local date. */
-function formatDayLabel(value: string) {
+function formatDayLabel(value: string, withYear: boolean) {
     const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
     if (!match) return value;
     const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", withYear
+        ? { month: "short", day: "numeric", year: "numeric" }
+        : { month: "short", day: "numeric" });
 }
 
 function formatBaht(value: number) {
@@ -95,63 +112,101 @@ export default function AnalyticalDashboard() {
     const [shopOrders, setShopOrders] = useState<RevenueData[]>([]);
     const [loading, setLoading] = useState(true);
     const [shopLoading, setShopLoading] = useState(false);
+    const [loadErrors, setLoadErrors] = useState<Record<string, string>>({});
+    const [shopError, setShopError] = useState<string | null>(null);
+    const loadGeneration = useRef(0);
+    const shopGeneration = useRef(0);
+
+    const rememberErrors = useCallback((keys: string[], found: Record<string, string | null>) => {
+        setLoadErrors((current) => {
+            const next = { ...current };
+            for (const key of keys) {
+                if (found[key]) next[key] = found[key] as string;
+                else delete next[key];
+            }
+            return next;
+        });
+    }, []);
 
     const loadTab = useCallback(async (tab: string) => {
+        const generation = ++loadGeneration.current;
         setLoading(true);
+        const current = () => loadGeneration.current === generation;
         try {
             switch (tab) {
                 case "revenue": {
                     const [rev, cancel] = await Promise.all([
-                        analyticsService.getRevenueAnalytics(startDate, endDate).catch(() => []),
-                        analyticsService.getCancellationRate(startDate, endDate).catch(() => null),
+                        readRequest(analyticsService.getRevenueAnalytics(startDate, endDate)),
+                        readRequest(analyticsService.getCancellationRate(startDate, endDate)),
                     ]);
-                    setRevenue(Array.isArray(rev) ? rev : []);
-                    setCancellationRate(cancel);
+                    if (!current()) return;
+                    setRevenue(Array.isArray(rev.value) ? rev.value : []);
+                    setCancellationRate(cancel.value);
+                    rememberErrors(["revenue", "cancellations"], { revenue: rev.error, cancellations: cancel.error });
                     break;
                 }
                 case "users": {
                     const [sess, growth, devices, features] = await Promise.all([
-                        analyticsService.getSessionAnalytics().catch(() => null),
-                        analyticsService.getUserGrowth(startDate, endDate).catch(() => []),
-                        analyticsService.getDeviceStats().catch(() => []),
-                        analyticsService.getFeatureUsage().catch(() => []),
+                        readRequest(analyticsService.getSessionAnalytics()),
+                        readRequest(analyticsService.getUserGrowth(startDate, endDate)),
+                        readRequest(analyticsService.getDeviceStats()),
+                        readRequest(analyticsService.getFeatureUsage()),
                     ]);
-                    if (sess && !Array.isArray(sess)) setSessionSummary(sess);
-                    setUserGrowth(growth);
-                    setDeviceStats(devices);
-                    setFeatureUsage(features);
+                    if (!current()) return;
+                    setSessionSummary(sess.value && !Array.isArray(sess.value) ? sess.value : null);
+                    setUserGrowth(Array.isArray(growth.value) ? growth.value : []);
+                    setDeviceStats(Array.isArray(devices.value) ? devices.value : []);
+                    setFeatureUsage(Array.isArray(features.value) ? features.value : []);
+                    rememberErrors(["sessions", "signups", "devices", "features"], {
+                        sessions: sess.error,
+                        signups: growth.error,
+                        devices: devices.error,
+                        features: features.error,
+                    });
                     break;
                 }
                 case "shops": {
                     const [popular, cats, allShops] = await Promise.all([
-                        analyticsService.getPopularShops().catch(() => []),
-                        analyticsService.getCategoryStats().catch(() => []),
-                        ShopService.getAllShops(0, 100).catch(() => ({ content: [] as Shop[], totalElements: 0, totalPages: 0, number: 0, size: 0 })),
+                        readRequest(analyticsService.getPopularShops()),
+                        readRequest(analyticsService.getCategoryStats()),
+                        readRequest(ShopService.getAllShops(0, 100)),
                     ]);
-                    setPopularShops(popular);
-                    setCategories(cats);
-                    setShops(allShops?.content || []);
+                    if (!current()) return;
+                    setPopularShops(Array.isArray(popular.value) ? popular.value : []);
+                    setCategories(Array.isArray(cats.value) ? cats.value : []);
+                    setShops(allShops.value?.content || []);
+                    rememberErrors(["popular", "categories", "shopList"], {
+                        popular: popular.error,
+                        categories: cats.error,
+                        shopList: allShops.error,
+                    });
                     break;
                 }
                 case "locations": {
-                    const locs = await analyticsService.getLocationAnalytics().catch(() => []);
-                    setLocations(locs);
+                    const locs = await readRequest(analyticsService.getLocationAnalytics());
+                    if (!current()) return;
+                    setLocations(Array.isArray(locs.value) ? locs.value : []);
+                    rememberErrors(["locations"], { locations: locs.error });
                     break;
                 }
                 case "feed": {
                     const [feedPerf, ...sections] = await Promise.all([
-                        analyticsService.getFeedPerformance().catch(() => null),
-                        ...FEED_TYPES.map((t) => analyticsService.getFeedSectionStats(t).catch(() => ({ type: t, impressions: 0, clicks: 0, ctr: 0 })))
+                        readRequest(analyticsService.getFeedPerformance()),
+                        ...FEED_TYPES.map((type) => readRequest(analyticsService.getFeedSectionStats(type))),
                     ]);
-                    setOverallCtr(feedPerf?.overallCtr ?? null);
-                    setFeedSections(sections);
+                    if (!current()) return;
+                    setOverallCtr(feedPerf.value?.overallCtr ?? null);
+                    setFeedSections(sections.flatMap((section) => section.value ? [section.value] : []));
+                    rememberErrors(["feed"], {
+                        feed: feedPerf.error || sections.find((section) => section.error)?.error || null,
+                    });
                     break;
                 }
             }
         } finally {
-            setLoading(false);
+            if (current()) setLoading(false);
         }
-    }, [startDate, endDate]);
+    }, [startDate, endDate, rememberErrors]);
 
     useEffect(() => {
         loadTab(activeTab);
@@ -159,16 +214,20 @@ export default function AnalyticalDashboard() {
 
     const loadShopAnalytics = useCallback(async (shopId: string) => {
         if (!shopId) return;
+        const generation = ++shopGeneration.current;
         setShopLoading(true);
+        setShopError(null);
         try {
             const [rev, ord] = await Promise.all([
-                analyticsService.getShopRevenue(Number(shopId), startDate, endDate).catch(() => []),
-                analyticsService.getShopOrders(Number(shopId), startDate, endDate).catch(() => []),
+                readRequest(analyticsService.getShopRevenue(Number(shopId), startDate, endDate)),
+                readRequest(analyticsService.getShopOrders(Number(shopId), startDate, endDate)),
             ]);
-            setShopRevenue(Array.isArray(rev) ? rev : []);
-            setShopOrders(Array.isArray(ord) ? ord : []);
+            if (shopGeneration.current !== generation) return;
+            setShopRevenue(Array.isArray(rev.value) ? rev.value : []);
+            setShopOrders(Array.isArray(ord.value) ? ord.value : []);
+            setShopError(rev.error || ord.error);
         } finally {
-            setShopLoading(false);
+            if (shopGeneration.current === generation) setShopLoading(false);
         }
     }, [startDate, endDate]);
 
@@ -180,11 +239,12 @@ export default function AnalyticalDashboard() {
         (row) => row.count > 0 || row.actor !== "UNSPECIFIED",
     );
 
+    const showChartYear = startDate.slice(0, 4) !== endDate.slice(0, 4);
     const revenueChartData = revenue.map((r) => {
         const orders = r.count ?? 0;
         const amount = r.amount ?? 0;
         return {
-            date: formatDayLabel(r.date),
+            date: formatDayLabel(r.date, showChartYear),
             Revenue: amount,
             Orders: orders,
             Aov: orders > 0 ? Math.round(amount / orders) : 0,
@@ -192,17 +252,17 @@ export default function AnalyticalDashboard() {
     });
 
     const userGrowthData = userGrowth.map((g) => ({
-        date: new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: formatDayLabel(g.date, showChartYear),
         Signups: g.newUsers ?? 0,
     }));
 
     const shopRevenueData = shopRevenue.map((r) => ({
-        date: new Date(r.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: formatDayLabel(String(r.date), showChartYear),
         Revenue: r.amount ?? 0,
     }));
 
     const shopOrdersData = shopOrders.map((o) => ({
-        date: new Date(o.date as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: formatDayLabel(String(o.date), showChartYear),
         Orders: o.count ?? 0,
     }));
 
@@ -255,6 +315,8 @@ export default function AnalyticalDashboard() {
                             <Skeleton className="h-[76px]" />
                             <Skeleton className="h-[76px]" />
                         </div>
+                    ) : loadErrors.cancellations ? (
+                        <ChartMessage label={loadErrors.cancellations} failed />
                     ) : cancellationRate ? (
                         <div className="grid gap-4 md:grid-cols-3">
                             <Card className="bg-primary/5 border-primary/20">
@@ -277,7 +339,7 @@ export default function AnalyticalDashboard() {
                             </Card>
                         </div>
                     ) : (
-                        <ChartEmpty label="Cancellation data is unavailable for this range." />
+                        <ChartMessage label="Cancellation data is unavailable for this range." />
                     )}
 
                     {(loading || cancellationRate) && (
@@ -287,7 +349,9 @@ export default function AnalyticalDashboard() {
                             <CardDescription>Customer, shop, admin, and system cancellations in this range.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {loading ? <LoadingSkeleton /> : cancellationRate && cancellationRate.cancelledOrders > 0 ? (
+                            {loading ? <LoadingSkeleton /> : loadErrors.cancellations ? (
+                                <ChartMessage label={loadErrors.cancellations} failed />
+                            ) : cancellationRate && cancellationRate.cancelledOrders > 0 ? (
                                 <ResponsiveContainer width="100%" height={220}>
                                     <BarChart data={cancelBars} layout="vertical" margin={{ left: 8, right: 16 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
@@ -302,7 +366,7 @@ export default function AnalyticalDashboard() {
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <ChartEmpty label="No canceled orders in this range." />
+                                <ChartMessage label="No canceled orders in this range." />
                             )}
                         </CardContent>
                     </Card>
@@ -320,7 +384,9 @@ export default function AnalyticalDashboard() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
+                                {loading ? <LoadingSkeleton /> : loadErrors.revenue ? (
+                                    <ChartMessage label={loadErrors.revenue} failed />
+                                ) : revenueChartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
                                         <AreaChart data={revenueChartData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -330,7 +396,7 @@ export default function AnalyticalDashboard() {
                                             <Area type="monotone" dataKey="Revenue" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} strokeWidth={2} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                ) : <ChartEmpty label="No sales in this range." />}
+                                ) : <ChartMessage label="No sales in this range." />}
                             </CardContent>
                         </Card>
                         <Card>
@@ -339,7 +405,9 @@ export default function AnalyticalDashboard() {
                                 <CardDescription>Daily sales divided by orders included in revenue.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
+                                {loading ? <LoadingSkeleton /> : loadErrors.revenue ? (
+                                    <ChartMessage label={loadErrors.revenue} failed />
+                                ) : revenueChartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
                                         <AreaChart data={revenueChartData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -349,7 +417,7 @@ export default function AnalyticalDashboard() {
                                             <Area type="monotone" dataKey="Aov" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                ) : <ChartEmpty label="No sales in this range." />}
+                                ) : <ChartMessage label="No sales in this range." />}
                             </CardContent>
                         </Card>
                     </div>
@@ -360,7 +428,9 @@ export default function AnalyticalDashboard() {
                             <CardDescription>Orders included in revenue for the selected dates.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {loading ? <LoadingSkeleton /> : revenueChartData.length > 0 ? (
+                            {loading ? <LoadingSkeleton /> : loadErrors.revenue ? (
+                                <ChartMessage label={loadErrors.revenue} failed />
+                            ) : revenueChartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={260}>
                                     <AreaChart data={revenueChartData}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -370,12 +440,13 @@ export default function AnalyticalDashboard() {
                                         <Area type="monotone" dataKey="Orders" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
                                     </AreaChart>
                                 </ResponsiveContainer>
-                            ) : <ChartEmpty label="No orders in this range." />}
+                            ) : <ChartMessage label="No orders in this range." />}
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="users" className="mt-6 space-y-4">
+                    {loadErrors.sessions ? <ChartMessage label={loadErrors.sessions} failed /> : null}
                     {sessionSummary && (
                         <div className="grid gap-2 md:grid-cols-6">
                             <Card><CardContent className="p-3"><p className="text-[10px] text-muted-foreground uppercase font-bold">Total Sessions</p><p className="text-lg font-bold">{sessionSummary.totalSessions.toLocaleString()}</p></CardContent></Card>
@@ -391,7 +462,9 @@ export default function AnalyticalDashboard() {
                         <Card>
                             <CardHeader><CardTitle>User Signup Growth</CardTitle><CardDescription>New registrations.</CardDescription></CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : (
+                                {loading ? <LoadingSkeleton /> : loadErrors.signups ? (
+                                    <ChartMessage label={loadErrors.signups} failed />
+                                ) : userGrowthData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
                                         <AreaChart data={userGrowthData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -401,13 +474,15 @@ export default function AnalyticalDashboard() {
                                             <Area type="monotone" dataKey="Signups" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={2} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                )}
+                                ) : <ChartMessage label="No signups in this range." />}
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> Device & Platform</CardTitle><CardDescription>Platform distribution (OS).</CardDescription></CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : deviceStats.length > 0 ? (
+                                {loading ? <LoadingSkeleton /> : loadErrors.devices ? (
+                                    <ChartMessage label={loadErrors.devices} failed />
+                                ) : deviceStats.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={260}>
                                         <PieChart>
                                             <Pie data={deviceStats} dataKey="count" nameKey="type" cx="50%" cy="50%" outerRadius={80} label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}>
@@ -416,7 +491,7 @@ export default function AnalyticalDashboard() {
                                             <Legend /><Tooltip />
                                         </PieChart>
                                     </ResponsiveContainer>
-                                ) : <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">No data</div>}
+                                ) : <ChartMessage label="No device data." />}
                             </CardContent>
                         </Card>
                     </div>
@@ -424,9 +499,11 @@ export default function AnalyticalDashboard() {
                     <Card>
                         <CardHeader><CardTitle>Most Used Features</CardTitle><CardDescription>Popular app interactions.</CardDescription></CardHeader>
                         <CardContent>
-                            {loading ? <LoadingSkeleton /> : featureUsage.length > 0 ? (
+                            {loading ? <LoadingSkeleton /> : loadErrors.features ? (
+                                <ChartMessage label={loadErrors.features} failed />
+                            ) : featureUsage.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart data={featureUsage.sort((a, b) => b.usageCount - a.usageCount)} layout="vertical">
+                                    <BarChart data={[...featureUsage].sort((a, b) => b.usageCount - a.usageCount)} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                         <XAxis type="number" fontSize={10} tickLine={false} />
                                         <YAxis type="category" dataKey="feature" fontSize={10} tickLine={false} width={120} />
@@ -434,33 +511,55 @@ export default function AnalyticalDashboard() {
                                         <Bar dataKey="usageCount" fill="#ec4899" radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
-                            ) : <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">No data</div>}
+                            ) : <ChartMessage label="No feature usage in this range." />}
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 <TabsContent value="shops" className="mt-6 space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Card>
-                            <CardHeader><CardTitle>Top Shops by Views</CardTitle><CardDescription>Most viewed shops in the platform.</CardDescription></CardHeader>
-                            <CardContent>
-                                {loading ? <LoadingSkeleton /> : (
-                                    <ResponsiveContainer width="100%" height={280}>
-                                        <BarChart data={popularShops.map(s => ({ name: s.shopName || "Unknown", rev: s.viewCount || 0 })).slice(0, 8)} layout="vertical">
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                            <XAxis type="number" fontSize={10} tickLine={false} />
-                                            <YAxis type="category" dataKey="name" fontSize={10} tickLine={false} width={100} />
-                                            <Tooltip formatter={(v: number) => [v.toLocaleString(), "Views"]} />
-                                            <Bar dataKey="rev" fill="#6366f1" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                        <Card className="md:col-span-2">
+                            <CardHeader>
+                                <CardTitle>Popular shops</CardTitle>
+                                <CardDescription>Ranked by delivered orders. Views are shop profile views. Unique viewers are distinct signed-in customers. Revenue is the delivered order total.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {loading ? <div className="p-6"><LoadingSkeleton /></div> : loadErrors.popular ? (
+                                    <ChartMessage label={loadErrors.popular} failed />
+                                ) : popularShops.length === 0 ? (
+                                    <ChartMessage label="No delivered orders yet." />
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Shop</TableHead>
+                                                <TableHead className="text-right">Views</TableHead>
+                                                <TableHead className="text-right">Unique viewers</TableHead>
+                                                <TableHead className="text-right">Delivered orders</TableHead>
+                                                <TableHead className="text-right">Revenue</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {popularShops.map((shop) => (
+                                                <TableRow key={shop.shopId}>
+                                                    <TableCell className="font-medium">{shop.shopName || "Unknown shop"}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{(shop.viewCount || 0).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{(shop.uniqueViewers || 0).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{(shop.orders || 0).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{formatBaht(shop.revenue || 0)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 )}
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader><CardTitle>Category Performance</CardTitle><CardDescription>Views by category.</CardDescription></CardHeader>
                             <CardContent>
-                                {loading ? <LoadingSkeleton /> : (
+                                {loading ? <LoadingSkeleton /> : loadErrors.categories ? (
+                                    <ChartMessage label={loadErrors.categories} failed />
+                                ) : categories.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={280}>
                                         <PieChart>
                                             <Pie data={categories.slice(0, 6)} dataKey="viewCount" nameKey="category" cx="50%" cy="50%" outerRadius={100} label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}>
@@ -469,7 +568,7 @@ export default function AnalyticalDashboard() {
                                             <Legend /><Tooltip />
                                         </PieChart>
                                     </ResponsiveContainer>
-                                )}
+                                ) : <ChartMessage label="No category views yet." />}
                             </CardContent>
                         </Card>
                     </div>
@@ -478,11 +577,11 @@ export default function AnalyticalDashboard() {
                         <CardHeader className="bg-primary/5 pb-4">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div><CardTitle className="text-primary flex items-center gap-2"><Search className="h-4 w-4" /> Shop Drill-down</CardTitle><CardDescription>Select a shop for detailed performance.</CardDescription></div>
-                                <div className="min-w-[300px]"><Select value={selectedShopId || ""} onValueChange={setSelectedShopId}><SelectTrigger><SelectValue placeholder="Select a shop..." /></SelectTrigger><SelectContent>{shops.length > 0 ? shops.map((s) => (<SelectItem key={s.id} value={String(s.id)}>{s.nameEn || s.name}</SelectItem>)) : <div className="p-2 text-xs text-muted-foreground text-center">No shops found</div>}</SelectContent></Select></div>
+                                <div className="min-w-[300px]"><Select value={selectedShopId || ""} onValueChange={setSelectedShopId}><SelectTrigger><SelectValue placeholder="Select a shop..." /></SelectTrigger><SelectContent>{loadErrors.shopList ? <div className="p-2 text-xs text-destructive text-center">{loadErrors.shopList}</div> : shops.length > 0 ? shops.map((s) => (<SelectItem key={s.id} value={String(s.id)}>{s.nameEn || s.name}</SelectItem>)) : <div className="p-2 text-xs text-muted-foreground text-center">No shops found</div>}</SelectContent></Select></div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                            {!selectedShopId ? <div className="h-48 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg"><BarChart2 className="h-8 w-8 mb-2 opacity-20" /><p>Select a shop to view analytics.</p></div> : shopLoading ? <div className="space-y-4"><Skeleton className="h-8 w-1/3" /><div className="grid gap-4 md:grid-cols-2"><LoadingSkeleton /><LoadingSkeleton /></div></div> : (
+                            {!selectedShopId ? <div className="h-48 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg"><BarChart2 className="h-8 w-8 mb-2 opacity-20" /><p>Select a shop to view analytics.</p></div> : shopLoading ? <div className="space-y-4"><Skeleton className="h-8 w-1/3" /><div className="grid gap-4 md:grid-cols-2"><LoadingSkeleton /><LoadingSkeleton /></div></div> : shopError ? <ChartMessage label={shopError} failed /> : (
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between border-b pb-2"><h3 className="font-semibold text-lg">{shops.find(s => String(s.id) === selectedShopId)?.name} Analytics</h3></div>
                                     <div className="grid gap-6 md:grid-cols-2">
@@ -497,7 +596,7 @@ export default function AnalyticalDashboard() {
 
                 <TabsContent value="locations" className="mt-6 space-y-4">
                     <Card><CardHeader><CardTitle>Activity by District</CardTitle><CardDescription>District-wise interaction volume.</CardDescription></CardHeader>
-                        <CardContent>{loading ? <LoadingSkeleton /> : <ResponsiveContainer width="100%" height={400}><BarChart data={locations} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis type="number" fontSize={12} /><YAxis type="category" dataKey="district" fontSize={11} width={120} /><Tooltip /><Bar dataKey="activityCount" fill="#10b981" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer>}</CardContent>
+                        <CardContent>{loading ? <LoadingSkeleton /> : loadErrors.locations ? <ChartMessage label={loadErrors.locations} failed /> : locations.length > 0 ? <ResponsiveContainer width="100%" height={400}><BarChart data={locations} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis type="number" fontSize={12} /><YAxis type="category" dataKey="district" fontSize={11} width={120} /><Tooltip /><Bar dataKey="activityCount" fill="#10b981" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer> : <ChartMessage label="No location activity in this range." />}</CardContent>
                     </Card>
                 </TabsContent>
 
@@ -508,6 +607,7 @@ export default function AnalyticalDashboard() {
                     <Card>
                         <CardHeader><CardTitle>Algorithm Performance</CardTitle><CardDescription>CTR breakdown by feed section.</CardDescription></CardHeader>
                         <CardContent className="p-0">
+                            {loadErrors.feed ? <ChartMessage label={loadErrors.feed} failed /> : null}
                             <Table><TableHeader><TableRow><TableHead>Section</TableHead><TableHead>Impressions</TableHead><TableHead>Clicks</TableHead><TableHead>CTR</TableHead></TableRow></TableHeader>
                                 <TableBody>{loading ? [...Array(5)].map((_, i) => (<TableRow key={i}>{[...Array(4)].map((__, j) => (<TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>))}</TableRow>)) : feedSections.map((s, i) => (
                                     <TableRow key={i}>

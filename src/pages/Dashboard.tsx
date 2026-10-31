@@ -520,7 +520,7 @@ export default function Dashboard() {
                             {popularShops.slice(0, 5).map((shop, i) => {
                                 const shopId = shop.shopId || `shop_${i}`;
                                 const shopName = shop.shopName || "Unknown Shop";
-                                const views = shop.viewCount || 0;
+                                const orders = shop.orders ?? shop.viewCount ?? 0;
                                 const unique = shop.uniqueViewers || 0;
                                 return (
                                     <div
@@ -539,14 +539,14 @@ export default function Dashboard() {
                                                 <div className="flex items-center gap-1.5">
                                                     <Users className="h-3 w-3 text-muted-foreground" />
                                                     <span className="text-[11px] text-muted-foreground font-medium">
-                                                        {unique.toLocaleString()} unique customers
+                                                        {unique.toLocaleString()} unique viewers
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="shrink-0 text-right">
                                             <Badge variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-muted/80 font-semibold border border-border/50">
-                                                {views.toLocaleString()} orders
+                                                {orders.toLocaleString()} orders
                                             </Badge>
                                         </div>
                                     </div>

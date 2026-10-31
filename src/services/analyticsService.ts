@@ -42,7 +42,8 @@ export interface PopularShop {
   shopName: string;
   viewCount: number;
   uniqueViewers: number;
-  revenue?: number;
+  orders: number;
+  revenue: number;
 }
 
 export interface CategoryStats {
