@@ -332,7 +332,6 @@ export const config = {
           operations: '/api/admin/analytics/reports/operations',
           hours: '/api/admin/analytics/reports/hours',
           shops: '/api/admin/analytics/reports/shops',
-          waiting: '/api/admin/analytics/reports/waiting',
           cancellations: '/api/admin/analytics/reports/cancellations',
           cancellationLosses: '/api/admin/analytics/reports/cancellation-losses',
           shopResult: (shopId: number) => `/api/admin/analytics/reports/shops/${shopId}/result`,

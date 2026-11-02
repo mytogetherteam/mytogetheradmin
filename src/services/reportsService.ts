@@ -36,42 +36,6 @@ export interface OrdersByHourReport {
   totals: OperationsTotals;
 }
 
-export interface ShopsWaitingReport {
-  totals: {
-    restaurants: number;
-    orders: number;
-    pending: number;
-    paymentSlip: number;
-    awaitingApproval: number;
-    closeToTimeout: number;
-    pastCancelTime: number;
-    amount: number;
-  };
-  shops: Array<{
-    shopId: number;
-    shopName: string;
-    orders: number;
-    pending: number;
-    paymentSlip: number;
-    awaitingApproval: number;
-    oldestWaitMinutes: number;
-    closeToTimeout: number;
-    pastCancelTime: number;
-    amount: number;
-  }>;
-  orders: Array<{
-    orderId: number;
-    orderNo: string;
-    shopId: number;
-    shopName: string;
-    status: string;
-    waitedMinutes: number;
-    closeToTimeout: boolean;
-    pastCancelTime: boolean;
-    amount: number;
-  }>;
-}
-
 export interface ShopScorecardRow {
   shopId: number;
   shopName: string;
@@ -279,8 +243,6 @@ export const reportsService = {
     apiClient.get<OrdersByHourReport>(`${reports.hours}?${rangeQuery(start, end)}`),
   shops: (start: string, end: string) =>
     apiClient.get<{ rows: ShopScorecardRow[] }>(`${reports.shops}?${rangeQuery(start, end)}`),
-  shopsWaiting: () =>
-    apiClient.get<ShopsWaitingReport>(reports.waiting),
   cancellations: (start: string, end: string, actor?: string, full = false) =>
     apiClient.get<CancellationLedger>(`${reports.cancellations}?${rangeQuery(start, end, {
       ...(actor ? { actor } : {}),

@@ -28,7 +28,7 @@ export function SortableTableHead({ label, sortKey, sortConfig, onSort, classNam
                         <ArrowDown className="h-3 w-3" />
                     )
                 ) : (
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />
+                    <ArrowUpDown className="h-3 w-3 opacity-80" />
                 )}
             </div>
         </TableHead>

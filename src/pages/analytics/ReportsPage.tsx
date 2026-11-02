@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Ban, Banknote, ClipboardList, Clock, Download, FileSpreadsheet, Hourglass, ScrollText, Star, Store, Ticket, TrendingDown, Users, Utensils,
+    Ban, Banknote, ClipboardList, Clock, Download, FileSpreadsheet, ScrollText, Star, Store, Ticket, TrendingDown, Users, Utensils,
     type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,6 @@ import {
     reportsService,
     OperationsReport,
     OrdersByHourReport,
-    ShopsWaitingReport,
     ShopScorecardRow,
     CancellationLedger,
     CancellationLossReport,
@@ -45,7 +44,6 @@ type ReportId =
     | "operations"
     | "hours"
     | "shops"
-    | "waiting"
     | "cancellations"
     | "losses"
     | "money"
@@ -76,13 +74,6 @@ const REPORTS: Array<{ id: ReportId; tab: string; title: string; hint: string; i
         title: "Restaurant scorecard",
         icon: Store,
         hint: "Orders placed in this period. Sales is the completed order value of those orders.",
-    },
-    {
-        id: "waiting",
-        tab: "Waiting",
-        title: "Restaurants still waiting",
-        icon: Hourglass,
-        hint: "Orders waiting on a restaurant right now. The dates above do not change this list.",
     },
     {
         id: "cancellations",
@@ -143,7 +134,6 @@ const REPORTS: Array<{ id: ReportId; tab: string; title: string; hint: string; i
 ];
 
 const GROUPS: Array<{ id: string; label: string; reports: ReportId[] }> = [
-    { id: "today", label: "Today", reports: ["waiting"] },
     { id: "sales", label: "Sales", reports: ["money", "menus", "promotions"] },
     { id: "service", label: "Service", reports: ["operations", "hours", "shops", "cancellations", "losses", "reviews"] },
     { id: "people", label: "People", reports: ["customers", "staff"] },
@@ -195,16 +185,6 @@ function hourLabel(hour: number) {
     return `${String(hour).padStart(2, "0")}:00`;
 }
 
-function waitedLabel(minutes: number) {
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const rest = minutes % 60;
-    if (hours < 48) return rest > 0 ? `${hours} hr ${rest} min` : `${hours} hr`;
-    const days = Math.floor(hours / 24);
-    const hourRest = hours % 24;
-    return hourRest > 0 ? `${days} d ${hourRest} hr` : `${days} d`;
-}
-
 const ASC_FIRST = new Set([
     "name", "phone", "favoriteShop", "date", "hour", "shopName", "dishName", "couponName",
     "method", "reason", "orderNo", "comment", "whoLabel", "reasonText", "typeLabel", "targetLabel",
@@ -221,8 +201,6 @@ function nextReportSort(current: SortConfig | undefined, key: string): SortConfi
 const INITIAL_SORTS: Record<string, SortConfig> = {
     operations: { key: "date", direction: "asc" },
     hours: { key: "hour", direction: "asc" },
-    waitingShops: { key: "oldestWaitMinutes", direction: "desc" },
-    waitingOrders: { key: "waitedMinutes", direction: "desc" },
     shops: { key: "sales", direction: "desc" },
     cancellations: { key: "createdAt", direction: "desc" },
     lossReasons: { key: "lostAmount", direction: "desc" },
@@ -312,7 +290,7 @@ function errorMessage(error: unknown) {
 function EmptyRow({ cols, label }: { cols: number; label: string }) {
     return (
         <TableRow>
-            <TableCell colSpan={cols} className="h-24 text-center text-muted-foreground">{label}</TableCell>
+            <TableCell colSpan={cols} className="h-24 text-center text-sm text-foreground">{label}</TableCell>
         </TableRow>
     );
 }
@@ -323,9 +301,9 @@ function Figures({ items }: { items: Array<{ label: string; value: string; note?
             {items.map((item) => (
                 <Card key={item.label}>
                     <CardContent className="p-4">
-                        <p className="text-xs uppercase text-muted-foreground">{item.label}</p>
-                        <p className="text-2xl font-semibold tabular-nums">{item.value}</p>
-                        {item.note ? <p className="text-xs text-muted-foreground">{item.note}</p> : null}
+                        <p className="text-sm font-medium text-foreground">{item.label}</p>
+                        <p className="text-2xl font-semibold tabular-nums text-foreground">{item.value}</p>
+                        {item.note ? <p className="text-sm text-foreground">{item.note}</p> : null}
                     </CardContent>
                 </Card>
             ))}
@@ -350,7 +328,7 @@ function saveCsv(filename: string, headers: string[], rows: Array<Array<string |
 
 function ShownNote({ shown, total }: { shown: number; total: number }) {
     if (total <= shown) return null;
-    return <p className="text-xs text-muted-foreground">Showing {shown.toLocaleString()} of {total.toLocaleString()}.</p>;
+    return <p className="text-sm text-foreground">Showing {shown.toLocaleString()} of {total.toLocaleString()}.</p>;
 }
 
 export default function ReportsPage() {
@@ -367,7 +345,6 @@ export default function ReportsPage() {
     const [error, setError] = useState<string | null>(null);
     const [operations, setOperations] = useState<OperationsReport | null>(null);
     const [hours, setHours] = useState<OrdersByHourReport | null>(null);
-    const [waiting, setWaiting] = useState<ShopsWaitingReport | null>(null);
     const [shops, setShops] = useState<ShopScorecardRow[]>([]);
     const [cancellations, setCancellations] = useState<CancellationLedger | null>(null);
     const [losses, setLosses] = useState<CancellationLossReport | null>(null);
@@ -447,9 +424,6 @@ export default function ReportsPage() {
             } else if (reportId === "shops") {
                 const result = await reportsService.shops(startDate, endDate);
                 if (current()) setShops(result.rows);
-            } else if (reportId === "waiting") {
-                const result = await reportsService.shopsWaiting();
-                if (current()) setWaiting(result);
             } else if (reportId === "cancellations") {
                 const result = await reportsService.cancellations(startDate, endDate, actor === "ALL" ? undefined : actor);
                 if (current()) setCancellations(result);
@@ -493,7 +467,7 @@ export default function ReportsPage() {
     }, [reportId, startDate, endDate, actor, maxRating]);
 
     useEffect(() => {
-        if (dateProblem && reportId !== "waiting") return;
+        if (dateProblem) return;
         void loadReport();
     }, [dateProblem, reportId, loadReport]);
 
@@ -511,11 +485,6 @@ export default function ReportsPage() {
     );
     const sortedOperations = useMemo(() => sortData(operations?.rows ?? [], sorts.operations), [operations, sorts.operations]);
     const sortedHours = useMemo(() => sortData(hours?.rows ?? [], sorts.hours), [hours, sorts.hours]);
-    const sortedWaitingShops = useMemo(() => sortData(waiting?.shops ?? [], sorts.waitingShops), [waiting, sorts.waitingShops]);
-    const sortedWaitingOrders = useMemo(
-        () => sortData((waiting?.orders ?? []).map((order) => ({ ...order, statusLabel: orderStatusLabel(order.status) })), sorts.waitingOrders),
-        [waiting, sorts.waitingOrders],
-    );
     const sortedShopRows = useMemo(
         () => sortData(shopRows.map((row) => ({
             ...row,
@@ -583,8 +552,6 @@ export default function ReportsPage() {
                 saveCsv(file, ["Hour", "Placed", "Delivered", "Picked up", "Canceled", "Sent to MyTogether", "Wait until ready"], hours.rows.map((row) => [hourLabel(row.hour), row.placed, row.delivered, row.pickedUp, row.canceled, row.escalated, row.avgWaitMinutes]));
             } else if (reportId === "shops") {
                 saveCsv(file, ["Restaurant", "Orders", "Completed order value", "Average order value", "Cancel rate", "Rating", "Reviews", "Wait until ready", "Attention"], sortedShopRows.map((row) => [row.shopName, row.orders, row.sales, row.averageOrderValue, row.cancelRatePercent, row.ratingAvg, row.reviews, row.avgWaitMinutes, row.attention.join("; ")]));
-            } else if (reportId === "waiting" && waiting) {
-                saveCsv(file, ["Restaurant", "Order", "Status", "Waiting minutes", "Amount"], waiting.orders.map((row) => [row.shopName, row.orderNo, orderStatusLabel(row.status), row.waitedMinutes, row.amount]));
             } else if (reportId === "cancellations") {
                 const full = await reportsService.cancellations(startDate, endDate, actor === "ALL" ? undefined : actor, true);
                 saveCsv(file, ["Order", "Canceled", "Restaurant", "Amount", "Who", "Reason"], full.rows.map((row) => [row.orderNo, formatBangkokDateTime(row.createdAt), row.shopName, row.amount, actorLabel(row.canceledBy), row.cancelReason]));
@@ -633,7 +600,7 @@ export default function ReportsPage() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 text-foreground [&_th]:font-semibold [&_th]:!text-foreground [&_td]:!text-foreground">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <FileSpreadsheet className="h-6 w-6 text-primary" />
@@ -647,10 +614,10 @@ export default function ReportsPage() {
                             setEndDate(range.end);
                         }}>{preset.label}</Button>
                     ))}
-                    <Label className="text-xs text-muted-foreground">From</Label>
-                    <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8 w-36 text-xs" />
-                    <Label className="text-xs text-muted-foreground">To</Label>
-                    <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-8 w-36 text-xs" />
+                    <Label className="text-sm font-medium text-foreground">From</Label>
+                    <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8 w-36 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]" />
+                    <Label className="text-sm font-medium text-foreground">To</Label>
+                    <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-8 w-36 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]" />
                 </div>
             </div>
 
@@ -663,11 +630,11 @@ export default function ReportsPage() {
             </div>
 
             <Tabs value={reportId} onValueChange={(value) => setReportId(value as ReportId)}>
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-6">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 text-foreground sm:grid-cols-3 lg:grid-cols-6">
                     {groupReports.map((item) => {
                         const Icon = item.icon;
                         return (
-                            <TabsTrigger key={item.id} value={item.id} className="h-auto gap-2 whitespace-normal px-2 py-2">
+                            <TabsTrigger key={item.id} value={item.id} className="h-auto gap-2 whitespace-normal px-2 py-2 text-foreground data-[state=active]:text-foreground">
                                 <Icon className="h-4 w-4" />
                                 {item.tab}
                             </TabsTrigger>
@@ -718,16 +685,16 @@ export default function ReportsPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <CardTitle>{selected.title}</CardTitle>
-                            <CardDescription>{selected.hint}</CardDescription>
+                            <CardDescription className="text-base text-foreground">{selected.hint}</CardDescription>
                         </div>
-                        <Button size="sm" variant="outline" className="gap-2" disabled={downloading || loading || (dateProblem != null && reportId !== "waiting")} onClick={() => void downloadReport()}>
+                        <Button size="sm" variant="outline" className="gap-2" disabled={downloading || loading || dateProblem != null} onClick={() => void downloadReport()}>
                             <Download className="h-4 w-4" />
                             {downloading ? "Preparing…" : "Download"}
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {dateProblem && reportId !== "waiting" ? (
+                    {dateProblem ? (
                         <p className="py-16 text-center text-sm text-destructive">{dateProblem}</p>
                     ) : loading ? <Skeleton className="h-[280px] w-full" /> : error ? (
                         <p className="py-16 text-center text-sm text-destructive">{error}</p>
@@ -827,81 +794,6 @@ export default function ReportsPage() {
                             </TableFooter>
                         </Table>
                         </>
-                    ) : reportId === "waiting" && waiting ? (
-                        <div className="space-y-6">
-                            <div className="grid gap-3 md:grid-cols-4">
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Restaurants</p><p className="text-2xl font-semibold tabular-nums">{waiting.totals.restaurants.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Orders waiting</p><p className="text-2xl font-semibold tabular-nums">{waiting.totals.orders.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Close to timeout</p><p className="text-2xl font-semibold tabular-nums">{waiting.totals.closeToTimeout.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Past cancel time</p><p className={`text-2xl font-semibold tabular-nums ${waiting.totals.pastCancelTime > 0 ? "text-destructive" : ""}`}>{waiting.totals.pastCancelTime.toLocaleString()}</p></CardContent></Card>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            {column("waitingShops", "Restaurant", "shopName")}
-                                            {column("waitingShops", "Orders", "orders", "right")}
-                                            {column("waitingShops", "Pending", "pending", "right")}
-                                            {column("waitingShops", "Payment slip", "paymentSlip", "right")}
-                                            {column("waitingShops", "Awaiting approval", "awaitingApproval", "right")}
-                                            {column("waitingShops", "Oldest wait", "oldestWaitMinutes", "right")}
-                                            {column("waitingShops", "Close to timeout", "closeToTimeout", "right")}
-                                            {column("waitingShops", "Past cancel time", "pastCancelTime", "right")}
-                                            {column("waitingShops", "Amount", "amount", "right")}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedWaitingShops.length === 0 ? <EmptyRow cols={9} label="No orders are waiting." /> : sortedWaitingShops.map((row) => (
-                                            <TableRow key={row.shopId}>
-                                                <TableCell className="font-medium">{row.shopName}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{row.orders.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{row.pending.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{row.paymentSlip.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{row.awaitingApproval.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{waitedLabel(row.oldestWaitMinutes)}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{row.closeToTimeout.toLocaleString()}</TableCell>
-                                                <TableCell className={`text-right tabular-nums ${row.pastCancelTime > 0 ? "text-destructive" : ""}`}>{row.pastCancelTime.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{baht(row.amount)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <h2 className="mb-2 text-sm font-medium">Orders</h2>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            {column("waitingOrders", "Restaurant", "shopName")}
-                                            {column("waitingOrders", "Order", "orderNo")}
-                                            {column("waitingOrders", "Status", "statusLabel")}
-                                            {column("waitingOrders", "Waiting", "waitedMinutes", "right")}
-                                            {column("waitingOrders", "Amount", "amount", "right")}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedWaitingOrders.length === 0 ? <EmptyRow cols={5} label="No orders are waiting." /> : sortedWaitingOrders.map((order) => (
-                                            <TableRow key={order.orderId}>
-                                                <TableCell className="font-medium">{order.shopName}</TableCell>
-                                                <TableCell>{order.orderNo}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col items-start gap-1">
-                                                        <span>{orderStatusLabel(order.status)}</span>
-                                                        {order.pastCancelTime ? (
-                                                            <Badge variant="destructive">Past cancel time</Badge>
-                                                        ) : order.closeToTimeout ? (
-                                                            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Close to timeout</Badge>
-                                                        ) : null}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">{waitedLabel(order.waitedMinutes)}</TableCell>
-                                                <TableCell className="text-right tabular-nums">{baht(order.amount)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </div>
                     ) : reportId === "shops" ? (
                         <>
                         <Figures items={[
@@ -939,7 +831,7 @@ export default function ReportsPage() {
                                         <TableCell className="text-right tabular-nums">{row.ratingCount > 0 ? `${row.ratingAvg.toFixed(1)} (${row.ratingCount})` : "—"}</TableCell>
                                         <TableCell className="text-right tabular-nums">{row.reviews.toLocaleString()}</TableCell>
                                         <TableCell className="text-right tabular-nums">{waitLabel(row.avgWaitMinutes)}</TableCell>
-                                        <TableCell className="text-muted-foreground">{row.attention.join(", ") || "—"}</TableCell>
+                                        <TableCell className="text-foreground">{row.attention.join(", ") || "—"}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -980,9 +872,9 @@ export default function ReportsPage() {
                     ) : reportId === "losses" && losses ? (
                         <div className="space-y-6">
                             <div className="grid gap-3 md:grid-cols-3">
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Restaurants</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.restaurants.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Canceled orders</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.orders.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Canceled order value</p><p className="text-2xl font-semibold tabular-nums text-destructive">{baht(losses.totals.lostAmount)}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Restaurants</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.restaurants.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Canceled orders</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.orders.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Canceled order value</p><p className="text-2xl font-semibold tabular-nums text-destructive">{baht(losses.totals.lostAmount)}</p></CardContent></Card>
                             </div>
                             <div className="space-y-2">
                                 <h2 className="text-sm font-medium">By reason</h2>
@@ -1041,7 +933,7 @@ export default function ReportsPage() {
                                                             </button>
                                                         ) : shop.shopName}
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">All reasons</TableCell>
+                                                    <TableCell className="text-foreground">All reasons</TableCell>
                                                     <TableCell className="text-right tabular-nums font-medium">{shop.orders.toLocaleString()}</TableCell>
                                                     <TableCell className="text-right tabular-nums font-medium">{baht(shop.lostAmount)}</TableCell>
                                                 </TableRow>
@@ -1225,10 +1117,10 @@ export default function ReportsPage() {
                     ) : reportId === "reviews" && reviews ? (
                         <div className="space-y-6">
                             <div className="grid gap-3 md:grid-cols-4">
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Delivered orders</p><p className="text-2xl font-semibold tabular-nums">{reviews.delivered.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Reviewed</p><p className="text-2xl font-semibold tabular-nums">{reviews.reviewed.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Review rate</p><p className="text-2xl font-semibold tabular-nums">{reviews.reviewRatePercent.toFixed(1)}%</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Average rating</p><p className="text-2xl font-semibold tabular-nums">{reviews.averageRating == null ? "—" : reviews.averageRating.toFixed(2)}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Delivered orders</p><p className="text-2xl font-semibold tabular-nums">{reviews.delivered.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Reviewed</p><p className="text-2xl font-semibold tabular-nums">{reviews.reviewed.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Review rate</p><p className="text-2xl font-semibold tabular-nums">{reviews.reviewRatePercent.toFixed(1)}%</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Average rating</p><p className="text-2xl font-semibold tabular-nums">{reviews.averageRating == null ? "—" : reviews.averageRating.toFixed(2)}</p></CardContent></Card>
                             </div>
                             <div className="space-y-2">
                                 <h2 className="text-sm font-medium">Low ratings</h2>
@@ -1292,9 +1184,9 @@ export default function ReportsPage() {
                     ) : reportId === "customers" && customers ? (
                         <div className="space-y-4">
                             <div className="grid gap-3 md:grid-cols-3">
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Customers in this period</p><p className="text-2xl font-semibold tabular-nums">{customers.total.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Ordered more than once</p><p className="text-2xl font-semibold tabular-nums">{customers.repeatCustomers.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Ordered once so far</p><p className="text-2xl font-semibold tabular-nums">{customers.firstTimeCustomers.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Customers in this period</p><p className="text-2xl font-semibold tabular-nums">{customers.total.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Ordered more than once</p><p className="text-2xl font-semibold tabular-nums">{customers.repeatCustomers.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-sm font-medium text-foreground">Ordered once so far</p><p className="text-2xl font-semibold tabular-nums">{customers.firstTimeCustomers.toLocaleString()}</p></CardContent></Card>
                             </div>
                             <ShownNote shown={customers.shown} total={customers.total} />
                             <div className="overflow-x-auto">
@@ -1332,7 +1224,7 @@ export default function ReportsPage() {
                                                 {row.favoriteShop ? (
                                                     <div>
                                                         <div>{row.favoriteShop}</div>
-                                                        <div className="text-xs text-muted-foreground">{row.favoriteOrders.toLocaleString()} orders</div>
+                                                        <div className="text-sm text-foreground">{row.favoriteOrders.toLocaleString()} orders</div>
                                                     </div>
                                                 ) : "—"}
                                             </TableCell>
@@ -1389,15 +1281,15 @@ export default function ReportsPage() {
                     }
                 }}
             >
-                <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+                <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto text-foreground [&_th]:font-semibold [&_th]:!text-foreground [&_td]:!text-foreground">
                     <DialogHeader>
                         <DialogTitle>{openedCustomer?.name}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-base text-foreground">
                             {openedCustomer ? `${openedCustomer.phone}. Includes canceled orders.` : ""}
                         </DialogDescription>
                     </DialogHeader>
                     {historyLoading ? <Skeleton className="h-40 w-full" /> : historyError ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">{historyError}</p>
+                        <p className="py-8 text-center text-sm text-destructive">{historyError}</p>
                     ) : history ? (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between gap-2">
@@ -1456,39 +1348,39 @@ export default function ReportsPage() {
                     }
                 }}
             >
-                <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+                <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto text-foreground [&_th]:font-semibold [&_th]:!text-foreground [&_td]:!text-foreground">
                     <DialogHeader>
                         <DialogTitle>{openedShop?.shopName}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-base text-foreground">
                             {shopResultActor === "ALL"
                                 ? "Orders placed in this period, split into completed, still open, and canceled."
                                 : `Canceled orders here are only those canceled by ${actorLabel(shopResultActor).toLowerCase()}.`}
                         </DialogDescription>
                     </DialogHeader>
                     {shopResultLoading ? <Skeleton className="h-40 w-full" /> : shopResultError ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">{shopResultError}</p>
+                        <p className="py-8 text-center text-sm text-destructive">{shopResultError}</p>
                     ) : shopResult ? (
                         <div className="space-y-4">
                             <div className="grid gap-3 sm:grid-cols-3">
                                 <Card>
                                     <CardContent className="p-4">
-                                        <p className="text-xs uppercase text-muted-foreground">Completed order value</p>
+                                        <p className="text-sm font-medium text-foreground">Completed order value</p>
                                         <p className="text-2xl font-semibold tabular-nums">{baht(shopResult.completedAmount)}</p>
-                                        <p className="text-xs text-muted-foreground">{shopResult.completedOrders.toLocaleString()} orders</p>
+                                        <p className="text-sm text-foreground">{shopResult.completedOrders.toLocaleString()} orders</p>
                                     </CardContent>
                                 </Card>
                                 <Card>
                                     <CardContent className="p-4">
-                                        <p className="text-xs uppercase text-muted-foreground">Still open</p>
+                                        <p className="text-sm font-medium text-foreground">Still open</p>
                                         <p className="text-2xl font-semibold tabular-nums">{baht(shopResult.openAmount)}</p>
-                                        <p className="text-xs text-muted-foreground">{shopResult.openOrders.toLocaleString()} orders</p>
+                                        <p className="text-sm text-foreground">{shopResult.openOrders.toLocaleString()} orders</p>
                                     </CardContent>
                                 </Card>
                                 <Card>
                                     <CardContent className="p-4">
-                                        <p className="text-xs uppercase text-muted-foreground">Canceled order value</p>
+                                        <p className="text-sm font-medium text-foreground">Canceled order value</p>
                                         <p className="text-2xl font-semibold tabular-nums text-destructive">{baht(shopResult.canceledAmount)}</p>
-                                        <p className="text-xs text-muted-foreground">{shopResult.canceledOrders.toLocaleString()} canceled orders</p>
+                                        <p className="text-sm text-foreground">{shopResult.canceledOrders.toLocaleString()} canceled orders</p>
                                     </CardContent>
                                 </Card>
                             </div>
