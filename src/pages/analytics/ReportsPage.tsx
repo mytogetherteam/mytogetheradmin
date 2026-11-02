@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Ban, Banknote, ClipboardList, Clock, FileSpreadsheet, Hourglass, ScrollText, Star, Store, Ticket, TrendingDown, Users, Utensils,
+    Ban, Banknote, ClipboardList, Clock, Download, FileSpreadsheet, Hourglass, ScrollText, Star, Store, Ticket, TrendingDown, Users, Utensils,
     type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ import {
     CustomerOrderHistory,
 } from "@/services/reportsService";
 import { ApiError } from "@/services/apiClient";
-import { formatBangkokDateTime, getBangkokDateString } from "@/utils/bangkokTime";
+import { bangkokPreset, BangkokPreset, formatBangkokDateTime, lastBangkokDays } from "@/utils/bangkokTime";
 
 type ReportId =
     | "operations"
@@ -59,102 +59,120 @@ const REPORTS: Array<{ id: ReportId; tab: string; title: string; hint: string; i
     {
         id: "operations",
         tab: "Operations",
-        title: "Operations summary",
+        title: "What happened each day",
         icon: ClipboardList,
-        hint: "One row per day. Placed is every order created that day. Delivered, picked up, and canceled are the current status. Escalated orders can also appear in those columns. Kitchen wait averages only completed orders that have a wait recorded.",
+        hint: "Placed is orders created that day. Delivered, picked up, and canceled are counted on the day they happened.",
     },
     {
         id: "hours",
         tab: "By hour",
-        title: "Orders by hour",
+        title: "What happened each hour",
         icon: Clock,
-        hint: "One row per hour in Thailand time, added up across the selected dates. Placed is every order created in that hour. Delivered, picked up, and canceled are the current status. The total row matches Operations for the same dates.",
+        hint: "The same counts as Operations, added up by hour in Thailand.",
     },
     {
         id: "shops",
-        tab: "Shops",
-        title: "Shop scorecard",
+        tab: "Restaurants",
+        title: "Restaurant scorecard",
         icon: Store,
-        hint: "Testing shops are omitted. Needs attention means open with no orders, a cancel rate of 20% or more on at least 3 orders, or a rating under 3 with at least 3 orders.",
+        hint: "Orders placed in this period. Sales is the completed order value of those orders.",
     },
     {
         id: "waiting",
         tab: "Waiting",
-        title: "Shops still waiting",
+        title: "Restaurants still waiting",
         icon: Hourglass,
-        hint: "Orders sitting in Pending, payment slip, or awaiting approval right now. The dates above do not change this list. Pending cancels itself at 10 minutes, after a warning at 5. A payment slip cancels itself at 20 minutes, after a warning at 10. Close to timeout is after that warning and before the cancel. Past cancel time is still open after it. Awaiting approval warns the shop at 5 minutes and does not cancel itself. Pending wait is the order time. A payment slip uses the last update. An approval that was already escalated uses the order time, because that alert rewrites the last update. Testing shops are omitted.",
+        hint: "Orders waiting on a restaurant right now. The dates above do not change this list.",
     },
     {
         id: "cancellations",
         tab: "Cancellations",
-        title: "Cancellation ledger",
+        title: "Canceled orders",
         icon: Ban,
-        hint: "Each canceled order in the range. The newest 500 are listed when there are more. Click a column heading to sort those rows.",
+        hint: "Each order canceled in this period, on the day it was canceled.",
     },
     {
         id: "losses",
         tab: "Losses",
-        title: "Lost sales by reason",
+        title: "Canceled order value by reason",
         icon: TrendingDown,
-        hint: "Canceled orders grouped by restaurant and reason. Shop did not respond combines the two automatic timeouts for a restaurant that never answered. Lost is the order total.",
+        hint: "Canceled order value grouped by restaurant and reason. Shop did not respond covers a restaurant that never answered.",
     },
     {
         id: "money",
         tab: "Money",
-        title: "Shop money",
+        title: "Order value by restaurant",
         icon: Banknote,
-        hint: "Customers paid is the stored order total on orders that were not canceled. Lost is the order total on canceled orders. Open a restaurant to see what it made, what it lost, and the reasons.",
+        hint: "Orders placed in this period, split into completed, still open, and canceled. Item sales, fees, discounts, and free-delivery orders are from completed orders.",
     },
     {
         id: "menus",
         tab: "Menus",
-        title: "Menu performance",
+        title: "Dishes on completed orders",
         icon: Utensils,
-        hint: "Dishes ordered in this range. Orders means separate orders, and sales is the line total. Views and likes are all-time totals. Testing shops are omitted. The top 200 by orders are listed. Click a column heading to sort those rows.",
+        hint: "Dishes on orders placed in this period that were delivered or picked up. Views and likes are all-time.",
     },
     {
         id: "promotions",
         tab: "Promotions",
-        title: "Promotion ledger",
+        title: "Coupons used",
         icon: Ticket,
-        hint: "Coupons redeemed or used on a non-canceled order in this range. Testing shops are omitted.",
+        hint: "Coupon redemptions in this period. The order count leaves out canceled orders.",
     },
     {
         id: "customers",
         tab: "Customers",
         title: "Customers",
         icon: Users,
-        hint: "Everyone who placed an order in this range is listed. Click a column heading to sort. Numbers and the last-order date start with the largest or newest at the top, and a second click reverses them. Orders so far is completed orders, and History is that same count in words. Spent so far is what they paid on those orders. Favorite restaurant is the shop those orders came from most often. Gone quiet means the last completed order was more than 30 days ago. Click a name to open that person's orders. Canceled and rejected orders are left out of the counts, the spend, and the favorite shop. Testing shops are omitted.",
+        hint: "Customers with an order that was not canceled in this period. Gone quiet means the last completed order was more than 30 days ago.",
     },
     {
         id: "reviews",
         tab: "Reviews",
-        title: "Review record",
+        title: "Reviews",
         icon: Star,
-        hint: "Reviews are order reviews on delivered orders created in this range. Shop ratings are the shop's current rating. The lowest 200 reviews and shops are listed when there are more. Click a column heading to sort those rows.",
+        hint: "Reviews on delivered orders placed in this period. The restaurant rating is its current rating.",
     },
     {
         id: "staff",
-        tab: "Staff",
-        title: "Staff log",
+        tab: "People online",
+        title: "People online",
         icon: ScrollText,
-        hint: "Shop staff and admins active on the To date.",
+        hint: "Admins seen on the To date.",
     },
+];
+
+const GROUPS: Array<{ id: string; label: string; reports: ReportId[] }> = [
+    { id: "today", label: "Today", reports: ["waiting"] },
+    { id: "sales", label: "Sales", reports: ["money", "menus", "promotions"] },
+    { id: "service", label: "Service", reports: ["operations", "hours", "shops", "cancellations", "losses", "reviews"] },
+    { id: "people", label: "People", reports: ["customers", "staff"] },
+];
+
+const ATTENTION_FILTERS = [
+    { id: "noOrders", label: "No orders", match: "Open with no orders" },
+    { id: "cancelRate", label: "Cancel rate 20% or more", match: "Cancel rate 20% or more" },
+    { id: "lowRating", label: "Rating under 3", match: "Rating under 3" },
+] as const;
+
+const DATE_PRESETS: Array<{ id: BangkokPreset; label: string }> = [
+    { id: "today", label: "Today" },
+    { id: "yesterday", label: "Yesterday" },
+    { id: "week", label: "This week" },
+    { id: "month", label: "This month" },
 ];
 
 const ACTORS = [
     { id: "ALL", label: "Everyone" },
     { id: "USER", label: "Customer" },
-    { id: "SHOP", label: "Shop" },
+    { id: "SHOP", label: "Restaurant" },
     { id: "ADMIN", label: "Admin" },
     { id: "SYSTEM", label: "System" },
     { id: "UNSPECIFIED", label: "Unspecified" },
 ];
 
 function defaultRange() {
-    const end = new Date();
-    const start = new Date(end.getTime() - 29 * 86_400_000);
-    return { start: getBangkokDateString(start), end: getBangkokDateString(end) };
+    return lastBangkokDays(30);
 }
 
 function rangeError(start: string, end: string) {
@@ -209,7 +227,7 @@ const INITIAL_SORTS: Record<string, SortConfig> = {
     cancellations: { key: "createdAt", direction: "desc" },
     lossReasons: { key: "lostAmount", direction: "desc" },
     lossShops: { key: "lostAmount", direction: "desc" },
-    money: { key: "customersPaid", direction: "desc" },
+    money: { key: "completedAmount", direction: "desc" },
     payments: { key: "amount", direction: "desc" },
     menus: { key: "orders", direction: "desc" },
     promotions: { key: "discountGiven", direction: "desc" },
@@ -259,12 +277,6 @@ function promoTargetLabel(value: string) {
     return value;
 }
 
-function orderHistory(count: number) {
-    if (count <= 0) return "No completed orders yet";
-    if (count === 1) return "Ordered once";
-    return `Ordered ${count.toLocaleString()} times already`;
-}
-
 function orderStatusLabel(status: string) {
     const labels: Record<string, string> = {
         PENDING: "Pending",
@@ -305,6 +317,37 @@ function EmptyRow({ cols, label }: { cols: number; label: string }) {
     );
 }
 
+function Figures({ items }: { items: Array<{ label: string; value: string; note?: string }> }) {
+    return (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {items.map((item) => (
+                <Card key={item.label}>
+                    <CardContent className="p-4">
+                        <p className="text-xs uppercase text-muted-foreground">{item.label}</p>
+                        <p className="text-2xl font-semibold tabular-nums">{item.value}</p>
+                        {item.note ? <p className="text-xs text-muted-foreground">{item.note}</p> : null}
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
+function csvCell(value: string | number | null | undefined) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function saveCsv(filename: string, headers: string[], rows: Array<Array<string | number | null | undefined>>) {
+    const body = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+    const blob = new Blob([body], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 function ShownNote({ shown, total }: { shown: number; total: number }) {
     if (total <= shown) return null;
     return <p className="text-xs text-muted-foreground">Showing {shown.toLocaleString()} of {total.toLocaleString()}.</p>;
@@ -318,7 +361,8 @@ export default function ReportsPage() {
     const [actor, setActor] = useState("ALL");
     const [maxRating, setMaxRating] = useState("3");
     const [sorts, setSorts] = useState<Record<string, SortConfig>>(INITIAL_SORTS);
-    const [attentionOnly, setAttentionOnly] = useState(false);
+    const [attentionReasons, setAttentionReasons] = useState<string[]>([]);
+    const [downloading, setDownloading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [operations, setOperations] = useState<OperationsReport | null>(null);
@@ -453,7 +497,12 @@ export default function ReportsPage() {
         void loadReport();
     }, [dateProblem, reportId, loadReport]);
 
-    const shopRows = attentionOnly ? shops.filter((row) => row.attention.length > 0) : shops;
+    const shopRows = attentionReasons.length === 0
+        ? shops
+        : shops.filter((row) => attentionReasons.some((reason) => {
+            const filter = ATTENTION_FILTERS.find((item) => item.id === reason);
+            return filter ? row.attention.includes(filter.match) : false;
+        }));
     const onSort = useCallback((table: string, key: string) => {
         setSorts((current) => ({ ...current, [table]: nextReportSort(current[table], key) }));
     }, []);
@@ -486,11 +535,7 @@ export default function ReportsPage() {
     const sortedLossReasons = useMemo(() => sortData(losses?.reasons ?? [], sorts.lossReasons), [losses, sorts.lossReasons]);
     const sortedLossShops = useMemo(() => sortData(losses?.shops ?? [], sorts.lossShops), [losses, sorts.lossShops]);
     const sortedMoney = useMemo(
-        () => sortData((money?.shops ?? []).map((row) => ({
-            ...row,
-            lostOrders: row.lostOrders ?? 0,
-            lostAmount: row.lostAmount ?? 0,
-        })), sorts.money),
+        () => sortData(money?.shops ?? [], sorts.money),
         [money, sorts.money],
     );
     const sortedPayments = useMemo(() => sortData(money?.paymentMethods ?? [], sorts.payments), [money, sorts.payments]);
@@ -523,6 +568,69 @@ export default function ReportsPage() {
         [history, sorts.history],
     );
     const sortedShopReasons = useMemo(() => sortData(shopResult?.reasons ?? [], sorts.shopReasons), [shopResult, sorts.shopReasons]);
+    const group = GROUPS.find((item) => item.reports.includes(reportId)) ?? GROUPS[0];
+    const groupReports = REPORTS.filter((item) => group.reports.includes(item.id));
+
+    const downloadReport = async () => {
+        setDownloading(true);
+        const file = `${reportId}-${startDate}-to-${endDate}.csv`;
+        try {
+            if (reportId === "operations" && operations) {
+                saveCsv(file, ["Date", "Placed", "Delivered", "Picked up", "Canceled", "Sent to MyTogether", "Wait until ready"], [
+                    ...operations.rows.map((row) => [row.date, row.placed, row.delivered, row.pickedUp, row.canceled, row.escalated, row.avgWaitMinutes]),
+                ]);
+            } else if (reportId === "hours" && hours) {
+                saveCsv(file, ["Hour", "Placed", "Delivered", "Picked up", "Canceled", "Sent to MyTogether", "Wait until ready"], hours.rows.map((row) => [hourLabel(row.hour), row.placed, row.delivered, row.pickedUp, row.canceled, row.escalated, row.avgWaitMinutes]));
+            } else if (reportId === "shops") {
+                saveCsv(file, ["Restaurant", "Orders", "Completed order value", "Average order value", "Cancel rate", "Rating", "Reviews", "Wait until ready", "Attention"], sortedShopRows.map((row) => [row.shopName, row.orders, row.sales, row.averageOrderValue, row.cancelRatePercent, row.ratingAvg, row.reviews, row.avgWaitMinutes, row.attention.join("; ")]));
+            } else if (reportId === "waiting" && waiting) {
+                saveCsv(file, ["Restaurant", "Order", "Status", "Waiting minutes", "Amount"], waiting.orders.map((row) => [row.shopName, row.orderNo, orderStatusLabel(row.status), row.waitedMinutes, row.amount]));
+            } else if (reportId === "cancellations") {
+                const full = await reportsService.cancellations(startDate, endDate, actor === "ALL" ? undefined : actor, true);
+                saveCsv(file, ["Order", "Canceled", "Restaurant", "Amount", "Who", "Reason"], full.rows.map((row) => [row.orderNo, formatBangkokDateTime(row.createdAt), row.shopName, row.amount, actorLabel(row.canceledBy), row.cancelReason]));
+            } else if (reportId === "losses" && losses) {
+                saveCsv(file, ["Restaurant", "Reason", "Orders", "Canceled order value"], losses.shops.flatMap((shop) => shop.reasons.map((reason) => [shop.shopName, reason.reason, reason.orders, reason.lostAmount])));
+            } else if (reportId === "money" && money) {
+                saveCsv(file, ["Restaurant", "Item sales", "Delivery fees", "Free-delivery orders", "Coupon discounts", "Restaurant discounts", "Completed order value", "Still open", "Canceled orders", "Canceled order value"], money.shops.map((row) => [row.shopName, row.itemSales, row.deliveryFees, row.freeDeliveryOrders, row.couponDiscounts, row.shopDiscounts, row.completedAmount, row.openAmount, row.canceledOrders, row.canceledAmount]));
+            } else if (reportId === "menus") {
+                const full = await reportsService.menus(startDate, endDate, true);
+                saveCsv(file, ["Dish", "Restaurant", "Views all time", "Likes all time", "Orders", "Sales"], full.rows.map((row) => [row.dishName, row.shopName, row.views, row.likes, row.orders, row.sales]));
+            } else if (reportId === "promotions" && promotions) {
+                saveCsv(file, ["Coupon", "Restaurant", "Type", "Who can use it", "Redemptions", "Discount given", "Orders"], promotions.rows.map((row) => [row.couponName, row.shopName, promoTypeLabel(row.promotionType), promoTargetLabel(row.target), row.redemptions, row.discountGiven, row.orders]));
+            } else if (reportId === "customers" && customers) {
+                saveCsv(file, ["Customer", "Phone", "Orders in period", "Spent in period", "Orders so far", "Spent so far", "Favorite restaurant", "Gone quiet", "Last order"], customers.rows.map((row) => [row.name, row.phone, row.ordersInRange, row.spentInRange, row.ordersSoFar, row.spentSoFar, row.favoriteShop, row.goneQuiet ? "Yes" : "No", formatBangkokDateTime(row.lastOrderAt)]));
+            } else if (reportId === "reviews") {
+                const full = await reportsService.reviews(startDate, endDate, maxRating, true);
+                saveCsv(file, ["Section", "Restaurant", "Order", "Rating", "Detail", "Time"], [
+                    ...full.comments.rows.map((row) => ["Review", row.shopName, row.orderNo, row.rating, row.comment ?? "", formatBangkokDateTime(row.createdAt)]),
+                    ...full.shops.rows.map((row) => ["Restaurant rating", row.shopName, "", row.ratingAvg, row.ratingCount, ""]),
+                ]);
+            } else if (reportId === "staff" && staff) {
+                saveCsv(file, ["Name", "Role", "Restaurant", "Last seen"], staff.actors.map((row) => [row.name ?? row.contact ?? "", roleLabel(row.role), row.shopName, formatBangkokDateTime(row.lastSeenAt)]));
+            }
+        } catch (loadError: unknown) {
+            setError(errorMessage(loadError));
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    const downloadCustomerHistory = async () => {
+        if (!openedCustomer) return;
+        setDownloading(true);
+        try {
+            const full = await reportsService.customerOrders(openedCustomer.userId, true);
+            saveCsv(
+                `customer-${openedCustomer.userId}-orders.csv`,
+                ["Restaurant", "Time", "Amount", "Status"],
+                full.rows.map((row) => [row.shopName, formatBangkokDateTime(row.createdAt), row.amount, orderStatusLabel(row.status)]),
+            );
+        } catch (loadError: unknown) {
+            setHistoryError(errorMessage(loadError));
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <div className="flex flex-col gap-6">
@@ -532,6 +640,13 @@ export default function ReportsPage() {
                     <h1 className="text-lg font-semibold md:text-2xl">Reports</h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    {DATE_PRESETS.map((preset) => (
+                        <Button key={preset.id} size="sm" variant="outline" onClick={() => {
+                            const range = bangkokPreset(preset.id);
+                            setStartDate(range.start);
+                            setEndDate(range.end);
+                        }}>{preset.label}</Button>
+                    ))}
                     <Label className="text-xs text-muted-foreground">From</Label>
                     <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-8 w-36 text-xs" />
                     <Label className="text-xs text-muted-foreground">To</Label>
@@ -539,9 +654,17 @@ export default function ReportsPage() {
                 </div>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+                {GROUPS.map((item) => (
+                    <Button key={item.id} size="sm" variant={item.id === group.id ? "secondary" : "outline"} onClick={() => setReportId(item.reports[0])}>
+                        {item.label}
+                    </Button>
+                ))}
+            </div>
+
             <Tabs value={reportId} onValueChange={(value) => setReportId(value as ReportId)}>
-                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                    {REPORTS.map((item) => {
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-6">
+                    {groupReports.map((item) => {
                         const Icon = item.icon;
                         return (
                             <TabsTrigger key={item.id} value={item.id} className="h-auto gap-2 whitespace-normal px-2 py-2">
@@ -555,11 +678,18 @@ export default function ReportsPage() {
 
             {(reportId === "shops" || reportId === "cancellations" || reportId === "losses" || reportId === "reviews") && (
             <div className="flex flex-wrap items-center gap-2">
-                {reportId === "shops" && (
-                    <Button size="sm" variant={attentionOnly ? "secondary" : "outline"} onClick={() => setAttentionOnly((value) => !value)}>
-                        {attentionOnly ? "Showing needs attention" : "Needs attention"}
+                {reportId === "shops" && ATTENTION_FILTERS.map((filter) => (
+                    <Button
+                        key={filter.id}
+                        size="sm"
+                        variant={attentionReasons.includes(filter.id) ? "secondary" : "outline"}
+                        onClick={() => setAttentionReasons((current) => current.includes(filter.id)
+                            ? current.filter((id) => id !== filter.id)
+                            : [...current, filter.id])}
+                    >
+                        {filter.label}
                     </Button>
-                )}
+                ))}
                 {(reportId === "cancellations" || reportId === "losses") && (
                     <Select value={actor} onValueChange={setActor}>
                         <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
@@ -585,15 +715,32 @@ export default function ReportsPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>{selected.title}</CardTitle>
-                    <CardDescription>{selected.hint}</CardDescription>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <CardTitle>{selected.title}</CardTitle>
+                            <CardDescription>{selected.hint}</CardDescription>
+                        </div>
+                        <Button size="sm" variant="outline" className="gap-2" disabled={downloading || loading || (dateProblem != null && reportId !== "waiting")} onClick={() => void downloadReport()}>
+                            <Download className="h-4 w-4" />
+                            {downloading ? "Preparing…" : "Download"}
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {dateProblem && reportId !== "waiting" ? (
-                        <p className="py-16 text-center text-sm text-muted-foreground">{dateProblem}</p>
+                        <p className="py-16 text-center text-sm text-destructive">{dateProblem}</p>
                     ) : loading ? <Skeleton className="h-[280px] w-full" /> : error ? (
-                        <p className="py-16 text-center text-sm text-muted-foreground">{error}</p>
+                        <p className="py-16 text-center text-sm text-destructive">{error}</p>
                     ) : reportId === "operations" && operations ? (
+                        <>
+                        <Figures items={[
+                            { label: "Placed", value: operations.totals.placed.toLocaleString() },
+                            { label: "Delivered", value: operations.totals.delivered.toLocaleString() },
+                            { label: "Picked up", value: operations.totals.pickedUp.toLocaleString() },
+                            { label: "Canceled", value: operations.totals.canceled.toLocaleString() },
+                            { label: "Sent to MyTogether", value: operations.totals.escalated.toLocaleString() },
+                            { label: "Wait until ready", value: waitLabel(operations.totals.avgWaitMinutes) },
+                        ]} />
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -602,8 +749,8 @@ export default function ReportsPage() {
                                     {column("operations", "Delivered", "delivered", "right")}
                                     {column("operations", "Picked up", "pickedUp", "right")}
                                     {column("operations", "Canceled", "canceled", "right")}
-                                    {column("operations", "Escalated", "escalated", "right")}
-                                    {column("operations", "Avg kitchen wait", "avgWaitMinutes", "right")}
+                                    {column("operations", "Sent to MyTogether", "escalated", "right")}
+                                    {column("operations", "Wait until ready", "avgWaitMinutes", "right")}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -631,7 +778,17 @@ export default function ReportsPage() {
                                 </TableRow>
                             </TableFooter>
                         </Table>
+                        </>
                     ) : reportId === "hours" && hours ? (
+                        <>
+                        <Figures items={[
+                            { label: "Placed", value: hours.totals.placed.toLocaleString() },
+                            { label: "Delivered", value: hours.totals.delivered.toLocaleString() },
+                            { label: "Picked up", value: hours.totals.pickedUp.toLocaleString() },
+                            { label: "Canceled", value: hours.totals.canceled.toLocaleString() },
+                            { label: "Sent to MyTogether", value: hours.totals.escalated.toLocaleString() },
+                            { label: "Wait until ready", value: waitLabel(hours.totals.avgWaitMinutes) },
+                        ]} />
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -640,8 +797,8 @@ export default function ReportsPage() {
                                     {column("hours", "Delivered", "delivered", "right")}
                                     {column("hours", "Picked up", "pickedUp", "right")}
                                     {column("hours", "Canceled", "canceled", "right")}
-                                    {column("hours", "Escalated", "escalated", "right")}
-                                    {column("hours", "Avg kitchen wait", "avgWaitMinutes", "right")}
+                                    {column("hours", "Sent to MyTogether", "escalated", "right")}
+                                    {column("hours", "Wait until ready", "avgWaitMinutes", "right")}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -669,6 +826,7 @@ export default function ReportsPage() {
                                 </TableRow>
                             </TableFooter>
                         </Table>
+                        </>
                     ) : reportId === "waiting" && waiting ? (
                         <div className="space-y-6">
                             <div className="grid gap-3 md:grid-cols-4">
@@ -745,24 +903,35 @@ export default function ReportsPage() {
                             </div>
                         </div>
                     ) : reportId === "shops" ? (
+                        <>
+                        <Figures items={[
+                            { label: "Restaurants", value: sortedShopRows.length.toLocaleString() },
+                            { label: "Orders placed", value: sortedShopRows.reduce((sum, row) => sum + row.orders, 0).toLocaleString() },
+                            { label: "Completed order value", value: baht(sortedShopRows.reduce((sum, row) => sum + row.sales, 0)) },
+                            { label: "Need attention", value: sortedShopRows.filter((row) => row.attention.length > 0).length.toLocaleString() },
+                        ]} />
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {column("shops", "Shop", "shopName")}
+                                    {column("shops", "Restaurant", "shopName")}
                                     {column("shops", "Orders", "orders", "right")}
-                                    {column("shops", "Sales", "sales", "right")}
-                                    {column("shops", "AOV", "averageOrderValue", "right")}
+                                    {column("shops", "Completed order value", "sales", "right")}
+                                    {column("shops", "Average order value", "averageOrderValue", "right")}
                                     {column("shops", "Cancel rate", "cancelRatePercent", "right")}
                                     {column("shops", "Rating", "ratingSort", "right")}
                                     {column("shops", "Reviews", "reviews", "right")}
-                                    {column("shops", "Avg kitchen wait", "avgWaitMinutes", "right")}
+                                    {column("shops", "Wait until ready", "avgWaitMinutes", "right")}
                                     {column("shops", "Attention", "attentionText")}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sortedShopRows.length === 0 ? <EmptyRow cols={9} label="No shops in this view." /> : sortedShopRows.map((row) => (
+                                {sortedShopRows.length === 0 ? <EmptyRow cols={9} label="No restaurants in this view." /> : sortedShopRows.map((row) => (
                                     <TableRow key={row.shopId}>
-                                        <TableCell className="font-medium">{row.shopName}</TableCell>
+                                        <TableCell className="font-medium">
+                                            <button type="button" className="text-left text-primary underline-offset-4 hover:underline" onClick={() => void openShopResult(row)}>
+                                                {row.shopName}
+                                            </button>
+                                        </TableCell>
                                         <TableCell className="text-right tabular-nums">{row.orders.toLocaleString()}</TableCell>
                                         <TableCell className="text-right tabular-nums">{baht(row.sales)}</TableCell>
                                         <TableCell className="text-right tabular-nums">{baht(row.averageOrderValue)}</TableCell>
@@ -775,15 +944,20 @@ export default function ReportsPage() {
                                 ))}
                             </TableBody>
                         </Table>
+                        </>
                     ) : reportId === "cancellations" && cancellations ? (
                         <div className="space-y-3">
+                            <Figures items={[
+                                { label: "Canceled orders", value: cancellations.total.toLocaleString() },
+                                { label: "Canceled order value", value: baht(cancellations.amountTotal || 0) },
+                            ]} />
                             <ShownNote shown={cancellations.shown} total={cancellations.total} />
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         {column("cancellations", "Order", "orderNo")}
-                                        {column("cancellations", "Time", "createdAt")}
-                                        {column("cancellations", "Shop", "shopName")}
+                                        {column("cancellations", "Canceled", "createdAt")}
+                                        {column("cancellations", "Restaurant", "shopName")}
                                         {column("cancellations", "Amount", "amount", "right")}
                                         {column("cancellations", "Who", "whoLabel")}
                                         {column("cancellations", "Reason", "reasonText")}
@@ -808,7 +982,7 @@ export default function ReportsPage() {
                             <div className="grid gap-3 md:grid-cols-3">
                                 <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Restaurants</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.restaurants.toLocaleString()}</p></CardContent></Card>
                                 <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Canceled orders</p><p className="text-2xl font-semibold tabular-nums">{losses.totals.orders.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Lost</p><p className="text-2xl font-semibold tabular-nums text-destructive">{baht(losses.totals.lostAmount)}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Canceled order value</p><p className="text-2xl font-semibold tabular-nums text-destructive">{baht(losses.totals.lostAmount)}</p></CardContent></Card>
                             </div>
                             <div className="space-y-2">
                                 <h2 className="text-sm font-medium">By reason</h2>
@@ -818,7 +992,7 @@ export default function ReportsPage() {
                                             {column("lossReasons", "Reason", "reason")}
                                             {column("lossReasons", "Restaurants", "restaurants", "right")}
                                             {column("lossReasons", "Orders", "orders", "right")}
-                                            {column("lossReasons", "Lost", "lostAmount", "right")}
+                                            {column("lossReasons", "Canceled order value", "lostAmount", "right")}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -849,7 +1023,7 @@ export default function ReportsPage() {
                                             {column("lossShops", "Restaurant", "shopName")}
                                             <TableHead>Reason</TableHead>
                                             {column("lossShops", "Orders", "orders", "right")}
-                                            {column("lossShops", "Lost", "lostAmount", "right")}
+                                            {column("lossShops", "Canceled order value", "lostAmount", "right")}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -887,23 +1061,30 @@ export default function ReportsPage() {
                         </div>
                     ) : reportId === "money" && money ? (
                         <div className="space-y-6">
+                            <Figures items={[
+                                { label: "Completed order value", value: baht(money.totals.completedAmount), note: `${money.totals.completedOrders.toLocaleString()} orders` },
+                                { label: "Still open", value: baht(money.totals.openAmount), note: `${money.totals.openOrders.toLocaleString()} orders` },
+                                { label: "Canceled order value", value: baht(money.totals.canceledAmount), note: `${money.totals.canceledOrders.toLocaleString()} orders` },
+                                { label: "Free-delivery orders", value: money.totals.freeDeliveryOrders.toLocaleString() },
+                            ]} />
                             <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        {column("money", "Shop", "shopName")}
+                                        {column("money", "Restaurant", "shopName")}
                                         {column("money", "Item sales", "itemSales", "right")}
                                         {column("money", "Delivery fees", "deliveryFees", "right")}
-                                        {column("money", "Free delivery", "freeDeliveryOrders", "right")}
+                                        {column("money", "Free-delivery orders", "freeDeliveryOrders", "right")}
                                         {column("money", "Coupon discounts", "couponDiscounts", "right")}
-                                        {column("money", "Shop discounts", "shopDiscounts", "right")}
-                                        {column("money", "Customers paid", "customersPaid", "right")}
-                                        {column("money", "Canceled", "lostOrders", "right")}
-                                        {column("money", "Lost", "lostAmount", "right")}
+                                        {column("money", "Restaurant discounts", "shopDiscounts", "right")}
+                                        {column("money", "Completed order value", "completedAmount", "right")}
+                                        {column("money", "Still open", "openAmount", "right")}
+                                        {column("money", "Canceled orders", "canceledOrders", "right")}
+                                        {column("money", "Canceled order value", "canceledAmount", "right")}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedMoney.length === 0 ? <EmptyRow cols={9} label="No orders in this range." /> : sortedMoney.map((row) => (
+                                    {sortedMoney.length === 0 ? <EmptyRow cols={10} label="No orders in this period." /> : sortedMoney.map((row) => (
                                         <TableRow key={row.shopId}>
                                             <TableCell className="font-medium">
                                                 {row.shopId > 0 ? (
@@ -921,9 +1102,10 @@ export default function ReportsPage() {
                                             <TableCell className="text-right tabular-nums">{row.freeDeliveryOrders.toLocaleString()}</TableCell>
                                             <TableCell className="text-right tabular-nums">{baht(row.couponDiscounts)}</TableCell>
                                             <TableCell className="text-right tabular-nums">{baht(row.shopDiscounts)}</TableCell>
-                                            <TableCell className="text-right tabular-nums">{baht(row.customersPaid)}</TableCell>
-                                            <TableCell className="text-right tabular-nums">{(row.lostOrders ?? 0).toLocaleString()}</TableCell>
-                                            <TableCell className="text-right tabular-nums">{baht(row.lostAmount ?? 0)}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(row.completedAmount)}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(row.openAmount)}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{row.canceledOrders.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right tabular-nums">{baht(row.canceledAmount)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -935,15 +1117,16 @@ export default function ReportsPage() {
                                         <TableCell className="text-right tabular-nums">{money.totals.freeDeliveryOrders.toLocaleString()}</TableCell>
                                         <TableCell className="text-right tabular-nums">{baht(money.totals.couponDiscounts)}</TableCell>
                                         <TableCell className="text-right tabular-nums">{baht(money.totals.shopDiscounts)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{baht(money.totals.customersPaid)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{(money.totals.lostOrders ?? 0).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{baht(money.totals.lostAmount ?? 0)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{baht(money.totals.completedAmount)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{baht(money.totals.openAmount)}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{money.totals.canceledOrders.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{baht(money.totals.canceledAmount)}</TableCell>
                                     </TableRow>
                                 </TableFooter>
                             </Table>
                             </div>
                             <div>
-                                <h2 className="mb-2 text-sm font-medium">Payment methods</h2>
+                                <h2 className="mb-2 text-sm font-medium">Payment methods on completed orders</h2>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -953,7 +1136,7 @@ export default function ReportsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sortedPayments.length === 0 ? <EmptyRow cols={3} label="No paid orders in this range." /> : sortedPayments.map((row) => (
+                                        {sortedPayments.length === 0 ? <EmptyRow cols={3} label="No completed orders in this period." /> : sortedPayments.map((row) => (
                                             <TableRow key={row.method}>
                                                 <TableCell>{row.method}</TableCell>
                                                 <TableCell className="text-right tabular-nums">{row.orders.toLocaleString()}</TableCell>
@@ -966,24 +1149,35 @@ export default function ReportsPage() {
                         </div>
                     ) : reportId === "menus" && menus ? (
                         <div className="space-y-3">
+                            <Figures items={[
+                                { label: "Dishes", value: menus.total.toLocaleString() },
+                                { label: "Times ordered", value: (menus.ordersTotal || 0).toLocaleString() },
+                                { label: "Sales", value: baht(menus.salesTotal || 0) },
+                            ]} />
                             <ShownNote shown={menus.shown} total={menus.total} />
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         {column("menus", "Dish", "dishName")}
-                                        {column("menus", "Shop", "shopName")}
-                                        {column("menus", "Views", "views", "right")}
-                                        {column("menus", "Likes", "likes", "right")}
+                                        {column("menus", "Restaurant", "shopName")}
+                                        {column("menus", "Views, all time", "views", "right")}
+                                        {column("menus", "Likes, all time", "likes", "right")}
                                         {column("menus", "Orders", "orders", "right")}
                                         {column("menus", "Sales", "sales", "right")}
-                                        {column("menus", "Orders per view", "ordersPerView", "right")}
+                                        {column("menus", "Orders per all-time view", "ordersPerView", "right")}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedMenus.length === 0 ? <EmptyRow cols={7} label="No dishes were ordered in this range." /> : sortedMenus.map((row) => (
+                                    {sortedMenus.length === 0 ? <EmptyRow cols={7} label="No dishes on completed orders in this period." /> : sortedMenus.map((row) => (
                                         <TableRow key={row.menuId}>
                                             <TableCell className="font-medium">{row.dishName}</TableCell>
-                                            <TableCell>{row.shopName}</TableCell>
+                                            <TableCell>
+                                                {row.shopId > 0 ? (
+                                                    <button type="button" className="text-left text-primary underline-offset-4 hover:underline" onClick={() => void openShopResult({ shopId: row.shopId, shopName: row.shopName })}>
+                                                        {row.shopName}
+                                                    </button>
+                                                ) : row.shopName}
+                                            </TableCell>
                                             <TableCell className="text-right tabular-nums">{row.views.toLocaleString()}</TableCell>
                                             <TableCell className="text-right tabular-nums">{row.likes.toLocaleString()}</TableCell>
                                             <TableCell className="text-right tabular-nums">{row.orders.toLocaleString()}</TableCell>
@@ -995,11 +1189,17 @@ export default function ReportsPage() {
                             </Table>
                         </div>
                     ) : reportId === "promotions" && promotions ? (
+                        <div className="space-y-4">
+                        <Figures items={[
+                            { label: "Coupons", value: promotions.rows.length.toLocaleString() },
+                            { label: "Redemptions", value: promotions.rows.reduce((sum, row) => sum + row.redemptions, 0).toLocaleString() },
+                            { label: "Discount given", value: baht(promotions.rows.reduce((sum, row) => sum + row.discountGiven, 0)) },
+                        ]} />
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     {column("promotions", "Coupon", "couponName")}
-                                    {column("promotions", "Shop", "shopName")}
+                                    {column("promotions", "Restaurant", "shopName")}
                                     {column("promotions", "Type", "typeLabel")}
                                     {column("promotions", "Who can use it", "targetLabel")}
                                     {column("promotions", "Redemptions", "redemptions", "right")}
@@ -1008,7 +1208,7 @@ export default function ReportsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sortedPromotions.length === 0 ? <EmptyRow cols={7} label="No coupon use in this range." /> : sortedPromotions.map((row) => (
+                                {sortedPromotions.length === 0 ? <EmptyRow cols={7} label="No coupon use in this period." /> : sortedPromotions.map((row) => (
                                     <TableRow key={row.couponId}>
                                         <TableCell className="font-medium">{row.couponName}</TableCell>
                                         <TableCell>{row.shopName}</TableCell>
@@ -1021,6 +1221,7 @@ export default function ReportsPage() {
                                 ))}
                             </TableBody>
                         </Table>
+                        </div>
                     ) : reportId === "reviews" && reviews ? (
                         <div className="space-y-6">
                             <div className="grid gap-3 md:grid-cols-4">
@@ -1036,7 +1237,7 @@ export default function ReportsPage() {
                                     <TableHeader>
                                         <TableRow>
                                             {column("reviewComments", "Order", "orderNo")}
-                                            {column("reviewComments", "Shop", "shopName")}
+                                            {column("reviewComments", "Restaurant", "shopName")}
                                             {column("reviewComments", "Rating", "rating", "right")}
                                             {column("reviewComments", "Comment", "comment")}
                                             {column("reviewComments", "Time", "createdAt")}
@@ -1046,7 +1247,13 @@ export default function ReportsPage() {
                                         {sortedReviewComments.length === 0 ? <EmptyRow cols={5} label="No reviews at or under this rating." /> : sortedReviewComments.map((row) => (
                                             <TableRow key={`${row.orderNo}-${row.createdAt}`}>
                                                 <TableCell className="font-medium">{row.orderNo}</TableCell>
-                                                <TableCell>{row.shopName}</TableCell>
+                                                <TableCell>
+                                                    {row.shopId > 0 ? (
+                                                        <button type="button" className="text-left text-primary underline-offset-4 hover:underline" onClick={() => void openShopResult({ shopId: row.shopId, shopName: row.shopName })}>
+                                                            {row.shopName}
+                                                        </button>
+                                                    ) : row.shopName}
+                                                </TableCell>
                                                 <TableCell className="text-right tabular-nums">{row.rating.toFixed(1)}</TableCell>
                                                 <TableCell className="max-w-[320px]">{row.comment || "—"}</TableCell>
                                                 <TableCell>{formatBangkokDateTime(row.createdAt)}</TableCell>
@@ -1056,20 +1263,24 @@ export default function ReportsPage() {
                                 </Table>
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-sm font-medium">Shops at or under {reviews.threshold}</h2>
+                                <h2 className="text-sm font-medium">Restaurants at or under {reviews.threshold}</h2>
                                 <ShownNote shown={reviews.shops.shown} total={reviews.shops.total} />
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            {column("reviewShops", "Shop", "shopName")}
+                                            {column("reviewShops", "Restaurant", "shopName")}
                                             {column("reviewShops", "Current rating", "ratingAvg", "right")}
                                             {column("reviewShops", "Rating count", "ratingCount", "right")}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sortedReviewShops.length === 0 ? <EmptyRow cols={3} label="No shops at or under this rating." /> : sortedReviewShops.map((row) => (
+                                        {sortedReviewShops.length === 0 ? <EmptyRow cols={3} label="No restaurants at or under this rating." /> : sortedReviewShops.map((row) => (
                                             <TableRow key={row.shopId}>
-                                                <TableCell className="font-medium">{row.shopName}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <button type="button" className="text-left text-primary underline-offset-4 hover:underline" onClick={() => void openShopResult(row)}>
+                                                        {row.shopName}
+                                                    </button>
+                                                </TableCell>
                                                 <TableCell className="text-right tabular-nums">{row.ratingAvg.toFixed(2)}</TableCell>
                                                 <TableCell className="text-right tabular-nums">{row.ratingCount.toLocaleString()}</TableCell>
                                             </TableRow>
@@ -1081,9 +1292,9 @@ export default function ReportsPage() {
                     ) : reportId === "customers" && customers ? (
                         <div className="space-y-4">
                             <div className="grid gap-3 md:grid-cols-3">
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Customers in this range</p><p className="text-2xl font-semibold tabular-nums">{customers.total.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Customers in this period</p><p className="text-2xl font-semibold tabular-nums">{customers.total.toLocaleString()}</p></CardContent></Card>
                                 <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Ordered more than once</p><p className="text-2xl font-semibold tabular-nums">{customers.repeatCustomers.toLocaleString()}</p></CardContent></Card>
-                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">First completed order</p><p className="text-2xl font-semibold tabular-nums">{customers.firstTimeCustomers.toLocaleString()}</p></CardContent></Card>
+                                <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Ordered once so far</p><p className="text-2xl font-semibold tabular-nums">{customers.firstTimeCustomers.toLocaleString()}</p></CardContent></Card>
                             </div>
                             <ShownNote shown={customers.shown} total={customers.total} />
                             <div className="overflow-x-auto">
@@ -1092,17 +1303,16 @@ export default function ReportsPage() {
                                     <TableRow>
                                         {column("customers", "Customer", "name")}
                                         {column("customers", "Phone", "phone")}
-                                        {column("customers", "Orders in range", "ordersInRange", "right")}
-                                        {column("customers", "Spent in range", "spentInRange", "right")}
+                                        {column("customers", "Orders in period", "ordersInRange", "right")}
+                                        {column("customers", "Spent in period", "spentInRange", "right")}
                                         {column("customers", "Orders so far", "ordersSoFar", "right")}
                                         {column("customers", "Spent so far", "spentSoFar", "right")}
                                         {column("customers", "Favorite restaurant", "favoriteShop")}
-                                        {column("customers", "History", "historyCount")}
                                         {column("customers", "Last order", "lastOrderAt")}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedCustomers.length === 0 ? <EmptyRow cols={9} label="No customers ordered in this range." /> : sortedCustomers.map((row) => (
+                                    {sortedCustomers.length === 0 ? <EmptyRow cols={8} label="No customers in this period." /> : sortedCustomers.map((row) => (
                                         <TableRow key={row.userId}>
                                             <TableCell>
                                                 <button
@@ -1126,7 +1336,6 @@ export default function ReportsPage() {
                                                     </div>
                                                 ) : "—"}
                                             </TableCell>
-                                            <TableCell>{orderHistory(row.ordersSoFar)}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col items-start gap-1">
                                                     <span>{formatBangkokDateTime(row.lastOrderAt)}</span>
@@ -1149,12 +1358,12 @@ export default function ReportsPage() {
                                     <TableRow>
                                         {column("staff", "Name", "displayName")}
                                         {column("staff", "Role", "roleText")}
-                                        {column("staff", "Shop", "shopText")}
+                                        {column("staff", "Restaurant", "shopText")}
                                         {column("staff", "Last seen", "lastSeenAt")}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedStaff.length === 0 ? <EmptyRow cols={4} label="No staff were active on that date." /> : sortedStaff.map((actorRow) => (
+                                    {sortedStaff.length === 0 ? <EmptyRow cols={4} label="No admins were seen on that date." /> : sortedStaff.map((actorRow) => (
                                         <TableRow key={`${actorRow.actorId}-${actorRow.shopId ?? "none"}`}>
                                             <TableCell className="font-medium">{actorRow.displayName}</TableCell>
                                             <TableCell>{actorRow.roleText}</TableCell>
@@ -1184,18 +1393,30 @@ export default function ReportsPage() {
                     <DialogHeader>
                         <DialogTitle>{openedCustomer?.name}</DialogTitle>
                         <DialogDescription>
-                            {openedCustomer ? `${openedCustomer.phone}. Includes canceled orders. Click a column heading to sort.` : ""}
+                            {openedCustomer ? `${openedCustomer.phone}. Includes canceled orders.` : ""}
                         </DialogDescription>
                     </DialogHeader>
                     {historyLoading ? <Skeleton className="h-40 w-full" /> : historyError ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">{historyError}</p>
                     ) : history ? (
                         <div className="space-y-2">
-                            <ShownNote shown={history.shown} total={history.total} />
+                            <div className="flex items-center justify-between gap-2">
+                                <ShownNote shown={history.shown} total={history.total} />
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-2"
+                                    disabled={downloading}
+                                    onClick={() => void downloadCustomerHistory()}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </Button>
+                            </div>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        {column("history", "Shop", "shopName")}
+                                        {column("history", "Restaurant", "shopName")}
                                         {column("history", "Time", "createdAt")}
                                         {column("history", "Amount", "amount", "right")}
                                         {column("history", "Status", "statusLabel")}
@@ -1240,27 +1461,34 @@ export default function ReportsPage() {
                         <DialogTitle>{openedShop?.shopName}</DialogTitle>
                         <DialogDescription>
                             {shopResultActor === "ALL"
-                                ? "Customers paid includes orders that are still open. Lost is the order total on every canceled order in this range."
-                                : `Customers paid includes orders that are still open. Lost is limited to cancellations by ${actorLabel(shopResultActor).toLowerCase()}.`}
+                                ? "Orders placed in this period, split into completed, still open, and canceled."
+                                : `Canceled orders here are only those canceled by ${actorLabel(shopResultActor).toLowerCase()}.`}
                         </DialogDescription>
                     </DialogHeader>
                     {shopResultLoading ? <Skeleton className="h-40 w-full" /> : shopResultError ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">{shopResultError}</p>
                     ) : shopResult ? (
                         <div className="space-y-4">
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-3 sm:grid-cols-3">
                                 <Card>
                                     <CardContent className="p-4">
-                                        <p className="text-xs uppercase text-muted-foreground">Customers paid</p>
-                                        <p className="text-2xl font-semibold tabular-nums">{baht(shopResult.madeAmount)}</p>
-                                        <p className="text-xs text-muted-foreground">{shopResult.madeOrders.toLocaleString()} orders</p>
+                                        <p className="text-xs uppercase text-muted-foreground">Completed order value</p>
+                                        <p className="text-2xl font-semibold tabular-nums">{baht(shopResult.completedAmount)}</p>
+                                        <p className="text-xs text-muted-foreground">{shopResult.completedOrders.toLocaleString()} orders</p>
                                     </CardContent>
                                 </Card>
                                 <Card>
                                     <CardContent className="p-4">
-                                        <p className="text-xs uppercase text-muted-foreground">Lost</p>
-                                        <p className="text-2xl font-semibold tabular-nums text-destructive">{baht(shopResult.lostAmount)}</p>
-                                        <p className="text-xs text-muted-foreground">{shopResult.lostOrders.toLocaleString()} canceled orders</p>
+                                        <p className="text-xs uppercase text-muted-foreground">Still open</p>
+                                        <p className="text-2xl font-semibold tabular-nums">{baht(shopResult.openAmount)}</p>
+                                        <p className="text-xs text-muted-foreground">{shopResult.openOrders.toLocaleString()} orders</p>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <p className="text-xs uppercase text-muted-foreground">Canceled order value</p>
+                                        <p className="text-2xl font-semibold tabular-nums text-destructive">{baht(shopResult.canceledAmount)}</p>
+                                        <p className="text-xs text-muted-foreground">{shopResult.canceledOrders.toLocaleString()} canceled orders</p>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -1269,7 +1497,7 @@ export default function ReportsPage() {
                                     <TableRow>
                                         {column("shopReasons", "Reason", "reason")}
                                         {column("shopReasons", "Orders", "orders", "right")}
-                                        {column("shopReasons", "Lost", "lostAmount", "right")}
+                                        {column("shopReasons", "Canceled order value", "lostAmount", "right")}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

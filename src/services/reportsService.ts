@@ -90,6 +90,7 @@ export interface ShopScorecardRow {
 export interface CancellationLedger {
   total: number;
   shown: number;
+  amountTotal: number;
   rows: Array<{
     orderId: number;
     orderNo: string;
@@ -126,10 +127,12 @@ export interface CancellationLossReport {
 export interface ShopResult {
   shopId: number;
   shopName: string;
-  madeOrders: number;
-  madeAmount: number;
-  lostOrders: number;
-  lostAmount: number;
+  completedOrders: number;
+  completedAmount: number;
+  openOrders: number;
+  openAmount: number;
+  canceledOrders: number;
+  canceledAmount: number;
   reasons: CancellationLossReason[];
 }
 
@@ -142,9 +145,12 @@ export interface ShopMoneyReport {
     freeDeliveryOrders: number;
     couponDiscounts: number;
     shopDiscounts: number;
-    customersPaid: number;
-    lostOrders: number;
-    lostAmount: number;
+    completedOrders: number;
+    completedAmount: number;
+    openOrders: number;
+    openAmount: number;
+    canceledOrders: number;
+    canceledAmount: number;
   }>;
   totals: {
     itemSales: number;
@@ -152,9 +158,12 @@ export interface ShopMoneyReport {
     freeDeliveryOrders: number;
     couponDiscounts: number;
     shopDiscounts: number;
-    customersPaid: number;
-    lostOrders: number;
-    lostAmount: number;
+    completedOrders: number;
+    completedAmount: number;
+    openOrders: number;
+    openAmount: number;
+    canceledOrders: number;
+    canceledAmount: number;
   };
   paymentMethods: Array<{ method: string; orders: number; amount: number }>;
 }
@@ -162,8 +171,11 @@ export interface ShopMoneyReport {
 export interface MenuPerformanceReport {
   total: number;
   shown: number;
+  ordersTotal: number;
+  salesTotal: number;
   rows: Array<{
     menuId: number;
+    shopId: number;
     dishName: string;
     shopName: string;
     views: number;
@@ -237,6 +249,7 @@ export interface ReviewRecord {
       comment: string | null;
       createdAt: string;
       orderNo: string;
+      shopId: number;
       shopName: string;
     }>;
   };
@@ -268,24 +281,27 @@ export const reportsService = {
     apiClient.get<{ rows: ShopScorecardRow[] }>(`${reports.shops}?${rangeQuery(start, end)}`),
   shopsWaiting: () =>
     apiClient.get<ShopsWaitingReport>(reports.waiting),
-  cancellations: (start: string, end: string, actor?: string) =>
-    apiClient.get<CancellationLedger>(`${reports.cancellations}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
+  cancellations: (start: string, end: string, actor?: string, full = false) =>
+    apiClient.get<CancellationLedger>(`${reports.cancellations}?${rangeQuery(start, end, {
+      ...(actor ? { actor } : {}),
+      ...(full ? { full: "true" } : {}),
+    })}`),
   cancellationLosses: (start: string, end: string, actor?: string) =>
     apiClient.get<CancellationLossReport>(`${reports.cancellationLosses}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
   shopResult: (shopId: number, start: string, end: string, actor?: string) =>
     apiClient.get<ShopResult>(`${reports.shopResult(shopId)}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
   money: (start: string, end: string) =>
     apiClient.get<ShopMoneyReport>(`${reports.money}?${rangeQuery(start, end)}`),
-  menus: (start: string, end: string) =>
-    apiClient.get<MenuPerformanceReport>(`${reports.menus}?${rangeQuery(start, end)}`),
+  menus: (start: string, end: string, full = false) =>
+    apiClient.get<MenuPerformanceReport>(`${reports.menus}?${rangeQuery(start, end, full ? { full: "true" } : undefined)}`),
   promotions: (start: string, end: string) =>
     apiClient.get<PromotionLedger>(`${reports.promotions}?${rangeQuery(start, end)}`),
-  reviews: (start: string, end: string, maxRating: string) =>
-    apiClient.get<ReviewRecord>(`${reports.reviews}?${rangeQuery(start, end, { maxRating })}`),
+  reviews: (start: string, end: string, maxRating: string, full = false) =>
+    apiClient.get<ReviewRecord>(`${reports.reviews}?${rangeQuery(start, end, { maxRating, ...(full ? { full: "true" } : {}) })}`),
   // limit is ignored by the current API, which returns every customer. An older API
   // treats a missing limit as 10 and 100 as its maximum, so this keeps that list intact.
   customers: (start: string, end: string) =>
     apiClient.get<CustomerOrdersReport>(`${reports.customers}?${rangeQuery(start, end, { limit: "100" })}`),
-  customerOrders: (userId: number) =>
-    apiClient.get<CustomerOrderHistory>(reports.customerOrders(userId)),
+  customerOrders: (userId: number, full = false) =>
+    apiClient.get<CustomerOrderHistory>(`${reports.customerOrders(userId)}${full ? "?full=true" : ""}`),
 };

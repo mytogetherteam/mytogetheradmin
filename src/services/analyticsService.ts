@@ -15,6 +15,20 @@ export interface RevenueData {
   amount: number;
 }
 
+export interface OrderValueTotals {
+  completedAmount: number;
+  completedOrders: number;
+  openAmount: number;
+  openOrders: number;
+  canceledAmount: number;
+  canceledOrders: number;
+}
+
+export interface OrderValueReport {
+  series: RevenueData[];
+  totals: OrderValueTotals;
+}
+
 export interface SessionData {
   date: string;
   dau: number;
@@ -198,12 +212,12 @@ class AnalyticsService {
     return apiClient.get<DashboardStats>(config.endpoints.admin.analytics.dashboard);
   }
 
-  async getRevenueAnalytics(start?: string, end?: string): Promise<RevenueData[]> {
+  async getRevenueAnalytics(start?: string, end?: string): Promise<OrderValueReport> {
     const params = new URLSearchParams();
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiClient.get<RevenueData[]>(`${config.endpoints.admin.analytics.revenue}${query}`);
+    return apiClient.get<OrderValueReport>(`${config.endpoints.admin.analytics.revenue}${query}`);
   }
 
   async getSessionAnalytics(): Promise<SessionSummary | SessionData[]> {
@@ -214,8 +228,13 @@ class AnalyticsService {
     return apiClient.get<LocationData[]>(config.endpoints.admin.analytics.locations);
   }
 
-  async getPopularShops(): Promise<PopularShop[]> {
-    return apiClient.get<PopularShop[]>(config.endpoints.admin.analytics.popularShops);
+  async getPopularShops(start?: string, end?: string, limit = 20): Promise<PopularShop[]> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    if (limit) params.append('limit', String(limit));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<PopularShop[]>(`${config.endpoints.admin.analytics.popularShops}${query}`);
   }
 
   async getCategoryStats(): Promise<CategoryStats[]> {
@@ -300,11 +319,15 @@ class AnalyticsService {
     timeframe?: string;
     date?: string;
     month?: string;
+    start?: string;
+    end?: string;
   }): Promise<ActiveUserLocationsResponse> {
     const query = new URLSearchParams();
     if (params?.timeframe) query.append('timeframe', params.timeframe);
     if (params?.date) query.append('date', params.date);
     if (params?.month) query.append('month', params.month);
+    if (params?.start) query.append('start', params.start);
+    if (params?.end) query.append('end', params.end);
     const qs = query.toString() ? `?${query.toString()}` : '';
     return apiClient.get<ActiveUserLocationsResponse>(
       `${config.endpoints.admin.analytics.locations}${qs}`
@@ -379,7 +402,7 @@ export interface DashboardSummaryData {
     delivered: number;
     canceled: number;
   }>;
-  revenue: RevenueData[];
+  revenue: OrderValueReport;
   popularShops: PopularShop[];
   extendedStats: ExtendedDashboardStats | null;
   userRegistrationStats: UserRegistrationStatsResponse | null;
