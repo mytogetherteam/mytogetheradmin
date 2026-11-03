@@ -54,6 +54,10 @@ export const config = {
         base: '/api/admin/shop-coupons',
         detail: (id: number) => `/api/admin/shop-coupons/${id}`,
       },
+      socialReactions: {
+        base: '/api/admin/social-reactions',
+        detail: (id: number) => `/api/admin/social-reactions/${id}`,
+      },
       plans: {
         base: '/api/admin/plans',
         detail: (id: number) => `/api/admin/plans/${id}`,
@@ -326,12 +330,17 @@ export const config = {
         dashboardSummary: '/api/admin/analytics/dashboard-summary',
         reports: {
           operations: '/api/admin/analytics/reports/operations',
+          hours: '/api/admin/analytics/reports/hours',
           shops: '/api/admin/analytics/reports/shops',
           cancellations: '/api/admin/analytics/reports/cancellations',
+          cancellationLosses: '/api/admin/analytics/reports/cancellation-losses',
+          shopResult: (shopId: number) => `/api/admin/analytics/reports/shops/${shopId}/result`,
           money: '/api/admin/analytics/reports/money',
           menus: '/api/admin/analytics/reports/menus',
           promotions: '/api/admin/analytics/reports/promotions',
           reviews: '/api/admin/analytics/reports/reviews',
+          customers: '/api/admin/analytics/reports/customers',
+          customerOrders: (userId: number) => `/api/admin/analytics/reports/customers/${userId}/orders`,
         },
       },
       system: {
@@ -344,6 +353,7 @@ export const config = {
         freeDelivery: {
           config: '/api/admin/free-delivery/config',
         },
+        deliveryRange: '/api/admin/delivery-range',
         configs: {
           base: '/api/admin/configs',
           key: (key: string) => `/api/admin/configs/${key}`,

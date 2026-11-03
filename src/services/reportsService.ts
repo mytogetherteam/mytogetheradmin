@@ -1,6 +1,15 @@
 import { apiClient } from './apiClient';
 import { config } from '@/config/config';
 
+export interface OperationsTotals {
+  placed: number;
+  delivered: number;
+  pickedUp: number;
+  canceled: number;
+  escalated: number;
+  avgWaitMinutes: number | null;
+}
+
 export interface OperationsReport {
   rows: Array<{
     date: string;
@@ -11,14 +20,20 @@ export interface OperationsReport {
     escalated: number;
     avgWaitMinutes: number | null;
   }>;
-  totals: {
+  totals: OperationsTotals;
+}
+
+export interface OrdersByHourReport {
+  rows: Array<{
+    hour: number;
     placed: number;
     delivered: number;
     pickedUp: number;
     canceled: number;
     escalated: number;
     avgWaitMinutes: number | null;
-  };
+  }>;
+  totals: OperationsTotals;
 }
 
 export interface ShopScorecardRow {
@@ -39,6 +54,7 @@ export interface ShopScorecardRow {
 export interface CancellationLedger {
   total: number;
   shown: number;
+  amountTotal: number;
   rows: Array<{
     orderId: number;
     orderNo: string;
@@ -50,6 +66,40 @@ export interface CancellationLedger {
   }>;
 }
 
+export interface CancellationLossReason {
+  reason: string;
+  orders: number;
+  lostAmount: number;
+}
+
+export interface CancellationLossReport {
+  totals: {
+    restaurants: number;
+    orders: number;
+    lostAmount: number;
+  };
+  reasons: Array<CancellationLossReason & { restaurants: number }>;
+  shops: Array<{
+    shopId: number;
+    shopName: string;
+    orders: number;
+    lostAmount: number;
+    reasons: CancellationLossReason[];
+  }>;
+}
+
+export interface ShopResult {
+  shopId: number;
+  shopName: string;
+  completedOrders: number;
+  completedAmount: number;
+  openOrders: number;
+  openAmount: number;
+  canceledOrders: number;
+  canceledAmount: number;
+  reasons: CancellationLossReason[];
+}
+
 export interface ShopMoneyReport {
   shops: Array<{
     shopId: number;
@@ -59,7 +109,12 @@ export interface ShopMoneyReport {
     freeDeliveryOrders: number;
     couponDiscounts: number;
     shopDiscounts: number;
-    customersPaid: number;
+    completedOrders: number;
+    completedAmount: number;
+    openOrders: number;
+    openAmount: number;
+    canceledOrders: number;
+    canceledAmount: number;
   }>;
   totals: {
     itemSales: number;
@@ -67,7 +122,12 @@ export interface ShopMoneyReport {
     freeDeliveryOrders: number;
     couponDiscounts: number;
     shopDiscounts: number;
-    customersPaid: number;
+    completedOrders: number;
+    completedAmount: number;
+    openOrders: number;
+    openAmount: number;
+    canceledOrders: number;
+    canceledAmount: number;
   };
   paymentMethods: Array<{ method: string; orders: number; amount: number }>;
 }
@@ -75,8 +135,11 @@ export interface ShopMoneyReport {
 export interface MenuPerformanceReport {
   total: number;
   shown: number;
+  ordersTotal: number;
+  salesTotal: number;
   rows: Array<{
     menuId: number;
+    shopId: number;
     dishName: string;
     shopName: string;
     views: number;
@@ -100,6 +163,42 @@ export interface PromotionLedger {
   }>;
 }
 
+export interface CustomerOrdersReport {
+  total: number;
+  shown: number;
+  repeatCustomers: number;
+  firstTimeCustomers: number;
+  rows: Array<{
+    userId: number;
+    name: string;
+    phone: string;
+    ordersInRange: number;
+    spentInRange: number;
+    ordersSoFar: number;
+    spentSoFar: number;
+    favoriteShop: string | null;
+    favoriteOrders: number;
+    goneQuiet: boolean;
+    lastOrderAt: string;
+  }>;
+}
+
+export interface CustomerOrderHistory {
+  userId: number;
+  name: string;
+  phone: string;
+  total: number;
+  shown: number;
+  rows: Array<{
+    orderId: number;
+    orderNo: string;
+    shopName: string;
+    createdAt: string;
+    amount: number;
+    status: string;
+  }>;
+}
+
 export interface ReviewRecord {
   threshold: number;
   delivered: number;
@@ -114,6 +213,7 @@ export interface ReviewRecord {
       comment: string | null;
       createdAt: string;
       orderNo: string;
+      shopId: number;
       shopName: string;
     }>;
   };
@@ -139,16 +239,31 @@ const reports = config.endpoints.admin.analytics.reports;
 export const reportsService = {
   operations: (start: string, end: string) =>
     apiClient.get<OperationsReport>(`${reports.operations}?${rangeQuery(start, end)}`),
+  ordersByHour: (start: string, end: string) =>
+    apiClient.get<OrdersByHourReport>(`${reports.hours}?${rangeQuery(start, end)}`),
   shops: (start: string, end: string) =>
     apiClient.get<{ rows: ShopScorecardRow[] }>(`${reports.shops}?${rangeQuery(start, end)}`),
-  cancellations: (start: string, end: string, actor?: string) =>
-    apiClient.get<CancellationLedger>(`${reports.cancellations}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
+  cancellations: (start: string, end: string, actor?: string, full = false) =>
+    apiClient.get<CancellationLedger>(`${reports.cancellations}?${rangeQuery(start, end, {
+      ...(actor ? { actor } : {}),
+      ...(full ? { full: "true" } : {}),
+    })}`),
+  cancellationLosses: (start: string, end: string, actor?: string) =>
+    apiClient.get<CancellationLossReport>(`${reports.cancellationLosses}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
+  shopResult: (shopId: number, start: string, end: string, actor?: string) =>
+    apiClient.get<ShopResult>(`${reports.shopResult(shopId)}?${rangeQuery(start, end, actor ? { actor } : undefined)}`),
   money: (start: string, end: string) =>
     apiClient.get<ShopMoneyReport>(`${reports.money}?${rangeQuery(start, end)}`),
-  menus: (start: string, end: string) =>
-    apiClient.get<MenuPerformanceReport>(`${reports.menus}?${rangeQuery(start, end)}`),
+  menus: (start: string, end: string, full = false) =>
+    apiClient.get<MenuPerformanceReport>(`${reports.menus}?${rangeQuery(start, end, full ? { full: "true" } : undefined)}`),
   promotions: (start: string, end: string) =>
     apiClient.get<PromotionLedger>(`${reports.promotions}?${rangeQuery(start, end)}`),
-  reviews: (start: string, end: string, maxRating: string) =>
-    apiClient.get<ReviewRecord>(`${reports.reviews}?${rangeQuery(start, end, { maxRating })}`),
+  reviews: (start: string, end: string, maxRating: string, full = false) =>
+    apiClient.get<ReviewRecord>(`${reports.reviews}?${rangeQuery(start, end, { maxRating, ...(full ? { full: "true" } : {}) })}`),
+  // limit is ignored by the current API, which returns every customer. An older API
+  // treats a missing limit as 10 and 100 as its maximum, so this keeps that list intact.
+  customers: (start: string, end: string) =>
+    apiClient.get<CustomerOrdersReport>(`${reports.customers}?${rangeQuery(start, end, { limit: "100" })}`),
+  customerOrders: (userId: number, full = false) =>
+    apiClient.get<CustomerOrderHistory>(`${reports.customerOrders(userId)}${full ? "?full=true" : ""}`),
 };

@@ -30,7 +30,7 @@ import {
     Bell,
     Star,
     ChevronRight,
-    DollarSign,
+    Banknote,
     Smartphone,
     Globe,
     Layers,
@@ -51,7 +51,7 @@ import { OrdersVelocityGraphCard } from "@/components/dashboard/OrdersVelocityGr
 import { CustomerReviewsDetailModal } from "@/components/dashboard/CustomerReviewsDetailModal";
 import { UserRegistrationChannelSection } from "@/components/dashboard/UserRegistrationChannelSection";
 import {
-    getBangkokDateString,
+    lastBangkokDays,
     formatBangkokDate,
     formatBangkokDateTime,
 } from "@/utils/bangkokTime";
@@ -59,12 +59,7 @@ import {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function getDefaultDates() {
-    const todayBangkok = getBangkokDateString();
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
-    return {
-        start: getBangkokDateString(thirtyDaysAgo),
-        end: todayBangkok,
-    };
+    return lastBangkokDays(30);
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -274,7 +269,10 @@ export default function Dashboard() {
             const summary = await analyticsService.getDashboardSummary(startDate, endDate);
             if (summary) {
                 if (summary.cardCounts) setCardCounts(summary.cardCounts);
-                if (summary.revenue) setRevenue(summary.revenue);
+                if (summary.revenue) {
+                    const series = Array.isArray(summary.revenue) ? summary.revenue : summary.revenue.series;
+                    setRevenue(series || []);
+                }
                 if (summary.popularShops) setPopularShops(summary.popularShops);
                 if (summary.extendedStats) setExtendedStats(summary.extendedStats);
                 if (summary.systemHealth) setSystemHealth(summary.systemHealth);
@@ -405,12 +403,12 @@ export default function Dashboard() {
                     <div>
                         <CardTitle className="text-base font-bold flex items-center gap-2">
                             <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                                <DollarSign className="h-4 w-4" />
+                                <Banknote className="h-4 w-4" />
                             </span>
-                            Revenue Overview
+                            Completed order value
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Platform gross sales volume &amp; daily trends from confirmed orders
+                            Delivered and picked-up orders, counted on the day they were completed
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2 bg-background/90 p-1.5 rounded-xl border border-border/70 shadow-2xs">
@@ -433,21 +431,21 @@ export default function Dashboard() {
                 {/* Revenue Period KPI Strip */}
                 <div className="grid grid-cols-3 gap-2 p-3 sm:px-5 bg-muted/10 border-b border-border/40 text-xs">
                     <div>
-                        <span className="text-[10px] text-muted-foreground block font-medium">Period Revenue</span>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Completed order value</span>
                         <span className="text-base font-extrabold text-foreground">
-                            ${totalRevenueInRange.toLocaleString()}
+                            ฿{Math.round(totalRevenueInRange).toLocaleString()}
                         </span>
                     </div>
                     <div>
-                        <span className="text-[10px] text-muted-foreground block font-medium">Completed Orders</span>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Completed orders</span>
                         <span className="text-base font-extrabold text-foreground">
                             {totalOrdersInRange.toLocaleString()} orders
                         </span>
                     </div>
                     <div>
-                        <span className="text-[10px] text-muted-foreground block font-medium">Average Order Value</span>
+                        <span className="text-[10px] text-muted-foreground block font-medium">Average order value</span>
                         <span className="text-base font-extrabold text-foreground">
-                            ${avgOrderValue.toLocaleString()}
+                            ฿{avgOrderValue.toLocaleString()}
                         </span>
                     </div>
                 </div>
@@ -455,7 +453,7 @@ export default function Dashboard() {
                 <CardContent className="p-4 sm:p-5 pt-4">
                     {loading ? (
                         <Skeleton className="w-full h-[280px]" />
-                    ) : chartData.length > 0 ? (
+                    ) : totalOrdersInRange > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                                 <defs>
@@ -465,11 +463,11 @@ export default function Dashboard() {
                                     </linearGradient>
                                 </defs>
                                 <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                                <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `฿${v}`} />
                                 <Tooltip
                                     formatter={(v: number, name: string) => [
-                                        name === "total" ? `$${v.toLocaleString()}` : v.toLocaleString(),
-                                        name === "total" ? "Gross Sales" : "Orders",
+                                        name === "total" ? `฿${Math.round(v).toLocaleString()}` : v.toLocaleString(),
+                                        name === "total" ? "Completed order value" : "Orders",
                                     ]}
                                 />
                                 <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
@@ -477,7 +475,7 @@ export default function Dashboard() {
                         </ResponsiveContainer>
                     ) : (
                         <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
-                            No revenue recorded for the selected period
+                            No completed orders in the selected period
                         </div>
                     )}
                 </CardContent>
@@ -491,14 +489,14 @@ export default function Dashboard() {
                             <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                                 <Store className="h-4 w-4" />
                             </span>
-                            Top Performing Shops
+                            Restaurants by completed orders
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Highest customer reach &amp; order fulfillment volume
+                            Delivered and picked up in the dates on the left. Viewer counts are all-time.
                         </CardDescription>
                     </div>
                     <Badge variant="outline" className="text-[10px] font-semibold border-border/70">
-                        {popularShops.length} shops
+                        {popularShops.length} restaurants
                     </Badge>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
@@ -519,8 +517,8 @@ export default function Dashboard() {
                         <div className="space-y-3.5">
                             {popularShops.slice(0, 5).map((shop, i) => {
                                 const shopId = shop.shopId || `shop_${i}`;
-                                const shopName = shop.shopName || "Unknown Shop";
-                                const views = shop.viewCount || 0;
+                                const shopName = shop.shopName || "Unknown restaurant";
+                                const orders = shop.orders ?? shop.viewCount ?? 0;
                                 const unique = shop.uniqueViewers || 0;
                                 return (
                                     <div
@@ -539,14 +537,14 @@ export default function Dashboard() {
                                                 <div className="flex items-center gap-1.5">
                                                     <Users className="h-3 w-3 text-muted-foreground" />
                                                     <span className="text-[11px] text-muted-foreground font-medium">
-                                                        {unique.toLocaleString()} unique customers
+                                                        {unique.toLocaleString()} unique viewers, all time
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="shrink-0 text-right">
                                             <Badge variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-muted/80 font-semibold border border-border/50">
-                                                {views.toLocaleString()} orders
+                                                {orders.toLocaleString()} orders
                                             </Badge>
                                         </div>
                                     </div>
@@ -555,17 +553,17 @@ export default function Dashboard() {
                         </div>
                     ) : (
                         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-                            No shop data available
+                            No completed orders in the selected period
                         </div>
                     )}
 
                     <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span>Ranked by real customer transactions &amp; volume</span>
+                        <span>Ranked by completed orders in this period</span>
                         <span
                             onClick={() => navigate("/shops")}
                             className="text-emerald-500 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
                         >
-                            All Shops <ChevronRight className="h-3 w-3" />
+                            All restaurants <ChevronRight className="h-3 w-3" />
                         </span>
                     </div>
                 </CardContent>

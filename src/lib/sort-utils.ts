@@ -24,9 +24,10 @@ export function sortData<T>(data: T[], sortConfig: SortConfig | null): T[] {
     return [...data].sort((a, b) => {
         const aVal = (a as Record<string, unknown>)[key];
         const bVal = (b as Record<string, unknown>)[key];
-        
-        if (aVal === undefined || aVal === null) return 1;
-        if (bVal === undefined || bVal === null) return -1;
+
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
         
         const aComp = typeof aVal === "string" ? aVal.toLowerCase() : aVal;
         const bComp = typeof bVal === "string" ? bVal.toLowerCase() : bVal;

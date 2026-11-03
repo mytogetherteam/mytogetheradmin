@@ -98,6 +98,7 @@ const ManageDeliveryDrivers = lazy(
 const SocialMediaMgt = lazy(() => import("@/pages/social-media/SocialMediaMgt"));
 const SocialPostDetailPage = lazy(() => import("@/pages/social-media/PostDetailPage"));
 const SocialPostForm = lazy(() => import("@/pages/social-media/SocialPostForm"));
+const SocialReactionsPage = lazy(() => import("@/pages/social-media/SocialReactionsPage"));
 
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
@@ -124,6 +125,7 @@ const ReportsPage = lazy(() => import("@/pages/analytics/ReportsPage"));
 const AuditLogs = lazy(() => import("@/pages/system/AuditLogs"));
 const OrderTimeoutManagement = lazy(() => import("@/pages/system/OrderTimeoutManagement"));
 const FreeDeliveryManagement = lazy(() => import("@/pages/system/FreeDeliveryManagement"));
+const DeliveryRangeManagement = lazy(() => import("@/pages/system/DeliveryRangeManagement"));
 const SystemConfigManagement = lazy(() => import("@/pages/system/SystemConfigManagement"));
 const AppContentManagement = lazy(() => import("@/pages/system/AppContentManagement"));
 const AppVersionManagement = lazy(() => import("@/pages/system/AppVersionManagement"));
@@ -290,7 +292,9 @@ function App() {
 
               {/* SUPER ADMIN Routes */}
               <Route element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><Outlet /></ProtectedRoute>}>
+                <Route path="/social-media/reactions" element={<SocialReactionsPage />} />
                 <Route path="/shops/free-delivery" element={<FreeDeliveryManagement />} />
+                <Route path="/orders/delivery-range" element={<DeliveryRangeManagement />} />
                 <Route path="/system/free-delivery" element={<Navigate to="/shops/free-delivery" replace />} />
                 <Route path="/import/shops-excel" element={<ShopsExcelImport />} />
                 <Route path="/import/activity-excel" element={<ActivityExcelImport />} />
