@@ -131,6 +131,7 @@ const OnboardingManagement = lazy(() => import("@/pages/system/OnboardingManagem
 const FeatureFlags = lazy(() => import("@/pages/system/FeatureFlags"));
 const SystemHealth = lazy(() => import("@/pages/system/SystemHealth"));
 const TwilioManagement = lazy(() => import("@/pages/system/TwilioManagement"));
+const DatabaseBackup = lazy(() => import("@/pages/system/DatabaseBackup"));
 
 // Payment
 const PaymentMethods = lazy(() => import("@/pages/payment-methods/PaymentMethods"));
@@ -316,6 +317,7 @@ function App() {
                 <Route path="/system/configs" element={<SystemConfigManagement />} />
                 <Route path="/system/audit-logs" element={<AuditLogs />} />
                 <Route path="/system/health" element={<SystemHealth />} />
+                <Route path="/system/database-backup" element={<DatabaseBackup />} />
                 <Route path="/system/twilio" element={<TwilioManagement />} />
                 {/* News */}
                 <Route path="/news/manage" element={<ManageNews />} />

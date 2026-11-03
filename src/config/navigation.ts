@@ -43,6 +43,7 @@ import {
     PhoneCall,
     Store,
     CreditCard,
+    Database,
 } from "lucide-react"
 
 import { AdminRole } from "../utils/rbac"
@@ -380,7 +381,8 @@ export const navigationConfig: NavGroup[] = [
                 items: [
                     { title: "System Audit Logs", url: "/system/audit-logs", icon: ClipboardList },
                     { title: "Active Sessions", url: "/system/sessions", icon: MonitorSmartphone },
-                    { title: "System Health", url: "/system/health", icon: Zap }
+                    { title: "System Health", url: "/system/health", icon: Zap },
+                    { title: "Database Backups", url: "/system/database-backup", icon: Database }
                 ]
             },
             {

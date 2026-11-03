@@ -369,6 +369,12 @@ export const config = {
           featureFlags: '/api/admin/app-management/flags',
           featureFlagDetail: (id: number) => `/api/admin/app-management/flags/${id}`,
         },
+        databaseBackup: {
+          base: '/api/admin/database-backup',
+          create: '/api/admin/database-backup/create',
+          download: (filename: string) => `/api/admin/database-backup/${encodeURIComponent(filename)}/download`,
+          delete: (filename: string) => `/api/admin/database-backup/${encodeURIComponent(filename)}`,
+        },
       },
       users: {
         list: '/api/admin/users',
