@@ -189,6 +189,19 @@ export const config = {
         base: '/api/admin/delivery-drivers',
         detail: (id: number) => `/api/admin/delivery-drivers/${id}`,
       },
+      jobPosts: {
+        list: '/api/admin/job-posts',
+        status: (id: number) => `/api/admin/job-posts/${id}/status`,
+        detail: (id: number) => `/api/admin/job-posts/${id}`,
+      },
+      mydays: {
+        list: '/api/admin/mydays',
+        detail: (id: number) => `/api/admin/mydays/${id}`,
+      },
+      telegram: {
+        shops: '/api/admin/telegram/shops',
+        sendDailyReport: '/api/admin/telegram/send-daily-report',
+      },
       reviews: {
         shops: '/api/admin/analytics/reviews',
         shopVisibility: (id: string) => `/api/admin/reviews/shops/${id}/visibility`,
