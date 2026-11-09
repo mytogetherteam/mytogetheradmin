@@ -27,13 +27,6 @@ export interface DbLatencyResponse {
   performance?: string;
 }
 
-export interface OrderTimeoutRule {
-  status: string;
-  timeoutMinutes: number;
-  alertTarget: 'SHOP' | 'USER' | 'ADMIN' | 'ALL';
-  enabled: boolean;
-}
-
 export interface SystemConfig {
   configKey: string;
   configValue: string;
@@ -53,20 +46,6 @@ class SystemService {
 
   async getDbLatency(): Promise<DbLatencyResponse> {
     return apiClient.get<DbLatencyResponse>(config.endpoints.admin.system.latency);
-  }
-
-  // --- Order Timeout Management ---
-
-  async getOrderTimeouts(): Promise<OrderTimeoutRule[]> {
-    return apiClient.get<OrderTimeoutRule[]>(config.endpoints.admin.system.orderTimeouts.base);
-  }
-
-  async updateOrderTimeout(status: string, data: Partial<OrderTimeoutRule>): Promise<OrderTimeoutRule> {
-    return apiClient.put<OrderTimeoutRule>(config.endpoints.admin.system.orderTimeouts.status(status), data);
-  }
-
-  async initOrderTimeouts(): Promise<void> {
-    return apiClient.post(config.endpoints.admin.system.orderTimeouts.init);
   }
 
   // --- System Configuration Management ---

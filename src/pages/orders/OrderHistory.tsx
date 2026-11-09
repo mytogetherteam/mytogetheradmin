@@ -146,6 +146,7 @@ export default function OrderHistory() {
     const [searchInput, setSearchInput] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
     const [shopId, setShopId] = useState("");
+    const [exporting, setExporting] = useState(false);
     const [selectedShopData, setSelectedShopData] = useState<{ label: string; value: string } | null>(null);
     const isFirstMount = useRef(true);
 
@@ -257,6 +258,26 @@ export default function OrderHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchOrders(); }, [filters]);
 
+    const handleExport = async () => {
+        if (!startDate || !endDate) {
+            toast.error("Choose a from date and a to date. All Time is too wide to export.");
+            return;
+        }
+        if (startDate > endDate) {
+            toast.error("The from date must be on or before the to date.");
+            return;
+        }
+        setExporting(true);
+        try {
+            await exportService.exportOrders(startDate, endDate, statusFilter, shopId || undefined);
+            toast.success("Order history downloaded");
+        } catch (error) {
+            handleApiError(error, "Failed to export orders");
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const handleSort = (key: string) => {
         setSortConfig(toggleSort(sortConfig, key));
     };
@@ -273,10 +294,8 @@ export default function OrderHistory() {
                     variant="outline"
                     size="sm"
                     className="ml-auto gap-2"
-                    onClick={() => {
-                        exportService.exportOrders(startDate, endDate, statusFilter);
-                        toast.info("Exporting orders...");
-                    }}
+                    disabled={exporting}
+                    onClick={() => void handleExport()}
                 >
                     <FileSpreadsheet className="h-4 w-4" />
                     Export to Excel
