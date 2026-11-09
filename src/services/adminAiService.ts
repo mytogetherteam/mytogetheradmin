@@ -62,3 +62,4 @@ export const adminAiService = {
     return res.data;
   },
 };
+

@@ -226,7 +226,7 @@ export const AdminGeminiModal: React.FC<AdminGeminiModalProps> = ({
                 <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-medium">
                   ● Live DB Brain
                 </Badge>
-              </Badge>
+              </DialogTitle>
               <p className="text-xs text-muted-foreground">
                 MyTogether Platform Intelligence • Zero AI Cost
               </p>
@@ -398,7 +398,7 @@ export const AdminGeminiModal: React.FC<AdminGeminiModalProps> = ({
               type="button"
               disabled={isLoading}
               onClick={() => void handleSend(s)}
-              className="text-xs bg-background hover:bg-muted text-foreground border rounded-full px-3 py-1 shrink-0 transition-colors cursor-pointer hover:border-primary/50 shadow-xs"
+              className="text-xs bg-background hover:bg-muted text-foreground border rounded-full px-3 py-1 shrink-0 transition-colors cursor-pointer hover:border-primary/50 shadow-sm"
             >
               {s}
             </button>
