@@ -80,4 +80,11 @@ export const NewsService = {
       api.delete(config.endpoints.admin.news.detail(id)),
     );
   },
+
+  /** Trigger Gemini AI to auto-fetch & post Bangkok news on demand. */
+  autoPostBangkokNews: async (count: number = 1): Promise<NewsDTO[]> => {
+    return handleApiCall(() =>
+      api.post(`${config.endpoints.admin.news.base}/auto-post-bangkok?count=${count}`),
+    );
+  },
 };

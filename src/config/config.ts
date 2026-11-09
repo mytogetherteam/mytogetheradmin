@@ -33,6 +33,7 @@ export const config = {
       news: {
         base: '/api/admin/news',
         detail: (id: number) => `/api/admin/news/${id}`,
+        autoPostBangkok: '/api/admin/news/auto-post-bangkok',
       },
       collections: {
         base: '/api/admin/collections',

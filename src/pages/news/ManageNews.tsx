@@ -31,6 +31,7 @@ import {
   Heart,
   MessageSquare,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { TableImage } from "@/components/TableImage";
@@ -61,6 +62,24 @@ export default function ManageNews() {
     name: string;
   }>({ open: false, id: 0, name: "" });
   const [deleting, setDeleting] = useState(false);
+  const [isAutoPosting, setIsAutoPosting] = useState(false);
+
+  const handleAutoPostNews = async () => {
+    setIsAutoPosting(true);
+    try {
+      const result = await NewsService.autoPostBangkokNews(1);
+      if (result && result.length > 0) {
+        toast.success(`AI News Published: "${result[0].title}"`);
+      } else {
+        toast.info("Auto-post completed. Check the latest news below.");
+      }
+      void refetch();
+    } catch (e) {
+      handleApiError(e, "Failed to auto-post Bangkok news");
+    } finally {
+      setIsAutoPosting(false);
+    }
+  };
 
   const {
     data,
@@ -125,6 +144,19 @@ export default function ManageNews() {
                   }}
                 />
               </div>
+              <Button
+                variant="outline"
+                className="bg-amber-500/10 border-amber-300 text-amber-700 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-700 dark:text-amber-400 font-medium transition-all shadow-sm"
+                onClick={handleAutoPostNews}
+                disabled={isAutoPosting}
+              >
+                {isAutoPosting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-amber-600" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                )}
+                {isAutoPosting ? "Generating News..." : "AI Auto-Post Bangkok News"}
+              </Button>
               <Button onClick={() => navigate("/news/create")}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create New
