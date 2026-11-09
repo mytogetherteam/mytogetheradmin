@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -119,9 +119,19 @@ export function AiCollectionModal({
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
-  // Generated results
-  const [generatedTitle, setGeneratedTitle] = useState<string>("");
-  const [generatedDesc, setGeneratedDesc] = useState<string>("");
+  // Generated results (Myanmar, English, Thai)
+  const [generatedTitleMm, setGeneratedTitleMm] = useState<string>("");
+  const [generatedTitleEn, setGeneratedTitleEn] = useState<string>("");
+  const [generatedTitleTh, setGeneratedTitleTh] = useState<string>("");
+
+  const [generatedDescMm, setGeneratedDescMm] = useState<string>("");
+  const [generatedDescEn, setGeneratedDescEn] = useState<string>("");
+  const [generatedDescTh, setGeneratedDescTh] = useState<string>("");
+
+  const [primaryTitleLang, setPrimaryTitleLang] = useState<
+    "mm" | "en" | "th" | "dual"
+  >("mm");
+
   const [generatedItems, setGeneratedItems] = useState<
     AiGeneratedCollectionItem[]
   >([]);
@@ -137,13 +147,20 @@ export function AiCollectionModal({
         limit: 12,
       });
 
-      setGeneratedTitle(response.title || "");
-      setGeneratedDesc(response.description || "");
+      setGeneratedTitleMm(response.titleMm || response.title || "");
+      setGeneratedTitleEn(response.titleEn || "");
+      setGeneratedTitleTh(response.titleTh || "");
+
+      setGeneratedDescMm(response.descriptionMm || response.description || "");
+      setGeneratedDescEn(response.descriptionEn || "");
+      setGeneratedDescTh(response.descriptionTh || "");
+
       setGeneratedItems(response.items || []);
       setHasGenerated(true);
-      toast.success("AI collection generated successfully!");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to generate AI collection");
+      toast.success("AI collection generated in 3 languages (MM, EN, TH)!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Failed to generate AI collection");
     } finally {
       setIsGenerating(false);
     }
@@ -153,9 +170,43 @@ export function AiCollectionModal({
     setGeneratedItems((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const getFinalTitle = () => {
+    if (primaryTitleLang === "en") {
+      return generatedTitleEn.trim() || generatedTitleMm.trim();
+    }
+    if (primaryTitleLang === "th") {
+      return generatedTitleTh.trim() || generatedTitleMm.trim();
+    }
+    if (primaryTitleLang === "dual") {
+      return generatedTitleEn.trim()
+        ? `${generatedTitleMm.trim()} (${generatedTitleEn.trim()})`
+        : generatedTitleMm.trim();
+    }
+    return (
+      generatedTitleMm.trim() ||
+      generatedTitleEn.trim() ||
+      generatedTitleTh.trim()
+    );
+  };
+
+  const getFinalDesc = () => {
+    if (primaryTitleLang === "en") {
+      return generatedDescEn.trim() || generatedDescMm.trim();
+    }
+    if (primaryTitleLang === "th") {
+      return generatedDescTh.trim() || generatedDescMm.trim();
+    }
+    return (
+      generatedDescMm.trim() ||
+      generatedDescEn.trim() ||
+      generatedDescTh.trim()
+    );
+  };
+
   const handlePublish = async () => {
-    if (!generatedTitle.trim()) {
-      toast.error("Please provide a collection title.");
+    const finalTitle = getFinalTitle();
+    if (!finalTitle) {
+      toast.error("Please provide at least one collection title.");
       return;
     }
 
@@ -167,20 +218,27 @@ export function AiCollectionModal({
     setIsPublishing(true);
     try {
       await CollectionService.createCollection({
-        name: generatedTitle.trim(),
-        description: generatedDesc.trim(),
+        name: finalTitle,
+        nameEn: generatedTitleEn.trim() || undefined,
+        nameMm: generatedTitleMm.trim() || undefined,
+        nameTh: generatedTitleTh.trim() || undefined,
+        description: getFinalDesc() || undefined,
+        descriptionEn: generatedDescEn.trim() || undefined,
+        descriptionMm: generatedDescMm.trim() || undefined,
+        descriptionTh: generatedDescTh.trim() || undefined,
         status: "ACTIVE",
         menuItemIds: generatedItems.map((item) => item.id),
       });
 
       toast.success(
-        `"${generatedTitle}" created & published to MyTogether app!`,
+        `"${finalTitle}" created & published to MyTogether app!`,
       );
       onSuccess();
       onOpenChange(false);
       resetState();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to publish collection");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Failed to publish collection");
     } finally {
       setIsPublishing(false);
     }
@@ -188,8 +246,12 @@ export function AiCollectionModal({
 
   const resetState = () => {
     setHasGenerated(false);
-    setGeneratedTitle("");
-    setGeneratedDesc("");
+    setGeneratedTitleMm("");
+    setGeneratedTitleEn("");
+    setGeneratedTitleTh("");
+    setGeneratedDescMm("");
+    setGeneratedDescEn("");
+    setGeneratedDescTh("");
     setGeneratedItems([]);
   };
 
@@ -366,45 +428,171 @@ export function AiCollectionModal({
                 </Button>
               </div>
 
-              {/* Title & Description Edit Fields */}
-              <div className="space-y-3 p-4 rounded-xl border bg-purple-50/40 border-purple-200">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <Label
-                      htmlFor="title"
-                      className="text-xs font-bold text-purple-900 flex items-center gap-1.5"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                      App Collection Title (Myanmar Hook):
-                    </Label>
-                    <span className="text-[11px] text-purple-600 font-medium">
-                      Informal, short & punchy
-                    </span>
+              {/* 3-Language Titles Section matching Admin Design System */}
+              <div className="space-y-4 p-4 rounded-xl border bg-purple-50/40 border-purple-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-100">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    AI Generated Titles (3 Languages)
                   </div>
-                  <Input
-                    id="title"
-                    value={generatedTitle}
-                    onChange={(e) => setGeneratedTitle(e.target.value)}
-                    className="bg-white font-semibold text-base border-purple-300 focus-visible:ring-purple-500"
-                    placeholder="e.g. တနင်္လာ အားဖြည့်စရာ"
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-600 font-medium">
+                      App Primary Title:
+                    </span>
+                    <select
+                      value={primaryTitleLang}
+                      onChange={(e) =>
+                        setPrimaryTitleLang(
+                          e.target.value as "mm" | "en" | "th" | "dual",
+                        )
+                      }
+                      aria-label="App Primary Title Language"
+                      className="text-xs bg-white border border-purple-300 rounded-md px-2 py-1 font-semibold text-purple-900 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm"
+                    >
+                      <option value="mm">🇲🇲 Myanmar Hook (Default)</option>
+                      <option value="en">🇬🇧 English</option>
+                      <option value="th">🇹🇭 Thai (ภาษาไทย)</option>
+                      <option value="dual">🇲🇲 + 🇬🇧 Dual Language</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <Label
-                    htmlFor="desc"
-                    className="text-xs font-semibold text-gray-700 block mb-1"
-                  >
-                    Description:
-                  </Label>
-                  <Textarea
-                    id="desc"
-                    rows={2}
-                    value={generatedDesc}
-                    onChange={(e) => setGeneratedDesc(e.target.value)}
-                    className="bg-white text-xs border-purple-200"
-                    placeholder="Short description..."
-                  />
+                {/* 3 Title Inputs */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Myanmar Hook Title */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="titleMm"
+                        className="text-xs font-semibold text-gray-800"
+                      >
+                        🇲🇲 Myanmar (Hook)
+                      </Label>
+                      {primaryTitleLang === "mm" && (
+                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200">
+                          App Header
+                        </Badge>
+                      )}
+                    </div>
+                    <Input
+                      id="titleMm"
+                      value={generatedTitleMm}
+                      onChange={(e) => setGeneratedTitleMm(e.target.value)}
+                      className="bg-white font-medium text-sm border-purple-300 focus-visible:ring-purple-500"
+                      placeholder="e.g. အခုချက်ချင်း စားမယ်"
+                    />
+                    <span className="text-[10px] text-gray-500 block">
+                      Informal, punchy mobile hook
+                    </span>
+                  </div>
+
+                  {/* English Title */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="titleEn"
+                        className="text-xs font-semibold text-gray-800"
+                      >
+                        🇬🇧 English
+                      </Label>
+                      {primaryTitleLang === "en" && (
+                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200">
+                          App Header
+                        </Badge>
+                      )}
+                    </div>
+                    <Input
+                      id="titleEn"
+                      value={generatedTitleEn}
+                      onChange={(e) => setGeneratedTitleEn(e.target.value)}
+                      className="bg-white font-medium text-sm border-purple-300 focus-visible:ring-purple-500"
+                      placeholder="e.g. Eat Now & Fast Delivery"
+                    />
+                    <span className="text-[10px] text-gray-500 block">
+                      Catchy & engaging
+                    </span>
+                  </div>
+
+                  {/* Thai Title */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="titleTh"
+                        className="text-xs font-semibold text-gray-800"
+                      >
+                        🇹🇭 Thai (ภาษาไทย)
+                      </Label>
+                      {primaryTitleLang === "th" && (
+                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200">
+                          App Header
+                        </Badge>
+                      )}
+                    </div>
+                    <Input
+                      id="titleTh"
+                      value={generatedTitleTh}
+                      onChange={(e) => setGeneratedTitleTh(e.target.value)}
+                      className="bg-white font-medium text-sm border-purple-300 focus-visible:ring-purple-500"
+                      placeholder="e.g. กินเลย อร่อยด่วน"
+                    />
+                    <span className="text-[10px] text-gray-500 block">
+                      Natural Thai phrasing
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 Description Textareas */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-purple-100">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="descMm"
+                      className="text-[11px] font-medium text-gray-600"
+                    >
+                      🇲🇲 Description (MM):
+                    </Label>
+                    <Textarea
+                      id="descMm"
+                      rows={2}
+                      value={generatedDescMm}
+                      onChange={(e) => setGeneratedDescMm(e.target.value)}
+                      className="bg-white text-xs border-purple-200"
+                      placeholder="မြန်မာ ဖော်ပြချက်..."
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="descEn"
+                      className="text-[11px] font-medium text-gray-600"
+                    >
+                      🇬🇧 Description (EN):
+                    </Label>
+                    <Textarea
+                      id="descEn"
+                      rows={2}
+                      value={generatedDescEn}
+                      onChange={(e) => setGeneratedDescEn(e.target.value)}
+                      className="bg-white text-xs border-purple-200"
+                      placeholder="English description..."
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="descTh"
+                      className="text-[11px] font-medium text-gray-600"
+                    >
+                      🇹🇭 Description (TH):
+                    </Label>
+                    <Textarea
+                      id="descTh"
+                      rows={2}
+                      value={generatedDescTh}
+                      onChange={(e) => setGeneratedDescTh(e.target.value)}
+                      className="bg-white text-xs border-purple-200"
+                      placeholder="คำอธิบายภาษาไทย..."
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -441,11 +629,9 @@ export function AiCollectionModal({
                         <div className="text-xs font-semibold text-gray-900 truncate">
                           {item.nameMm || item.nameEn}
                         </div>
-                        {item.nameMm && (
-                          <div className="text-[10px] text-gray-500 truncate">
-                            {item.nameEn}
-                          </div>
-                        )}
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {[item.nameEn, item.nameTh].filter(Boolean).join(" · ")}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5 text-[11px]">
                           <span className="font-bold text-emerald-600">
                             ฿{item.price ?? 0}

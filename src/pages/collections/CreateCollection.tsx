@@ -17,9 +17,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import AiCollectionModal from "./components/AiCollectionModal";
 import {
   Card,
   CardContent,
@@ -74,6 +75,7 @@ export default function CreateCollection() {
   const isEditMode = !!id;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<MenuItemOption[]>([]);
 
   const { data: collection, isPending: loadingCollection } = useCollection(id);
@@ -211,15 +213,28 @@ export default function CreateCollection() {
 
   return (
     <div className="container mx-auto py-10 max-w-4xl">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {isEditMode ? "Edit Collection" : "Create Collection"}
-        </h2>
-        <p className="text-muted-foreground">
-          {isEditMode
-            ? "Update collection details and its menu items."
-            : "Group published menu items into a curated collection."}
-        </p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">
+            {isEditMode ? "Edit Collection" : "Create Collection"}
+          </h2>
+          <p className="text-muted-foreground">
+            {isEditMode
+              ? "Update collection details and its menu items."
+              : "Group published menu items into a curated collection."}
+          </p>
+        </div>
+        {!isEditMode && (
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border-purple-300 text-purple-700 hover:bg-purple-100 font-medium shrink-0 shadow-sm"
+            onClick={() => setAiModalOpen(true)}
+          >
+            <Sparkles className="mr-2 h-4 w-4 text-purple-600 animate-pulse" />
+            AI Auto Generate
+          </Button>
+        )}
       </div>
 
       <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -412,6 +427,14 @@ export default function CreateCollection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AiCollectionModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        onSuccess={() => {
+          navigate("/collections/manage");
+        }}
+      />
     </div>
   );
 }

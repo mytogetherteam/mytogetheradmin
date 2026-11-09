@@ -54,6 +54,7 @@ export interface AiGeneratedCollectionItem {
   id: number;
   nameEn: string;
   nameMm: string | null;
+  nameTh?: string | null;
   price: number | null;
   imageUrl: string | null;
   shopName: string;
@@ -62,14 +63,26 @@ export interface AiGeneratedCollectionItem {
 
 export interface AiGeneratedCollectionResponse {
   title: string;
+  titleMm?: string;
+  titleEn?: string;
+  titleTh?: string;
   description: string;
+  descriptionMm?: string;
+  descriptionEn?: string;
+  descriptionTh?: string;
   mode: string;
   items: AiGeneratedCollectionItem[];
 }
 
 export interface CollectionPayload {
   name: string;
+  nameEn?: string;
+  nameMm?: string;
+  nameTh?: string;
   description?: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
+  descriptionTh?: string;
   status?: CollectionStatus;
   /** Full desired set of menu items, in display order. */
   menuItemIds?: number[];
