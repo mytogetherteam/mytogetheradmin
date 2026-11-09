@@ -228,7 +228,7 @@ export default function CreateCollection() {
           <Button
             type="button"
             variant="outline"
-            className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border-purple-300 text-purple-700 hover:bg-purple-100 font-medium shrink-0 shadow-sm"
+            className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950 font-medium shrink-0 shadow-sm"
             onClick={() => setAiModalOpen(true)}
           >
             <Sparkles className="mr-2 h-4 w-4 text-purple-600 animate-pulse" />
