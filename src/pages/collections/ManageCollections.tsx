@@ -103,11 +103,10 @@ export default function ManageCollections() {
                 />
               </div>
               <Button
-                variant="outline"
-                className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950 font-medium shadow-sm"
+                className="bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white hover:opacity-90 shadow-md shadow-rose-500/20 border-0 font-medium"
                 onClick={() => setAiModalOpen(true)}
               >
-                <Sparkles className="mr-2 h-4 w-4 text-purple-600 animate-pulse" />
+                <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
                 AI Auto Generate
               </Button>
               <Button onClick={() => navigate("/collections/create")}>
