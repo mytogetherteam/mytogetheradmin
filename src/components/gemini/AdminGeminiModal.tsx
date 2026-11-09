@@ -17,7 +17,6 @@ import {
   Check,
   Bot,
   User,
-  AlertCircle,
   TrendingUp,
   Store,
   Bike,
