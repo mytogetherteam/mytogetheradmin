@@ -1,4 +1,4 @@
-import { apiClient, ApiResponseData } from './apiClient';
+import { apiClient } from './apiClient';
 
 export interface ChatHistoryItem {
   role: 'user' | 'model';
@@ -50,16 +50,17 @@ export interface ChatResponse {
 
 export const adminAiService = {
   async getTodayRecap(): Promise<TodayRecapResponse> {
-    const res = await apiClient.get<ApiResponseData<TodayRecapResponse>>('/admin/ai/today-recap');
-    return res.data;
+    const res = await apiClient.get<any>('/admin/ai/today-recap');
+    // Handle both unwrapped and wrapped response structures from apiClient
+    return res?.data ?? res;
   },
 
   async sendChatMessage(message: string, history: ChatHistoryItem[] = []): Promise<ChatResponse> {
-    const res = await apiClient.post<ApiResponseData<ChatResponse>>('/admin/ai/chat', {
+    const res = await apiClient.post<any>('/admin/ai/chat', {
       message,
       history,
     });
-    return res.data;
+    // Handle both unwrapped and wrapped response structures from apiClient
+    return res?.data ?? res;
   },
 };
-

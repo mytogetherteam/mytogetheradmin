@@ -86,18 +86,22 @@ export const AdminGeminiModal: React.FC<AdminGeminiModalProps> = ({
     setIsRecapLoading(true);
     try {
       const data = await adminAiService.getTodayRecap();
-      setSnapshot(data.snapshot);
+      if (!data) return;
+      if (data.snapshot) {
+        setSnapshot(data.snapshot);
+      }
 
       const recapMsg: Message = {
         id: `recap-${Date.now()}`,
         role: "model",
-        text: data.aiRecap,
+        text: data.aiRecap || "ယနေ့အတွက် အနှစ်ချုပ် အချက်အလက်များကို စုစည်းထားပါသည်ခင်ဗျာ။",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         isRecap: true,
       };
 
       setMessages([recapMsg]);
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch today's recap:", err);
       toast.error("Today's recap ရယူရာတွင် အခက်အခဲရှိနေပါသည်");
     } finally {
       setIsRecapLoading(false);
@@ -115,35 +119,35 @@ export const AdminGeminiModal: React.FC<AdminGeminiModalProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    // Prior turns only for history
+    const history: ChatHistoryItem[] = messages
+      .filter((m) => !m.isRecap)
+      .slice(-6)
+      .map((m) => ({
+        role: m.role,
+        text: m.text,
+      }));
+
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Build history for multi-turn conversation memory
-      const history: ChatHistoryItem[] = newMessages
-        .filter((m) => !m.isRecap) // Exclude large initial recap from memory tokens
-        .slice(-8) // Keep last 8 turns for optimal context
-        .map((m) => ({
-          role: m.role,
-          text: m.text,
-        }));
-
       const res = await adminAiService.sendChatMessage(userMsg.text, history);
 
       const aiMsg: Message = {
         id: `model-${Date.now()}`,
         role: "model",
-        text: res.reply,
+        text: res?.reply || "အချက်အလက်ကို ပြန်လည် စီစစ်နေပါသည်ခင်ဗျာ။",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
-      if (res.suggestions && res.suggestions.length > 0) {
+      if (res?.suggestions && res.suggestions.length > 0) {
         setSuggestions(res.suggestions);
       }
-    } catch {
+    } catch (err) {
+      console.error("Chat error:", err);
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: "model",
