@@ -41,6 +41,32 @@ export interface CollectionDetail {
   items: CollectionMenuItem[];
 }
 
+export interface AiGenerateCollectionPayload {
+  mode: string;
+  customTopic?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
+  limit?: number;
+}
+
+export interface AiGeneratedCollectionItem {
+  id: number;
+  nameEn: string;
+  nameMm: string | null;
+  price: number | null;
+  imageUrl: string | null;
+  shopName: string;
+  distanceKm?: number;
+}
+
+export interface AiGeneratedCollectionResponse {
+  title: string;
+  description: string;
+  mode: string;
+  items: AiGeneratedCollectionItem[];
+}
+
 export interface CollectionPayload {
   name: string;
   description?: string;
@@ -129,6 +155,14 @@ export const CollectionService = {
   deleteCollection: async (id: number): Promise<void> => {
     return handleApiCall(() =>
       api.delete(config.endpoints.admin.collections.detail(id)),
+    );
+  },
+
+  aiGenerate: async (
+    payload: AiGenerateCollectionPayload,
+  ): Promise<AiGeneratedCollectionResponse> => {
+    return handleApiCall(() =>
+      api.post(`${config.endpoints.admin.collections.base}/ai-generate`, payload),
     );
   },
 };

@@ -27,15 +27,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Plus, Search, Trash2, Pencil, LayoutGrid } from "lucide-react";
+import { Loader2, Plus, Search, Trash2, Pencil, LayoutGrid, Sparkles } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import AiCollectionModal from "./components/AiCollectionModal";
 
 export default function ManageCollections() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
   const isFirstSearchDebounce = useRef(true);
@@ -53,7 +55,7 @@ export default function ManageCollections() {
     name: string;
   }>({ open: false, id: 0, name: "" });
 
-  const { data, isPending: loading } = useCollections({
+  const { data, isPending: loading, refetch } = useCollections({
     page: currentPage,
     size: pageSize,
     search: debouncedSearch.trim() || undefined,
@@ -100,6 +102,14 @@ export default function ManageCollections() {
                   }}
                 />
               </div>
+              <Button
+                variant="outline"
+                className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950 font-medium shadow-sm"
+                onClick={() => setAiModalOpen(true)}
+              >
+                <Sparkles className="mr-2 h-4 w-4 text-purple-600 animate-pulse" />
+                AI Auto Generate
+              </Button>
               <Button onClick={() => navigate("/collections/create")}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create New
@@ -255,6 +265,14 @@ export default function ManageCollections() {
         loading={deleting}
         onCancel={() => setDeleteDialog({ open: false, id: 0, name: "" })}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <AiCollectionModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        onSuccess={() => {
+          void refetch();
+        }}
       />
     </div>
   );
