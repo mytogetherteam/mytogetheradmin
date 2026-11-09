@@ -32,14 +32,23 @@ function normalizeMaxSelection(value: number | null | undefined): number | null 
 export function validateMenuItemChildPrices(snapshot: {
   variantGroups: VariantGroupRow[];
   optionGroups: OptionGroupRow[];
+  originalPrice?: number;
 }): string | null {
   for (const group of snapshot.variantGroups) {
     if (group.isDeleted) continue;
     for (const variant of group.variants) {
       if (variant.isDeleted) continue;
+      const label = variant.nameEn.trim() || "variant";
       if (!hasChildItemPrice(variant.price)) {
-        const label = variant.nameEn.trim() || "variant";
         return `Price is required for variant "${label}"`;
+      }
+      if (
+        snapshot.originalPrice != null &&
+        !Number.isNaN(snapshot.originalPrice) &&
+        (variant.price as number) > 0 &&
+        (variant.price as number) < snapshot.originalPrice
+      ) {
+        return `Variant "${label}" cannot cost less than the original price (${snapshot.originalPrice}). Use 0 for a free choice.`;
       }
     }
   }

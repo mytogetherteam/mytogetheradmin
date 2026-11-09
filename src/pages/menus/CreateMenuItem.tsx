@@ -422,7 +422,11 @@ export default function CreateMenuItem() {
             return;
         }
 
-        const childPriceError = validateMenuItemChildPrices({ variantGroups, optionGroups });
+        const childPriceError = validateMenuItemChildPrices({
+            variantGroups,
+            optionGroups,
+            originalPrice: parsePriceInput(originalPrice),
+        });
         if (childPriceError) {
             toast.error(childPriceError);
             return;

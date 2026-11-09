@@ -343,7 +343,7 @@ export function SubscriptionDetailDialog({
                     <Textarea
                       id="adminNote"
                       rows={2}
-                      placeholder="Matched against the KBZ statement"
+                      placeholder="Optional note for the team"
                       value={adminNote}
                       onChange={(e) => setAdminNote(e.target.value)}
                     />
@@ -361,7 +361,7 @@ export function SubscriptionDetailDialog({
                     <Textarea
                       id="reason"
                       rows={2}
-                      placeholder="Slip is unreadable, please re-upload"
+                      placeholder="Tell the shop why this request was not accepted"
                       value={reason}
                       onChange={(e) => {
                         setReason(e.target.value);
@@ -369,8 +369,7 @@ export function SubscriptionDetailDialog({
                       }}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Shown to the shop. After a rejection they can upload a new
-                      slip on the same request.
+                      Shown to the shop. After a rejection they can confirm the plan again.
                     </p>
                     {reasonError ? (
                       <p className="text-xs text-destructive">{reasonError}</p>

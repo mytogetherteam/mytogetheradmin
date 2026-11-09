@@ -17,6 +17,10 @@ function apiErrorMessage(errorData: unknown, fallback: string): string {
   if (typeof data.message === 'string' && data.message.trim()) {
     return data.message;
   }
+  if (Array.isArray(data.message)) {
+    const text = data.message.filter((item) => typeof item === 'string').join(', ');
+    if (text.trim()) return text;
+  }
   if (data.message && typeof data.message === 'object') {
     const nested = data.message as Record<string, unknown>;
     if (typeof nested.message === 'string' && nested.message.trim()) {
@@ -385,6 +389,38 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+
+  /** Authenticated file download. Refreshes the login the same way JSON calls do. */
+  async download(endpoint: string): Promise<Blob> {
+    return this.requestBlob(endpoint, false);
+  }
+
+  private async requestBlob(endpoint: string, retried: boolean): Promise<Blob> {
+    await this.checkAndRefreshToken();
+    const token = this.getAuthToken();
+    const base = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl;
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const response = await fetch(`${base}${path}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (response.status === 401 && !retried) {
+      await this.performRefresh();
+      return this.requestBlob(endpoint, true);
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        apiErrorMessage(errorData, `HTTP ${response.status}: ${response.statusText}`),
+        response.status,
+        errorData,
+      );
+    }
+
+    return response.blob();
   }
 }
 
