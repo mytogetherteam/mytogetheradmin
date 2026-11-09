@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Outlet, useNavigate } from "react-router-dom"
@@ -10,7 +11,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User, Settings, LogOut } from "lucide-react"
+import { User, Settings, LogOut, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { authService } from "@/services/authService"
 import { NotificationBell } from "@/components/notificationBell"
 import { AdminGlobalSearch } from "@/components/admin-global-search"
@@ -19,10 +21,24 @@ import { AdminLiveAlertToasts } from "@/components/admin-live-alert-toasts"
 import { AdminWebSocketProvider } from "@/hooks/useAdminWebSocket"
 import { useInactivityMiddleware } from "@/middleware/inactivityMiddleware"
 import { useSessionExpiryMiddleware } from "@/middleware/sessionExpiryMiddleware"
+import { AdminGeminiModal } from "@/components/gemini/AdminGeminiModal"
 
 export default function AppLayout() {
     const navigate = useNavigate()
     const userData = authService.getUserData()
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+
+    // Global keyboard shortcut: Ctrl+Space to toggle Gemini AI Modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.code === "Space") {
+                e.preventDefault()
+                setIsAiModalOpen((prev) => !prev)
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [])
 
     // ── Middleware ─────────────────────────────────────────────────────────────
     useInactivityMiddleware()   // auto-logout after 30 min idle
@@ -52,6 +68,21 @@ export default function AppLayout() {
                         </div>
 
                         <div className="flex items-center gap-3 md:gap-4">
+                            {/* Gemini AI Assistant Button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsAiModalOpen(true)}
+                                className="h-9 px-3 gap-1.5 rounded-full border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/15 hover:border-purple-500/50 text-purple-600 dark:text-purple-400 font-medium transition-all shadow-xs shrink-0 cursor-pointer"
+                                title="Open Gemini AI Assistant (Ctrl+Space)"
+                            >
+                                <Sparkles className="w-4 h-4 text-purple-500 animate-pulse" />
+                                <span className="hidden sm:inline">Ask Gemini</span>
+                                <kbd className="hidden md:inline-block ml-1 px-1.5 py-0.5 text-[10px] bg-muted border rounded font-mono text-muted-foreground">
+                                    Ctrl+Space
+                                </kbd>
+                            </Button>
+
                             <AdminGlobalSearch />
 
                             <NotificationBell />
@@ -93,6 +124,7 @@ export default function AppLayout() {
                         </div>
                     </div>
                 </SidebarInset>
+                <AdminGeminiModal open={isAiModalOpen} onOpenChange={setIsAiModalOpen} />
             </SidebarProvider>
         </AdminWebSocketProvider>
     )
