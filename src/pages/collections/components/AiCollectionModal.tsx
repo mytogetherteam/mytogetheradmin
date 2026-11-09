@@ -136,7 +136,7 @@ const MODES = [
     defaultDescEn: "Curated selection of food specials within 15 km",
     defaultDescTh: "เมนูคัดสรรพิเศษในระยะ 15 กม. สำหรับคุณวันนี้",
     icon: Pencil,
-    color: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800",
+    color: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800",
   },
 ];
 
@@ -183,10 +183,19 @@ export function AiCollectionModal({
 
       const resData = (response as any)?.data || response;
 
-      const titleMm =
-        resData?.titleMm || resData?.title || modeConfig.labelMm;
-      const titleEn = resData?.titleEn || modeConfig.label;
-      const titleTh = resData?.titleTh || modeConfig.labelTh;
+      // Title Guarantee: For standard modes, ALWAYS lock to the official mode hook title!
+      // Only for CUSTOM mode do we adopt the AI-generated custom title.
+      if (selectedMode !== "CUSTOM") {
+        setGeneratedTitleMm(modeConfig.labelMm);
+        setGeneratedTitleEn(modeConfig.label);
+        setGeneratedTitleTh(modeConfig.labelTh);
+      } else {
+        setGeneratedTitleMm(
+          resData?.titleMm || resData?.title || modeConfig.labelMm,
+        );
+        setGeneratedTitleEn(resData?.titleEn || modeConfig.label);
+        setGeneratedTitleTh(resData?.titleTh || modeConfig.labelTh);
+      }
 
       const descMm =
         resData?.descriptionMm ||
@@ -194,10 +203,6 @@ export function AiCollectionModal({
         modeConfig.defaultDescMm;
       const descEn = resData?.descriptionEn || modeConfig.defaultDescEn;
       const descTh = resData?.descriptionTh || modeConfig.defaultDescTh;
-
-      setGeneratedTitleMm(titleMm);
-      setGeneratedTitleEn(titleEn);
-      setGeneratedTitleTh(titleTh);
 
       setGeneratedDescMm(descMm);
       setGeneratedDescEn(descEn);
@@ -207,7 +212,7 @@ export function AiCollectionModal({
       setHasGenerated(true);
       toast.success("AI collection generated in 3 languages (MM, EN, TH)!");
     } catch (err: unknown) {
-      // Even if network or API error occurs, provide guaranteed local presets with matching items
+      // Guaranteed instant fallback with matching preset titles
       setGeneratedTitleMm(modeConfig.labelMm);
       setGeneratedTitleEn(modeConfig.label);
       setGeneratedTitleTh(modeConfig.labelTh);
@@ -321,9 +326,10 @@ export function AiCollectionModal({
       }}
     >
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-background border border-border shadow-2xl">
-        <DialogHeader className="px-6 pt-6 pb-3 border-b border-border bg-gradient-to-r from-purple-50/80 via-background to-pink-50/80 dark:from-purple-950/40 dark:via-zinc-900/60 dark:to-pink-950/30">
+        {/* Header with MyTogether Primary Gradient Theme */}
+        <DialogHeader className="px-6 pt-6 pb-3 border-b border-border bg-gradient-to-r from-rose-500/10 via-background to-orange-500/10 dark:from-rose-950/30 dark:via-zinc-900/60 dark:to-orange-950/20">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20 dark:shadow-none">
+            <div className="p-2.5 rounded-xl bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white shadow-md shadow-rose-500/25">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
@@ -331,14 +337,14 @@ export function AiCollectionModal({
                 Auto-Generate Collection with AI
                 <Badge
                   variant="secondary"
-                  className="bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 text-xs font-semibold border-purple-200 dark:border-purple-800"
+                  className="bg-gradient-to-r from-rose-500/15 to-orange-500/15 text-rose-700 dark:text-rose-300 text-xs font-semibold border-rose-200 dark:border-rose-900"
                 >
-                  Gemini 1.5 Flash · 0 Cost
+                  Gemini 1.5 Flash · $0 Cost
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-sm mt-0.5 text-muted-foreground dark:text-zinc-400">
-                Generates authentic Myanmar hook title with English & Thai,
-                curating nearby items within {radiusKm} km.
+                Curates matching menu items within {radiusKm} km with
+                authentic Myanmar hook title, English & Thai.
               </DialogDescription>
             </div>
           </div>
@@ -363,7 +369,7 @@ export function AiCollectionModal({
                         onClick={() => setSelectedMode(mode.id)}
                         className={`text-left p-3.5 rounded-xl border-2 transition-all flex flex-col justify-between ${
                           isSelected
-                            ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/40 shadow-sm shadow-purple-200/50 dark:shadow-none"
+                            ? "border-[#ED3973] bg-gradient-to-br from-rose-500/10 to-orange-500/5 dark:from-rose-950/40 dark:to-orange-950/20 shadow-sm shadow-rose-200/50 dark:shadow-none"
                             : "border-border bg-card hover:bg-muted/50 dark:hover:bg-zinc-800/60"
                         }`}
                       >
@@ -374,14 +380,14 @@ export function AiCollectionModal({
                             <Icon className="h-4 w-4" />
                           </span>
                           {isSelected && (
-                            <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <CheckCircle2 className="h-5 w-5 text-[#ED3973]" />
                           )}
                         </div>
                         <div>
                           <div className="font-semibold text-foreground dark:text-zinc-100 text-sm">
                             {mode.label}
                           </div>
-                          <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mt-0.5 font-sans">
+                          <div className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-[#ED3973] to-[#F96232] mt-0.5 font-sans font-semibold">
                             {mode.labelMm}
                           </div>
                           <div className="text-[11px] text-muted-foreground dark:text-zinc-400 mt-1 line-clamp-1">
@@ -396,10 +402,10 @@ export function AiCollectionModal({
 
               {/* Custom Topic Input if Custom selected */}
               {selectedMode === "CUSTOM" && (
-                <div className="p-4 bg-purple-50/50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-900 animate-in fade-in">
+                <div className="p-4 bg-gradient-to-br from-rose-500/10 to-orange-500/5 dark:from-rose-950/30 dark:to-orange-950/20 rounded-xl border border-rose-200 dark:border-rose-900 animate-in fade-in">
                   <Label
                     htmlFor="customTopic"
-                    className="text-xs font-semibold text-purple-900 dark:text-purple-200"
+                    className="text-xs font-semibold text-rose-900 dark:text-rose-200"
                   >
                     Custom Topic / Food Theme:
                   </Label>
@@ -408,7 +414,7 @@ export function AiCollectionModal({
                     placeholder="e.g. မနက်ခင်း ကော်ဖီနှင့် မုန့်ဟင်းခါး (Morning coffee & light meals)"
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
-                    className="mt-1.5 bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-300 dark:border-purple-800"
+                    className="mt-1.5 bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973]"
                   />
                 </div>
               )}
@@ -417,7 +423,7 @@ export function AiCollectionModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-muted/30 dark:bg-zinc-900/50">
                 <div>
                   <Label className="text-xs font-semibold text-foreground dark:text-zinc-200 flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    <MapPin className="h-3.5 w-3.5 text-[#ED3973]" />
                     Nearby Radius Scope:
                   </Label>
                   <div className="flex gap-2 mt-2">
@@ -429,7 +435,7 @@ export function AiCollectionModal({
                         variant={radiusKm === km ? "default" : "outline"}
                         className={
                           radiusKm === km
-                            ? "bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                            ? "bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white font-semibold shadow-sm"
                             : "bg-card text-foreground border-border hover:bg-muted dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200"
                         }
                         onClick={() => setRadiusKm(km)}
@@ -446,12 +452,12 @@ export function AiCollectionModal({
 
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center gap-2 text-xs font-semibold text-foreground dark:text-zinc-200">
-                    <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    Zero-Cost Thematic Architecture:
+                    <Sparkles className="h-4 w-4 text-[#ED3973]" />
+                    Thematic + Free Gemini 1.5 Flash:
                   </div>
                   <p className="text-[11px] text-muted-foreground dark:text-zinc-400 mt-1">
-                    Thematic ranking + Gemini 1.5 Flash Free Tier structured
-                    JSON. 100% $0 API cost with instant fallback.
+                    Strict mode filtering & ranking + Gemini Flash structured
+                    curation. 100% $0 API cost.
                   </p>
                 </div>
               </div>
@@ -476,7 +482,7 @@ export function AiCollectionModal({
                   size="sm"
                   onClick={handleGenerate}
                   disabled={isGenerating}
-                  className="text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50"
+                  className="text-[#ED3973] hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium"
                 >
                   <RefreshCw
                     className={`h-3.5 w-3.5 mr-1.5 ${isGenerating ? "animate-spin" : ""}`}
@@ -485,12 +491,12 @@ export function AiCollectionModal({
                 </Button>
               </div>
 
-              {/* 3-Language Titles Section matching Admin Design System */}
-              <div className="space-y-4 p-4 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-100 dark:border-purple-900/50">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900 dark:text-purple-200">
-                    <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                    AI Generated Titles (3 Languages)
+              {/* 3-Language Titles Section with MyTogether Gradient Accent */}
+              <div className="space-y-4 p-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-gradient-to-br from-rose-500/5 via-background to-orange-500/5 dark:from-rose-950/20 dark:via-zinc-900/40 dark:to-orange-950/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-rose-100 dark:border-rose-900/50">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground dark:text-zinc-100">
+                    <Sparkles className="h-4 w-4 text-[#ED3973]" />
+                    Collection Titles (Myanmar Hook, English & Thai)
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground dark:text-zinc-400 font-medium">
@@ -504,7 +510,7 @@ export function AiCollectionModal({
                         )
                       }
                       aria-label="App Primary Title Language"
-                      className="text-xs bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border border-purple-300 dark:border-purple-800 rounded-md px-2.5 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm"
+                      className="text-xs bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border border-rose-300 dark:border-zinc-700 rounded-md px-2.5 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-[#ED3973] shadow-sm"
                     >
                       <option value="mm">🇲🇲 Myanmar Hook (Default)</option>
                       <option value="en">🇬🇧 English</option>
@@ -526,7 +532,7 @@ export function AiCollectionModal({
                         🇲🇲 Myanmar (Hook)
                       </Label>
                       {primaryTitleLang === "mm" && (
-                        <Badge className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200 dark:border-purple-800">
+                        <Badge className="bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white hover:opacity-95 text-[10px] px-1.5 py-0 h-4 border-0">
                           App Header
                         </Badge>
                       )}
@@ -535,7 +541,7 @@ export function AiCollectionModal({
                       id="titleMm"
                       value={generatedTitleMm}
                       onChange={(e) => setGeneratedTitleMm(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-300 dark:border-purple-800 focus-visible:ring-purple-500 font-medium text-sm"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] font-medium text-sm"
                       placeholder="e.g. အခုချက်ချင်း စားမယ်"
                     />
                     <span className="text-[10px] text-muted-foreground dark:text-zinc-400 block">
@@ -553,7 +559,7 @@ export function AiCollectionModal({
                         🇬🇧 English
                       </Label>
                       {primaryTitleLang === "en" && (
-                        <Badge className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200 dark:border-purple-800">
+                        <Badge className="bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white hover:opacity-95 text-[10px] px-1.5 py-0 h-4 border-0">
                           App Header
                         </Badge>
                       )}
@@ -562,7 +568,7 @@ export function AiCollectionModal({
                       id="titleEn"
                       value={generatedTitleEn}
                       onChange={(e) => setGeneratedTitleEn(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-300 dark:border-purple-800 focus-visible:ring-purple-500 font-medium text-sm"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] font-medium text-sm"
                       placeholder="e.g. Eat Now & Fast Delivery"
                     />
                     <span className="text-[10px] text-muted-foreground dark:text-zinc-400 block">
@@ -580,7 +586,7 @@ export function AiCollectionModal({
                         🇹🇭 Thai (ภาษาไทย)
                       </Label>
                       {primaryTitleLang === "th" && (
-                        <Badge className="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 hover:bg-purple-100 text-[10px] px-1.5 py-0 h-4 border-purple-200 dark:border-purple-800">
+                        <Badge className="bg-gradient-to-r from-[#ED3973] to-[#F96232] text-white hover:opacity-95 text-[10px] px-1.5 py-0 h-4 border-0">
                           App Header
                         </Badge>
                       )}
@@ -589,7 +595,7 @@ export function AiCollectionModal({
                       id="titleTh"
                       value={generatedTitleTh}
                       onChange={(e) => setGeneratedTitleTh(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-300 dark:border-purple-800 focus-visible:ring-purple-500 font-medium text-sm"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] font-medium text-sm"
                       placeholder="e.g. กินเลย อร่อยด่วน"
                     />
                     <span className="text-[10px] text-muted-foreground dark:text-zinc-400 block">
@@ -599,7 +605,7 @@ export function AiCollectionModal({
                 </div>
 
                 {/* 3 Description Textareas */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-rose-100 dark:border-rose-900/50">
                   <div className="space-y-1">
                     <Label
                       htmlFor="descMm"
@@ -612,7 +618,7 @@ export function AiCollectionModal({
                       rows={2}
                       value={generatedDescMm}
                       onChange={(e) => setGeneratedDescMm(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-200 dark:border-purple-800/80 text-xs"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] text-xs"
                       placeholder="မြန်မာ ဖော်ပြချက်..."
                     />
                   </div>
@@ -629,7 +635,7 @@ export function AiCollectionModal({
                       rows={2}
                       value={generatedDescEn}
                       onChange={(e) => setGeneratedDescEn(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-200 dark:border-purple-800/80 text-xs"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] text-xs"
                       placeholder="English description..."
                     />
                   </div>
@@ -646,7 +652,7 @@ export function AiCollectionModal({
                       rows={2}
                       value={generatedDescTh}
                       onChange={(e) => setGeneratedDescTh(e.target.value)}
-                      className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100 border-purple-200 dark:border-purple-800/80 text-xs"
+                      className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 border-rose-200 dark:border-zinc-800 focus-visible:ring-[#ED3973] text-xs"
                       placeholder="คำอธิบายภาษาไทย..."
                     />
                   </div>
@@ -668,7 +674,7 @@ export function AiCollectionModal({
                   {generatedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="group relative flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card dark:bg-zinc-900/90 hover:shadow-sm hover:border-purple-400 dark:hover:border-purple-600 transition-all"
+                      className="group relative flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card dark:bg-zinc-900/90 hover:shadow-sm hover:border-[#ED3973] dark:hover:border-[#ED3973] transition-all"
                     >
                       {item.imageUrl ? (
                         <img
@@ -698,7 +704,7 @@ export function AiCollectionModal({
                             {item.shopName}
                           </span>
                           {item.distanceKm !== undefined && (
-                            <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                            <span className="text-[10px] text-[#ED3973] font-medium">
                               ({item.distanceKm}km)
                             </span>
                           )}
@@ -735,7 +741,7 @@ export function AiCollectionModal({
                 type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-medium shadow-md shadow-purple-500/20 dark:shadow-none"
+                className="bg-gradient-to-r from-[#ED3973] to-[#F96232] hover:opacity-95 text-white font-semibold shadow-md shadow-rose-500/25"
               >
                 {isGenerating ? (
                   <>
@@ -771,7 +777,7 @@ export function AiCollectionModal({
                   type="button"
                   onClick={handlePublish}
                   disabled={isPublishing || generatedItems.length === 0}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md shadow-emerald-500/20 dark:shadow-none"
+                  className="bg-gradient-to-r from-[#ED3973] to-[#F96232] hover:opacity-95 text-white font-semibold shadow-md shadow-rose-500/25"
                 >
                   {isPublishing ? (
                     <>
