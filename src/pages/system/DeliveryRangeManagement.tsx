@@ -24,12 +24,14 @@ export default function DeliveryRangeManagement() {
   const [limitEnabled, setLimitEnabled] = useState(false);
   const [maxDeliveryKm, setMaxDeliveryKm] = useState("30");
   const [farWarningKm, setFarWarningKm] = useState("6");
+  const [feeBufferThb, setFeeBufferThb] = useState("10");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const applyConfig = (range: DeliveryRangeDTO) => {
     setLimitEnabled(range.enabled === true);
     setMaxDeliveryKm(String(range.maxDeliveryKm));
     setFarWarningKm(String(range.farWarningKm));
+    setFeeBufferThb(String(range.feeBufferThb ?? 10));
     setUpdatedAt(range.updatedAt ?? null);
   };
 
@@ -51,8 +53,18 @@ export default function DeliveryRangeManagement() {
   const handleSave = async () => {
     const maxKm = Number(maxDeliveryKm);
     const warningKm = Number(farWarningKm);
+    const buffer = Number(feeBufferThb);
     if (!Number.isFinite(maxKm) || !Number.isFinite(warningKm)) {
       toast.error("Enter both distances in kilometers");
+      return;
+    }
+    if (
+      feeBufferThb.trim() === "" ||
+      !Number.isInteger(buffer) ||
+      buffer < 0 ||
+      buffer > 500
+    ) {
+      toast.error("The fee buffer must be a whole number of baht from 0 to 500");
       return;
     }
     if (warningKm >= maxKm) {
@@ -66,6 +78,7 @@ export default function DeliveryRangeManagement() {
           enabled: limitEnabled,
           maxDeliveryKm: maxKm,
           farWarningKm: warningKm,
+          feeBufferThb: buffer,
         }),
       );
       toast.success("Delivery range updated");
@@ -87,7 +100,8 @@ export default function DeliveryRangeManagement() {
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Straight-line kilometers from the shop to the customer’s address.
             Blocking far deliveries is off until you turn it on. Above the
-            warning distance, the customer must confirm first.
+            warning distance, the customer must confirm first. A paid delivery
+            adds the fee buffer. A free delivery stays 0.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void fetchRange()} disabled={loading}>
@@ -158,6 +172,22 @@ export default function DeliveryRangeManagement() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Customers see a confirmation above this distance.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fee-buffer-thb">Delivery fee buffer (baht)</Label>
+                  <Input
+                    id="fee-buffer-thb"
+                    type="number"
+                    min={0}
+                    max={500}
+                    step={1}
+                    value={feeBufferThb}
+                    onChange={(event) => setFeeBufferThb(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Added to the quote on a paid delivery. Free delivery stays 0.
+                    Use 0 to charge the quote only.
                   </p>
                 </div>
               </div>

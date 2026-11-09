@@ -5,6 +5,7 @@ export interface DeliveryRangeDTO {
   enabled: boolean;
   maxDeliveryKm: number;
   farWarningKm: number;
+  feeBufferThb?: number;
   updatedAt?: string | null;
 }
 
@@ -12,6 +13,7 @@ export interface UpdateDeliveryRangePayload {
   enabled: boolean;
   maxDeliveryKm: number;
   farWarningKm: number;
+  feeBufferThb?: number;
 }
 
 class DeliveryRangeService {

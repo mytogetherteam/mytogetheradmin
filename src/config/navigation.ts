@@ -15,7 +15,9 @@ import {
     BarChart2,
     ClipboardList,
     History,
+    Briefcase,
     ImageIcon,
+    Send,
     Megaphone,
     Package,
     Building2,
@@ -286,7 +288,9 @@ export const navigationConfig: NavGroup[] = [
                 items: [
                     { title: "Content Moderation", url: "/moderation/content", icon: ShieldAlert },
                     { title: "User/Shop Reports", url: "/moderation/user-shop", icon: ShieldAlert },
-                    { title: "Review Moderation", url: "/review/reviews", icon: ClipboardList }
+                    { title: "Review Moderation", url: "/review/reviews", icon: ClipboardList },
+                    { title: "Job Posts", url: "/moderation/jobs", icon: Briefcase, roles: AdminRole.ADMIN },
+                    { title: "Shop MyDays", url: "/moderation/mydays", icon: ImageIcon, roles: AdminRole.ADMIN }
                 ]
             },
             { title: "Shop Feedback", url: "/shop-feedback/manage", icon: MessageSquare, tooltip: "Shop Feedback from Owners", roles: AdminRole.ADMIN }
@@ -398,6 +402,7 @@ export const navigationConfig: NavGroup[] = [
                     { title: "Order Timeouts", url: "/system/order-timeouts", icon: Timer, roles: AdminRole.ADMIN_FINANCE },
                     { title: "App Language", url: "/system/language", icon: Languages, roles: AdminRole.ADMIN },
                     { title: "Twilio Order Calls", url: "/system/twilio", icon: PhoneCall, roles: AdminRole.ADMIN },
+                    { title: "Telegram Restaurants", url: "/system/telegram", icon: Send, roles: AdminRole.ADMIN },
                     { title: "Onboarding Screens", url: "/system/onboarding", icon: Presentation, roles: AdminRole.ADMIN_SETUP },
                     { title: "App Content", url: "/system/app-content", icon: FileText, roles: AdminRole.ADMIN_SETUP },
                     { title: "App Versions", url: "/system/app-versions", icon: Smartphone, roles: AdminRole.ADMIN_SETUP }
