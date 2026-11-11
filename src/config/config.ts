@@ -1,5 +1,5 @@
 export const config = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://mytogetherapi-production.up.railway.app'),
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://api.mytogether.org'),
   /** Public EMenu site base (no trailing slash). QR → `${eMenuUrl}/{slug}` */
   eMenuUrl: String(import.meta.env.VITE_EMENU_URL ?? '').replace(/\/+$/, ''),
   endpoints: {
@@ -10,6 +10,10 @@ export const config = {
       logout: '/api/admin/auth/logout',
     },
     admin: {
+      ai: {
+        todayRecap: '/api/admin/ai/today-recap',
+        chat: '/api/admin/ai/chat',
+      },
       import: {
         shopsExcel: '/api/admin/import/shops/excel',
         singleShopExcel: '/api/admin/import/shops/single-excel',

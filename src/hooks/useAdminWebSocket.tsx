@@ -135,7 +135,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
 
     const wsBaseUrl = import.meta.env.DEV
       ? ''
-      : (import.meta.env.VITE_API_BASE_URL || 'https://mytogetherapi-production.up.railway.app');
+      : (import.meta.env.VITE_API_BASE_URL || 'https://api.mytogether.org');
 
     const client = new Client({
       webSocketFactory: () => {

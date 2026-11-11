@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { config } from '@/config/config';
 
 export interface ChatHistoryItem {
   role: 'user' | 'model';
@@ -50,13 +51,13 @@ export interface ChatResponse {
 
 export const adminAiService = {
   async getTodayRecap(): Promise<TodayRecapResponse> {
-    const res = await apiClient.get<any>('/admin/ai/today-recap');
+    const res = await apiClient.get<any>(config.endpoints.admin.ai.todayRecap);
     // Handle both unwrapped and wrapped response structures from apiClient
     return res?.data ?? res;
   },
 
   async sendChatMessage(message: string, history: ChatHistoryItem[] = []): Promise<ChatResponse> {
-    const res = await apiClient.post<any>('/admin/ai/chat', {
+    const res = await apiClient.post<any>(config.endpoints.admin.ai.chat, {
       message,
       history,
     });
