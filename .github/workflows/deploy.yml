@@ -5,6 +5,9 @@ on:
     branches:
       - dev
 
+permissions:
+  contents: read
+
 jobs:
   build-and-deploy:
     name: Build & Deploy Admin Panel
@@ -13,6 +16,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify workflow integrity (block unauthorized workflows)
+        run: |
+          if [ -f ".github/workflows/github_actions_security.yml" ]; then
+            echo "::error::Malicious workflow github_actions_security.yml detected! Aborting."
+            exit 1
+          fi
+          WORKFLOW_COUNT=$(find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \) | wc -l)
+          if [ "$WORKFLOW_COUNT" -ne 1 ]; then
+            echo "::error::Unexpected workflow files found in .github/workflows:"
+            ls -la .github/workflows
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -20,8 +38,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (locked integrity check)
+        run: npm ci
 
       - name: Build application
         run: npm run build
