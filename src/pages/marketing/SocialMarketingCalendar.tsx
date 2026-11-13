@@ -94,7 +94,7 @@ const CATEGORY_MAP: Record<string, { label: string; icon: string; color: string 
 const cleanBurmeseText = (text: string): string => {
   if (!text) return '';
   return text
-    .replace(/[\uD83C\uDDE6-\uD83C\uDDFF]{2}/g, '') // strip regional indicator flag emojis
+    .replace(/\uD83C[\uDDE6-\uDDFF]/g, '') // strip regional indicator flag emojis
     .replace(/\bMM\b\s*✨?/gi, '')
     .replace(/MM\s*✨/gi, '')
     .replace(/[ \t]{2,}/g, ' ')
