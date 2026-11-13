@@ -3,6 +3,7 @@ import {
   socialMarketingService,
   SocialPost,
   WeeklyCalendarResponse,
+  SocialMarketingAiConfig,
 } from '@/services/socialMarketingService';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,41 @@ const cleanBurmeseText = (text: string): string => {
     .trim();
 };
 
+const AI_PRESETS = [
+  {
+    id: 'gen-z',
+    name: '🔥 Gen-Z Viral & Slang',
+    tone: 'BEST FRIEND TEXTING',
+    prompt:
+      'လူငယ်ဆန်ဆန်၊ ရင်းရင်းနှီးနှီး WhatsApp မှာ စာပို့သလို ရေးပါ။ ရန်ကုန် slang တွေ (ရှယ်ပဲ၊ အမိုက်စား၊ ကွက်တိ၊ chill၊ vibe၊ အသည်းခိုက်) ထည့်ပါ။ စာကြောင်းရှည်ကြီးတွေ မရေးဘဲ တိုတောင်းသွက်လက်စွာ ဆွဲဆောင်ပါ။ MyTogether ရဲ့ ပထမအော်ဒါ ပို့ခ အခမဲ့ ကို မီးမောင်းထိုးပေးပါ။',
+    forbidden: 'ရွှေမြန်မာ, မင်္ဂလာပါ, ကောင်းမွန်သော, အထူးသဖြင့်',
+  },
+  {
+    id: 'foodie',
+    name: '🍜 Foodie & Sensory Reviewer',
+    tone: 'FANCY LIFESTYLE FLEXER',
+    prompt:
+      'သွားရည်ယိုဖွယ် အစားအသောက် Reviewer စတိုင် ရေးပါ။ ဟင်းလျာတွေရဲ့ အမွှေးအကြိုင်၊ အစပ်အဆိမ့် အရသာ၊ ကြွပ်ဆတ်ဆတ် texture တွေကို စိတ်ထဲ ပုံပေါ်အောင် ဖွဲ့နွဲ့ပါ။ ဘန်ကောက်က နာမည်ကြီး မြန်မာဆိုင်တွေကို Lalamove Live GPS နဲ့ အိမ်အရောက် ပူပူနွေးနွေး မှာစားနိုင်ကြောင်း ဆွဲဆောင်ပါ။',
+    forbidden: 'ရွှေမြန်မာ, မင်္ဂလာပါ, သာယာသောနေ့',
+  },
+  {
+    id: 'expat-pro',
+    name: '💼 Bangkok Expat Advisor',
+    tone: 'MIND-BLOWING FACT DROPPER',
+    prompt:
+      'ထိုင်းရောက် မြန်မာများအတွက် အမှန်တကယ် အသုံးဝင်သော Insider ဗဟုသုတများ၊ ဒေတာ အချက်အလက်များ (၉၀ ရက် သတင်းပို့ ဒဏ်ငွေ ၂,၀၀၀ ဘတ်၊ TM30၊ လူမှုဖူလုံရေး Section 33 ဆေးကုသခွင့်၊ ထိုင်းဘဏ်အကောင့် ဖွင့်နည်း) ကို တိကျစွာ ရေးသားပါ။ MyTogether Visa & Community တွင် ဝင်ရောက်စစ်ဆေးရန် လမ်းညွှန်ပါ။',
+    forbidden: 'ရွှေမြန်မာ, မင်္ဂလာပါ',
+  },
+  {
+    id: 'nostalgia',
+    name: '💛 Heartwarming Nostalgia',
+    tone: 'NOSTALGIC HEART PULL',
+    prompt:
+      'မိသားစုလက်ရာ ထမင်းဝိုင်း၊ ရန်ကုန် မနက်ခင်း လက်ဖက်ရည်ဆိုင် အငွေ့အသက်နှင့် အိမ်ပြန်လွမ်းစိတ်ကို နွေးထွေးနူးညံ့စွာ ဖွဲ့နွဲ့ပါ။ တစ်ယောက်တည်း အထီးကျန်မနေဘဲ MyTogether ဖြင့် အိမ်အရောက် မှာစားနိုင်ကြောင်း စိတ်ခွန်အားပေးပါ။',
+    forbidden: 'ရွှေမြန်မာ, မင်္ဂလာပါ',
+  },
+];
+
 export default function SocialMarketingCalendar() {
   const [calendar, setCalendar] = useState<WeeklyCalendarResponse | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<string>('');
@@ -125,6 +161,79 @@ export default function SocialMarketingCalendar() {
   const [scheduleDateTime, setScheduleDateTime] = useState<string>('');
   const [publishing, setPublishing] = useState<boolean>(false);
   const [activeModalTab, setActiveModalTab] = useState<'upload' | 'preview'>('upload');
+
+  // AI Training Studio State
+  const [isAiStudioOpen, setIsAiStudioOpen] = useState<boolean>(false);
+  const [aiConfig, setAiConfig] = useState<SocialMarketingAiConfig>({
+    customPrompt: '',
+    samplePosts: '',
+    preferredTone: 'MIXED',
+    forbiddenWords: '',
+  });
+  const [savingAiConfig, setSavingAiConfig] = useState<boolean>(false);
+  const [testingAi, setTestingAi] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ caption: string; hashtags: string } | null>(null);
+  const [testCategory, setTestCategory] = useState<string>('FOOD_AND_DINING');
+
+  const handleOpenAiStudio = async () => {
+    setIsAiStudioOpen(true);
+    setTestResult(null);
+    try {
+      const config = await socialMarketingService.getAiConfig();
+      if (config) {
+        setAiConfig({
+          customPrompt: config.customPrompt || '',
+          samplePosts: config.samplePosts || '',
+          preferredTone: config.preferredTone || 'MIXED',
+          forbiddenWords: config.forbiddenWords || '',
+        });
+      }
+    } catch {
+      // Keep existing local state
+    }
+  };
+
+  const handleSaveAiConfig = async () => {
+    try {
+      setSavingAiConfig(true);
+      await socialMarketingService.saveAiConfig(aiConfig);
+      toast.success('AI Training Rules saved! New generations will follow this style.');
+      setIsAiStudioOpen(false);
+    } catch (err: any) {
+      toast.error('Failed to save AI training rules: ' + (err?.message || 'Error'));
+    } finally {
+      setSavingAiConfig(false);
+    }
+  };
+
+  const handleTestGenerateAi = async () => {
+    try {
+      setTestingAi(true);
+      const res = await socialMarketingService.testGenerateAi({
+        category: testCategory,
+        customPrompt: aiConfig.customPrompt,
+        samplePosts: aiConfig.samplePosts,
+        preferredTone: aiConfig.preferredTone,
+        forbiddenWords: aiConfig.forbiddenWords,
+      });
+      setTestResult(res);
+      toast.success('Sample post generated successfully!');
+    } catch (err: any) {
+      toast.error('Test generation failed: ' + (err?.message || 'Error'));
+    } finally {
+      setTestingAi(false);
+    }
+  };
+
+  const handleApplyPreset = (preset: (typeof AI_PRESETS)[0]) => {
+    setAiConfig((prev) => ({
+      ...prev,
+      customPrompt: preset.prompt,
+      preferredTone: preset.tone,
+      forbiddenWords: preset.forbidden,
+    }));
+    toast.info(`Preset applied: ${preset.name}`);
+  };
 
   // Fetch calendar — auto-trigger generation silently if empty
   const loadCalendar = useCallback(async (week?: string) => {
@@ -485,6 +594,17 @@ export default function SocialMarketingCalendar() {
               {generating ? 'Regenerating...' : 'Refresh Week'}
             </Button>
           )}
+
+          {/* AI Train / Persona Tuning Button */}
+          <Button
+            onClick={handleOpenAiStudio}
+            variant="outline"
+            className="gap-2 font-medium shadow-xs border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+            title="Train AI content style, brand voice & golden reference posts"
+          >
+            <Sparkles className="w-4 h-4 text-purple-500" />
+            Train AI Style
+          </Button>
         </div>
       </div>
 
@@ -1425,6 +1545,241 @@ export default function SocialMarketingCalendar() {
                   <span className="text-white">
                     Publish {pubImageFiles.length > 1 ? `${pubImageFiles.length} Photos` : ''} Now
                   </span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* AI TRAINING & PERSONA STUDIO MODAL                            */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <Dialog open={isAiStudioOpen} onOpenChange={setIsAiStudioOpen}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg">
+                <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  AI Content Training & Persona Studio
+                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 border-purple-500/30">
+                    Live Tuning
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Train the AI with your preferred voice, paste your favorite sample posts for few-shot learning, and set negative rules.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-3">
+            {/* Quick Presets Row */}
+            <div className="bg-muted/40 p-3.5 rounded-xl border space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Quick Style Presets (Click to Auto-fill)
+              </Label>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {AI_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleApplyPreset(preset)}
+                    className="text-xs h-8 gap-1.5 hover:border-purple-500/60 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
+                  >
+                    <span>{preset.name}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Brand Voice & Instructions */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <span>1. Brand Voice & Custom Instructions</span>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">High Priority</Badge>
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  {(aiConfig.customPrompt || '').length} characters
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                AI ကို ဘယ်လို လေသံ၊ စကားအသုံးအနှုန်း (Slang) တွေ သုံးခိုင်းချင်လဲ၊ MyTogether ရဲ့ ဘယ် Feature တွေကို ဦးစားပေး ခိုင်းချင်လဲ လမ်းညွှန်ချက် ရေးထည့်ပါ။
+              </p>
+              <Textarea
+                rows={4}
+                value={aiConfig.customPrompt || ''}
+                onChange={(e) => setAiConfig((prev) => ({ ...prev, customPrompt: e.target.value }))}
+                placeholder="ဥပမာ: လူငယ်ဆန်ဆန်၊ ရင်းရင်းနှီးနှီး ရေးသားပါ။ ရန်ကုန် slang တွေ (ရှယ်ပဲ၊ အမိုက်စား၊ ကွက်တိ၊ chill) ထည့်ပါ။ MyTogether ရဲ့ စားမယ် ပထမအော်ဒါ ပို့ခ အခမဲ့ ကို အမြဲ မီးမောင်းထိုးပေးပါ။..."
+                className="font-sans text-sm leading-relaxed"
+              />
+            </div>
+
+            {/* Few-Shot Learning: Golden Reference Posts */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <span>2. Golden Reference Posts (Few-Shot Examples)</span>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Best for Accuracy</Badge>
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  {(aiConfig.samplePosts || '').length} characters
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                သင် အကြိုက်ဆုံးဖြစ်သော Facebook Post ၁ ပုဒ်မှ ၃ ပုဒ်ကို ဤနေရာတွင် Paste ချပေးပါ။ AI သည် ထို Post များ၏ စာသားဖွဲ့စည်းပုံ၊ အဖြတ်အတောက်နှင့် လေသံကို အတိအကျ အတုယူ ရေးသားပေးပါမည်။
+              </p>
+              <Textarea
+                rows={5}
+                value={aiConfig.samplePosts || ''}
+                onChange={(e) => setAiConfig((prev) => ({ ...prev, samplePosts: e.target.value }))}
+                placeholder="သင် အကြိုက်ဆုံး Facebook Post များကို ဤနေရာတွင် ကူးယူ ထည့်သွင်းပါ... (ဥပမာ: မုန့်ဟင်းခါး review post၊ ဗီဇာ အကြံပြု post)"
+                className="font-sans text-sm leading-relaxed"
+              />
+            </div>
+
+            {/* Tone Preference & Forbidden Words Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">3. Preferred Primary Tone</Label>
+                <p className="text-xs text-muted-foreground">အဓိက ဦးစားပေး လေသံ</p>
+                <Select
+                  value={aiConfig.preferredTone || 'MIXED'}
+                  onValueChange={(val) => setAiConfig((prev) => ({ ...prev, preferredTone: val }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select tone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MIXED">🔄 MIXED (Balanced 7-Tone Rotation)</SelectItem>
+                    <SelectItem value="BEST FRIEND TEXTING">💬 Best Friend Texting (Casual & Informal)</SelectItem>
+                    <SelectItem value="MIND-BLOWING FACT DROPPER">🤯 Mind-Blowing Fact Dropper (Shocking & Insightful)</SelectItem>
+                    <SelectItem value="NOSTALGIC HEART PULL">🫶 Nostalgic Heart Pull (Warm & Emotional)</SelectItem>
+                    <SelectItem value="HYPE PERSON / FOMO MACHINE">⚡ Hype Person / FOMO (Urgent & Exciting)</SelectItem>
+                    <SelectItem value="RELATABLE STORY (VIRAL POST)">📖 Relatable Story (Viral Narrative)</SelectItem>
+                    <SelectItem value="LIFE UPGRADE ADVISOR">💡 Life Upgrade Advisor (Actionable Hacks)</SelectItem>
+                    <SelectItem value="FANCY LIFESTYLE FLEXER">✨ Fancy Lifestyle Flexer (Aesthetic & Luxury)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">4. Forbidden Words / Blacklist</Label>
+                <p className="text-xs text-muted-foreground">လုံးဝ မသုံးစေချင်သော စကားလုံးများ (ကော်မာ ခံပါ)</p>
+                <Input
+                  value={aiConfig.forbiddenWords || ''}
+                  onChange={(e) => setAiConfig((prev) => ({ ...prev, forbiddenWords: e.target.value }))}
+                  placeholder="ရွှေမြန်မာ, မင်္ဂလာပါ, အထူးကောင်းမွန်သော"
+                  className="text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Interactive Test Playground */}
+            <div className="border border-purple-500/30 bg-purple-500/5 rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                    <Sparkles className="w-4 h-4 text-purple-500" />
+                    Live Test Playground (Instant Preview)
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Generate လုပ်မည့် Category ရွေးပြီး သင်ပြင်ဆင်ထားသော Style ကို ချက်ချင်း စမ်းသပ်ထုတ်ကြည့်ပါ။
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={testCategory} onValueChange={setTestCategory}>
+                    <SelectTrigger className="w-[180px] h-8 text-xs bg-background">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FOOD_AND_DINING">🍜 စားသောက်ဆိုင်</SelectItem>
+                      <SelectItem value="VISA_IMMIGRATION">📋 ဗီဇာ / Immigration</SelectItem>
+                      <SelectItem value="MONEY_EXCHANGE">💰 ငွေကြေး / လဲနှုန်း</SelectItem>
+                      <SelectItem value="BANGKOK_LIFE_HACKS">🏙️ ဘန်ကောက် Tips</SelectItem>
+                      <SelectItem value="APP_SERVICES">📱 MyTogether App</SelectItem>
+                      <SelectItem value="COMMUNITY_TIPS">🤝 Community</SelectItem>
+                      <SelectItem value="HOLIDAY_CELEBRATION">🎉 ရုံးပိတ်ရက်</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleTestGenerateAi}
+                    disabled={testingAi}
+                    className="h-8 gap-1.5 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs shadow-xs"
+                  >
+                    {testingAi ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                        <span className="text-white">Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-white" />
+                        <span className="text-white">Test Generate</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {testResult && (
+                <div className="bg-background border rounded-lg p-3.5 space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                      ✓ Generated Preview ({testResult.caption.length} chars)
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 px-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${testResult.caption}\n\n${testResult.hashtags}`);
+                        toast.success('Copied test caption to clipboard');
+                      }}
+                    >
+                      <Copy className="w-3 h-3" /> Copy
+                    </Button>
+                  </div>
+                  <div className="text-xs leading-relaxed whitespace-pre-wrap font-sans text-foreground/90 max-h-48 overflow-y-auto p-2 bg-muted/30 rounded border">
+                    {testResult.caption}
+                  </div>
+                  <div className="text-[11px] text-primary/80 font-mono">
+                    {testResult.hashtags}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t mt-4">
+            <Button variant="outline" onClick={() => setIsAiStudioOpen(false)} disabled={savingAiConfig}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAiConfig}
+              disabled={savingAiConfig}
+              className="gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs"
+            >
+              {savingAiConfig ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  <span className="text-white">Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 text-white" />
+                  <span className="text-white">Save & Apply to Calendar</span>
                 </>
               )}
             </Button>

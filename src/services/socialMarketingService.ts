@@ -34,6 +34,16 @@ export interface PublishResult {
   mytogether?: { posted: boolean; postId?: string | number; error?: string };
 }
 
+export interface SocialMarketingAiConfig {
+  id?: number;
+  key?: string;
+  customPrompt?: string;
+  samplePosts?: string;
+  preferredTone?: string;
+  forbiddenWords?: string;
+  updatedAt?: string;
+}
+
 export const socialMarketingService = {
   /** Generate a 1-week AI content calendar (21 posts) */
   async generateCalendar(startDate?: string): Promise<{
@@ -99,6 +109,27 @@ export const socialMarketingService = {
   /** Hard delete past expired draft posts older than today */
   async purgePastDrafts(): Promise<{ deleted: number }> {
     return apiClient.delete('/api/admin/social-marketing/calendar/purge-past');
+  },
+
+  /** Get dynamic AI training configuration */
+  async getAiConfig(): Promise<SocialMarketingAiConfig> {
+    return apiClient.get('/api/admin/social-marketing/config');
+  },
+
+  /** Save dynamic AI training configuration */
+  async saveAiConfig(data: SocialMarketingAiConfig): Promise<SocialMarketingAiConfig> {
+    return apiClient.put('/api/admin/social-marketing/config', data);
+  },
+
+  /** Test generate a single sample post with current or modified training instructions */
+  async testGenerateAi(data: {
+    category?: string;
+    customPrompt?: string;
+    samplePosts?: string;
+    preferredTone?: string;
+    forbiddenWords?: string;
+  }): Promise<{ caption: string; hashtags: string }> {
+    return apiClient.post('/api/admin/social-marketing/test-generate', data);
   },
 };
 
