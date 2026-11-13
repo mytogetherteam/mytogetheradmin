@@ -43,6 +43,13 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Eye,
+  Star,
+  ArrowLeft,
+  ArrowRight,
+  Globe,
+  ThumbsUp,
+  MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -84,16 +91,26 @@ const CATEGORY_MAP: Record<string, { label: string; icon: string; color: string 
   },
 };
 
+const cleanBurmeseText = (text: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/[\uD83C\uDDE6-\uD83C\uDDFF]{2}/g, '') // strip regional indicator flag emojis
+    .replace(/\bMM\b\s*✨?/gi, '')
+    .replace(/MM\s*✨/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+};
+
 export default function SocialMarketingCalendar() {
   const [calendar, setCalendar] = useState<WeeklyCalendarResponse | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<string>('');
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
-  const [selectedDayTab, setSelectedDayTab] = useState<string>('all'); // 'all' or 'yyyy-MM-dd'
+  const [selectedDayTab, setSelectedDayTab] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  // Publish / Schedule Modal State (Includes text editing & photo upload)
+  // Publish / Schedule Modal State
   const [publishingPost, setPublishingPost] = useState<SocialPost | null>(null);
   const [pubImageFiles, setPubImageFiles] = useState<File[]>([]);
   const [pubImagePreviews, setPubImagePreviews] = useState<string[]>([]);
@@ -104,6 +121,7 @@ export default function SocialMarketingCalendar() {
   const [isScheduledMode, setIsScheduledMode] = useState<boolean>(false);
   const [scheduleDateTime, setScheduleDateTime] = useState<string>('');
   const [publishing, setPublishing] = useState<boolean>(false);
+  const [activeModalTab, setActiveModalTab] = useState<'upload' | 'preview'>('upload');
 
   // Fetch calendar
   const loadCalendar = useCallback(async (week?: string) => {
@@ -140,7 +158,7 @@ export default function SocialMarketingCalendar() {
   const handleGenerateWeek = async () => {
     try {
       setGenerating(true);
-      toast.info('Generating 1-week Burmese content calendar...');
+      toast.info('Generating 1-week viral content calendar...');
       const res = await socialMarketingService.generateCalendar();
       toast.success(`Created ${res.created} posts for week ${res.weekLabel}!`);
       await loadCalendar(res.weekLabel);
@@ -157,7 +175,7 @@ export default function SocialMarketingCalendar() {
     if (!selectedWeek) return;
     if (
       !window.confirm(
-        `Are you sure you want to regenerate all posts for week ${selectedWeek}? This will replace them with fresh viral Burmese captions.`,
+        `Are you sure you want to regenerate all posts for week ${selectedWeek}? This replaces them with fresh viral Burmese captions.`,
       )
     ) {
       return;
@@ -193,31 +211,28 @@ export default function SocialMarketingCalendar() {
   // Open Publish / Schedule Modal
   const handleOpenPublish = (post: SocialPost) => {
     setPublishingPost(post);
-    setPubCaption(post.caption || '');
-    setPubHashtags(post.hashtags || '');
+    setPubCaption(cleanBurmeseText(post.caption || ''));
+    setPubHashtags(cleanBurmeseText(post.hashtags || ''));
     setPubFacebook(true);
     setPubMyTogether(true);
     setPubImageFiles([]);
     setPubImagePreviews([]);
     setIsScheduledMode(false);
+    setActiveModalTab('upload');
 
-    // Default scheduled time based on post slot
-    try {
-      const d = new Date(post.scheduledDate);
-      const [h, m] = (post.scheduledTime || '08:30').split(':');
-      d.setHours(Number(h) || 8, Number(m) || 30, 0, 0);
-      const isoLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
-      setScheduleDateTime(isoLocal);
-    } catch {
-      setScheduleDateTime('');
-    }
+    // Auto default schedule time to exactly 1 hour from current time
+    const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
+    const isoLocal = new Date(oneHourLater.getTime() - oneHourLater.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setScheduleDateTime(isoLocal);
   };
 
   // Copy Caption to Clipboard
   const handleCopyCaption = (post: SocialPost) => {
-    const text = post.hashtags ? `${post.caption}\n\n${post.hashtags}` : post.caption;
+    const cleanCap = cleanBurmeseText(post.caption || '');
+    const cleanTags = cleanBurmeseText(post.hashtags || '');
+    const text = cleanTags ? `${cleanCap}\n\n${cleanTags}` : cleanCap;
     navigator.clipboard.writeText(text);
     setCopiedId(post.id);
     toast.success('Caption copied to clipboard!');
@@ -254,6 +269,31 @@ export default function SocialMarketingCalendar() {
     setPubImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Reorder: Set as Cover (Main) Photo (#1 in Facebook Collage)
+  const handleSetAsCover = (index: number) => {
+    if (index === 0) return;
+    const files = [...pubImageFiles];
+    const previews = [...pubImagePreviews];
+    const [f] = files.splice(index, 1);
+    const [p] = previews.splice(index, 1);
+    setPubImageFiles([f, ...files]);
+    setPubImagePreviews([p, ...previews]);
+    toast.success('Selected photo is now the Main Facebook Cover Photo!');
+  };
+
+  // Move Photo Left/Right
+  const handleMoveImage = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= pubImageFiles.length) return;
+    const files = [...pubImageFiles];
+    const previews = [...pubImagePreviews];
+    const [f] = files.splice(fromIndex, 1);
+    const [p] = previews.splice(fromIndex, 1);
+    files.splice(toIndex, 0, f);
+    previews.splice(toIndex, 0, p);
+    setPubImageFiles(files);
+    setPubImagePreviews(previews);
+  };
+
   // Submit Publish or Schedule
   const handlePublishSubmit = async () => {
     if (!publishingPost) return;
@@ -264,6 +304,22 @@ export default function SocialMarketingCalendar() {
     if (!pubFacebook && !pubMyTogether) {
       toast.error('Please select at least one platform: Facebook or MyTogether!');
       return;
+    }
+
+    // Strict validation for Facebook scheduling
+    if (isScheduledMode) {
+      if (!scheduleDateTime) {
+        toast.error('Please select a scheduled date and time!');
+        return;
+      }
+      const chosenMs = new Date(scheduleDateTime).getTime();
+      const diffMinutes = (chosenMs - Date.now()) / (60 * 1000);
+      if (diffMinutes < 10) {
+        toast.error(
+          'Scheduled time must be at least 10 minutes in the future (Facebook requirement). Please pick a future date and time!',
+        );
+        return;
+      }
     }
 
     try {
@@ -283,7 +339,7 @@ export default function SocialMarketingCalendar() {
 
       toast.info(
         isScheduledMode
-          ? 'Scheduling post...'
+          ? `Scheduling post on Facebook for ${new Date(scheduleDateTime).toLocaleString()}...`
           : `Publishing ${pubImageFiles.length} photo(s)...`,
       );
 
@@ -295,15 +351,13 @@ export default function SocialMarketingCalendar() {
       if (pubFacebook) {
         if (res.facebook?.posted) {
           if (res.facebook.isScheduled) {
-            toast.success('📅 Successfully scheduled on Facebook Page!');
+            toast.success('📅 Successfully scheduled on Facebook Page (Scheduled Posts)!');
           } else {
             toast.success('📘 Successfully posted to Facebook Page!');
           }
         } else {
           hadError = true;
-          toast.error(
-            `Facebook Failed: ${res.facebook?.error || 'Token expired. Please update FACEBOOK_PAGE_ACCESS_TOKEN in server .env'}`,
-          );
+          toast.error(`Facebook Failed: ${res.facebook?.error || 'Could not post to Facebook'}`);
         }
       }
 
@@ -448,7 +502,7 @@ export default function SocialMarketingCalendar() {
         </div>
       )}
 
-      {/* DAY TABS SELECTOR (Fixes "Cards are complex" - allows clean single day focus) */}
+      {/* DAY TABS SELECTOR */}
       {calendar && calendar.totalPosts > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-b border-border">
           <Button
@@ -601,69 +655,84 @@ export default function SocialMarketingCalendar() {
                           </div>
                         </CardHeader>
 
-                        <CardContent className="p-4 pt-1 space-y-3 flex-1 flex flex-col justify-between">
-                          {/* Burmese Caption Text Area */}
-                          <div className="space-y-2">
-                            <div className="relative group bg-muted/40 hover:bg-muted/60 p-3 rounded-lg border border-border/60 transition-colors">
-                              <p className="text-sm text-foreground leading-relaxed font-sans select-text whitespace-pre-wrap">
-                                {post.caption}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyCaption(post)}
-                                className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 hover:bg-background border border-border/60 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Copy caption"
-                              >
-                                {copiedId === post.id ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
+                        <CardContent className="p-3.5 pt-1 space-y-2.5 flex-1 flex flex-col justify-between">
+                          {/* Standard Calendar Summary Preview */}
+                          {(() => {
+                            const cleanCap = cleanBurmeseText(post.caption || '');
+                            const cleanTags = cleanBurmeseText(post.hashtags || '');
+                            const hookLine = cleanCap.split('\n')[0] || cleanCap;
+                            const bodySnippet = cleanCap.split('\n').slice(1).join(' ').trim() || cleanCap;
+
+                            return (
+                              <div className="space-y-2">
+                                <div className="relative group bg-muted/30 hover:bg-muted/50 p-3 rounded-lg border border-border/50 transition-colors">
+                                  {/* Hook Line (Bold Headline) */}
+                                  <p className="text-xs font-bold text-foreground line-clamp-1 mb-1 font-sans">
+                                    {hookLine}
+                                  </p>
+                                  {/* Body Summary Preview (Tidy 3-line clamp) */}
+                                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 font-sans select-text">
+                                    {bodySnippet}
+                                  </p>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyCaption(post)}
+                                    className="absolute top-2 right-2 p-1 rounded-md bg-background/80 hover:bg-background border border-border/60 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Copy full caption"
+                                  >
+                                    {copiedId === post.id ? (
+                                      <Check className="w-3 h-3 text-emerald-500" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+
+                                {/* Hashtags */}
+                                {cleanTags && (
+                                  <p className="text-[11px] text-muted-foreground/80 line-clamp-1 italic font-mono">
+                                    {cleanTags}
+                                  </p>
                                 )}
-                              </button>
-                            </div>
 
-                            {/* Hashtags */}
-                            {post.hashtags && (
-                              <p className="text-xs text-muted-foreground line-clamp-1 italic font-mono">
-                                {post.hashtags}
-                              </p>
-                            )}
-
-                            {/* Live Facebook Post link if available */}
-                            {post.facebookPostUrl && (
-                              <a
-                                href={post.facebookPostUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-500 hover:text-blue-400 hover:underline pt-1"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" /> View on Facebook
-                              </a>
-                            )}
-                          </div>
+                                {/* Live Facebook Post link if available */}
+                                {post.facebookPostUrl && (
+                                  <a
+                                    href={post.facebookPostUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-500 hover:text-blue-400 hover:underline pt-0.5"
+                                  >
+                                    <ExternalLink className="w-3 h-3" /> View on Facebook
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Action Buttons */}
-                          <div className="pt-3 flex items-center gap-2 border-t border-border/60">
+                          <div className="pt-2 flex items-center gap-2 border-t border-border/50">
                             {/* 1. Regenerate AI */}
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                               onClick={() => handleRegenerate(post.id)}
                               title="Regenerate with fresh AI caption"
                             >
-                              <RefreshCw className="w-4 h-4" />
+                              <RefreshCw className="w-3.5 h-3.5" />
                             </Button>
 
-                            {/* 2. Publish / Post (Edit, Attach Photos & Schedule in one place) */}
+                            {/* 2. Publish / Post (Edit, Photos & Schedule all in one) */}
                             <Button
                               size="sm"
-                              className="h-9 text-xs flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs transition-colors"
+                              className="h-8 text-xs flex-1 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs transition-colors"
                               onClick={() => handleOpenPublish(post)}
-                              title="Edit, Upload Photos & Publish / Schedule"
+                              title="Upload Photos, Edit & Publish / Schedule"
                             >
-                              <Upload className="w-3.5 h-3.5 text-white" />
-                              <span className="text-white font-medium">Publish / Schedule Post</span>
+                              <Upload className="w-3 h-3 text-white" />
+                              <span className="text-white font-medium">Publish / Schedule</span>
                             </Button>
                           </div>
                         </CardContent>
@@ -678,179 +747,392 @@ export default function SocialMarketingCalendar() {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* PUBLISH & SCHEDULE MODAL DIALOG (MULTI-IMAGE & SCHEDULE) */}
+      {/* PUBLISH & SCHEDULE MODAL DIALOG (MULTI-IMAGE & FB GRID STYLE) */}
       {/* ───────────────────────────────────────────────────────────── */}
       <Dialog open={Boolean(publishingPost)} onOpenChange={(open) => !open && setPublishingPost(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5 text-blue-500" />
-              Publish or Schedule Social Post
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <Upload className="w-5 h-5 text-blue-500" />
+                Publish or Schedule Social Post
+              </DialogTitle>
+              {pubImageFiles.length > 0 && (
+                <div className="flex items-center rounded-lg border p-1 bg-muted/40">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalTab('upload')}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      activeModalTab === 'upload' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground'
+                    }`}
+                  >
+                    Edit & Photos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalTab('preview')}
+                    className={`px-3 py-1 text-xs font-medium rounded-md flex items-center gap-1 transition-all ${
+                      activeModalTab === 'preview' ? 'bg-blue-600 text-white font-semibold shadow-xs' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Eye className="w-3 h-3" /> Facebook Grid Preview
+                  </button>
+                </div>
+              )}
+            </div>
             <DialogDescription>
-              Attach photos, choose platforms (Facebook / MyTogether App), and publish immediately or schedule for a future time.
+              Attach photos, rearrange Facebook grid style, choose platforms, and publish immediately or schedule for a future time.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-2">
-            {/* Multi-Image Upload Area */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="font-semibold flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-primary" />
-                  Select Photos to Post *
-                </Label>
-                {pubImageFiles.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {pubImageFiles.length} photo{pubImageFiles.length > 1 ? 's' : ''} (Facebook Album)
-                  </Badge>
-                )}
-              </div>
+          {/* TAB 1: EDIT & PHOTOS */}
+          {activeModalTab === 'upload' && (
+            <div className="space-y-5 py-2">
+              {/* Multi-Image Upload Area with Facebook Grid Controls */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="font-semibold flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-primary" />
+                    Photos to Post (Facebook Collage Grid) *
+                  </Label>
+                  {pubImageFiles.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {pubImageFiles.length} photo{pubImageFiles.length > 1 ? 's' : ''} selected
+                    </Badge>
+                  )}
+                </div>
 
-              {/* Photos Grid or Upload Box */}
-              {pubImagePreviews.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-xl border border-border">
-                    {pubImagePreviews.map((url, idx) => (
-                      <div
-                        key={idx}
-                        className="relative group rounded-lg overflow-hidden border border-border bg-background aspect-square flex items-center justify-center"
+                {pubImagePreviews.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-xl border border-border">
+                      {pubImagePreviews.map((url, idx) => {
+                        const isMain = idx === 0;
+                        return (
+                          <div
+                            key={idx}
+                            className={`relative group rounded-lg overflow-hidden border bg-background aspect-square flex flex-col justify-between transition-all ${
+                              isMain ? 'ring-2 ring-blue-500 shadow-sm' : 'border-border'
+                            }`}
+                          >
+                            <img
+                              src={url}
+                              alt={`Upload preview ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+
+                            {/* Badge */}
+                            <div className="absolute top-1 left-1 flex items-center gap-1">
+                              {isMain ? (
+                                <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 shadow-xs">
+                                  <Star className="w-2.5 h-2.5 fill-white" /> Main Cover
+                                </span>
+                              ) : (
+                                <span className="bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                                  #{idx + 1}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Top-Right Remove Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-700 text-white p-1 rounded-full shadow-xs"
+                              title="Remove photo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Bottom Controls Bar */}
+                            <div className="absolute bottom-0 inset-x-0 bg-black/75 p-1 flex items-center justify-between text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-1">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImage(idx, idx - 1)}
+                                    className="p-1 hover:bg-white/20 rounded"
+                                    title="Move left"
+                                  >
+                                    <ArrowLeft className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {idx < pubImagePreviews.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImage(idx, idx + 1)}
+                                    className="p-1 hover:bg-white/20 rounded"
+                                    title="Move right"
+                                  >
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {!isMain && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetAsCover(idx)}
+                                  className="text-[10px] text-amber-300 hover:underline flex items-center gap-0.5 px-1 py-0.5 rounded font-medium"
+                                  title="Make this the prominent cover photo on Facebook"
+                                >
+                                  <Star className="w-2.5 h-2.5" /> Make Main
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Add More Photos Box */}
+                      <label
+                        htmlFor="pub-image-input"
+                        className="border-2 border-dashed rounded-lg aspect-square flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
                       >
-                        <img
-                          src={url}
-                          alt={`Upload preview ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-700 text-white p-1 rounded-full opacity-90 transition-opacity shadow-xs"
-                          title="Remove photo"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-                          #{idx + 1}
-                        </span>
-                      </div>
-                    ))}
-
-                    {/* Add More Photos Box */}
-                    <label
-                      htmlFor="pub-image-input"
-                      className="border-2 border-dashed rounded-lg aspect-square flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="w-6 h-6" />
-                      <span className="text-[11px] font-medium">+ Add Photo</span>
-                    </label>
+                        <Plus className="w-6 h-6" />
+                        <span className="text-[11px] font-medium">+ Add Photo</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <label
-                  htmlFor="pub-image-input"
-                  className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors text-center"
-                >
-                  <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Click to upload photos (Single or Multiple)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      JPEG, PNG or WebP up to 25MB each. Multiple photos will publish as an album on Facebook.
-                    </p>
-                  </div>
-                </label>
-              )}
+                ) : (
+                  <label
+                    htmlFor="pub-image-input"
+                    className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors text-center"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Click to upload photos (Single or Multiple for Collage)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        JPEG, PNG or WebP up to 25MB each. First photo acts as the main hero photo on Facebook.
+                      </p>
+                    </div>
+                  </label>
+                )}
 
-              <input
-                id="pub-image-input"
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
-            </div>
-
-            {/* Target Options Checkboxes */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Publish Targets</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border border-border">
-                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium">
-                  <Checkbox
-                    checked={pubFacebook}
-                    onCheckedChange={(checked) => setPubFacebook(Boolean(checked))}
-                  />
-                  <span>📘 Facebook Page (MyTogether)</span>
-                </label>
-                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium">
-                  <Checkbox
-                    checked={pubMyTogether}
-                    onCheckedChange={(checked) => setPubMyTogether(Boolean(checked))}
-                  />
-                  <span>📱 MyTogether App Social Feed</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Publishing Schedule Mode (Immediate vs Scheduled) */}
-            <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-primary" />
-                    Schedule for Later?
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Facebook will automatically publish this post at the exact scheduled date and time.
-                  </p>
-                </div>
-                <Checkbox
-                  checked={isScheduledMode}
-                  onCheckedChange={(checked) => setIsScheduledMode(Boolean(checked))}
+                <input
+                  id="pub-image-input"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
                 />
               </div>
 
-              {isScheduledMode && (
-                <div className="pt-2 space-y-1.5">
-                  <Label className="text-xs">Select Schedule Date & Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={scheduleDateTime}
-                    onChange={(e) => setScheduleDateTime(e.target.value)}
-                    className="w-full sm:w-[280px]"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Must be at least 15 minutes in the future for Facebook scheduling.
-                  </p>
+              {/* Target Options Checkboxes */}
+              <div className="space-y-2">
+                <Label className="font-semibold">Publish Targets</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border border-border">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium">
+                    <Checkbox
+                      checked={pubFacebook}
+                      onCheckedChange={(checked) => setPubFacebook(Boolean(checked))}
+                    />
+                    <span>📘 Facebook Page (MyTogether)</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium">
+                    <Checkbox
+                      checked={pubMyTogether}
+                      onCheckedChange={(checked) => setPubMyTogether(Boolean(checked))}
+                    />
+                    <span>📱 MyTogether App Social Feed</span>
+                  </label>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Caption Quick Edit */}
-            <div className="space-y-1.5">
-              <Label className="font-semibold">Caption & Message</Label>
-              <Textarea
-                rows={4}
-                value={pubCaption}
-                onChange={(e) => setPubCaption(e.target.value)}
-                placeholder="Post caption text..."
-                className="leading-relaxed font-sans text-sm"
-              />
-            </div>
+              {/* Publishing Schedule Mode (Immediate vs Scheduled) */}
+              <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-primary" />
+                      Schedule for Later?
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Facebook will automatically publish this post at the exact scheduled date and time.
+                    </p>
+                  </div>
+                  <Checkbox
+                    checked={isScheduledMode}
+                    onCheckedChange={(checked) => setIsScheduledMode(Boolean(checked))}
+                  />
+                </div>
 
-            {/* Hashtags */}
-            <div className="space-y-1.5">
-              <Label>Hashtags</Label>
-              <Input
-                value={pubHashtags}
-                onChange={(e) => setPubHashtags(e.target.value)}
-                placeholder="#MyTogether #Bangkok #မြန်မာ"
-              />
-            </div>
-          </div>
+                {isScheduledMode && (
+                  <div className="pt-2 space-y-1.5">
+                    <Label className="text-xs font-medium">Select Future Date & Time (Must be at least 10 mins ahead)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={scheduleDateTime}
+                      onChange={(e) => setScheduleDateTime(e.target.value)}
+                      className="w-full sm:w-[300px]"
+                    />
+                  </div>
+                )}
+              </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+              {/* Caption Quick Edit (Taller Textarea with Paragraph Spacing) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="font-semibold">Caption & Message (Paragraph formatting)</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    {pubCaption.length} characters
+                  </span>
+                </div>
+                <Textarea
+                  rows={9}
+                  value={pubCaption}
+                  onChange={(e) => setPubCaption(e.target.value)}
+                  placeholder="Post caption with hook and paragraphs..."
+                  className="leading-relaxed font-sans text-sm min-h-[220px] max-h-[420px] resize-y p-3.5 bg-background border-border shadow-xs"
+                />
+              </div>
+
+              {/* Hashtags */}
+              <div className="space-y-1.5">
+                <Label>Hashtags</Label>
+                <Input
+                  value={pubHashtags}
+                  onChange={(e) => setPubHashtags(e.target.value)}
+                  placeholder="#MyTogether #Bangkok #မြန်မာ"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: LIVE FACEBOOK POST PREVIEW */}
+          {activeModalTab === 'preview' && (
+            <div className="space-y-4 py-2">
+              <div className="max-w-lg mx-auto bg-card border border-border rounded-xl shadow-md overflow-hidden">
+                {/* Facebook Header */}
+                <div className="p-3.5 flex items-center justify-between border-b border-border/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+                      MT
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-foreground">MyTogether</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-blue-500/20" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        {isScheduledMode && scheduleDateTime
+                          ? `Scheduled: ${new Date(scheduleDateTime).toLocaleString()}`
+                          : 'Just now'}{' '}
+                        · <Globe className="w-3 h-3" />
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Facebook Post Body Text */}
+                <div className="p-3.5 text-sm leading-relaxed font-sans text-foreground select-text whitespace-pre-wrap">
+                  {pubCaption || 'Your post caption will appear here...'}
+                </div>
+
+                {pubHashtags && (
+                  <div className="px-3.5 pb-2 text-xs font-medium text-blue-600 dark:text-blue-400">
+                    {pubHashtags}
+                  </div>
+                )}
+
+                {/* Facebook Image Collage Grid */}
+                {pubImagePreviews.length > 0 && (
+                  <div className="border-t border-border/40 bg-muted/20">
+                    {pubImagePreviews.length === 1 && (
+                      <img
+                        src={pubImagePreviews[0]}
+                        alt="FB Post 1"
+                        className="w-full max-h-[380px] object-cover"
+                      />
+                    )}
+
+                    {pubImagePreviews.length === 2 && (
+                      <div className="grid grid-cols-2 gap-0.5 h-[280px]">
+                        <img
+                          src={pubImagePreviews[0]}
+                          alt="FB Post 1"
+                          className="w-full h-full object-cover"
+                        />
+                        <img
+                          src={pubImagePreviews[1]}
+                          alt="FB Post 2"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {pubImagePreviews.length === 3 && (
+                      <div className="grid grid-cols-2 gap-0.5 h-[320px]">
+                        <img
+                          src={pubImagePreviews[0]}
+                          alt="FB Post 1"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="grid grid-rows-2 gap-0.5 h-full">
+                          <img
+                            src={pubImagePreviews[1]}
+                            alt="FB Post 2"
+                            className="w-full h-full object-cover"
+                          />
+                          <img
+                            src={pubImagePreviews[2]}
+                            alt="FB Post 3"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {pubImagePreviews.length >= 4 && (
+                      <div className="grid grid-cols-2 gap-0.5 h-[320px]">
+                        <img
+                          src={pubImagePreviews[0]}
+                          alt="FB Post 1"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="grid grid-rows-2 gap-0.5 h-full">
+                          <img
+                            src={pubImagePreviews[1]}
+                            alt="FB Post 2"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="relative w-full h-full">
+                            <img
+                              src={pubImagePreviews[2]}
+                              alt="FB Post 3"
+                              className="w-full h-full object-cover"
+                            />
+                            {pubImagePreviews.length > 3 && (
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xl font-bold">
+                                +{pubImagePreviews.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Facebook Action Bar */}
+                <div className="p-2.5 px-4 flex items-center justify-between text-muted-foreground border-t border-border/40 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <ThumbsUp className="w-4 h-4 text-blue-500" /> Like
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <MessageCircle className="w-4 h-4" /> Comment
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Share2 className="w-4 h-4" /> Share
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button variant="outline" onClick={() => setPublishingPost(null)} disabled={publishing}>
               Cancel
             </Button>
