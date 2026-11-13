@@ -221,15 +221,45 @@ export default function SocialMarketingCalendar() {
     setPubMyTogether(true);
     setPubImageFiles([]);
     setPubImagePreviews([]);
-    setIsScheduledMode(false);
     setActiveModalTab('upload');
 
-    // Auto default schedule time to exactly 1 hour from current time
-    const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
-    const isoLocal = new Date(oneHourLater.getTime() - oneHourLater.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-    setScheduleDateTime(isoLocal);
+    // Intelligent schedule date/time:
+    // Anchor directly to the card's target scheduledDate (e.g. 2026-11-14) and scheduledTime (e.g. 13:00)
+    try {
+      const d = new Date(post.scheduledDate);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const datePart = `${year}-${month}-${day}`;
+      const timePart = post.scheduledTime || '13:00';
+
+      const targetDate = new Date(`${datePart}T${timePart}:00`);
+      const diffMinutes = (targetDate.getTime() - Date.now()) / (60 * 1000);
+
+      if (diffMinutes >= 10) {
+        // Slot is in the future -> prefill with card's exact slot and auto-enable schedule mode!
+        setScheduleDateTime(`${datePart}T${timePart}`);
+        setIsScheduledMode(true);
+      } else {
+        // Slot has passed (e.g., today's morning slot when it's now evening)
+        // Default to immediate publish mode, but prefill schedule input with now + 1 hour as fallback
+        setIsScheduledMode(false);
+        const fallback = new Date(Date.now() + 60 * 60 * 1000);
+        const fbYear = fallback.getFullYear();
+        const fbMonth = String(fallback.getMonth() + 1).padStart(2, '0');
+        const fbDay = String(fallback.getDate()).padStart(2, '0');
+        const fbHours = String(fallback.getHours()).padStart(2, '0');
+        const fbMins = String(fallback.getMinutes()).padStart(2, '0');
+        setScheduleDateTime(`${fbYear}-${fbMonth}-${fbDay}T${fbHours}:${fbMins}`);
+      }
+    } catch {
+      setIsScheduledMode(false);
+      const fallback = new Date(Date.now() + 60 * 60 * 1000);
+      const isoLocal = new Date(fallback.getTime() - fallback.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setScheduleDateTime(isoLocal);
+    }
   };
 
   // Copy Caption to Clipboard
