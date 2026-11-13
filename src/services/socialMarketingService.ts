@@ -9,7 +9,7 @@ export interface SocialPost {
   category: string;
   caption: string;
   hashtags?: string;
-  status: 'draft' | 'published' | 'partial';
+  status: 'draft' | 'published' | 'partial' | 'scheduled';
   publishedToFb: boolean;
   publishedToApp: boolean;
   facebookPostId?: string;
@@ -30,8 +30,8 @@ export interface WeeklyCalendarResponse {
 
 export interface PublishResult {
   success: boolean;
-  facebook?: { posted: boolean; postId?: string; postUrl?: string; error?: string };
-  mytogether?: { posted: boolean; postId?: string; error?: string };
+  facebook?: { posted: boolean; postId?: string; postUrl?: string; isScheduled?: boolean; error?: string };
+  mytogether?: { posted: boolean; postId?: string | number; error?: string };
 }
 
 export const socialMarketingService = {
