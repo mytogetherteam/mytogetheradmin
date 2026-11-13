@@ -108,6 +108,7 @@ export default function SocialMarketingCalendar() {
   const [selectedDayTab, setSelectedDayTab] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
+  const [autoGenerating, setAutoGenerating] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Publish / Schedule Modal State
@@ -123,7 +124,7 @@ export default function SocialMarketingCalendar() {
   const [publishing, setPublishing] = useState<boolean>(false);
   const [activeModalTab, setActiveModalTab] = useState<'upload' | 'preview'>('upload');
 
-  // Fetch calendar
+  // Fetch calendar — auto-trigger generation silently if empty
   const loadCalendar = useCallback(async (week?: string) => {
     try {
       setLoading(true);
@@ -131,6 +132,22 @@ export default function SocialMarketingCalendar() {
       setCalendar(data);
       if (data?.weekLabel) {
         setSelectedWeek(data.weekLabel);
+      }
+
+      // Auto-generate if no posts exist for the current week (backend cron may not have run yet)
+      if (!week && (!data || data.totalPosts === 0)) {
+        setAutoGenerating(true);
+        try {
+          const res = await socialMarketingService.generateCalendar();
+          const fresh = await socialMarketingService.getCalendar(res.weekLabel);
+          setCalendar(fresh);
+          setSelectedWeek(res.weekLabel);
+          toast.success(`✨ ${res.created} posts auto-generated for this week!`);
+        } catch {
+          // Silently ignore if auto-generation fails; user can try manually
+        } finally {
+          setAutoGenerating(false);
+        }
       }
     } catch (err: any) {
       toast.error('Failed to load content calendar: ' + (err?.message || err));
@@ -154,21 +171,8 @@ export default function SocialMarketingCalendar() {
     loadWeeks();
   }, [loadCalendar, loadWeeks]);
 
-  // Generate 1-week calendar
-  const handleGenerateWeek = async () => {
-    try {
-      setGenerating(true);
-      toast.info('Generating 1-week viral content calendar...');
-      const res = await socialMarketingService.generateCalendar();
-      toast.success(`Created ${res.created} posts for week ${res.weekLabel}!`);
-      await loadCalendar(res.weekLabel);
-      await loadWeeks();
-    } catch (err: any) {
-      toast.error('Failed to generate calendar: ' + (err?.message || err));
-    } finally {
-      setGenerating(false);
-    }
-  };
+  // Generate 1-week calendar (now only used for Regenerate flow)
+  // handleGenerateWeek removed — backend cron + auto-generate on load handles this
 
   // Regenerate whole week fresh
   const handleRecreateWeek = async () => {
@@ -401,15 +405,15 @@ export default function SocialMarketingCalendar() {
               Social Marketing Content Calendar
             </h1>
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1 py-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> AI & Smart Schedule
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Auto AI Schedule
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Weekly Myanmar content calendar: auto-generated Burmese posts, photo album streaming, and scheduled publishing to Facebook & MyTogether App.
+            7-day rolling calendar — auto-generated every Monday. Posts are refreshed weekly automatically.
           </p>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls — Regenerate only (no manual Generate button) */}
         <div className="flex items-center flex-wrap gap-2.5">
           {availableWeeks.length > 0 && (
             <Select
@@ -432,33 +436,21 @@ export default function SocialMarketingCalendar() {
             </Select>
           )}
 
-          {/* Single Smart Generate / Regenerate Button */}
-          {calendar && calendar.totalPosts > 0 ? (
+          {/* Regenerate button — only shown when posts exist */}
+          {calendar && calendar.totalPosts > 0 && (
             <Button
               onClick={handleRecreateWeek}
               disabled={generating}
-              className="gap-2 bg-primary text-primary-foreground font-medium shadow-xs"
-              title="Regenerate all 21 posts with fresh viral Burmese captions"
+              variant="outline"
+              className="gap-2 font-medium shadow-xs"
+              title="Regenerate all posts with fresh viral Burmese AI captions"
             >
               {generating ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <RefreshCw className="w-4 h-4 text-amber-300" />
+                <RefreshCw className="w-4 h-4 text-amber-500" />
               )}
-              {generating ? 'Regenerating Week...' : 'Regenerate Week'}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleGenerateWeek}
-              disabled={generating}
-              className="gap-2 bg-primary text-primary-foreground font-medium shadow-xs"
-            >
-              {generating ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-amber-300" />
-              )}
-              {generating ? 'Generating Posts...' : 'Generate Week'}
+              {generating ? 'Regenerating...' : 'Refresh Week'}
             </Button>
           )}
         </div>
@@ -503,7 +495,7 @@ export default function SocialMarketingCalendar() {
       )}
 
       {/* DAY TABS SELECTOR */}
-      {calendar && calendar.totalPosts > 0 && (
+      {!autoGenerating && calendar && calendar.totalPosts > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-b border-border">
           <Button
             size="sm"
@@ -516,23 +508,36 @@ export default function SocialMarketingCalendar() {
           </Button>
 
           {Object.keys(calendar.days).map((dayKey) => {
-            const dateObj = new Date(dayKey);
+            const dateObj = new Date(dayKey + 'T00:00:00'); // force local parse
+            const today = new Date();
+            const isToday =
+              dateObj.getFullYear() === today.getFullYear() &&
+              dateObj.getMonth() === today.getMonth() &&
+              dateObj.getDate() === today.getDate();
             const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
             const dayNum = dateObj.getDate();
+            const monthAbbr = dateObj.toLocaleDateString('en-US', { month: 'short' });
             const isSelected = selectedDayTab === dayKey;
 
             return (
               <Button
                 key={dayKey}
                 size="sm"
-                variant={isSelected ? 'default' : 'outline'}
+                variant={isSelected ? 'default' : isToday ? 'secondary' : 'outline'}
                 className={`rounded-full text-xs px-3.5 h-8 gap-1 transition-all ${
-                  isSelected ? 'shadow-xs font-semibold' : 'text-muted-foreground'
+                  isSelected
+                    ? 'shadow-xs font-semibold'
+                    : isToday
+                    ? 'border-primary/50 font-semibold text-primary'
+                    : 'text-muted-foreground'
                 }`}
                 onClick={() => setSelectedDayTab(dayKey)}
               >
                 <span>{dayName}</span>
-                <span className="opacity-70">{dayNum}</span>
+                <span className="opacity-80">{monthAbbr} {dayNum}</span>
+                {isToday && !isSelected && (
+                  <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                )}
               </Button>
             );
           })}
@@ -540,35 +545,41 @@ export default function SocialMarketingCalendar() {
       )}
 
       {/* Loading Skeleton */}
-      {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-[400px] animate-pulse bg-muted/30" />
-          ))}
+      {(loading || autoGenerating) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground px-1">
+            <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+            {autoGenerating ? 'Auto-generating this week\'s content calendar...' : 'Loading calendar...'}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="h-[220px] animate-pulse bg-muted/30" />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Empty State */}
-      {!loading && calendar && calendar.totalPosts === 0 && (
+      {/* Empty State — only shown if auto-generate also yielded nothing */}
+      {!loading && !autoGenerating && calendar && calendar.totalPosts === 0 && (
         <Card className="p-12 text-center border-dashed">
           <div className="max-w-md mx-auto space-y-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
               <CalendarIcon className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold">No posts in this week</h3>
+            <h3 className="text-lg font-bold">No posts available</h3>
             <p className="text-sm text-muted-foreground">
-              Click the button below to generate 21 complete, category-targeted Burmese captions for the entire week!
+              The weekly calendar auto-generates every Monday. Click <strong>Refresh Week</strong> to generate now.
             </p>
-            <Button onClick={handleGenerateWeek} disabled={generating} className="gap-2">
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              Generate 1-Week Content Calendar
+            <Button onClick={handleRecreateWeek} disabled={generating} className="gap-2">
+              {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
+              {generating ? 'Generating...' : 'Generate Now'}
             </Button>
           </div>
         </Card>
       )}
 
       {/* CALENDAR CONTENT DISPLAY */}
-      {!loading && calendar && calendar.totalPosts > 0 && (
+      {!loading && !autoGenerating && calendar && calendar.totalPosts > 0 && (
         <div className="space-y-8">
           {activeDays.map(([dayKey, posts]) => {
             const dateObj = new Date(dayKey);

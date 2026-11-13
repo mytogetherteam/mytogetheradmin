@@ -95,5 +95,10 @@ export const socialMarketingService = {
   async deleteWeek(week: string): Promise<{ deleted: number }> {
     return apiClient.delete(`/api/admin/social-marketing/calendar/${encodeURIComponent(week)}`);
   },
+
+  /** Hard delete past expired draft posts older than today */
+  async purgePastDrafts(): Promise<{ deleted: number }> {
+    return apiClient.delete('/api/admin/social-marketing/calendar/purge-past');
+  },
 };
 
