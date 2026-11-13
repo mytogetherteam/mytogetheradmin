@@ -171,7 +171,8 @@ export const navigationConfig: NavGroup[] = [
                 ]
             },
             { title: "Referrals & Promo Codes", url: "/referrals/manage", icon: Gift, tooltip: "Referral & Promo Codes", roles: AdminRole.ADMIN },
-            { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Push Notifications Broadcast", roles: AdminRole.ADMIN_SETUP }
+            { title: "Push Broadcast", url: "/marketing/broadcast", icon: Megaphone, tooltip: "Push Notifications Broadcast", roles: AdminRole.ADMIN_SETUP },
+            { title: "Social Media Calendar", url: "/marketing/social-calendar", icon: Share2, tooltip: "AI Content Calendar & Publisher", roles: AdminRole.ADMIN_SETUP }
         ]
     },
 

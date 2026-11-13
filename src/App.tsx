@@ -103,6 +103,7 @@ const SocialReactionsPage = lazy(() => import("@/pages/social-media/SocialReacti
 // Marketing
 const BannerManagement = lazy(() => import("@/pages/marketing/BannerManagement"));
 const Broadcast = lazy(() => import("@/pages/marketing/Broadcast"));
+const SocialMarketingCalendar = lazy(() => import("@/pages/marketing/SocialMarketingCalendar"));
 const ManageBackgroundThemes = lazy(() => import("@/pages/background-themes/ManageBackgroundThemes"));
 const CreateBackgroundTheme = lazy(() => import("@/pages/background-themes/CreateBackgroundTheme"));
 const ManageHomeDiscountSections = lazy(() => import("@/pages/home-discount-sections/ManageHomeDiscountSections"));
@@ -318,6 +319,7 @@ function App() {
                 <Route path="/background-themes/manage" element={<ManageBackgroundThemes />} />
                 <Route path="/background-themes/create" element={<CreateBackgroundTheme />} />
                 <Route path="/marketing/broadcast" element={<Broadcast />} />
+                <Route path="/marketing/social-calendar" element={<SocialMarketingCalendar />} />
                 <Route path="/places/manage" element={<ManagePlaces />} />
                 <Route path="/places/create" element={<CreatePlace />} />
                 <Route path="/shop-feedback/manage" element={<ManageShopFeedback />} />
