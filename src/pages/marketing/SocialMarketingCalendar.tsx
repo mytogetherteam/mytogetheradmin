@@ -30,7 +30,6 @@ import {
   Calendar as CalendarIcon,
   Sparkles,
   Send,
-  Pencil,
   RefreshCw,
   ExternalLink,
   CheckCircle2,
@@ -96,15 +95,7 @@ export default function SocialMarketingCalendar() {
   const [deletingWeek, setDeletingWeek] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  // Edit Modal State
-  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
-  const [editCaption, setEditCaption] = useState<string>('');
-  const [editHashtags, setEditHashtags] = useState<string>('');
-  const [editTime, setEditTime] = useState<string>('');
-  const [editCategory, setEditCategory] = useState<string>('');
-  const [savingEdit, setSavingEdit] = useState<boolean>(false);
-
-  // Publish / Schedule Modal State
+  // Publish / Schedule Modal State (Includes text editing & photo upload)
   const [publishingPost, setPublishingPost] = useState<SocialPost | null>(null);
   const [pubImageFiles, setPubImageFiles] = useState<File[]>([]);
   const [pubImagePreviews, setPubImagePreviews] = useState<string[]>([]);
@@ -187,36 +178,6 @@ export default function SocialMarketingCalendar() {
       toast.error('Failed to reset week: ' + (err?.message || err));
     } finally {
       setDeletingWeek(false);
-    }
-  };
-
-  // Open Edit Modal
-  const handleOpenEdit = (post: SocialPost) => {
-    setEditingPost(post);
-    setEditCaption(post.caption || '');
-    setEditHashtags(post.hashtags || '');
-    setEditTime(post.scheduledTime || '08:30');
-    setEditCategory(post.category || 'BANGKOK_LIFE_HACKS');
-  };
-
-  // Save Edit
-  const handleSaveEdit = async () => {
-    if (!editingPost) return;
-    try {
-      setSavingEdit(true);
-      await socialMarketingService.updatePost(editingPost.id, {
-        caption: editCaption,
-        hashtags: editHashtags,
-        scheduledTime: editTime,
-        category: editCategory,
-      });
-      toast.success('Post content updated!');
-      setEditingPost(null);
-      loadCalendar(selectedWeek);
-    } catch (err: any) {
-      toast.error('Failed to update post: ' + (err?.message || err));
-    } finally {
-      setSavingEdit(false);
     }
   };
 
@@ -687,37 +648,26 @@ export default function SocialMarketingCalendar() {
 
                           {/* Action Buttons */}
                           <div className="pt-3 flex items-center gap-2 border-t border-border/60">
-                            {/* 1. Edit */}
+                            {/* 1. Regenerate AI */}
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 text-xs flex-1 gap-1.5 font-medium"
-                              onClick={() => handleOpenEdit(post)}
-                              title="Edit Caption or Time"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
-                            </Button>
-
-                            {/* 2. Regenerate AI */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                               onClick={() => handleRegenerate(post.id)}
                               title="Regenerate with fresh AI caption"
                             >
-                              <RefreshCw className="w-3.5 h-3.5" />
+                              <RefreshCw className="w-4 h-4" />
                             </Button>
 
-                            {/* 3. Publish / Schedule */}
+                            {/* 2. Publish / Post (Edit, Attach Photos & Schedule in one place) */}
                             <Button
                               size="sm"
-                              className="h-8 text-xs flex-1 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs"
+                              className="h-9 text-xs flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs transition-colors"
                               onClick={() => handleOpenPublish(post)}
-                              title="Upload Photos & Publish to Facebook / MyTogether"
+                              title="Edit, Upload Photos & Publish / Schedule"
                             >
                               <Upload className="w-3.5 h-3.5 text-white" />
-                              <span className="text-white">Publish / Post</span>
+                              <span className="text-white font-medium">Publish / Schedule Post</span>
                             </Button>
                           </div>
                         </CardContent>
@@ -732,81 +682,7 @@ export default function SocialMarketingCalendar() {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. EDIT MODAL DIALOG */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <Dialog open={Boolean(editingPost)} onOpenChange={(open) => !open && setEditingPost(null)}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" />
-              Edit Social Post Content
-            </DialogTitle>
-            <DialogDescription>
-              Edit the Burmese caption, hashtags, time or category. Click Save when ready.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Posting Time</Label>
-                <Input
-                  value={editTime}
-                  onChange={(e) => setEditTime(e.target.value)}
-                  placeholder="08:30"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Select value={editCategory} onValueChange={setEditCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CATEGORY_MAP).map(([key, item]) => (
-                      <SelectItem key={key} value={key}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Burmese Caption</Label>
-              <Textarea
-                rows={5}
-                value={editCaption}
-                onChange={(e) => setEditCaption(e.target.value)}
-                placeholder="မြန်မာဘာသာဖြင့် Caption ရေးသားပါ..."
-                className="leading-relaxed font-sans text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Hashtags</Label>
-              <Input
-                value={editHashtags}
-                onChange={(e) => setEditHashtags(e.target.value)}
-                placeholder="#MyTogether #Bangkok #မြန်မာ"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingPost(null)} disabled={savingEdit}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={savingEdit} className="bg-primary text-primary-foreground">
-              {savingEdit ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. PUBLISH & SCHEDULE MODAL DIALOG (MULTI-IMAGE & SCHEDULE) */}
+      {/* PUBLISH & SCHEDULE MODAL DIALOG (MULTI-IMAGE & SCHEDULE) */}
       {/* ───────────────────────────────────────────────────────────── */}
       <Dialog open={Boolean(publishingPost)} onOpenChange={(open) => !open && setPublishingPost(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
