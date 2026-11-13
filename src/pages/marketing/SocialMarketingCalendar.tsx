@@ -48,6 +48,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Globe,
+  LayoutGrid,
   ThumbsUp,
   MessageCircle,
 } from 'lucide-react';
@@ -106,6 +107,7 @@ export default function SocialMarketingCalendar() {
   const [selectedWeek, setSelectedWeek] = useState<string>('');
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [selectedDayTab, setSelectedDayTab] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'calendar' | 'feed'>('calendar');
   const [loading, setLoading] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
   const [autoGenerating, setAutoGenerating] = useState<boolean>(false);
@@ -524,53 +526,83 @@ export default function SocialMarketingCalendar() {
         </div>
       )}
 
-      {/* DAY TABS SELECTOR */}
+      {/* DAY TABS & VIEW MODE SWITCHER */}
       {!autoGenerating && calendar && calendar.totalPosts > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-b border-border">
-          <Button
-            size="sm"
-            variant={selectedDayTab === 'all' ? 'default' : 'ghost'}
-            className="rounded-full text-xs px-3.5 h-8 gap-1.5"
-            onClick={() => setSelectedDayTab('all')}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-            All 7 Days ({calendar.totalPosts})
-          </Button>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-2 border-b border-border">
+          {/* Day Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+            <Button
+              size="sm"
+              variant={selectedDayTab === 'all' ? 'default' : 'ghost'}
+              className="rounded-full text-xs px-3.5 h-8 gap-1.5"
+              onClick={() => setSelectedDayTab('all')}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              All 7 Days ({calendar.totalPosts})
+            </Button>
 
-          {Object.keys(calendar.days).map((dayKey) => {
-            const dateObj = new Date(dayKey + 'T00:00:00'); // force local parse
-            const today = new Date();
-            const isToday =
-              dateObj.getFullYear() === today.getFullYear() &&
-              dateObj.getMonth() === today.getMonth() &&
-              dateObj.getDate() === today.getDate();
-            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-            const dayNum = dateObj.getDate();
-            const monthAbbr = dateObj.toLocaleDateString('en-US', { month: 'short' });
-            const isSelected = selectedDayTab === dayKey;
+            {Object.keys(calendar.days).map((dayKey) => {
+              const dateObj = new Date(dayKey + 'T00:00:00'); // force local parse
+              const today = new Date();
+              const isToday =
+                dateObj.getFullYear() === today.getFullYear() &&
+                dateObj.getMonth() === today.getMonth() &&
+                dateObj.getDate() === today.getDate();
+              const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+              const dayNum = dateObj.getDate();
+              const monthAbbr = dateObj.toLocaleDateString('en-US', { month: 'short' });
+              const isSelected = selectedDayTab === dayKey;
 
-            return (
-              <Button
-                key={dayKey}
-                size="sm"
-                variant={isSelected ? 'default' : isToday ? 'secondary' : 'outline'}
-                className={`rounded-full text-xs px-3.5 h-8 gap-1 transition-all ${
-                  isSelected
-                    ? 'shadow-xs font-semibold'
-                    : isToday
-                    ? 'border-primary/50 font-semibold text-primary'
-                    : 'text-muted-foreground'
-                }`}
-                onClick={() => setSelectedDayTab(dayKey)}
-              >
-                <span>{dayName}</span>
-                <span className="opacity-80">{monthAbbr} {dayNum}</span>
-                {isToday && !isSelected && (
-                  <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                )}
-              </Button>
-            );
-          })}
+              return (
+                <Button
+                  key={dayKey}
+                  size="sm"
+                  variant={isSelected ? 'default' : isToday ? 'secondary' : 'outline'}
+                  className={`rounded-full text-xs px-3 h-8 gap-1 transition-all ${
+                    isSelected
+                      ? 'shadow-xs font-semibold'
+                      : isToday
+                      ? 'border-primary/50 font-semibold text-primary'
+                      : 'text-muted-foreground'
+                  }`}
+                  onClick={() => setSelectedDayTab(dayKey)}
+                >
+                  <span>{dayName}</span>
+                  <span className="opacity-80">{monthAbbr} {dayNum}</span>
+                  {isToday && !isSelected && (
+                    <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+
+          {/* Real Calendar vs Feed View Switcher */}
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0 self-end md:self-auto">
+            <Button
+              size="sm"
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              className="h-7 text-xs gap-1.5 px-3 rounded-md font-medium shadow-2xs"
+              onClick={() => {
+                setViewMode('calendar');
+                setSelectedDayTab('all');
+              }}
+              title="7-Day Full Week Planner Grid"
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              Week Calendar (7 Days)
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'feed' ? 'default' : 'ghost'}
+              className="h-7 text-xs gap-1.5 px-3 rounded-md font-medium"
+              onClick={() => setViewMode('feed')}
+              title="Detailed Expanded Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Detailed Feed
+            </Button>
+          </div>
         </div>
       )}
 
@@ -608,11 +640,206 @@ export default function SocialMarketingCalendar() {
         </Card>
       )}
 
-      {/* CALENDAR CONTENT DISPLAY */}
-      {!loading && !autoGenerating && calendar && calendar.totalPosts > 0 && (
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 1. PROFESSIONAL 7-DAY WEEK CALENDAR GRID VIEW (DEFAULT)         */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {!loading && !autoGenerating && calendar && calendar.totalPosts > 0 && viewMode === 'calendar' && selectedDayTab === 'all' && (
+        <div className="space-y-3">
+          {/* Sub-header info bar */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+            <span className="flex items-center gap-1.5 font-medium">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              <span>7-Day Marketing Calendar Planner — <strong>{calendar.totalPosts} slots across 7 days</strong></span>
+            </span>
+            <span className="hidden sm:inline-block text-[11px] text-muted-foreground/80">
+              💡 Click any card to edit, add photos, or publish/schedule
+            </span>
+          </div>
+
+          {/* 7-Column Calendar Grid (Smooth horizontal scroll on smaller screens, full-width on desktop) */}
+          <div className="overflow-x-auto pb-4 pt-1">
+            <div className="min-w-[1240px] grid grid-cols-7 gap-3">
+              {Object.entries(calendar.days).map(([dayKey, posts]) => {
+                const dateObj = new Date(dayKey + 'T00:00:00');
+                const today = new Date();
+                const isToday =
+                  dateObj.getFullYear() === today.getFullYear() &&
+                  dateObj.getMonth() === today.getMonth() &&
+                  dateObj.getDate() === today.getDate();
+                const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                const dayNumber = dateObj.getDate();
+                const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+
+                return (
+                  <div
+                    key={dayKey}
+                    className={`flex flex-col rounded-xl border transition-all duration-200 bg-card/60 backdrop-blur-sm ${
+                      isToday
+                        ? 'border-primary ring-2 ring-primary/20 bg-primary/[0.02]'
+                        : 'border-border/80 hover:border-border'
+                    }`}
+                  >
+                    {/* Day Column Header */}
+                    <div
+                      className={`p-3 pb-2 rounded-t-xl border-b flex items-center justify-between ${
+                        isToday
+                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          : 'bg-muted/40 border-border/70 text-foreground'
+                      }`}
+                    >
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-sm font-extrabold tracking-wider">{dayOfWeek}</span>
+                        <span className="text-xs text-muted-foreground font-semibold">{monthName} {dayNumber}</span>
+                      </div>
+                      {isToday ? (
+                        <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0 font-bold uppercase tracking-wider">
+                          Today
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {posts.length} slots
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 3 Slots in Chronological Order (Morning, Noon, Evening) */}
+                    <div className="p-2 space-y-2.5 flex-1 flex flex-col justify-start">
+                      {posts.map((post) => {
+                        const cat = CATEGORY_MAP[post.category] || {
+                          label: post.category,
+                          icon: '📌',
+                          color: 'bg-muted text-foreground border-border',
+                        };
+
+                        const slotInfo =
+                          post.scheduledSlot === 'morning'
+                            ? { icon: '🌅', time: '08:30' }
+                            : post.scheduledSlot === 'noon'
+                            ? { icon: '☀️', time: '13:00' }
+                            : { icon: '🌙', time: '18:30' };
+
+                        const isPublished = post.status === 'published';
+                        const isScheduled = post.status === 'scheduled';
+                        const cleanCap = cleanBurmeseText(post.caption || '');
+                        const cleanTags = cleanBurmeseText(post.hashtags || '');
+                        const hookLine = cleanCap.split('\n')[0] || cleanCap;
+                        const bodySnippet = cleanCap.split('\n').slice(1).join(' ').trim() || cleanCap;
+
+                        return (
+                          <div
+                            key={post.id}
+                            onClick={() => handleOpenPublish(post)}
+                            className={`group relative rounded-lg p-2.5 border transition-all duration-150 cursor-pointer flex flex-col justify-between gap-2 shadow-2xs hover:shadow-md ${
+                              isPublished
+                                ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-950/20 hover:border-emerald-500'
+                                : isScheduled
+                                ? 'border-blue-500/50 bg-blue-500/5 dark:bg-blue-950/20 hover:border-blue-500'
+                                : 'border-border/60 bg-card hover:border-border hover:bg-muted/30'
+                            }`}
+                          >
+                            {/* Slot Header */}
+                            <div className="flex items-center justify-between gap-1 text-[11px]">
+                              <span className="font-semibold text-foreground font-mono flex items-center gap-1">
+                                <span>{slotInfo.icon}</span>
+                                <span>{post.scheduledTime || slotInfo.time}</span>
+                              </span>
+                              {isPublished ? (
+                                <Badge className="bg-emerald-600 text-white text-[9px] px-1 py-0 gap-0.5">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Live
+                                </Badge>
+                              ) : isScheduled ? (
+                                <Badge className="bg-blue-600 text-white text-[9px] px-1 py-0 gap-0.5">
+                                  <Clock className="w-2.5 h-2.5" /> Sched
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                                  Draft
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Category Pill */}
+                            <div>
+                              <span
+                                className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border leading-tight ${cat.color}`}
+                              >
+                                {cat.label}
+                              </span>
+                            </div>
+
+                            {/* Hook Headline */}
+                            <p className="text-xs font-bold text-foreground line-clamp-2 font-sans leading-snug">
+                              {hookLine}
+                            </p>
+
+                            {/* Body Snippet */}
+                            <p className="text-[11px] text-muted-foreground line-clamp-2 font-sans leading-relaxed">
+                              {bodySnippet}
+                            </p>
+
+                            {/* Hashtags */}
+                            {cleanTags && (
+                              <p className="text-[10px] text-muted-foreground/75 line-clamp-1 italic font-mono">
+                                {cleanTags}
+                              </p>
+                            )}
+
+                            {/* Footer Quick Action Buttons */}
+                            <div
+                              className="pt-1.5 border-t border-border/50 flex items-center justify-between gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                onClick={() => handleRegenerate(post.id)}
+                                title="AI Regenerate Caption"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                className="h-7 text-[11px] px-2 flex-1 gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-2xs"
+                                onClick={() => handleOpenPublish(post)}
+                              >
+                                <Upload className="w-2.5 h-2.5" />
+                                <span>Publish</span>
+                              </Button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCaption(post)}
+                                className="p-1 rounded text-muted-foreground hover:text-foreground"
+                                title="Copy caption"
+                              >
+                                {copiedId === post.id ? (
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 2. DETAILED FEED VIEW (EXPANDED CARDS OR SINGLE DAY FOCUS)     */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {!loading && !autoGenerating && calendar && calendar.totalPosts > 0 && (viewMode === 'feed' || selectedDayTab !== 'all') && (
         <div className="space-y-8">
           {activeDays.map(([dayKey, posts]) => {
-            const dateObj = new Date(dayKey);
+            const dateObj = new Date(dayKey + 'T00:00:00');
             const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
             const dateFormatted = dateObj.toLocaleDateString('en-US', {
               month: 'long',
