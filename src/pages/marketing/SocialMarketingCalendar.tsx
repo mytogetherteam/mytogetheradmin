@@ -39,7 +39,6 @@ import {
   Share2,
   X,
   Plus,
-  Trash2,
   Image as ImageIcon,
   CalendarDays,
   Check,
@@ -92,7 +91,6 @@ export default function SocialMarketingCalendar() {
   const [selectedDayTab, setSelectedDayTab] = useState<string>('all'); // 'all' or 'yyyy-MM-dd'
   const [loading, setLoading] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
-  const [deletingWeek, setDeletingWeek] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Publish / Schedule Modal State (Includes text editing & photo upload)
@@ -154,30 +152,29 @@ export default function SocialMarketingCalendar() {
     }
   };
 
-  // Re-create / Regenerate whole week fresh
+  // Regenerate whole week fresh
   const handleRecreateWeek = async () => {
     if (!selectedWeek) return;
     if (
       !window.confirm(
-        `Are you sure you want to clear and regenerate all posts for week ${selectedWeek}? This replaces them with fresh complete Burmese captions.`,
+        `Are you sure you want to regenerate all posts for week ${selectedWeek}? This will replace them with fresh viral Burmese captions.`,
       )
     ) {
       return;
     }
 
     try {
-      setDeletingWeek(true);
-      toast.info(`Resetting week ${selectedWeek}...`);
+      setGenerating(true);
+      toast.info(`Regenerating week ${selectedWeek}...`);
       await socialMarketingService.deleteWeek(selectedWeek);
-      toast.info('Generating fresh complete captions...');
       const res = await socialMarketingService.generateCalendar();
       toast.success(`Success! Generated ${res.created} fresh posts.`);
       await loadCalendar(res.weekLabel);
       await loadWeeks();
     } catch (err: any) {
-      toast.error('Failed to reset week: ' + (err?.message || err));
+      toast.error('Failed to regenerate week: ' + (err?.message || err));
     } finally {
-      setDeletingWeek(false);
+      setGenerating(false);
     }
   };
 
@@ -381,34 +378,33 @@ export default function SocialMarketingCalendar() {
             </Select>
           )}
 
-          <Button
-            onClick={handleGenerateWeek}
-            disabled={generating}
-            className="gap-2 bg-primary text-primary-foreground font-medium shadow-xs"
-          >
-            {generating ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4 text-amber-300" />
-            )}
-            {generating ? 'Generating...' : 'Generate Week'}
-          </Button>
-
-          {calendar && calendar.totalPosts > 0 && (
+          {/* Single Smart Generate / Regenerate Button */}
+          {calendar && calendar.totalPosts > 0 ? (
             <Button
-              variant="outline"
-              size="default"
               onClick={handleRecreateWeek}
-              disabled={deletingWeek || generating}
-              className="gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
-              title="Delete all incomplete posts and regenerate fresh Burmese captions"
+              disabled={generating}
+              className="gap-2 bg-primary text-primary-foreground font-medium shadow-xs"
+              title="Regenerate all 21 posts with fresh viral Burmese captions"
             >
-              {deletingWeek ? (
+              {generating ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <Trash2 className="w-4 h-4 text-destructive" />
+                <RefreshCw className="w-4 h-4 text-amber-300" />
               )}
-              Reset & Regenerate
+              {generating ? 'Regenerating Week...' : 'Regenerate Week'}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleGenerateWeek}
+              disabled={generating}
+              className="gap-2 bg-primary text-primary-foreground font-medium shadow-xs"
+            >
+              {generating ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-amber-300" />
+              )}
+              {generating ? 'Generating Posts...' : 'Generate Week'}
             </Button>
           )}
         </div>
