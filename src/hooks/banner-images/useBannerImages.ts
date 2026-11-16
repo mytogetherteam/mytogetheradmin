@@ -39,7 +39,7 @@ export function useCreateBannerMutation() {
       videoFile,
     }: {
       values: BannerFormValues;
-      imageFile: File;
+      imageFile?: File;
       videoFile?: File;
     }) => bannerImageService.createBanner(values, imageFile, videoFile),
     onSuccess: () => {

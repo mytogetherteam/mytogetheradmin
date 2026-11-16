@@ -175,11 +175,16 @@ export function BannerFormDialog({
   };
 
   const handleSave = handleSubmit(async (values) => {
-    if (!banner && !imageFile) {
-      toast.error("An image is required to create a new banner.");
+    const isOrder = values.position === "Order";
+    const hasVideo = Boolean(videoFile || (banner?.videoUrl && !removeVideo));
+    if (!banner && !imageFile && !(isOrder && hasVideo)) {
+      toast.error(
+        isOrder
+          ? "Please upload either a video or an image for this banner."
+          : "An image is required to create a new banner.",
+      );
       return;
     }
-    const isOrder = values.position === "Order";
     await onSubmit(
       values,
       imageFile ?? undefined,
@@ -201,7 +206,7 @@ export function BannerFormDialog({
   const modalDescription = banner
     ? `Update ${entityLabel.toLowerCase()} details, schedule, and image.`
     : lockedPosition === "Order"
-      ? "Create an order waiting image. A video is optional."
+      ? "Create an order waiting banner (video or image)."
       : lockedPosition
         ? `Create a new ${entityLabel.toLowerCase()} image.`
         : "Create a new promo or ads banner.";
@@ -320,7 +325,14 @@ export function BannerFormDialog({
         </div>
 
         <div className="space-y-2">
-          <Label>Image</Label>
+          <Label>
+            Image{" "}
+            {showVideo && (
+              <span className="text-xs text-muted-foreground font-normal">
+                (optional if video is provided)
+              </span>
+            )}
+          </Label>
           <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
             {imagePreview ? (
               <div className="relative">
@@ -358,14 +370,21 @@ export function BannerFormDialog({
           </div>
           {!banner && !imageFile && (
             <p className="text-xs text-muted-foreground">
-              Image is required for new banners.
+              {showVideo
+                ? "Optional if a video is uploaded."
+                : "Image is required for new banners."}
             </p>
           )}
         </div>
 
         {showVideo && (
           <div className="space-y-2">
-            <Label>Video (optional)</Label>
+            <Label>
+              Video{" "}
+              <span className="text-xs text-muted-foreground font-normal">
+                {imageFile || imagePreview ? "(optional)" : "(required if no image)"}
+              </span>
+            </Label>
             <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
               {videoPreviewUrl ? (
                 <div className="relative">

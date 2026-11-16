@@ -19,11 +19,31 @@ export function BannerCard({ banner, onToggle, onEdit, onDelete }: BannerCardPro
   return (
     <Card className="overflow-hidden">
       <div className="h-36 bg-muted flex items-center justify-center relative">
-        <TableImage
-          src={banner.imageUrl}
-          alt={displayName}
-          className="w-full h-full object-cover rounded-none"
-        />
+        {banner.imageUrl ? (
+          <TableImage
+            src={banner.imageUrl}
+            alt={displayName}
+            className="w-full h-full object-cover rounded-none"
+          />
+        ) : banner.videoUrl ? (
+          <video
+            src={banner.videoUrl}
+            className="w-full h-full object-cover rounded-none pointer-events-none"
+            muted
+            playsInline
+          />
+        ) : (
+          <TableImage
+            src={null}
+            alt={displayName}
+            className="w-full h-full object-cover rounded-none"
+          />
+        )}
+        {banner.videoUrl && (
+          <span className="absolute top-2 right-2 rounded bg-black/70 backdrop-blur-xs px-1.5 py-0.5 text-[10px] font-semibold text-white tracking-wide">
+            VIDEO
+          </span>
+        )}
       </div>
       <CardContent className="pt-3 space-y-2">
         <div className="flex items-center justify-between">

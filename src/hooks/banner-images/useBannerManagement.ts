@@ -147,10 +147,10 @@ export function useBannerManagement(
         });
         return;
       }
-      if (!imageFile) return;
+      if (!imageFile && !(orderVideo && videoFile)) return;
       await createBanner({
         values: parsed.data,
-        imageFile,
+        imageFile: imageFile ?? undefined,
         videoFile: orderVideo ? videoFile : undefined,
       });
     },

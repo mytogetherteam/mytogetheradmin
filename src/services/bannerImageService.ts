@@ -109,7 +109,7 @@ export const bannerImageService = {
 
   createBanner: async (
     values: BannerFormValues,
-    imageFile: File,
+    imageFile?: File,
     videoFile?: File,
   ): Promise<BannerImage> => {
     const response = await apiClient.post<unknown>(
