@@ -159,8 +159,11 @@ export function BannerFormDialog({
       toast.error("Video must be an mp4, mov, or webm file.");
       return;
     }
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("Video must be 50 MB or smaller.");
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb > 15) {
+      toast.error(
+        `Video is too large (${sizeMb.toFixed(1)} MB). Please upload a video under 15 MB for optimal mobile app streaming speed.`,
+      );
       return;
     }
     const typed = file.type ? file : new File([file], file.name, { type: inferred });
@@ -404,6 +407,22 @@ export function BannerFormDialog({
                   >
                     <X className="h-3 w-3" />
                   </Button>
+                  {videoFile && (
+                    <div className="mt-2 flex items-center justify-center gap-1.5 text-xs">
+                      <span className="font-semibold text-muted-foreground">
+                        Size: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                      </span>
+                      {videoFile.size <= 5 * 1024 * 1024 ? (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                          Optimal (Fast Streaming)
+                        </span>
+                      ) : (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                          Good (≤ 15MB)
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : banner?.videoUrl && !removeVideo ? (
                 <div className="space-y-2">
@@ -440,7 +459,7 @@ export function BannerFormDialog({
                   <p className="text-sm font-medium">
                     {removeVideo ? "Video will be removed" : "Click to upload a video"}
                   </p>
-                  <p className="text-xs text-muted-foreground">MP4, MOV, or WebM, up to 50 MB</p>
+                  <p className="text-xs text-muted-foreground">MP4, MOV, or WebM (Max 15 MB, ≤ 5 MB optimal)</p>
                   <input
                     type="file"
                     className="hidden"
