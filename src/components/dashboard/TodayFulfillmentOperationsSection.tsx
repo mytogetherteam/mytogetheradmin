@@ -27,6 +27,22 @@ interface Props {
     totalShopsCount?: number;
 }
 
+const isTestingShop = (shop?: AdminShopProfileListItem | null) => {
+    if (!shop) return false;
+    const nameEn = (shop.nameEn || "").toLowerCase().replace(/\s+/g, "");
+    const nameMm = (shop.nameMm || "").toLowerCase().replace(/\s+/g, "");
+    return (
+        nameEn.includes("mytogethertesting") ||
+        nameEn.includes("mytogethertest") ||
+        nameEn.includes("testingshop") ||
+        nameEn.includes("testshop") ||
+        nameMm.includes("mytogethertesting") ||
+        nameMm.includes("mytogethertest") ||
+        nameMm.includes("testingshop") ||
+        nameMm.includes("testshop")
+    );
+};
+
 export function TodayFulfillmentOperationsSection({
     loading,
     todayDelivered,
@@ -41,12 +57,12 @@ export function TodayFulfillmentOperationsSection({
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState<"ALL" | "ON" | "OFF">("ALL");
-    const [localShops, setLocalShops] = useState<AdminShopProfileListItem[]>(shops);
+    const [localShops, setLocalShops] = useState<AdminShopProfileListItem[]>(() => shops.filter((s) => !isTestingShop(s)));
     const [, setFetchingShops] = useState(false);
 
     useEffect(() => {
         if (shops && shops.length > 0) {
-            setLocalShops(shops);
+            setLocalShops(shops.filter((s) => !isTestingShop(s)));
         }
     }, [shops]);
 
@@ -72,7 +88,7 @@ export function TodayFulfillmentOperationsSection({
             try {
                 const res = await ShopService.getAdminShopProfiles(1, 100);
                 if (res?.content) {
-                    setLocalShops(res.content);
+                    setLocalShops(res.content.filter((s) => !isTestingShop(s)));
                 }
             } catch (err) {
                 console.error("Failed to load shops for delivery modal", err);

@@ -28,6 +28,22 @@ interface Props {
     initialTab?: "ALL" | "ON" | "OFF";
 }
 
+const isTestingShop = (shop?: AdminShopProfileListItem | null) => {
+    if (!shop) return false;
+    const nameEn = (shop.nameEn || "").toLowerCase().replace(/\s+/g, "");
+    const nameMm = (shop.nameMm || "").toLowerCase().replace(/\s+/g, "");
+    return (
+        nameEn.includes("mytogethertesting") ||
+        nameEn.includes("mytogethertest") ||
+        nameEn.includes("testingshop") ||
+        nameEn.includes("testshop") ||
+        nameMm.includes("mytogethertesting") ||
+        nameMm.includes("mytogethertest") ||
+        nameMm.includes("testingshop") ||
+        nameMm.includes("testshop")
+    );
+};
+
 export function DeliveryOptionShopListModal({
     open,
     onOpenChange,
@@ -38,6 +54,12 @@ export function DeliveryOptionShopListModal({
     const [search, setSearch] = useState("");
     const [tab, setTab] = useState<"ALL" | "ON" | "OFF">(initialTab);
 
+    // Filter out internal testing shops
+    const activeShops = useMemo(
+        () => shops.filter((s) => !isTestingShop(s)),
+        [shops]
+    );
+
     // Keep active tab in sync when opened with a specific initial tab
     React.useEffect(() => {
         if (open) {
@@ -46,21 +68,21 @@ export function DeliveryOptionShopListModal({
     }, [open, initialTab]);
 
     const deliveryOnShops = useMemo(
-        () => shops.filter((s) => s.deliveryEnabled !== false),
-        [shops]
+        () => activeShops.filter((s) => s.deliveryEnabled !== false),
+        [activeShops]
     );
     const deliveryOffShops = useMemo(
-        () => shops.filter((s) => s.deliveryEnabled === false),
-        [shops]
+        () => activeShops.filter((s) => s.deliveryEnabled === false),
+        [activeShops]
     );
 
     const onCount = deliveryOnShops.length;
     const offCount = deliveryOffShops.length;
-    const allCount = shops.length;
+    const allCount = activeShops.length;
 
     // Filter by tab then search
     const filteredShops = useMemo(() => {
-        let base = shops;
+        let base = activeShops;
         if (tab === "ON") base = deliveryOnShops;
         if (tab === "OFF") base = deliveryOffShops;
 
