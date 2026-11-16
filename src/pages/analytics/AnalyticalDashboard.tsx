@@ -24,9 +24,10 @@ import { Label } from "@/components/ui/label";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { BarChart2, MapPin, TrendingUp, UserCheck, Store } from "lucide-react";
+import { BarChart2, MapPin, TrendingUp, UserCheck, Store, Sparkles } from "lucide-react";
 import { ShopService, Shop } from "@/services/shopService";
 import { ActiveUsersPanel } from "@/components/analytics/ActiveUsersPanel";
+import { AiCancellationDiagnosticPanel } from "@/components/analytics/AiCancellationDiagnosticPanel";
 
 const PRESETS: Array<{ id: BangkokPreset; label: string }> = [
     { id: "today", label: "Today" },
@@ -283,9 +284,12 @@ export default function AnalyticalDashboard() {
                 <p className="py-16 text-center text-sm text-destructive">{dateProblem}</p>
             ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+                <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
                     <TabsTrigger value="active" className="flex items-center gap-2"><UserCheck className="h-4 w-4" /> Daily Active</TabsTrigger>
                     <TabsTrigger value="orders" className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Order value</TabsTrigger>
+                    <TabsTrigger value="diagnostic" className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold">
+                        <Sparkles className="h-4 w-4 text-indigo-500" /> AI Diagnostic
+                    </TabsTrigger>
                     <TabsTrigger value="restaurants" className="flex items-center gap-2"><Store className="h-4 w-4" /> Restaurants</TabsTrigger>
                     <TabsTrigger value="locations" className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Locations</TabsTrigger>
                 </TabsList>
@@ -293,6 +297,19 @@ export default function AnalyticalDashboard() {
                 <TabsContent value="active" className="mt-6">
                     {activeTab === "active" ? (
                         <ActiveUsersPanel
+                            from={startDate}
+                            to={endDate}
+                            onRangeChange={(from, to) => {
+                                setStartDate(from);
+                                setEndDate(to);
+                            }}
+                        />
+                    ) : null}
+                </TabsContent>
+
+                <TabsContent value="diagnostic" className="mt-6">
+                    {activeTab === "diagnostic" ? (
+                        <AiCancellationDiagnosticPanel
                             from={startDate}
                             to={endDate}
                             onRangeChange={(from, to) => {
@@ -339,9 +356,20 @@ export default function AnalyticalDashboard() {
                     ) : null}
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Cancellations by who</CardTitle>
-                            <CardDescription>Counted on the day the order was canceled. Test restaurants are left out.</CardDescription>
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <CardTitle>Cancellations by who</CardTitle>
+                                <CardDescription>Counted on the day the order was canceled. Test restaurants are left out.</CardDescription>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setActiveTab("diagnostic")}
+                                className="gap-1.5 text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20"
+                            >
+                                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                                Deep AI Diagnostic & High-Risk Shops ➔
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             {loading ? <LoadingSkeleton /> : loadErrors.cancellations ? (

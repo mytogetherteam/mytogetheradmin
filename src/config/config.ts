@@ -328,6 +328,7 @@ export const config = {
         revenue: '/api/admin/analytics/revenue',
         orders: '/api/admin/analytics/orders',
         ordersCancellationRate: '/api/admin/analytics/orders/cancellation-rate',
+        ordersCancellationDiagnostic: '/api/admin/analytics/orders/cancellation-diagnostic',
         sessions: '/api/admin/analytics/sessions',
         locations: '/api/admin/analytics/locations',
         reviews: '/api/admin/analytics/reviews',

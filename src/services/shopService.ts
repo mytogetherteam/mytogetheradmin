@@ -833,12 +833,14 @@ export const ShopService = {
    */
   toggleShopStatus: async (
     id: number,
-    body: { isActive: boolean; isVerified?: boolean; taxEnable?: boolean },
+    body: { isActive: boolean; isVerified?: boolean; taxEnable?: boolean; isOpen?: boolean; adminDisabled?: boolean },
   ): Promise<void> => {
     const payload: {
       isActive: boolean;
       isVerified?: boolean;
       taxEnable?: boolean;
+      isOpen?: boolean;
+      adminDisabled?: boolean;
     } = {
       isActive: body.isActive,
     };
@@ -847,6 +849,12 @@ export const ShopService = {
     }
     if (body.taxEnable !== undefined) {
       payload.taxEnable = body.taxEnable;
+    }
+    if (body.isOpen !== undefined) {
+      payload.isOpen = body.isOpen;
+    }
+    if (body.adminDisabled !== undefined) {
+      payload.adminDisabled = body.adminDisabled;
     }
     await apiClient.patch(
       config.endpoints.admin.shopProfile.changeStatus(id),

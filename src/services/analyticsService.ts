@@ -195,6 +195,75 @@ export interface CancellationRateData {
   byActor?: CancellationByActor[];
 }
 
+export interface DiagnosticSummary {
+  totalOrders: number;
+  deliveredOrders: number;
+  deliveredRatePercent: number;
+  canceledOrders: number;
+  cancelRatePercent: number;
+  activeOrders: number;
+  deliveredSales: number;
+  lostSales: number;
+  currency: string;
+}
+
+export interface FunnelDropOff {
+  shopTimeoutOrders: number;
+  shopTimeoutPercent: number;
+  slipTimeoutOrders: number;
+  slipTimeoutPercent: number;
+  userDropOrders: number;
+  userDropPercent: number;
+  shopRejectedOrders: number;
+  shopRejectedPercent: number;
+  otherOrders: number;
+  otherPercent: number;
+}
+
+export interface DiagnosticReason {
+  reason: string;
+  actor: string;
+  count: number;
+  percentage: number;
+  lostAmount: number;
+}
+
+export interface ProblematicShop {
+  shopId: number;
+  shopName: string;
+  phone: string | null;
+  isOpen: boolean;
+  isActive: boolean;
+  adminDisabled: boolean;
+  totalOrders: number;
+  deliveredOrders: number;
+  canceledOrders: number;
+  cancelRatePercent: number;
+  lostAmount: number;
+  topCancelReason: string;
+  severity: 'CRITICAL' | 'WARNING' | 'HEALTHY';
+  avgWaitMinutes: number | null;
+}
+
+export interface CancellationDiagnosticData {
+  summary: DiagnosticSummary;
+  byActor: Array<{
+    actor: string;
+    label: string;
+    count: number;
+    percentage: number;
+  }>;
+  topReasons: DiagnosticReason[];
+  funnelDropOff: FunnelDropOff;
+  problematicShops: ProblematicShop[];
+  aiRecap: {
+    myanmar: string;
+    english: string;
+    generatedAt: string;
+    model: string;
+  };
+}
+
 export interface UserGrowthData {
   date: string;
   newUsers: number;
@@ -271,6 +340,15 @@ class AnalyticsService {
     if (end) params.append('end', end);
     const query = params.toString() ? `?${params.toString()}` : '';
     return apiClient.get<CancellationRateData>(`${config.endpoints.admin.analytics.ordersCancellationRate}${query}`);
+  }
+
+  async getCancellationDiagnostic(start?: string, end?: string, minOrders?: number): Promise<CancellationDiagnosticData> {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    if (minOrders !== undefined) params.append('minOrders', String(minOrders));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<CancellationDiagnosticData>(`${config.endpoints.admin.analytics.ordersCancellationDiagnostic}${query}`);
   }
 
   async getUserGrowth(start?: string, end?: string): Promise<UserGrowthData[]> {
