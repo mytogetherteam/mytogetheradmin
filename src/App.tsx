@@ -73,6 +73,9 @@ const CreateFlashEvent = lazy(() => import("@/pages/flash-events/CreateFlashEven
 const OrderBoard = lazy(() => import("@/pages/orders/OrderBoard"));
 const OrderHistory = lazy(() => import("@/pages/orders/OrderHistory"));
 const OrderDetail = lazy(() => import("@/pages/orders/OrderDetail"));
+const MerchantPerformancePage = lazy(
+  () => import("@/pages/operations/MerchantPerformancePage"),
+);
 
 // Moderation & Reviews
 const ContentReports = lazy(() => import("@/pages/moderation/ContentReports"));
@@ -232,6 +235,7 @@ function App() {
                 <Route path="/menus/items/create" element={<CreateMenuItem />} />
                 <Route path="/orders/board" element={<ProtectedRoute requiredRole={AdminRole.ADMIN}><OrderBoard /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
+                <Route path="/operations/restaurant-insights" element={<MerchantPerformancePage />} />
                 <Route path="/moderation/content" element={<ContentReports />} />
                 <Route path="/moderation/user-shop" element={<UserShopReports />} />
                 <Route path="/review/reviews" element={<Reviews />} />

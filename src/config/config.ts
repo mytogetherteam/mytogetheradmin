@@ -14,6 +14,11 @@ export const config = {
         todayRecap: '/api/admin/ai/today-recap',
         chat: '/api/admin/ai/chat',
       },
+      operations: {
+        merchantPerformance: '/api/admin/operations/merchant-performance',
+        updateFollowUp: (id: number) => `/api/admin/operations/merchant-performance/${id}/follow-up`,
+        aiStrategy: (id: number) => `/api/admin/operations/merchant-performance/${id}/ai-strategy`,
+      },
       import: {
         shopsExcel: '/api/admin/import/shops/excel',
         singleShopExcel: '/api/admin/import/shops/single-excel',

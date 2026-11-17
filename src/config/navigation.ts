@@ -1,4 +1,5 @@
 import {
+    Bot,
     Wallet,
     Receipt,
     LayoutDashboard,
@@ -108,6 +109,7 @@ export const navigationConfig: NavGroup[] = [
                 ]
             },
             { title: "Admin Approvals", url: "/menus/approvals", icon: ClipboardCheck, tooltip: "Shop, Menu & Payment Approvals", roles: AdminRole.ADMIN_OPS },
+            { title: "Merchant Operations & AI", url: "/operations/restaurant-insights", icon: Bot, tooltip: "Restaurant Analytics, Cancel Root Causes & AI Follow-up", roles: AdminRole.ADMIN_OPS },
             { title: "Manage Users", url: "/users/manage", icon: Users, tooltip: "Manage Platform Users", roles: AdminRole.ADMIN_OPS },
             { title: "Delivery Drivers", url: "/delivery-drivers/manage", icon: Bike, tooltip: "Shop Delivery Drivers", roles: AdminRole.ADMIN }
         ]
