@@ -47,8 +47,23 @@ export function OrderStatusActionCard({ order }: Props) {
         order.isFreeDelivery === true ||
         String(order.displayDeliveryFee ?? "").toUpperCase() === "FREE" ||
         String(order.estimatedDeliveryFeeLabel ?? "").toUpperCase() === "FREE";
+    const isVerifiedShop = Boolean(order.isVerified || order.isVerifiedShop);
+    const isCodOrder = String(order.paymentChannel ?? "").toUpperCase() === "COD";
+    const allowedStatuses = ORDER_STATUSES.filter((s) => {
+        if (s === order.status) return false;
+        if (
+            isCodOrder &&
+            (s === "PAYMENT_SLIP_REQUESTED" ||
+                s === "AWAITING_APPROVAL" ||
+                s === "PAYMENT_VERIFIED")
+        ) {
+            return false;
+        }
+        return true;
+    });
 
     // Suggest midpoint of distance-based estimate when entering delivery fee.
+    // For Verified Shops, preserve the Lalamove server-quoted order.deliveryFee!
     // FREE promo: lock in 0 — do not suggest a Grab/Bolt mid range.
     useEffect(() => {
         if (status !== "PAYMENT_SLIP_REQUESTED") return;
@@ -59,11 +74,17 @@ export function OrderStatusActionCard({ order }: Props) {
             setValue("deliveryFee", "0");
             return;
         }
+        if (isVerifiedShop && order.deliveryFee > 0) {
+            setValue("deliveryFee", String(order.deliveryFee));
+            return;
+        }
         if (order.estimatedDeliveryFeeMid == null) return;
         setValue("deliveryFee", String(order.estimatedDeliveryFeeMid));
     }, [
         status,
         isFreeDelivery,
+        isVerifiedShop,
+        order.deliveryFee,
         order.estimatedDeliveryFeeMid,
         getValues,
         setValue,
@@ -105,6 +126,11 @@ export function OrderStatusActionCard({ order }: Props) {
                         Override the order status. Runs the same rules as the shop — driver
                         assignment, delivery details and item-revise are all handled below.
                     </p>
+                    {isCodOrder && (
+                        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            Cash on Delivery (COD) — Collect ฿{order.totalAmount} cash upon delivery
+                        </div>
+                    )}
 
                     {/* Status */}
                     <Controller
@@ -116,7 +142,7 @@ export function OrderStatusActionCard({ order }: Props) {
                                     <SelectValue placeholder="Select new status…" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ORDER_STATUSES.filter((s) => s !== order.status).map((s) => (
+                                    {allowedStatuses.map((s) => (
                                         <SelectItem key={s} value={s}>{s}</SelectItem>
                                     ))}
                                 </SelectContent>

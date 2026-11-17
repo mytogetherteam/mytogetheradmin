@@ -73,8 +73,13 @@ export interface Order {
   shopName: string;
   shopNameMm?: string;
   shopImageUrl?: string;
+  isVerified?: boolean;
+  isVerifiedShop?: boolean;
   shopLatitude?: number | null;
   shopLongitude?: number | null;
+  lalamoveOrderId?: string | null;
+  lalamoveStatus?: string | null;
+  paymentChannel?: string | null;
   userId?: number | null;
   userFullName?: string | null;
   userPhone?: string | null;

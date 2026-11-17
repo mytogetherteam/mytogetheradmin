@@ -22,10 +22,11 @@ export const ORDER_DELIVERY_TYPE_LABELS: Record<string, string> = {
     FLEXIBLE: "Flexible",
 };
 
-/** Brand colors used by the shop app’s Bolt and Grab buttons. */
+/** Brand colors used by the shop app’s Bolt, Grab, and Lalamove couriers. */
 export const DELIVERY_COURIER_COLORS = {
     bolt: "#32BB78",
     grab: "#00B14F",
+    lalamove: "#FF6A00",
 } as const;
 
 export type DeliveryCourier = keyof typeof DELIVERY_COURIER_COLORS;
@@ -33,6 +34,7 @@ export type DeliveryCourier = keyof typeof DELIVERY_COURIER_COLORS;
 const COURIER_HOSTS: Record<DeliveryCourier, readonly string[]> = {
     bolt: ["bolt.eu"],
     grab: ["grab.com", "grab.co", "grabtaxi.com", "grab.onelink.me"],
+    lalamove: ["lalamove.com"],
 };
 
 function hostIs(host: string, root: string): boolean {
@@ -61,7 +63,7 @@ export function deliveryTrackingTarget(
     parsed.username = "";
     parsed.password = "";
     const host = parsed.hostname.toLowerCase();
-    for (const courier of ["bolt", "grab"] as const) {
+    for (const courier of ["bolt", "grab", "lalamove"] as const) {
         if (COURIER_HOSTS[courier].some((root) => hostIs(host, root))) {
             return { courier, href: parsed.toString() };
         }

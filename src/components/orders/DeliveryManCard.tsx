@@ -7,11 +7,13 @@ import { deliveryTrackingTarget, type DeliveryCourier } from "./order-format";
 const COURIER_LABELS: Record<DeliveryCourier, string> = {
     bolt: "Bolt",
     grab: "Grab",
+    lalamove: "Lalamove",
 };
 
 const COURIER_BADGE: Record<DeliveryCourier, string> = {
     bolt: "bg-[#32BB78]/15 text-[#0F6E42] dark:text-[#8EE0B5]",
     grab: "bg-[#00B14F]/15 text-[#067A38] dark:text-[#7DDBA4]",
+    lalamove: "bg-[#FF6A00]/15 text-[#C2410C] dark:text-[#FDBA74]",
 };
 
 function isPickupOrder(order: Order): boolean {
@@ -35,9 +37,11 @@ export function DeliveryManCard({ order }: { order: Order }) {
     const vehicle = driver?.vehicleNo?.trim() || "";
     const photo = driver?.profileUrl?.trim() || "";
     const hasPerson = Boolean(name || phone || vehicle || photo);
-    if (!tracking && !hasPerson) return null;
+    const hasLalamove = Boolean(order.lalamoveOrderId || order.lalamoveStatus || tracking?.courier === "lalamove");
+    if (!tracking && !hasPerson && !hasLalamove) return null;
 
     const tel = phone.replace(/[^\d+]/g, "");
+    const courierKey: DeliveryCourier | null = tracking?.courier ?? (hasLalamove ? "lalamove" : null);
 
     return (
         <Card>
@@ -47,16 +51,30 @@ export function DeliveryManCard({ order }: { order: Order }) {
                         <Bike className="h-4 w-4" />
                         Delivery man
                     </span>
-                    {tracking && (
+                    {courierKey && (
                         <span
-                            className={`inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-sm font-semibold ${COURIER_BADGE[tracking.courier]}`}
+                            className={`inline-flex shrink-0 items-center rounded-md px-2.5 py-1 text-sm font-semibold ${COURIER_BADGE[courierKey]}`}
                         >
-                            {COURIER_LABELS[tracking.courier]}
+                            {COURIER_LABELS[courierKey]}
                         </span>
                     )}
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+                {order.lalamoveStatus && (
+                    <div className="flex justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">Lalamove Status</span>
+                        <span className="font-semibold text-right">{order.lalamoveStatus}</span>
+                    </div>
+                )}
+
+                {order.lalamoveOrderId && (
+                    <div className="flex justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">Lalamove Order ID</span>
+                        <span className="font-mono text-xs font-medium text-right">{order.lalamoveOrderId}</span>
+                    </div>
+                )}
+
                 {hasPerson && (
                     <div className="flex items-center gap-3">
                         <TableImage
