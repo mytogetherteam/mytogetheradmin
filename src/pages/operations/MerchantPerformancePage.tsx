@@ -62,7 +62,7 @@ import {
 } from "@/services/merchantOperationsService";
 
 // Helper for date presets in YYYY-MM-DD
-function getPresetDates(preset: "today" | "yesterday" | "7d" | "30d" | "thisMonth") {
+function getPresetDates(preset: "today" | "yesterday" | "7d" | "thisMonth") {
   const now = new Date();
   const format = (d: Date) => d.toISOString().split("T")[0];
 
@@ -79,13 +79,8 @@ function getPresetDates(preset: "today" | "yesterday" | "7d" | "30d" | "thisMont
     s.setDate(s.getDate() - 7);
     return { start: format(s), end: format(now) };
   }
-  if (preset === "thisMonth") {
-    const s = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: format(s), end: format(now) };
-  }
-  // default 30d
-  const s = new Date(now);
-  s.setDate(s.getDate() - 30);
+  // thisMonth
+  const s = new Date(now.getFullYear(), now.getMonth(), 1);
   return { start: format(s), end: format(now) };
 }
 
@@ -104,9 +99,9 @@ function LineBrandIcon({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 export default function MerchantPerformancePage() {
-  const [datePreset, setDatePreset] = useState<"today" | "yesterday" | "7d" | "30d" | "thisMonth">("30d");
-  const [startDate, setStartDate] = useState(() => getPresetDates("30d").start);
-  const [endDate, setEndDate] = useState(() => getPresetDates("30d").end);
+  const [datePreset, setDatePreset] = useState<"today" | "yesterday" | "7d" | "thisMonth">("7d");
+  const [startDate, setStartDate] = useState(() => getPresetDates("7d").start);
+  const [endDate, setEndDate] = useState(() => getPresetDates("7d").end);
   const [activeTab, setActiveTab] = useState<"cancels" | "dormant" | "top" | "normal">("cancels");
   const [searchQuery, setSearchQuery] = useState("");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
@@ -155,7 +150,7 @@ export default function MerchantPerformancePage() {
     fetchData();
   }, [fetchData]);
 
-  const handlePresetChange = (preset: "today" | "yesterday" | "7d" | "30d" | "thisMonth") => {
+  const handlePresetChange = (preset: "today" | "yesterday" | "7d" | "thisMonth") => {
     setDatePreset(preset);
     const p = getPresetDates(preset);
     setStartDate(p.start);
@@ -322,7 +317,7 @@ export default function MerchantPerformancePage() {
   const summary = data?.summary;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 w-full">
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-5">
         <div>
@@ -345,7 +340,7 @@ export default function MerchantPerformancePage() {
         {/* Date presets & actions */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border bg-muted/50 p-1 text-xs shadow-2xs">
-            {(["today", "yesterday", "7d", "30d", "thisMonth"] as const).map((preset) => (
+            {(["today", "yesterday", "7d", "thisMonth"] as const).map((preset) => (
               <button
                 key={preset}
                 onClick={() => handlePresetChange(preset)}
@@ -361,9 +356,7 @@ export default function MerchantPerformancePage() {
                     ? "Yesterday"
                     : preset === "7d"
                       ? "7 Days"
-                      : preset === "30d"
-                        ? "30 Days"
-                        : "This Month"}
+                      : "This Month"}
               </button>
             ))}
           </div>
@@ -393,7 +386,7 @@ export default function MerchantPerformancePage() {
       </div>
 
       {/* ── MARKETING ACTION ALERT BANNER ─────────────────────────────────── */}
-      <div className="rounded-xl border border-border/80 bg-linear-to-r from-red-500/10 via-amber-500/10 to-emerald-500/10 p-4 sm:p-5 shadow-xs">
+      <div className="rounded-xl border border-border/80 bg-gradient-to-r from-red-500/10 via-amber-500/10 to-emerald-500/10 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -652,13 +645,13 @@ export default function MerchantPerformancePage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-muted/60 border-b border-border/60 text-muted-foreground uppercase text-[11px] font-semibold tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4 min-w-[220px]">Restaurant Info</th>
-                  <th className="py-3.5 px-4 min-w-[150px]">Order Performance & Loss</th>
-                  <th className="py-3.5 px-4 min-w-[180px]">
+                  <th className="py-2.5 px-3">Restaurant Info</th>
+                  <th className="py-2.5 px-3">Orders & Loss</th>
+                  <th className="py-2.5 px-3">
                     {activeTab === "dormant" ? "Inactivity Duration" : "Root Cause & Peak Window"}
                   </th>
-                  <th className="py-3.5 px-4 min-w-[160px]">Follow-up Status</th>
-                  <th className="py-3.5 px-4 text-right min-w-[200px]">Actions (LINE / Call / AI)</th>
+                  <th className="py-2.5 px-3">Follow-up Status</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -683,8 +676,8 @@ export default function MerchantPerformancePage() {
                       className="hover:bg-muted/20 transition-colors"
                     >
                       {/* 1. Shop Identity */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5">
                           <TableImage
                             src={shop.logoUrl}
                             alt={shop.nameEn}
@@ -715,7 +708,7 @@ export default function MerchantPerformancePage() {
                               {shop.nameMm || shop.addressEn || "No Burmese name"}
                             </div>
                             {shop.phone && (
-                              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                 <Phone className="h-3 w-3 text-muted-foreground" />
                                 <a
                                   href={`tel:${shop.phone}`}
@@ -730,8 +723,8 @@ export default function MerchantPerformancePage() {
                       </td>
 
                       {/* 2. Orders & Financial Loss */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1.5">
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-1">
                           <div className="flex items-baseline gap-2">
                             <span className="text-sm font-bold text-foreground">
                               {shop.completedOrders}
@@ -748,7 +741,7 @@ export default function MerchantPerformancePage() {
                                   {shop.cancelledOrders} cancelled ({shop.cancelRate}%)
                                 </span>
                               </div>
-                              <div className="w-32 bg-muted rounded-full h-1.5 overflow-hidden flex">
+                              <div className="w-28 bg-muted rounded-full h-1.5 overflow-hidden flex">
                                 <div
                                   className="bg-emerald-500 h-full"
                                   style={{
@@ -784,7 +777,7 @@ export default function MerchantPerformancePage() {
                       </td>
 
                       {/* 3. Root Cause & Peak Window */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-3">
                         {activeTab === "dormant" ? (
                           <div className="space-y-1">
                             <div className="text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1">
@@ -822,14 +815,14 @@ export default function MerchantPerformancePage() {
                       </td>
 
                       {/* 4. Follow-up Status */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1.5">
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
                             <Select
                               value={shop.followUpStatus}
                               onValueChange={(val) => handleQuickStatusChange(shop, val)}
                             >
-                              <SelectTrigger className="h-8 w-32 text-xs p-2">
+                              <SelectTrigger className="h-7.5 w-32 text-xs p-2">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -858,32 +851,34 @@ export default function MerchantPerformancePage() {
                       </td>
 
                       {/* 5. Actions (LINE / Phone / AI) */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
                           {/* 🤖 Gemini AI Strategy Button */}
                           <Button
                             size="sm"
-                            className="h-8 px-2.5 text-xs bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium shadow-xs"
+                            className="h-7.5 px-2.5 text-xs font-semibold !bg-purple-600 hover:!bg-purple-700 active:!bg-purple-800 !text-white rounded-md shadow-xs shrink-0 inline-flex items-center gap-1.5 border-0"
                             onClick={() => handleOpenAiStrategy(shop)}
                           >
-                            <Bot className="h-3.5 w-3.5 mr-1 text-white" /> AI Script
+                            <Bot className="h-3.5 w-3.5 !text-white" />
+                            <span>AI Script</span>
                           </Button>
 
                           {/* 💬 LINE Direct Button */}
                           <Button
                             size="sm"
                             onClick={() => handleQuickLine(shop)}
-                            className="h-8 px-2 text-xs bg-[#06C755] hover:bg-[#05b34c] text-white font-medium shadow-xs"
+                            className="h-7.5 px-2.5 text-xs font-semibold !bg-[#06C755] hover:!bg-[#05b34c] active:!bg-[#049f43] !text-white rounded-md shadow-xs shrink-0 inline-flex items-center gap-1.5 border-0"
                             title="Open in LINE and send message"
                           >
-                            <LineBrandIcon className="h-3.5 w-3.5 mr-1" /> LINE
+                            <LineBrandIcon className="h-3.5 w-3.5 !text-white" />
+                            <span>LINE</span>
                           </Button>
 
                           {/* 📞 Phone call shortcut */}
                           {shop.phone && (
                             <a
                               href={`tel:${shop.phone}`}
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-md border bg-background text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                              className="inline-flex items-center justify-center h-7.5 w-7.5 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                               title={`Call ${shop.phone}`}
                             >
                               <Phone className="h-3.5 w-3.5" />
@@ -893,7 +888,7 @@ export default function MerchantPerformancePage() {
                           {/* Manage link */}
                           <Link
                             to={`/shops/manage`}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-md border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            className="inline-flex items-center justify-center h-7.5 w-7.5 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                             title="Manage Restaurant"
                           >
                             <ChevronRight className="h-4 w-4" />
@@ -915,7 +910,7 @@ export default function MerchantPerformancePage() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-linear-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
