@@ -78,7 +78,8 @@ export interface MerchantOperationsResponse {
 export interface AiFollowUpStrategy {
   rootCauseAnalysis: string;
   callScript: string;
-  whatsappMessage: string;
+  lineMessage?: string;
+  whatsappMessage?: string;
   actionRecommendations: string[];
   urgency: 'Critical' | 'High' | 'Medium';
   keyFocus: string;
