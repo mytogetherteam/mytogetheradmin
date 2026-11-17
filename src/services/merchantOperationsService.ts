@@ -47,6 +47,37 @@ export interface ShopPerformanceItem {
   contactedByName: string | null;
 }
 
+export interface OperationalInsights {
+  canceledBySummary: {
+    shop: number;
+    system: number;
+    user: number;
+    admin: number;
+    shopPct: number;
+    systemPct: number;
+    userPct: number;
+  };
+  peakCancelHours: Array<{ timeWindow: string; count: number; percentage: number }>;
+  topLossShops: Array<{
+    id: number;
+    nameEn: string;
+    nameMm: string | null;
+    phone: string | null;
+    cancelledOrders: number;
+    cancelRate: number;
+    lostGmv: number;
+    topCancelReason: string | null;
+  }>;
+  followUpProgress: {
+    totalUrgentShops: number;
+    pendingCount: number;
+    inProgressCount: number;
+    resolvedCount: number;
+    noAnswerCount: number;
+    actionedRate: number;
+  };
+}
+
 export interface MerchantOperationsResponse {
   dateRange: {
     startDate: string;
@@ -65,6 +96,7 @@ export interface MerchantOperationsResponse {
     totalGmv: number;
     totalLostGmv: number;
   };
+  operationalInsights?: OperationalInsights;
   platformCancelReasons: Array<{ reason: string; count: number; percentage: number }>;
   shops: ShopPerformanceItem[];
   pagination: {
@@ -76,13 +108,19 @@ export interface MerchantOperationsResponse {
 }
 
 export interface AiFollowUpStrategy {
-  rootCauseAnalysis: string;
-  callScript: string;
-  lineMessage?: string;
-  whatsappMessage?: string;
-  actionRecommendations: string[];
-  urgency: 'Critical' | 'High' | 'Medium';
   keyFocus: string;
+  urgency: 'Critical' | 'High' | 'Medium';
+  metricsSnapshot?: {
+    activeMenuCount: number;
+    avgOrderValue: number;
+    topCancelledItems: Array<{ name: string; count: number }>;
+    topSellingItems: Array<{ name: string; count: number }>;
+    canceledByBreakdown: { shop: number; user: number; system: number };
+  };
+  rootCauseAnalysis: string;
+  operationalImprovements: string[];
+  marketingGrowthSuggestions: string[];
+  followUpDiscussionPoints: string[];
 }
 
 export interface AiStrategyResponse {
