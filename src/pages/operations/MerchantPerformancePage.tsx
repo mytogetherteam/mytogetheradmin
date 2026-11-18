@@ -186,8 +186,8 @@ export default function MerchantPerformancePage() {
           ),
         };
       });
-    } catch {
-      toast.error("Failed to update follow-up status");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update follow-up status");
     }
   };
 
@@ -234,13 +234,29 @@ export default function MerchantPerformancePage() {
       setSavingNote(true);
       await merchantOperationsService.updateFollowUp(selectedShopForNote.id, {
         status: noteStatus,
-        note: noteText.trim() || undefined,
+        note: noteText.trim(),
       });
       toast.success("Follow-up note saved successfully");
       setNoteDialogOpen(false);
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          shops: prev.shops.map((s) =>
+            s.id === selectedShopForNote.id
+              ? {
+                  ...s,
+                  followUpStatus: noteStatus as any,
+                  followUpNotes: noteText.trim() || null,
+                  lastContactedAt: new Date().toISOString() as any,
+                }
+              : s,
+          ),
+        };
+      });
       fetchData();
-    } catch {
-      toast.error("Failed to save follow-up note");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to save follow-up note");
     } finally {
       setSavingNote(false);
     }
