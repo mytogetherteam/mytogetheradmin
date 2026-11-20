@@ -106,6 +106,10 @@ export const config = {
         detail: (id: number) => `/api/admin/shop-profile/${id}`,
         operatingHours: (id: number) =>
           `/api/admin/shop-profile/${id}/operating-hours`,
+        printers: (id: number) =>
+          `/api/admin/shop-profile/${id}/printers`,
+        dailySettlement: (id: number) =>
+          `/api/admin/shop-profile/${id}/daily-settlement`,
         changeStatus: (id: number) =>
           `/api/admin/shop-profile/${id}/change-status`,
         assignAdmin: (id: number) =>

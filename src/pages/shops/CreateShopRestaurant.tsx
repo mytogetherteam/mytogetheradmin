@@ -46,6 +46,8 @@ import { cityService } from "@/services/cityService"
 import { useCreateShopRestaurant, useShopRestaurantPaymentMethods } from "@/hooks/shops"
 import { OPERATING_DAY_LABELS, ShopOperationRow } from "@/components/shop/ShopOperationRow"
 import { ShopPaymentQrPreview } from "@/components/shop/ShopPaymentQrPreview"
+import { ShopThermalPrintersCard } from "@/components/shop/ShopThermalPrintersCard"
+import { ShopDailySettlementCard } from "@/components/shop/ShopDailySettlementCard"
 import { Loader } from "@/components/ui/loader"
 import ConfirmDialog from "@/components/common/ConfirmDialog"
 import { normalizePricePreference } from "@/lib/price-preference"
@@ -1093,6 +1095,16 @@ export default function CreateShopRestaurant() {
                                         </div>
                                     </CardContent>
                                 </Card>
+
+                                {/* Thermal Kitchen Printers */}
+                                {isEditMode && numericShopId > 0 && (
+                                    <ShopThermalPrintersCard shopId={numericShopId} />
+                                )}
+
+                                {/* Daily Net Settlement Ledger */}
+                                {isEditMode && numericShopId > 0 && (
+                                    <ShopDailySettlementCard shopId={numericShopId} />
+                                )}
                             </div>
 
                             {/* Right Column - Status, Features, Price, Image */}

@@ -1043,4 +1043,163 @@ export const ShopService = {
       displayOrder: m.displayOrder || 1
     }));
   },
+
+  /**
+   * Get thermal kitchen printers and master feature switch for a specific shop.
+   * GET /api/admin/shop-profile/{id}/printers
+   */
+  getAdminShopPrinters: async (shopId: number): Promise<ShopPrinterSettingsResponse> => {
+    const { data: raw } = await api.get<unknown>(
+      config.endpoints.admin.shopProfile.printers(shopId),
+    );
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'success' in raw &&
+      (raw as { success?: unknown }).success === true &&
+      'data' in raw
+    ) {
+      const payload = (raw as { data: any }).data;
+      if (payload && typeof payload === 'object' && 'printers' in payload) {
+        return {
+          isFeatureEnabled: payload.isFeatureEnabled !== false,
+          printers: Array.isArray(payload.printers) ? payload.printers : [],
+        };
+      }
+      if (Array.isArray(payload)) {
+        return { isFeatureEnabled: true, printers: payload };
+      }
+    }
+
+    if (Array.isArray(raw)) {
+      return { isFeatureEnabled: true, printers: raw as ShopPrinterRecord[] };
+    }
+
+    return { isFeatureEnabled: true, printers: [] };
+  },
+
+  /**
+   * Replace thermal kitchen printers and master feature switch for a specific shop.
+   * PUT /api/admin/shop-profile/{id}/printers
+   */
+  updateAdminShopPrinters: async (
+    shopId: number,
+    printers: Partial<ShopPrinterRecord>[],
+    isFeatureEnabled?: boolean,
+  ): Promise<ShopPrinterSettingsResponse> => {
+    const { data: raw } = await api.put<unknown>(
+      config.endpoints.admin.shopProfile.printers(shopId),
+      { printers, isFeatureEnabled },
+    );
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'success' in raw &&
+      (raw as { success?: unknown }).success === true &&
+      'data' in raw
+    ) {
+      const payload = (raw as { data: any }).data;
+      if (payload && typeof payload === 'object' && 'printers' in payload) {
+        return {
+          isFeatureEnabled: payload.isFeatureEnabled !== false,
+          printers: Array.isArray(payload.printers) ? payload.printers : [],
+        };
+      }
+      if (Array.isArray(payload)) {
+        return { isFeatureEnabled: true, printers: payload };
+      }
+    }
+
+    return { isFeatureEnabled: isFeatureEnabled !== false, printers: printers as ShopPrinterRecord[] };
+  },
+
+  /**
+   * Get daily net settlement ledger for a specific shop.
+   * GET /api/admin/shop-profile/{id}/daily-settlement?date=YYYY-MM-DD
+   */
+  getAdminDailySettlement: async (
+    shopId: number,
+    date?: string,
+  ): Promise<DailySettlementData | null> => {
+    const endpoint = config.endpoints.admin.shopProfile.dailySettlement(shopId);
+    const { data: raw } = await api.get<unknown>(endpoint, {
+      params: date ? { date } : undefined,
+    });
+    if (
+      raw &&
+      typeof raw === 'object' &&
+      'success' in raw &&
+      (raw as { success?: unknown }).success === true &&
+      'data' in raw
+    ) {
+      return (raw as { data: DailySettlementData }).data;
+    }
+    return null;
+  },
 };
+
+export interface DailySettlementOrderItem {
+  id: number;
+  orderNumber: string;
+  status: string;
+  orderType: string;
+  paymentChannel: string;
+  foodAmount: number;
+  deliveryFee: number;
+  waitingTimeMinutes: number;
+  waitTimeFee: number;
+  netAmount: number;
+  customerName: string;
+  createdAt: string;
+}
+
+export interface DailySettlementData {
+  date: string;
+  shopId: number;
+  shopName: string;
+  currency: string;
+  orderCount: number;
+  completedOrderCount: number;
+  grossFoodSales: number;
+  deliveryCost: number;
+  waitTimeFee: number;
+  netPayout: number;
+  codCashAmount: number;
+  bankQrAmount: number;
+  platformPayoutAmount: number;
+  orders: DailySettlementOrderItem[];
+}
+
+export interface ShopPrinterRecord {
+  id: string;
+  shopId: number;
+  name: string;
+  connectionType: 'network' | 'bluetooth';
+  ipAddress?: string | null;
+  port?: number | null;
+  bluetoothName?: string | null;
+  bluetoothMac?: string | null;
+  paperSize: 'mm58' | 'mm80';
+  languageMode:
+    | 'myanmarOnly'
+    | 'thaiOnly'
+    | 'englishOnly'
+    | 'myanmarEnglish'
+    | 'thaiEnglish'
+    | 'threeLanguages';
+  routingTarget: 'all' | 'kitchenFoodOnly' | 'barDrinksOnly';
+  autoPrintTrigger:
+    | 'onPaymentSuccess'
+    | 'onCookingStarted'
+    | 'onBoth'
+    | 'manualOnly';
+  printLogo?: boolean;
+  isEnabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopPrinterSettingsResponse {
+  isFeatureEnabled: boolean;
+  printers: ShopPrinterRecord[];
+}
