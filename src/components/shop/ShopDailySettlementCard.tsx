@@ -131,6 +131,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                   <span className="text-xs font-semibold uppercase tracking-wider">
                     Net Merchant Payout
                   </span>
+                  <DollarSign className="h-4 w-4" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
@@ -149,6 +150,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                   <span className="text-xs font-semibold uppercase tracking-wider">
                     Gross Food Sales
                   </span>
+                  <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-foreground">
@@ -166,6 +168,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                   <span className="text-xs font-semibold uppercase tracking-wider">
                     Lalamove Delivery Cost
                   </span>
+                  <Truck className="h-4 w-4 text-amber-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-amber-600 dark:text-amber-500">
@@ -183,6 +186,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                   <span className="text-xs font-semibold uppercase tracking-wider">
                     Wait Penalty
                   </span>
+                  <Clock className="h-4 w-4 text-rose-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-rose-600 dark:text-rose-500">
