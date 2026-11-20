@@ -44,7 +44,7 @@ interface ShopThermalPrintersCardProps {
 const DEFAULT_PRESETS: Partial<ShopPrinterRecord>[] = [
   {
     id: "station_kitchen_main",
-    name: "Kitchen Food Printer (မီးဖိုချောင်)",
+    name: "Kitchen Food Printer",
     connectionType: "network",
     ipAddress: "192.168.1.100",
     port: 9100,
@@ -57,7 +57,7 @@ const DEFAULT_PRESETS: Partial<ShopPrinterRecord>[] = [
   },
   {
     id: "station_bar_drinks",
-    name: "Drinks Bar Printer (ဘား/အအေး)",
+    name: "Drinks Bar Printer",
     connectionType: "network",
     ipAddress: "192.168.1.101",
     port: 9100,
@@ -70,7 +70,7 @@ const DEFAULT_PRESETS: Partial<ShopPrinterRecord>[] = [
   },
   {
     id: "station_cashier_counter",
-    name: "Cashier Counter Slip (ငွေကိုင်/ကောင်တာ)",
+    name: "Cashier Counter Slip Printer",
     connectionType: "bluetooth",
     bluetoothName: "RPP02N / MTP-II",
     bluetoothMac: "",
@@ -136,7 +136,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
       );
       setIsFeatureEnabled(updated.isFeatureEnabled);
       setPrinters(updated.printers);
-      toast.success("Thermal printer configurations saved and broadcasted to Shop App!");
+      toast.success("Thermal printer configurations saved and synced live to Shop App!");
     } catch (err: any) {
       toast.error(err?.message || "Failed to save thermal printers");
     } finally {
@@ -163,7 +163,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
   const handleDeletePrinter = (index: number) => {
     const updated = printers.filter((_, idx) => idx !== index);
     setPrinters(updated);
-    toast.success("Printer removed. Remember to save changes.");
+    toast.success("Printer removed. Click 'Save Configurations' to commit changes.");
   };
 
   const handleOpenAddDialog = () => {
@@ -228,8 +228,10 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
       case "englishOnly":
         return "🇬🇧 English Only";
       case "myanmarEnglish":
+      case "dualThaiMyanmar":
         return "🇲🇲/🇬🇧 Myanmar + English";
       case "thaiEnglish":
+      case "dualThaiEnglish":
         return "🇹🇭/🇬🇧 Thai + English";
       case "threeLanguages":
         return "🌐 All 3 Languages";
@@ -272,10 +274,10 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
           <div className="space-y-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <Printer className="h-5 w-5 text-primary" />
-              Thermal Kitchen Printers (မီးဖိုချောင်သုံး ပရင်တာ စီမံခန့်ခွဲမှု)
+              Thermal Kitchen Printers Management
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Configure multi-station 58mm/80mm thermal receipt printers with Burmese/Thai/English rendering and automatic print triggers.
+              Configure multi-station 58mm/80mm thermal receipt printers with multilingual rendering and automatic order print dispatching.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -330,13 +332,13 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
         {/* Master Feature Switch */}
         <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-colors gap-3 ${
           isFeatureEnabled
-            ? "bg-amber-50/40 border-amber-300 text-amber-950 dark:bg-amber-950/20 dark:border-amber-700"
+            ? "bg-amber-50/50 border-amber-300 text-amber-950 dark:bg-amber-950/20 dark:border-amber-700"
             : "bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-900/40 dark:border-slate-800"
         }`}>
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 font-semibold text-sm">
               <Power className={`h-4 w-4 ${isFeatureEnabled ? "text-amber-600" : "text-slate-400"}`} />
-              <span>Thermal Kitchen Printers (မီးဖိုချောင်သုံး ပရင်တာ စနစ် အသုံးပြုခွင့်)</span>
+              <span>Thermal Kitchen Printers (Premium Feature)</span>
               <Badge
                 variant={isFeatureEnabled ? "default" : "outline"}
                 className={isFeatureEnabled
@@ -344,28 +346,31 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
                   : "border-slate-300 text-slate-500 font-semibold text-[10px]"
                 }
               >
-                {isFeatureEnabled ? "⭐ PREMIUM (ON - ဖွင့်ထားသည်)" : "OFF / DISABLED (ပိတ်ထားသည်)"}
+                {isFeatureEnabled ? "⭐ PREMIUM ACTIVE (ON)" : "DISABLED (OFF)"}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               {isFeatureEnabled
-                ? "⭐ Premium Feature ON: Restaurant can configure & use thermal printers. Syncs live to Shop App."
-                : "🔒 Feature OFF: Shop App will show a gold 'PREMIUM' badge on the Printers service icon, locking configuration."}
+                ? "⭐ Premium Feature Active: Restaurant staff can configure and trigger thermal kitchen & cashier printers. Real-time synced to mobile Shop App."
+                : "🔒 Feature Disabled: Mobile Shop App will display a gold 'PREMIUM' badge over the Printers icon, locking printer settings."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Switch
               checked={isFeatureEnabled}
               onCheckedChange={async (checked) => {
+                const prev = isFeatureEnabled;
                 setIsFeatureEnabled(checked);
                 try {
-                  await ShopService.updateAdminShopPrinters(shopId, printers, checked);
+                  const updated = await ShopService.updateAdminShopPrinters(shopId, undefined, checked);
+                  setIsFeatureEnabled(updated.isFeatureEnabled);
                   toast.success(
                     checked
-                      ? "Thermal Printers turned ON (Premium Active) & synced live to Shop App!"
-                      : "Thermal Printers turned OFF (Disabled / Shows Gold Badge) & synced live to Shop App!"
+                      ? "Thermal Kitchen Printers enabled (Premium Active) & synced live to Shop App!"
+                      : "Thermal Kitchen Printers disabled (Premium Badge Shown) & synced live to Shop App!"
                   );
                 } catch (err: any) {
+                  setIsFeatureEnabled(prev);
                   toast.error(err?.message || "Failed to update printer feature toggle");
                 }
               }}
@@ -378,7 +383,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
           <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 text-xs text-amber-950 flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Note:</strong> Printer functionality is currently disabled for this restaurant. The Shop App will display a gold <strong>PREMIUM</strong> badge over the printer service icon and prompt to upgrade when tapped.
+              <strong>Feature Currently Disabled:</strong> Thermal printing is locked for this restaurant. The mobile Shop App displays a gold <strong>PREMIUM</strong> badge and prompts to upgrade when tapped.
             </span>
           </div>
         )}
@@ -387,13 +392,13 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
         <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 space-y-1">
           <div className="flex items-center gap-1.5 font-semibold text-blue-950">
             <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
-            <span>Standard Apps (Grab / Toast / Square) Best Practice:</span>
+            <span>Enterprise Best Practice (GrabFood / Toast POS Standard):</span>
           </div>
           <p className="leading-relaxed">
-            • <strong>MyTogether Logo on Slip:</strong> Included by default on <em>Cashier Counter</em> customer receipts (builds brand trust & official receipt). Disabled on <em>Kitchen & Bar</em> tickets (saves 2-3 cm paper per order, prints 3x faster, zero clutter for chefs).
+            • <strong>Slip Brand Logo:</strong> Enabled by default on <em>Cashier Counter</em> customer receipts (official branded tax slip). Disabled on <em>Kitchen & Bar</em> tickets (saves 2-3 cm paper per order, prints 3x faster, zero clutter for chefs).
           </p>
           <p className="leading-relaxed">
-            • <strong>Real-Time Sync:</strong> Saving configurations broadcasts a WebSocket update. Active Shop Apps update instantly with zero restarts.
+            • <strong>Instant Live Sync:</strong> Saving configurations broadcasts real-time WebSocket updates. Active mobile Shop Apps update dynamically without app restarts.
           </p>
         </div>
 
@@ -404,7 +409,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
             <div className="space-y-1">
               <p className="text-sm font-medium">No thermal printers configured for this restaurant</p>
               <p className="text-xs text-muted-foreground max-w-md">
-                Click &quot;Preset 3 Stations&quot; to quickly configure Kitchen, Drinks Bar, and Cashier printers, or add individual printers manually.
+                Click &quot;Preset 3 Stations&quot; to quickly configure Kitchen, Drinks Bar, and Cashier printers, or add individual stations manually.
               </p>
             </div>
             <div className="flex gap-2">
@@ -544,7 +549,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
           <div className="space-y-4 py-2">
             {/* Station Name */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Station Name (အမည်)</Label>
+              <Label className="text-xs font-semibold">Station Name</Label>
               <Input
                 placeholder="e.g. Kitchen Food Station / Bar Drinks / Cashier"
                 value={formData.name || ""}
@@ -553,10 +558,10 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
               />
             </div>
 
-            {/* Connection Type */}
+            {/* Connection Type & Paper Size */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Connection Type (ချိတ်ဆက်မှုပုံစံ)</Label>
+                <Label className="text-xs font-semibold">Connection Type</Label>
                 <Select
                   value={formData.connectionType || "network"}
                   onValueChange={(val: "network" | "bluetooth") =>
@@ -567,14 +572,14 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="network">🌐 WiFi / LAN (Ethernet Port 9100)</SelectItem>
+                    <SelectItem value="network">🌐 WiFi / LAN (Port 9100)</SelectItem>
                     <SelectItem value="bluetooth">📶 Bluetooth Classic SPP</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Paper Size (စက္ကူဆိုဒ်)</Label>
+                <Label className="text-xs font-semibold">Paper Size</Label>
                 <Select
                   value={formData.paperSize || "mm80"}
                   onValueChange={(val: "mm58" | "mm80") =>
@@ -641,7 +646,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
             {/* Languages & Routing */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Language Mode (ဘာသာစကား)</Label>
+                <Label className="text-xs font-semibold">Language Mode</Label>
                 <Select
                   value={formData.languageMode || "myanmarEnglish"}
                   onValueChange={(val: any) => setFormData({ ...formData, languageMode: val })}
@@ -661,7 +666,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Category Routing (ပစ္စည်းအမျိုးအစား)</Label>
+                <Label className="text-xs font-semibold">Category Routing</Label>
                 <Select
                   value={formData.routingTarget || "all"}
                   onValueChange={(val: any) => setFormData({ ...formData, routingTarget: val })}
@@ -670,8 +675,8 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">🍽️ All Items (အားလုံး)</SelectItem>
-                    <SelectItem value="kitchenFoodOnly">🍳 Food / Kitchen Only</SelectItem>
+                    <SelectItem value="all">🍽️ All Items (Food & Drinks)</SelectItem>
+                    <SelectItem value="kitchenFoodOnly">🍳 Kitchen / Food Only</SelectItem>
                     <SelectItem value="barDrinksOnly">🍹 Drinks / Bar Only</SelectItem>
                   </SelectContent>
                 </Select>
@@ -680,7 +685,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
 
             {/* Auto Print Trigger */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Auto-Print Event Trigger (အလိုအလျောက် ပရင့်ထုတ်မည့်အချိန်)</Label>
+              <Label className="text-xs font-semibold">Auto-Print Event Trigger</Label>
               <Select
                 value={formData.autoPrintTrigger || "onCookingStarted"}
                 onValueChange={(val: any) => setFormData({ ...formData, autoPrintTrigger: val })}
@@ -689,10 +694,10 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="onCookingStarted">🔥 Cooking Started (စတင်ချက်ပြုတ်ချိန် - အကြံပြု)</SelectItem>
-                  <SelectItem value="onPaymentSuccess">💵 Payment Success (ငွေပေးချေမှု အောင်မြင်ချိန်)</SelectItem>
-                  <SelectItem value="onBoth">⚡ Both States (ငွေချေချိန်ရော ချက်ပြုတ်ချိန်ပါ)</SelectItem>
-                  <SelectItem value="manualOnly">🖐️ Manual Print Only (လက်ဖြင့် နှိပ်ထုတ်မှသာ)</SelectItem>
+                  <SelectItem value="onCookingStarted">🔥 Cooking Started (Recommended)</SelectItem>
+                  <SelectItem value="onPaymentSuccess">💵 Payment Success</SelectItem>
+                  <SelectItem value="onBoth">⚡ Both Payment & Cooking</SelectItem>
+                  <SelectItem value="manualOnly">🖐️ Manual Print Only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -700,7 +705,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
             {/* Print Logo Switch */}
             <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10">
               <div className="space-y-0.5">
-                <Label className="text-xs font-semibold">Print MyTogether Logo (ဘောက်ချာထိပ်တွင် Logo ထည့်မည်)</Label>
+                <Label className="text-xs font-semibold">Print MyTogether Logo on Slip</Label>
                 <p className="text-[11px] text-muted-foreground">
                   Recommended: ON for Cashier/Counter receipts, OFF for Kitchen/Bar to save paper and print fastest.
                 </p>
@@ -714,7 +719,7 @@ export function ShopThermalPrintersCard({ shopId }: ShopThermalPrintersCardProps
             {/* Active Switch */}
             <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10">
               <div className="space-y-0.5">
-                <Label className="text-xs font-semibold">Enable Station (အသုံးပြုရန် ဖွင့်ထားမည်)</Label>
+                <Label className="text-xs font-semibold">Enable Station</Label>
                 <p className="text-[11px] text-muted-foreground">
                   When enabled, this printer actively receives print dispatch jobs.
                 </p>

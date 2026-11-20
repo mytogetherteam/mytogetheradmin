@@ -1084,7 +1084,7 @@ export const ShopService = {
    */
   updateAdminShopPrinters: async (
     shopId: number,
-    printers: Partial<ShopPrinterRecord>[],
+    printers?: Partial<ShopPrinterRecord>[],
     isFeatureEnabled?: boolean,
   ): Promise<ShopPrinterSettingsResponse> => {
     const { data: raw } = await api.put<unknown>(
@@ -1110,7 +1110,7 @@ export const ShopService = {
       }
     }
 
-    return { isFeatureEnabled: isFeatureEnabled !== false, printers: printers as ShopPrinterRecord[] };
+    return { isFeatureEnabled: isFeatureEnabled !== false, printers: (printers || []) as ShopPrinterRecord[] };
   },
 
   /**

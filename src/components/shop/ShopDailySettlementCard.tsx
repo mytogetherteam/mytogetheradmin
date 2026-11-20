@@ -79,7 +79,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
             <div className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-emerald-600" />
               <CardTitle className="text-lg">
-                Daily Net Profit & Settlement Ledger (နေ့စဉ် အသားတင်ဝင်ငွေ ရှင်းတမ်း)
+                Daily Net Profit & Settlement Ledger
               </CardTitle>
             </div>
             <CardDescription className="mt-1">
@@ -129,9 +129,8 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
               <div className="p-4 rounded-xl border bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
                 <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300">
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Net Merchant Payout (အသားတင်ငွေ)
+                    Net Merchant Payout
                   </span>
-                  <DollarSign className="h-4 w-4" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
@@ -148,9 +147,8 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
               <div className="p-4 rounded-xl border bg-background flex flex-col justify-between">
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Gross Food Sales (ဟင်းပွဲရောင်းရငွေ)
+                    Gross Food Sales
                   </span>
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-foreground">
@@ -166,9 +164,8 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
               <div className="p-4 rounded-xl border bg-background flex flex-col justify-between">
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Lalamove Delivery Cost (ပို့ဆောင်ခ)
+                    Lalamove Delivery Cost
                   </span>
-                  <Truck className="h-4 w-4 text-amber-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-amber-600 dark:text-amber-500">
@@ -184,9 +181,8 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
               <div className="p-4 rounded-xl border bg-background flex flex-col justify-between">
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Wait Penalty (စောင့်ဆိုင်းချိန်ဒဏ်ကြေး)
+                    Wait Penalty
                   </span>
-                  <Clock className="h-4 w-4 text-rose-500" />
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-bold text-rose-600 dark:text-rose-500">
@@ -207,7 +203,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    Cash in Hand (COD ငွေသားရရှိပြီး)
+                    Cash in Hand (COD Received)
                   </div>
                   <div className="text-xl font-bold text-amber-800 dark:text-amber-300 mt-1">
                     {formatMoney(data.codCashAmount)}
@@ -224,7 +220,7 @@ export function ShopDailySettlementCard({ shopId }: ShopDailySettlementCardProps
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                    Platform Bank Payout (ဘဏ်သို့လွှဲပေးရမည့်ငွေ)
+                    Platform Bank Payout
                   </div>
                   <div className="text-xl font-bold text-blue-800 dark:text-blue-300 mt-1">
                     {formatMoney(data.platformPayoutAmount)}
